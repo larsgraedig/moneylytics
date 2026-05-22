@@ -10,4 +10,5 @@ fun interface GetTransactionsUseCase {
 data class GetTransactionsQuery(
     val from: LocalDate,
     val to: LocalDate,
+    val onlyNegative: Boolean = false,
 )

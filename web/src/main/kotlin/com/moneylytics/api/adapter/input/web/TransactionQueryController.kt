@@ -24,7 +24,7 @@ class TransactionQueryController(
         @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) to: LocalDate,
     ): SankeyResponse {
         val transactions = withContext(Dispatchers.IO) {
-            getTransactionsUseCase.getTransactions(GetTransactionsQuery(from, to))
+            getTransactionsUseCase.getTransactions(GetTransactionsQuery(from, to, onlyNegative = true))
         }
         return transactions.toSankeyResponse()
     }

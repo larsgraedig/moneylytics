@@ -6,4 +6,5 @@ import java.time.LocalDate
 interface TransactionRepository {
     fun saveAll(transactions: List<Transaction>): Int
     fun findByBookingDateBetween(from: LocalDate, to: LocalDate): List<Transaction>
+    fun findNegativeByBookingDateBetween(from: LocalDate, to: LocalDate): List<Transaction>
 }

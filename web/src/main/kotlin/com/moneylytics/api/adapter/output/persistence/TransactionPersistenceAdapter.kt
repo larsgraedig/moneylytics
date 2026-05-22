@@ -4,6 +4,7 @@ import com.moneylytics.api.application.port.output.TransactionRepository
 import com.moneylytics.api.domain.Transaction
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
+import java.math.BigDecimal
 import java.time.LocalDate
 
 @Component
@@ -20,6 +21,9 @@ class TransactionPersistenceAdapter(
 
     override fun findByBookingDateBetween(from: LocalDate, to: LocalDate): List<Transaction> =
         jpaRepository.findByBookingDateBetween(from, to).map { it.toDomain() }
+
+    override fun findNegativeByBookingDateBetween(from: LocalDate, to: LocalDate): List<Transaction> =
+        jpaRepository.findByBookingDateBetweenAndAmountLessThan(from, to, BigDecimal.ZERO).map { it.toDomain() }
 
     private fun Transaction.toEntity() = TransactionEntity(
         category = category,

@@ -22,7 +22,7 @@ class TransactionQueryControllerTest {
     @Test
     fun `should return nodes for each distinct category and subcategory`() = runTest {
         // Arrange
-        whenever(getTransactionsUseCase.getTransactions(GetTransactionsQuery(from, to))).thenReturn(
+        whenever(getTransactionsUseCase.getTransactions(GetTransactionsQuery(from, to, onlyNegative = true))).thenReturn(
             listOf(
                 transaction(category = "Food", subcategory = "Groceries", amount = BigDecimal("-50.00")),
                 transaction(category = "Food", subcategory = "Restaurant", amount = BigDecimal("-30.00")),
@@ -42,7 +42,7 @@ class TransactionQueryControllerTest {
     @Test
     fun `should set node value to the total flow through that node`() = runTest {
         // Arrange
-        whenever(getTransactionsUseCase.getTransactions(GetTransactionsQuery(from, to))).thenReturn(
+        whenever(getTransactionsUseCase.getTransactions(GetTransactionsQuery(from, to, onlyNegative = true))).thenReturn(
             listOf(
                 transaction(category = "Food", subcategory = "Groceries", amount = BigDecimal("-50.00")),
                 transaction(category = "Food", subcategory = "Restaurant", amount = BigDecimal("-30.00")),
@@ -65,7 +65,7 @@ class TransactionQueryControllerTest {
     @Test
     fun `should aggregate amounts per category-subcategory pair and use absolute values`() = runTest {
         // Arrange
-        whenever(getTransactionsUseCase.getTransactions(GetTransactionsQuery(from, to))).thenReturn(
+        whenever(getTransactionsUseCase.getTransactions(GetTransactionsQuery(from, to, onlyNegative = true))).thenReturn(
             listOf(
                 transaction(category = "Food", subcategory = "Groceries", amount = BigDecimal("-50.00")),
                 transaction(category = "Food", subcategory = "Groceries", amount = BigDecimal("-20.00")),
@@ -86,7 +86,7 @@ class TransactionQueryControllerTest {
     @Test
     fun `should link source category index to target subcategory index`() = runTest {
         // Arrange
-        whenever(getTransactionsUseCase.getTransactions(GetTransactionsQuery(from, to))).thenReturn(
+        whenever(getTransactionsUseCase.getTransactions(GetTransactionsQuery(from, to, onlyNegative = true))).thenReturn(
             listOf(
                 transaction(category = "Food", subcategory = "Groceries", amount = BigDecimal("-50.00")),
                 transaction(category = "Transport", subcategory = "Fuel", amount = BigDecimal("-40.00")),
@@ -115,7 +115,7 @@ class TransactionQueryControllerTest {
         // "Insurance" is both a top-level category and a subcategory of "Auto".
         // If both map to the same index, D3 sankey merges them and produces a
         // degenerate layout where every link appears the same width.
-        whenever(getTransactionsUseCase.getTransactions(GetTransactionsQuery(from, to))).thenReturn(
+        whenever(getTransactionsUseCase.getTransactions(GetTransactionsQuery(from, to, onlyNegative = true))).thenReturn(
             listOf(
                 transaction(category = "Auto", subcategory = "Insurance", amount = BigDecimal("-435.00")),
                 transaction(category = "Insurance", subcategory = "Liability", amount = BigDecimal("-100.00")),
@@ -137,9 +137,25 @@ class TransactionQueryControllerTest {
     }
 
     @Test
+    fun `should exclude transactions with positive amount`() = runTest {
+        // Arrange
+        whenever(getTransactionsUseCase.getTransactions(GetTransactionsQuery(from, to, onlyNegative = true))).thenReturn(
+            listOf(
+                transaction(category = "Food", subcategory = "Groceries", amount = BigDecimal("-50.00")),
+            ),
+        )
+
+        // Act
+        val response = controller.getSankeyData(from, to)
+
+        // Assert
+        assertThat(response.nodes.map { it.name }).containsExactly("Food", "Groceries")
+    }
+
+    @Test
     fun `should return empty nodes and links when no transactions exist`() = runTest {
         // Arrange
-        whenever(getTransactionsUseCase.getTransactions(GetTransactionsQuery(from, to))).thenReturn(emptyList())
+        whenever(getTransactionsUseCase.getTransactions(GetTransactionsQuery(from, to, onlyNegative = true))).thenReturn(emptyList())
 
         // Act
         val response = controller.getSankeyData(from, to)

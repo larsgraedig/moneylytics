@@ -12,5 +12,9 @@ class TransactionQueryService(
 ) : GetTransactionsUseCase {
 
     override fun getTransactions(query: GetTransactionsQuery): List<Transaction> =
-        transactionRepository.findByBookingDateBetween(query.from, query.to)
+        if (query.onlyNegative) {
+            transactionRepository.findNegativeByBookingDateBetween(query.from, query.to)
+        } else {
+            transactionRepository.findByBookingDateBetween(query.from, query.to)
+        }
 }
