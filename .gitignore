@@ -1,0 +1,9 @@
+.gradle
+.idea
+.kotlin
+.env
+.envrc
+.DS_Store
+build
+node_modules
+*.csv

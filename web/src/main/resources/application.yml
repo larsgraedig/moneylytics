@@ -1,0 +1,9 @@
+spring:
+  application:
+    name: api
+  datasource:
+    url: jdbc:h2:mem:moneylyticsdb;DB_CLOSE_DELAY=-1
+
+springdoc:
+  swagger-ui:
+    enabled: false  # springdoc's UI router uses a Spring Framework 6 API removed in 7; we serve the UI manually

@@ -1,0 +1,140 @@
+package com.moneylytics.api.adapter.input.web
+
+import com.moneylytics.api.domain.Transaction
+import org.apache.commons.csv.CSVFormat
+import org.apache.commons.csv.CSVParser
+import org.springframework.stereotype.Component
+import java.io.StringReader
+import java.math.BigDecimal
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+import java.time.format.DateTimeParseException
+
+@Component
+class CsvTransactionParser {
+
+    fun parse(csvContent: String): CsvParseResult {
+        val apacheFormat = CSVFormat.DEFAULT.builder()
+            .setHeader()
+            .setSkipHeaderRecord(true)
+            .setIgnoreEmptyLines(true)
+            .setTrim(true)
+            .build()
+
+        val csvParser = CSVParser.parse(StringReader(csvContent), apacheFormat)
+        val headers = csvParser.headerNames.map { it.trim() }.toSet()
+
+        val matchedFormat = CsvFormat.entries.firstOrNull { fmt ->
+            fmt.config.requiredColumns.all { it in headers }
+        } ?: return unrecognizedFormatError(headers)
+
+        return parseWithFormat(csvParser, matchedFormat.config)
+    }
+
+    private fun unrecognizedFormatError(headers: Set<String>): CsvParseResult.Invalid {
+        // Report the missing columns of the closest-matching known format so the
+        // error message is actionable (e.g. "Missing required columns for MLP Banking: Valutadatum").
+        val bestMatch = CsvFormat.entries.maxBy { fmt ->
+            fmt.config.requiredColumns.count { it in headers }
+        }
+        val missing = bestMatch.config.requiredColumns - headers
+        return CsvParseResult.Invalid(
+            listOf(
+                CsvValidationError(
+                    row = 0,
+                    column = missing.joinToString(", "),
+                    value = "",
+                    message = "Missing required columns for ${bestMatch.config.name}: ${missing.joinToString(", ")}",
+                ),
+            ),
+        )
+    }
+
+    private fun parseWithFormat(csvParser: CSVParser, config: CsvFormatConfig): CsvParseResult {
+        val dateFormatter = DateTimeFormatter.ofPattern(config.datePattern)
+        val transactions = mutableListOf<Transaction>()
+        val errors = mutableListOf<CsvValidationError>()
+
+        for ((index, record) in csvParser.withIndex()) {
+            val rowNumber = index + 2 // header is row 1, data starts at row 2
+
+            val bookingDate = parseDate(record[config.bookingDate], config.bookingDate, rowNumber, dateFormatter, config.datePattern, errors)
+            val valueDate = parseDate(record[config.valueDate], config.valueDate, rowNumber, dateFormatter, config.datePattern, errors)
+            val amount = parseAmount(record[config.amount], config.amount, rowNumber, errors)
+
+            if (bookingDate != null && valueDate != null && amount != null) {
+                transactions.add(
+                    Transaction(
+                        category = record[config.category],
+                        subcategory = record[config.subcategory],
+                        bookingDate = bookingDate,
+                        valueDate = valueDate,
+                        amount = amount,
+                        currency = record[config.currency],
+                    ),
+                )
+            }
+        }
+
+        return if (errors.isEmpty()) {
+            CsvParseResult.Valid(transactions)
+        } else {
+            CsvParseResult.Invalid(errors)
+        }
+    }
+
+    private fun parseDate(
+        value: String,
+        column: String,
+        row: Int,
+        formatter: DateTimeFormatter,
+        pattern: String,
+        errors: MutableList<CsvValidationError>,
+    ): LocalDate? {
+        if (value.isBlank()) {
+            errors.add(CsvValidationError(row = row, column = column, value = value, message = "Date must not be blank"))
+            return null
+        }
+        return try {
+            LocalDate.parse(value, formatter)
+        } catch (e: DateTimeParseException) {
+            errors.add(
+                CsvValidationError(
+                    row = row,
+                    column = column,
+                    value = value,
+                    message = "Invalid date format, expected $pattern",
+                ),
+            )
+            null
+        }
+    }
+
+    private fun parseAmount(
+        value: String,
+        column: String,
+        row: Int,
+        errors: MutableList<CsvValidationError>,
+    ): BigDecimal? {
+        if (value.isBlank()) {
+            errors.add(CsvValidationError(row = row, column = column, value = value, message = "Amount must not be blank"))
+            return null
+        }
+        return try {
+            // Both formats use comma as the decimal separator.
+            // A leading dot (thousands separator in German format) is stripped first
+            // so that "-1.234,56" and "-86,11" and "-400" all parse correctly.
+            BigDecimal(value.replace(".", "").replace(",", "."))
+        } catch (e: NumberFormatException) {
+            errors.add(
+                CsvValidationError(
+                    row = row,
+                    column = column,
+                    value = value,
+                    message = "Invalid amount: $value",
+                ),
+            )
+            null
+        }
+    }
+}

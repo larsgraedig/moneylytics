@@ -1,0 +1,226 @@
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --bg:           #09090b;
+  --surface:      #111114;
+  --border:       #222228;
+  --border-hi:    #36363f;
+  --accent:       #f59e0b;
+  --accent-glow:  rgba(245, 158, 11, 0.10);
+  --accent-dim:   rgba(245, 158, 11, 0.40);
+  --text:         #e4e4ea;
+  --text-muted:   #6b6b78;
+  --text-dim:     #303038;
+  --error:        #f87171;
+  --mono:         ui-monospace, 'SF Mono', SFMono-Regular, Consolas, 'Liberation Mono', monospace;
+}
+
+html, body, #root {
+  height: 100%;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: system-ui, -apple-system, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── shell ───────────────────────────────── */
+
+.shell {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* ── top bar ─────────────────────────────── */
+
+.bar {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 52px;
+  padding: 0 20px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  gap: 16px;
+}
+
+.wordmark {
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  text-transform: lowercase;
+  color: var(--accent);
+  user-select: none;
+}
+
+/* ── controls ────────────────────────────── */
+
+.controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.range-group {
+  display: flex;
+  align-items: stretch;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--bg);
+}
+
+/* fieldset reset */
+.range-group {
+  padding: 0;
+  min-inline-size: 0;
+  border-inline-end-width: 1px;
+}
+
+.range-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px;
+  height: 34px;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+
+.range-field:hover {
+  background: color-mix(in srgb, var(--accent-glow) 60%, transparent);
+}
+
+.range-sep {
+  width: 1px;
+  background: var(--border);
+  flex-shrink: 0;
+}
+
+.range-label {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  user-select: none;
+  flex-shrink: 0;
+}
+
+.range-field input[type="date"] {
+  background: transparent;
+  border: none;
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 12px;
+  outline: none;
+  cursor: pointer;
+  color-scheme: dark;
+  padding: 0;
+  min-width: 110px;
+}
+
+.range-field input[type="date"]:focus {
+  color: var(--accent);
+}
+
+.load-btn {
+  height: 34px;
+  padding: 0 18px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-muted);
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  transition: border-color 0.12s, color 0.12s, background 0.12s;
+  flex-shrink: 0;
+}
+
+.load-btn:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-glow);
+}
+
+.load-btn:active:not(:disabled) {
+  background: color-mix(in srgb, var(--accent-glow) 200%, transparent);
+}
+
+.load-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+/* ── stage ───────────────────────────────── */
+
+.stage {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* ── hint text (idle / loading / error) ──── */
+
+.hint {
+  display: flex;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  color: var(--text-dim);
+  pointer-events: none;
+  user-select: none;
+}
+
+.hint kbd {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--accent-dim);
+  border: 1px solid currentColor;
+  border-radius: 3px;
+  padding: 0 5px;
+  margin: 0 2px;
+}
+
+.hint.loading {
+  color: var(--text-muted);
+  animation: blink 1.4s ease-in-out infinite;
+}
+
+.hint.error {
+  color: var(--error);
+  letter-spacing: 0;
+  font-size: 13px;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.3; }
+}
+
+/* ── chart ───────────────────────────────── */
+
+.chart {
+  animation: appear 0.35s ease;
+}
+
+@keyframes appear {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}

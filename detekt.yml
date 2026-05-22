@@ -1,0 +1,17 @@
+style:
+  MaxLineLength:
+    # handled by ktlint
+    active: false
+  DataClassShouldBeImmutable:
+    active: true
+  ReturnCount:
+    max: 6
+  ThrowsCount:
+    max: 6
+complexity:
+  LongParameterList:
+    ignoreAnnotated:
+      - jakarta.persistence.Entity
+      - jakarta.persistence.Embeddable
+  LongMethod:
+    threshold: 80

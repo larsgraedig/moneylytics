@@ -1,0 +1,117 @@
+import { ResponsiveSankey } from '@nivo/sankey'
+import type { SankeyResponse } from '../api/transactions'
+
+const EUR = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' })
+
+interface Props {
+  data: SankeyResponse
+}
+
+const nivoTheme = {
+  tooltip: {
+    container: {
+      background: '#16161a',
+      color: '#e2e2e8',
+      fontSize: 12,
+      fontFamily: "ui-monospace, 'SF Mono', Consolas, monospace",
+      border: '1px solid #2a2a32',
+      borderRadius: 3,
+      boxShadow: '0 4px 16px rgba(0,0,0,0.6)',
+    } as React.CSSProperties,
+  },
+  labels: {
+    text: {
+      fontSize: 11,
+      fontFamily: "ui-monospace, 'SF Mono', Consolas, monospace",
+    },
+  },
+} as const
+
+const NODE_SPACING = 8
+// Max pixel height for the single tallest node. Keeping it below ~120 px lets
+// d3-sankey's redistribution iterations resolve collisions without the dominant
+// node pushing neighbours out of bounds.
+const MAX_NODE_PX = 120
+const MARGINS = 64 // top + bottom margin
+
+export default function SankeyChart({ data }: Props) {
+  const sankeyData = {
+    nodes: data.nodes.map((_, i) => ({ id: String(i) })),
+    links: data.links.map(link => ({
+      source: String(link.source),
+      target: String(link.target),
+      value: link.value,
+    })),
+  }
+
+  // Derive chart height so:
+  //  • every inter-node gap is NODE_SPACING px (py is never capped by d3-sankey)
+  //  • the tallest right-column node is at most MAX_NODE_PX px tall
+  //
+  // d3-sankey sets ky = (innerH − gaps) / Σvalues.
+  // We want ky = MAX_NODE_PX / maxRightValue, so innerH = ky·Σvalues + gaps.
+  const rightColIndices = new Set(data.links.map(l => l.target))
+  const rightColCount   = rightColIndices.size
+  // Cap based on the single largest node across BOTH columns — the same ky applies
+  // to left and right, so Einzahlung (left) can be taller than Regulár (right).
+  const maxNodeValue   = Math.max(...data.nodes.map(n => n.value))
+  const totalLinkValue = data.links.reduce((s, l) => s + l.value, 0)
+
+  const ky          = MAX_NODE_PX / maxNodeValue
+  const bodyBudget  = Math.round(ky * totalLinkValue)
+  const gapBudget   = (rightColCount - 1) * NODE_SPACING
+  const chartHeight = Math.max(800, bodyBudget + gapBudget + MARGINS)
+
+  return (
+    <div style={{ width: '100%', height: chartHeight }}>
+      <ResponsiveSankey
+        data={sankeyData}
+        label={node => data.nodes[Number(node.id)]?.name || '—'}
+        margin={{ top: 32, right: 232, bottom: 32, left: 232 }}
+        align="justify"
+        sort="descending"
+        colors={{ scheme: 'tableau10' }}
+        nodeThickness={14}
+        nodeSpacing={NODE_SPACING}
+        nodeBorderWidth={0}
+        nodeBorderRadius={2}
+        linkOpacity={0.5}
+        linkHoverOpacity={0.85}
+        linkHoverOthersOpacity={0.1}
+        linkBlendMode="normal"
+        enableLinkGradient
+        labelPosition="outside"
+        labelPadding={14}
+        labelTextColor={{ from: 'color', modifiers: [['brighter', 0.6]] }}
+        valueFormat={v => EUR.format(Number(v))}
+        nodeTooltip={({ node }) => (
+          <div style={{
+            background: '#16161a',
+            border: '1px solid #2a2a32',
+            borderRadius: 3,
+            padding: '7px 11px',
+            boxShadow: '0 4px 16px rgba(0,0,0,0.6)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            color: '#e2e2e8',
+            fontSize: 12,
+            fontFamily: "ui-monospace, 'SF Mono', Consolas, monospace",
+          }}>
+            <span style={{
+              width: 10,
+              height: 10,
+              borderRadius: 2,
+              background: node.color,
+              flexShrink: 0,
+            }} />
+            <span style={{ fontWeight: 600 }}>{node.label || '—'}</span>
+            <span style={{ color: '#6b6b78' }}>total</span>
+            <span>{node.formattedValue}</span>
+          </div>
+        )}
+        theme={nivoTheme}
+      />
+    </div>
+  )
+}

@@ -1,0 +1,9 @@
+package com.moneylytics.api.application.port.output
+
+import com.moneylytics.api.domain.Transaction
+import java.time.LocalDate
+
+interface TransactionRepository {
+    fun saveAll(transactions: List<Transaction>): Int
+    fun findByBookingDateBetween(from: LocalDate, to: LocalDate): List<Transaction>
+}
