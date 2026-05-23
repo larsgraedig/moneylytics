@@ -30,6 +30,8 @@ class TransactionEntity(
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "account_id", nullable = false)
     val account: AccountEntity,
+    @Column(nullable = false, unique = true, length = 64)
+    val fingerprint: String,
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     var id: Long? = null,
