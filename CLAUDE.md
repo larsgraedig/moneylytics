@@ -14,8 +14,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ./gradlew ktlintFormat   # auto-fix style
 ./gradlew detekt         # static analysis
 
-# Run locally
+# Run locally (default profile — requires Postgres via Docker)
+docker compose up -d
 ./gradlew :web:bootRun
+
+# Run locally with H2 in-memory + dummy data (no Docker needed)
+./gradlew :web:bootRun --args='--spring.profiles.active=local'
 
 # Deploy (requires DOCKERHUB_USERNAME, DOCKERHUB_PASSWORD env vars)
 make publish   # build + push image (image tag = COMMIT_HASH)

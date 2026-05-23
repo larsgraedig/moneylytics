@@ -2,7 +2,12 @@ spring:
   application:
     name: api
   datasource:
-    url: jdbc:h2:mem:moneylyticsdb;DB_CLOSE_DELAY=-1
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/moneylyticsdb}
+    username: ${SPRING_DATASOURCE_USERNAME:moneylytics}
+    password: ${SPRING_DATASOURCE_PASSWORD:moneylytics}
+  jpa:
+    hibernate:
+      ddl-auto: update
 
 springdoc:
   swagger-ui:
