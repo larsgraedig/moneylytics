@@ -30,8 +30,10 @@ class TransactionQueryController(
     }
 
     private fun List<Transaction>.toSankeyResponse(): SankeyResponse {
-        // Prefix keys so a name that appears as both a category and a subcategory
-        // (e.g. "Versicherung") gets two distinct indices instead of one orphaned node.
+        // Keys are prefixed so that:
+        //   - a name appearing as both a category and subcategory gets distinct indices
+        //   - subcategories with the same name under different categories each get their
+        //     own right-side node, keeping links for different categories from crossing
         val nodeIndex = linkedMapOf<String, Int>()
         fun indexFor(key: String) = nodeIndex.getOrPut(key) { nodeIndex.size }
 
@@ -40,13 +42,13 @@ class TransactionQueryController(
 
         // Register categories before subcategories so they appear on the left.
         aggregated.keys.forEach { (category, _) -> indexFor("cat:$category") }
-        aggregated.keys.forEach { (_, subcategory) -> indexFor("sub:$subcategory") }
+        aggregated.keys.forEach { (category, subcategory) -> indexFor("sub:$category:$subcategory") }
 
         val links = aggregated.map { (key, amount) ->
             val (category, subcategory) = key
             SankeyLink(
                 source = nodeIndex.getValue("cat:$category"),
-                target = nodeIndex.getValue("sub:$subcategory"),
+                target = nodeIndex.getValue("sub:$category:$subcategory"),
                 value = amount,
             )
         }
@@ -61,7 +63,7 @@ class TransactionQueryController(
             .sortedBy { it.value }
             .map { (key, idx) ->
                 SankeyNode(
-                    name = key.substringAfter(':'),
+                    name = key.substringAfterLast(':'),
                     value = totals.getOrDefault(idx, BigDecimal.ZERO),
                 )
             }

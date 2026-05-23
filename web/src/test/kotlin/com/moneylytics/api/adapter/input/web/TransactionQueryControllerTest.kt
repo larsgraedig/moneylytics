@@ -111,6 +111,23 @@ class TransactionQueryControllerTest {
     }
 
     @Test
+    fun `should give the same subcategory name under different categories distinct right-side nodes`() = runTest {
+        whenever(getTransactionsUseCase.getTransactions(GetTransactionsQuery(from, to, onlyNegative = true))).thenReturn(
+            listOf(
+                transaction(category = "Food", subcategory = "Other", amount = BigDecimal("-20.00")),
+                transaction(category = "Transport", subcategory = "Other", amount = BigDecimal("-30.00")),
+            ),
+        )
+
+        val response = controller.getSankeyData(from, to)
+
+        assertThat(response.nodes.map { it.name }).containsExactly("Food", "Transport", "Other", "Other")
+        val otherIndices = response.nodes.mapIndexedNotNull { i, n -> i.takeIf { n.name == "Other" } }
+        assertThat(otherIndices).hasSize(2)
+        response.links.forEach { link -> assertThat(link.source).isNotEqualTo(link.target) }
+    }
+
+    @Test
     fun `should give category and subcategory with the same name distinct nodes`() = runTest {
         // "Insurance" is both a top-level category and a subcategory of "Auto".
         // If both map to the same index, D3 sankey merges them and produces a
