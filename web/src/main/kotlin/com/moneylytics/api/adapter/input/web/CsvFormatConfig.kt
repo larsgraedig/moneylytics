@@ -16,13 +16,19 @@ data class CsvFormatConfig(
     val amount: String,
     val currency: String,
     val datePattern: String,
+    /** Column whose value is used as the account identifier (IBAN or name). */
+    val accountIban: String,
+    /** Column whose value is used as the human-readable account name, or null to reuse [accountIban]. */
+    val accountName: String? = null,
 ) {
-    val requiredColumns: Set<String> = setOf(
-        category,
-        subcategory,
-        bookingDate,
-        valueDate,
-        amount,
-        currency,
-    )
+    val requiredColumns: Set<String> =
+        setOf(
+            category,
+            subcategory,
+            bookingDate,
+            valueDate,
+            amount,
+            currency,
+            accountIban,
+        )
 }

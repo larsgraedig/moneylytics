@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import SankeyChart from './components/SankeyChart'
-import { fetchSankeyData, type SankeyResponse } from './api/transactions'
+import { fetchSankeyData, fetchAccounts, type SankeyResponse, type Account } from './api/transactions'
 
 function isoDate(d: Date) {
   return d.toISOString().slice(0, 10)
@@ -18,12 +18,18 @@ type ViewState =
 export default function App() {
   const [from, setFrom] = useState(firstOfYear)
   const [to, setTo] = useState(today)
+  const [accounts, setAccounts] = useState<Account[]>([])
+  const [selectedIban, setSelectedIban] = useState<string>('')
   const [view, setView] = useState<ViewState>({ phase: 'idle' })
+
+  useEffect(() => {
+    fetchAccounts().then(setAccounts).catch(() => {/* accounts unavailable, dropdown stays empty */})
+  }, [])
 
   async function load() {
     setView({ phase: 'loading' })
     try {
-      const data = await fetchSankeyData(from, to)
+      const data = await fetchSankeyData(from, to, selectedIban || undefined)
       setView(data.nodes.length === 0 ? { phase: 'idle' } : { phase: 'ready', data })
     } catch (e) {
       setView({ phase: 'error', message: e instanceof Error ? e.message : 'request failed' })
@@ -36,6 +42,19 @@ export default function App() {
         <span className="wordmark">moneylytics</span>
 
         <div className="controls">
+          {accounts.length > 0 && (
+            <select
+              className="account-select"
+              value={selectedIban}
+              onChange={e => setSelectedIban(e.target.value)}
+            >
+              <option value="">all accounts</option>
+              {accounts.map(a => (
+                <option key={a.iban} value={a.iban}>{a.name}</option>
+              ))}
+            </select>
+          )}
+
           <fieldset className="range-group">
             <label className="range-field">
               <span className="range-label">from</span>
@@ -83,7 +102,7 @@ export default function App() {
         )}
 
         {view.phase === 'ready' && (
-          <div className="chart" key={`${from}/${to}`}>
+          <div className="chart" key={`${selectedIban}/${from}/${to}`}>
             <SankeyChart data={view.data} />
           </div>
         )}

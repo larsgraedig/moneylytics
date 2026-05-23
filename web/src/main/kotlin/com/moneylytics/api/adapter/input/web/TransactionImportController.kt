@@ -44,7 +44,10 @@ class TransactionImportController(
             is CsvParseResult.Valid -> {
                 val importedCount =
                     importTransactionsUseCase.importTransactions(
-                        ImportTransactionsCommand(transactions = result.transactions),
+                        ImportTransactionsCommand(
+                            transactions = result.transactions,
+                            accountNames = result.accountNames,
+                        ),
                     )
                 ResponseEntity.ok(ImportSuccessResponse(importedCount = importedCount))
             }

@@ -11,8 +11,9 @@ package com.moneylytics.api.adapter.input.web
  * To add support for a new CSV layout, add an entry here — no other code needs
  * to change.
  */
-enum class CsvFormat(val config: CsvFormatConfig) {
-
+enum class CsvFormat(
+    val config: CsvFormatConfig,
+) {
     /** German bank export (MLP Banking / MLP KomfortKonto style). */
     MLP_BANKING(
         CsvFormatConfig(
@@ -24,6 +25,8 @@ enum class CsvFormat(val config: CsvFormatConfig) {
             amount = "Betrag",
             currency = "EUR",
             datePattern = "dd.MM.yyyy",
+            accountIban = "IBAN Auftragskonto",
+            accountName = "Bezeichnung Auftragskonto",
         ),
     ),
 
@@ -38,6 +41,7 @@ enum class CsvFormat(val config: CsvFormatConfig) {
             amount = "amount",
             currency = "currency",
             datePattern = "yyyy-MM-dd",
+            accountIban = "account_type",
         ),
     ),
 }

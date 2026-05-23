@@ -8,4 +8,5 @@ fun interface ImportTransactionsUseCase {
 
 data class ImportTransactionsCommand(
     val transactions: List<Transaction>,
+    val accountNames: Map<String, String>,
 )

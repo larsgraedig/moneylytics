@@ -11,4 +11,5 @@ data class GetTransactionsQuery(
     val from: LocalDate,
     val to: LocalDate,
     val onlyNegative: Boolean = false,
+    val accountIban: String? = null,
 )
