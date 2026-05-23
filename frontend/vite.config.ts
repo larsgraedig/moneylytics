@@ -6,6 +6,7 @@ export default defineConfig({
   server: {
     proxy: {
       '/transactions': 'http://localhost:8080',
+      '/accounts': 'http://localhost:8080',
     },
   },
 })

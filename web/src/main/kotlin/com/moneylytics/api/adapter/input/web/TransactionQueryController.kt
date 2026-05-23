@@ -22,10 +22,12 @@ class TransactionQueryController(
     suspend fun getSankeyData(
         @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) from: LocalDate,
         @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) to: LocalDate,
+        @RequestParam(required = false) iban: String? = null,
     ): SankeyResponse {
-        val transactions = withContext(Dispatchers.IO) {
-            getTransactionsUseCase.getTransactions(GetTransactionsQuery(from, to, onlyNegative = true))
-        }
+        val transactions =
+            withContext(Dispatchers.IO) {
+                getTransactionsUseCase.getTransactions(GetTransactionsQuery(from, to, onlyNegative = true, accountIban = iban))
+            }
         return transactions.toSankeyResponse()
     }
 
@@ -35,23 +37,26 @@ class TransactionQueryController(
         //   - subcategories with the same name under different categories each get their
         //     own right-side node, keeping links for different categories from crossing
         val nodeIndex = linkedMapOf<String, Int>()
+
         fun indexFor(key: String) = nodeIndex.getOrPut(key) { nodeIndex.size }
 
-        val aggregated = groupBy { it.category to it.subcategory }
-            .mapValues { (_, txns) -> txns.sumOf { it.amount.abs() } }
+        val aggregated =
+            groupBy { it.category to it.subcategory }
+                .mapValues { (_, txns) -> txns.sumOf { it.amount.abs() } }
 
         // Register categories before subcategories so they appear on the left.
         aggregated.keys.forEach { (category, _) -> indexFor("cat:$category") }
         aggregated.keys.forEach { (category, subcategory) -> indexFor("sub:$category:$subcategory") }
 
-        val links = aggregated.map { (key, amount) ->
-            val (category, subcategory) = key
-            SankeyLink(
-                source = nodeIndex.getValue("cat:$category"),
-                target = nodeIndex.getValue("sub:$category:$subcategory"),
-                value = amount,
-            )
-        }
+        val links =
+            aggregated.map { (key, amount) ->
+                val (category, subcategory) = key
+                SankeyLink(
+                    source = nodeIndex.getValue("cat:$category"),
+                    target = nodeIndex.getValue("sub:$category:$subcategory"),
+                    value = amount,
+                )
+            }
 
         val totals = mutableMapOf<Int, BigDecimal>()
         links.forEach { link ->
@@ -59,14 +64,15 @@ class TransactionQueryController(
             totals.merge(link.target, link.value, BigDecimal::add)
         }
 
-        val nodes = nodeIndex.entries
-            .sortedBy { it.value }
-            .map { (key, idx) ->
-                SankeyNode(
-                    name = key.substringAfterLast(':'),
-                    value = totals.getOrDefault(idx, BigDecimal.ZERO),
-                )
-            }
+        val nodes =
+            nodeIndex.entries
+                .sortedBy { it.value }
+                .map { (key, idx) ->
+                    SankeyNode(
+                        name = key.substringAfterLast(':'),
+                        value = totals.getOrDefault(idx, BigDecimal.ZERO),
+                    )
+                }
 
         return SankeyResponse(nodes = nodes, links = links)
     }

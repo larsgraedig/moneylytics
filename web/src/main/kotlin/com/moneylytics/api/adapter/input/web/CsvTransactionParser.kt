@@ -12,31 +12,34 @@ import java.time.format.DateTimeParseException
 
 @Component
 class CsvTransactionParser {
-
     fun parse(csvContent: String): CsvParseResult {
-        val apacheFormat = CSVFormat.DEFAULT.builder()
-            .setHeader()
-            .setSkipHeaderRecord(true)
-            .setIgnoreEmptyLines(true)
-            .setTrim(true)
-            .build()
+        val apacheFormat =
+            CSVFormat.DEFAULT
+                .builder()
+                .setHeader()
+                .setSkipHeaderRecord(true)
+                .setIgnoreEmptyLines(true)
+                .setTrim(true)
+                .build()
 
         val csvParser = CSVParser.parse(StringReader(csvContent), apacheFormat)
         val headers = csvParser.headerNames.map { it.trim() }.toSet()
 
-        val matchedFormat = CsvFormat.entries.firstOrNull { fmt ->
-            fmt.config.requiredColumns.all { it in headers }
-        } ?: return unrecognizedFormatError(headers)
+        val matchedFormat =
+            CsvFormat.entries.firstOrNull { fmt ->
+                fmt.config.requiredColumns.all { it in headers }
+            } ?: return unrecognizedFormatError(headers)
 
-        return parseWithFormat(csvParser, matchedFormat.config)
+        return parseWithFormat(csvParser, matchedFormat.config, headers)
     }
 
     private fun unrecognizedFormatError(headers: Set<String>): CsvParseResult.Invalid {
         // Report the missing columns of the closest-matching known format so the
         // error message is actionable (e.g. "Missing required columns for MLP Banking: Valutadatum").
-        val bestMatch = CsvFormat.entries.maxBy { fmt ->
-            fmt.config.requiredColumns.count { it in headers }
-        }
+        val bestMatch =
+            CsvFormat.entries.maxBy { fmt ->
+                fmt.config.requiredColumns.count { it in headers }
+            }
         val missing = bestMatch.config.requiredColumns - headers
         return CsvParseResult.Invalid(
             listOf(
@@ -50,19 +53,29 @@ class CsvTransactionParser {
         )
     }
 
-    private fun parseWithFormat(csvParser: CSVParser, config: CsvFormatConfig): CsvParseResult {
+    private fun parseWithFormat(
+        csvParser: CSVParser,
+        config: CsvFormatConfig,
+        headers: Set<String>,
+    ): CsvParseResult {
         val dateFormatter = DateTimeFormatter.ofPattern(config.datePattern)
         val transactions = mutableListOf<Transaction>()
+        val accountNames = mutableMapOf<String, String>()
         val errors = mutableListOf<CsvValidationError>()
+        val hasAccountNameColumn = config.accountName != null && config.accountName in headers
 
         for ((index, record) in csvParser.withIndex()) {
             val rowNumber = index + 2 // header is row 1, data starts at row 2
 
-            val bookingDate = parseDate(record[config.bookingDate], config.bookingDate, rowNumber, dateFormatter, config.datePattern, errors)
+            val bookingDate =
+                parseDate(record[config.bookingDate], config.bookingDate, rowNumber, dateFormatter, config.datePattern, errors)
             val valueDate = parseDate(record[config.valueDate], config.valueDate, rowNumber, dateFormatter, config.datePattern, errors)
             val amount = parseAmount(record[config.amount], config.amount, rowNumber, errors)
 
             if (bookingDate != null && valueDate != null && amount != null) {
+                val accountIban = record[config.accountIban]
+                val accountName = if (hasAccountNameColumn) record[config.accountName!!] else accountIban
+                accountNames[accountIban] = accountName
                 transactions.add(
                     Transaction(
                         category = record[config.category],
@@ -71,13 +84,14 @@ class CsvTransactionParser {
                         valueDate = valueDate,
                         amount = amount,
                         currency = record[config.currency],
+                        accountIban = accountIban,
                     ),
                 )
             }
         }
 
         return if (errors.isEmpty()) {
-            CsvParseResult.Valid(transactions)
+            CsvParseResult.Valid(transactions, accountNames)
         } else {
             CsvParseResult.Invalid(errors)
         }

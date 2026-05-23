@@ -2,14 +2,22 @@ package com.moneylytics.api.application.service
 
 import com.moneylytics.api.application.port.input.ImportTransactionsCommand
 import com.moneylytics.api.application.port.input.ImportTransactionsUseCase
+import com.moneylytics.api.application.port.output.AccountRepository
 import com.moneylytics.api.application.port.output.TransactionRepository
+import com.moneylytics.api.domain.Account
 import org.springframework.stereotype.Service
 
 @Service
 class TransactionImportService(
     private val transactionRepository: TransactionRepository,
+    private val accountRepository: AccountRepository,
 ) : ImportTransactionsUseCase {
-
-    override fun importTransactions(command: ImportTransactionsCommand): Int =
-        transactionRepository.saveAll(command.transactions)
+    override fun importTransactions(command: ImportTransactionsCommand): Int {
+        command.accountNames.forEach { (iban, name) ->
+            if (accountRepository.findByIban(iban) == null) {
+                accountRepository.save(Account(iban = iban, name = name))
+            }
+        }
+        return transactionRepository.saveAll(command.transactions)
+    }
 }

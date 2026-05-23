@@ -135,6 +135,28 @@ body {
   color: var(--accent);
 }
 
+.account-select {
+  height: 34px;
+  padding: 0 10px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-muted);
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  outline: none;
+  color-scheme: dark;
+  transition: border-color 0.12s, color 0.12s;
+}
+
+.account-select:hover,
+.account-select:focus {
+  border-color: var(--border-hi);
+  color: var(--text);
+}
+
 .load-btn {
   height: 34px;
   padding: 0 18px;

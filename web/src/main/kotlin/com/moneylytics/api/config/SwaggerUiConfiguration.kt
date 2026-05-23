@@ -13,9 +13,9 @@ import java.net.URI
 
 @Configuration
 class SwaggerUiConfiguration : WebFluxConfigurer {
-
     override fun addResourceHandlers(registry: ResourceHandlerRegistry) {
-        registry.addResourceHandler("/swagger-ui/**")
+        registry
+            .addResourceHandler("/swagger-ui/**")
             .addResourceLocations(
                 "classpath:/swagger-ui/",
                 "classpath:/META-INF/resources/webjars/swagger-ui/5.20.1/",
@@ -23,18 +23,20 @@ class SwaggerUiConfiguration : WebFluxConfigurer {
     }
 
     @Bean
-    fun swaggerUiRedirectRouter(): RouterFunction<ServerResponse> = router {
-        GET("/swagger-ui.html") {
-            ServerResponse.temporaryRedirect(URI.create("/swagger-ui/index.html")).build()
+    fun swaggerUiRedirectRouter(): RouterFunction<ServerResponse> =
+        router {
+            GET("/swagger-ui.html") {
+                ServerResponse.temporaryRedirect(URI.create("/swagger-ui/index.html")).build()
+            }
         }
-    }
 
     @Bean
-    fun openApi(): OpenAPI = OpenAPI()
-        .info(
-            Info()
-                .title("Moneylytics API")
-                .description("Import and analyse personal finance transactions")
-                .version("1.0.0"),
-        )
+    fun openApi(): OpenAPI =
+        OpenAPI()
+            .info(
+                Info()
+                    .title("Moneylytics API")
+                    .description("Import and analyse personal finance transactions")
+                    .version("1.0.0"),
+            )
 }

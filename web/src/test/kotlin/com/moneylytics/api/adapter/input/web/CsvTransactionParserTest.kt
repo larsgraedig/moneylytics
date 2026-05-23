@@ -6,7 +6,6 @@ import java.math.BigDecimal
 import java.time.LocalDate
 
 class CsvTransactionParserTest {
-
     private val parser = CsvTransactionParser()
 
     // ── MLP Banking format (dd.MM.yyyy dates, German decimal amounts) ─────────
@@ -14,9 +13,11 @@ class CsvTransactionParserTest {
     @Test
     fun `should parse valid MLP Banking CSV and return all transactions`() {
         // Arrange
-        val csvContent = javaClass.classLoader.getResourceAsStream("AccountSheet.csv")!!
-            .bufferedReader()
-            .readText()
+        val csvContent =
+            javaClass.classLoader
+                .getResourceAsStream("AccountSheet.csv")!!
+                .bufferedReader()
+                .readText()
 
         // Act
         val result = parser.parse(csvContent)
@@ -32,16 +33,19 @@ class CsvTransactionParserTest {
         assertThat(first.valueDate).isEqualTo(LocalDate.of(2025, 1, 2))
         assertThat(first.amount).isEqualByComparingTo(BigDecimal("-1.5"))
         assertThat(first.currency).isEqualTo("EUR")
+        assertThat(first.accountIban).isEqualTo("DE33672300004016122250")
+        assertThat(valid.accountNames).containsEntry("DE33672300004016122250", "KomfortKonto")
     }
 
     @Test
     fun `should collect all errors without stopping at the first one`() {
         // Arrange
-        val csv = """
-            Kategorie,Unterkategorie,Buchungstag,Valutadatum,Betrag,EUR
-            Tools,Sweepy,not-a-date,also-not-a-date,not-a-number,EUR
-            Auto,Benzin,03.01.2025,03.01.2025,bad-amount,EUR
-        """.trimIndent()
+        val csv =
+            """
+            Kategorie,Unterkategorie,Buchungstag,Valutadatum,Betrag,EUR,IBAN Auftragskonto
+            Tools,Sweepy,not-a-date,also-not-a-date,not-a-number,EUR,DE33000000000000000000
+            Auto,Benzin,03.01.2025,03.01.2025,bad-amount,EUR,DE33000000000000000000
+            """.trimIndent()
 
         // Act
         val result = parser.parse(csv)
@@ -56,10 +60,11 @@ class CsvTransactionParserTest {
     @Test
     fun `should return error for invalid Betrag format`() {
         // Arrange
-        val csv = """
-            Kategorie,Unterkategorie,Buchungstag,Valutadatum,Betrag,EUR
-            Tools,Sweepy,02.01.2025,02.01.2025,abc,EUR
-        """.trimIndent()
+        val csv =
+            """
+            Kategorie,Unterkategorie,Buchungstag,Valutadatum,Betrag,EUR,IBAN Auftragskonto
+            Tools,Sweepy,02.01.2025,02.01.2025,abc,EUR,DE33000000000000000000
+            """.trimIndent()
 
         // Act
         val result = parser.parse(csv)
@@ -76,10 +81,11 @@ class CsvTransactionParserTest {
     @Test
     fun `should return errors for invalid date formats`() {
         // Arrange
-        val csv = """
-            Kategorie,Unterkategorie,Buchungstag,Valutadatum,Betrag,EUR
-            Tools,Sweepy,2025-01-02,2025-01-02,-1.5,EUR
-        """.trimIndent()
+        val csv =
+            """
+            Kategorie,Unterkategorie,Buchungstag,Valutadatum,Betrag,EUR,IBAN Auftragskonto
+            Tools,Sweepy,2025-01-02,2025-01-02,-1.5,EUR,DE33000000000000000000
+            """.trimIndent()
 
         // Act
         val result = parser.parse(csv)
@@ -94,10 +100,11 @@ class CsvTransactionParserTest {
     @Test
     fun `should return error when a required column is missing`() {
         // Arrange — Valutadatum is absent; parser should name it in the message
-        val csv = """
+        val csv =
+            """
             Kategorie,Unterkategorie,Buchungstag,Betrag,EUR
             Tools,Sweepy,02.01.2025,-1.5,EUR
-        """.trimIndent()
+            """.trimIndent()
 
         // Act
         val result = parser.parse(csv)
@@ -112,10 +119,11 @@ class CsvTransactionParserTest {
     @Test
     fun `should parse German decimal format correctly`() {
         // Arrange
-        val csv = """
-            Kategorie,Unterkategorie,Buchungstag,Valutadatum,Betrag,EUR
-            Auto,Versicherung,02.01.2025,02.01.2025,"-1.234,56",EUR
-        """.trimIndent()
+        val csv =
+            """
+            Kategorie,Unterkategorie,Buchungstag,Valutadatum,Betrag,EUR,IBAN Auftragskonto
+            Auto,Versicherung,02.01.2025,02.01.2025,"-1.234,56",EUR,DE33000000000000000000
+            """.trimIndent()
 
         // Act
         val result = parser.parse(csv)
@@ -131,9 +139,11 @@ class CsvTransactionParserTest {
     @Test
     fun `should auto-detect and parse Standard format CSV`() {
         // Arrange
-        val csvContent = javaClass.classLoader.getResourceAsStream("AccountSheet2.csv")!!
-            .bufferedReader()
-            .readText()
+        val csvContent =
+            javaClass.classLoader
+                .getResourceAsStream("AccountSheet2.csv")!!
+                .bufferedReader()
+                .readText()
 
         // Act
         val result = parser.parse(csvContent)
@@ -147,16 +157,18 @@ class CsvTransactionParserTest {
         assertThat(first.valueDate).isEqualTo(LocalDate.of(2025, 8, 1))
         assertThat(first.amount).isEqualByComparingTo(BigDecimal("-400"))
         assertThat(first.currency).isEqualTo("EUR")
+        assertThat(first.accountIban).isEqualTo("Hauptkonto")
     }
 
     @Test
     fun `should parse Standard format amount with comma decimal separator`() {
         // Arrange — "0,01" is how the STANDARD format encodes 0.01 EUR
-        val csv = """
-            Main category,Second Category,booking_date,valuta_date,amount,currency
-            Einkäufe,PayPal,2025-08-04,2025-08-04,"0,01",EUR
-            Einkäufe,Amazon,2025-08-08,2025-08-08,"-86,11",EUR
-        """.trimIndent()
+        val csv =
+            """
+            Main category,Second Category,booking_date,valuta_date,amount,currency,account_type
+            Einkäufe,PayPal,2025-08-04,2025-08-04,"0,01",EUR,Hauptkonto
+            Einkäufe,Amazon,2025-08-08,2025-08-08,"-86,11",EUR,Hauptkonto
+            """.trimIndent()
 
         // Act
         val result = parser.parse(csv)
@@ -171,11 +183,12 @@ class CsvTransactionParserTest {
     @Test
     fun `should parse Standard format category and subcategory fields`() {
         // Arrange
-        val csv = """
-            Main category,Second Category,booking_date,valuta_date,amount,currency
-            Unterhaltung,Netflix und Spotify,2025-08-04,2025-08-04,-20,EUR
-            Miete,Wohnung+Garage,2025-08-04,2025-08-04,-460,EUR
-        """.trimIndent()
+        val csv =
+            """
+            Main category,Second Category,booking_date,valuta_date,amount,currency,account_type
+            Unterhaltung,Netflix und Spotify,2025-08-04,2025-08-04,-20,EUR,Hauptkonto
+            Miete,Wohnung+Garage,2025-08-04,2025-08-04,-460,EUR,Hauptkonto
+            """.trimIndent()
 
         // Act
         val result = parser.parse(csv)
@@ -192,10 +205,11 @@ class CsvTransactionParserTest {
     @Test
     fun `should return error for completely unrecognized CSV format`() {
         // Arrange — none of the known formats can match these headers
-        val csv = """
+        val csv =
+            """
             foo,bar,baz
             1,2,3
-        """.trimIndent()
+            """.trimIndent()
 
         // Act
         val result = parser.parse(csv)

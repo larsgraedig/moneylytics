@@ -10,4 +10,5 @@ data class Transaction(
     val valueDate: LocalDate,
     val amount: BigDecimal,
     val currency: String,
+    val accountIban: String,
 )
