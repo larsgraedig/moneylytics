@@ -31,6 +31,44 @@ class TransactionQueryController(
         return transactions.toSankeyResponse()
     }
 
+    @GetMapping("/list")
+    suspend fun listTransactions(
+        @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) from: LocalDate,
+        @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) to: LocalDate,
+        @RequestParam(required = false) category: String? = null,
+        @RequestParam(required = false) subcategory: String? = null,
+        @RequestParam(required = false) iban: String? = null,
+    ): TransactionListResponse {
+        val transactions =
+            withContext(Dispatchers.IO) {
+                getTransactionsUseCase.getTransactions(
+                    GetTransactionsQuery(
+                        from = from,
+                        to = to,
+                        onlyNegative = true,
+                        accountIban = iban,
+                        category = category,
+                        subcategory = subcategory,
+                    ),
+                )
+            }
+        return TransactionListResponse(
+            transactions =
+                transactions
+                    .sortedByDescending { it.bookingDate }
+                    .map {
+                        TransactionItem(
+                            bookingDate = it.bookingDate.toString(),
+                            category = it.category,
+                            subcategory = it.subcategory,
+                            amount = it.amount,
+                            currency = it.currency,
+                        )
+                    },
+            total = transactions.sumOf { it.amount },
+        )
+    }
+
     private fun List<Transaction>.toSankeyResponse(): SankeyResponse {
         // Keys are prefixed so that:
         //   - a name appearing as both a category and subcategory gets distinct indices
@@ -71,6 +109,7 @@ class TransactionQueryController(
                     SankeyNode(
                         name = key.substringAfterLast(':'),
                         value = totals.getOrDefault(idx, BigDecimal.ZERO),
+                        nodeKey = key,
                     )
                 }
 

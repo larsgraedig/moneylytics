@@ -10,6 +10,7 @@ data class SankeyResponse(
 data class SankeyNode(
     val name: String,
     val value: BigDecimal,
+    val nodeKey: String,
 )
 
 data class SankeyLink(
