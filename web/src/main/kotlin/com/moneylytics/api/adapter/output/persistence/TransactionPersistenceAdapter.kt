@@ -17,7 +17,7 @@ class TransactionPersistenceAdapter(
     override fun saveAll(transactions: List<Transaction>): Int {
         if (transactions.isEmpty()) return 0
 
-        val withFingerprints = transactions.map { it to it.fingerprint() }
+        val withFingerprints = assignFingerprints(transactions)
         val existing =
             jpaRepository
                 .findExistingFingerprints(withFingerprints.map { it.second })
@@ -30,6 +30,15 @@ class TransactionPersistenceAdapter(
 
         jpaRepository.saveAll(newEntities)
         return newEntities.size
+    }
+
+    private fun assignFingerprints(transactions: List<Transaction>): List<Pair<Transaction, String>> {
+        val counts = mutableMapOf<String, Int>()
+        return transactions.map { tx ->
+            val raw = tx.fingerprintRaw()
+            val n = counts.merge(raw, 1, Int::plus)!!
+            tx to sha256(if (n == 1) raw else "$raw:${n - 1}")
+        }
     }
 
     @Transactional(readOnly = true)
@@ -88,11 +97,12 @@ class TransactionPersistenceAdapter(
             accountIban = account.iban,
         )
 
-    private fun Transaction.fingerprint(): String {
-        val raw = "$accountIban|$bookingDate|$valueDate|${amount.stripTrailingZeros().toPlainString()}|$currency"
-        return MessageDigest
+    private fun Transaction.fingerprintRaw() =
+        "$accountIban|$bookingDate|$valueDate|${amount.stripTrailingZeros().toPlainString()}|$currency"
+
+    private fun sha256(raw: String) =
+        MessageDigest
             .getInstance("SHA-256")
             .digest(raw.toByteArray(Charsets.UTF_8))
             .joinToString("") { "%02x".format(it) }
-    }
 }
