@@ -17,4 +17,6 @@ interface TransactionRepository {
         to: LocalDate,
         accountIban: String? = null,
     ): List<Transaction>
+
+    fun findExistingFingerprints(fingerprints: Collection<String>): Set<String>
 }

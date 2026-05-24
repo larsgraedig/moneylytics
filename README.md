@@ -11,6 +11,12 @@ Two Spring profiles are available:
 Requires Docker. Data survives application and container restarts.
 
 ```bash
+make run
+```
+
+This starts Postgres if it isn't already running, waits until it is ready, then starts the backend. Equivalent to:
+
+```bash
 docker compose up -d       # start Postgres
 ./gradlew :web:bootRun     # start the backend
 ```
@@ -24,7 +30,7 @@ docker compose stop
 To wipe all data and start fresh:
 
 ```bash
-docker compose down -v
+make reset-db
 ```
 
 Data is stored in a Docker-managed named volume. To find its location on the physical filesystem:
@@ -40,6 +46,29 @@ transactions on every startup. All data is lost when the application stops.
 
 ```bash
 ./gradlew :web:bootRun --args='--spring.profiles.active=local'
+```
+
+### Importing transactions
+
+With the backend running, import a CSV file using the bundled script:
+
+```bash
+./import-transactions.sh path/to/export.csv
+```
+
+The format is detected automatically from the header row. Supported formats:
+
+| Format | Key columns |
+|--------|-------------|
+| MLP Banking | `Kategorie`, `Unterkategorie`, `Buchungstag`, `Valutadatum`, `Betrag`, `EUR`, `IBAN Auftragskonto` |
+| Standard | `Main category`, `Second Category`, `booking_date`, `valuta_date`, `amount`, `currency`, `account_type` |
+
+Re-importing the same file is safe — duplicate transactions are detected by a SHA-256 fingerprint and silently skipped.
+
+To point at a different backend:
+
+```bash
+BASE_URL=https://api.example.com ./import-transactions.sh export.csv
 ```
 
 ### Frontend

@@ -17,7 +17,6 @@ import java.util.Random
 class LocalDataInitializer(
     private val importTransactionsUseCase: ImportTransactionsUseCase,
 ) : ApplicationRunner {
-
     private val mainIban = "DE00LOCAL000000000000"
     private val mainName = "Girokonto"
 
@@ -28,10 +27,11 @@ class LocalDataInitializer(
         importTransactionsUseCase.importTransactions(
             ImportTransactionsCommand(
                 transactions = generateMainTransactions() + generateSavingsTransactions(),
-                accountNames = mapOf(
-                    mainIban to mainName,
-                    savingsIban to savingsName,
-                ),
+                accountNames =
+                    mapOf(
+                        mainIban to mainName,
+                        savingsIban to savingsName,
+                    ),
             ),
         )
     }
@@ -59,16 +59,20 @@ class LocalDataInitializer(
                 .valueOf(from + rng.nextDouble() * (to - from))
                 .setScale(2, RoundingMode.HALF_UP)
 
-            fun tx(category: String, subcategory: String, date: LocalDate, amount: BigDecimal) =
-                Transaction(
-                    category = category,
-                    subcategory = subcategory,
-                    bookingDate = date,
-                    valueDate = date,
-                    amount = amount,
-                    currency = "EUR",
-                    accountIban = mainIban,
-                )
+            fun tx(
+                category: String,
+                subcategory: String,
+                date: LocalDate,
+                amount: BigDecimal,
+            ) = Transaction(
+                category = category,
+                subcategory = subcategory,
+                bookingDate = date,
+                valueDate = date,
+                amount = amount,
+                currency = "EUR",
+                accountIban = mainIban,
+            )
 
             transactions += tx("Einnahmen", "Gehalt", day(28), euros(2700.0, 3100.0))
             transactions += tx("Wohnen", "Miete", day(1), -euros(950.0, 950.0))
@@ -117,16 +121,20 @@ class LocalDataInitializer(
                 .valueOf(from + rng.nextDouble() * (to - from))
                 .setScale(2, RoundingMode.HALF_UP)
 
-            fun tx(category: String, subcategory: String, date: LocalDate, amount: BigDecimal) =
-                Transaction(
-                    category = category,
-                    subcategory = subcategory,
-                    bookingDate = date,
-                    valueDate = date,
-                    amount = amount,
-                    currency = "EUR",
-                    accountIban = savingsIban,
-                )
+            fun tx(
+                category: String,
+                subcategory: String,
+                date: LocalDate,
+                amount: BigDecimal,
+            ) = Transaction(
+                category = category,
+                subcategory = subcategory,
+                bookingDate = date,
+                valueDate = date,
+                amount = amount,
+                currency = "EUR",
+                accountIban = savingsIban,
+            )
 
             transactions += tx("Einnahmen", "Zinsen", day(1), euros(2.0, 12.0))
             transactions += tx("Sparen", "Einzahlung", day(5), -euros(200.0, 500.0))
