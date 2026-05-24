@@ -5,6 +5,7 @@ const EUR = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' 
 
 interface Props {
   data: SankeyResponse
+  onNodeClick?: (nodeKey: string) => void
 }
 
 const nivoTheme = {
@@ -34,7 +35,7 @@ const NODE_SPACING = 8
 const MAX_NODE_PX = 120
 const MARGINS = 64 // top + bottom margin
 
-export default function SankeyChart({ data }: Props) {
+export default function SankeyChart({ data, onNodeClick }: Props) {
   const sankeyData = {
     nodes: data.nodes.map((_, i) => ({ id: String(i) })),
     links: data.links.map(link => ({
@@ -63,7 +64,7 @@ export default function SankeyChart({ data }: Props) {
   const chartHeight = Math.max(800, bodyBudget + gapBudget + MARGINS)
 
   return (
-    <div style={{ width: '100%', height: chartHeight }}>
+    <div style={{ width: '100%', height: chartHeight, cursor: onNodeClick ? 'default' : undefined }}>
       <ResponsiveSankey
         data={sankeyData}
         label={node => data.nodes[Number(node.id)]?.name || '—'}
@@ -84,6 +85,13 @@ export default function SankeyChart({ data }: Props) {
         labelPadding={14}
         labelTextColor={{ from: 'color', modifiers: [['brighter', 0.6]] }}
         valueFormat={v => EUR.format(Number(v))}
+        onClick={item => {
+          if (!('id' in item)) return
+          const original = data.nodes[Number(item.id)]
+          if (original?.nodeKey && onNodeClick) {
+            onNodeClick(original.nodeKey)
+          }
+        }}
         nodeTooltip={({ node }) => (
           <div style={{
             background: '#16161a',
@@ -108,6 +116,9 @@ export default function SankeyChart({ data }: Props) {
             <span style={{ fontWeight: 600 }}>{node.label || '—'}</span>
             <span style={{ color: '#6b6b78' }}>total</span>
             <span>{node.formattedValue}</span>
+            {onNodeClick && (
+              <span style={{ color: '#6b6b78', marginLeft: 4 }}>· click to drill down</span>
+            )}
           </div>
         )}
         theme={nivoTheme}

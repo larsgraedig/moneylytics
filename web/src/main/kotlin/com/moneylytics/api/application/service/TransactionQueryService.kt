@@ -10,10 +10,15 @@ import org.springframework.stereotype.Service
 class TransactionQueryService(
     private val transactionRepository: TransactionRepository,
 ) : GetTransactionsUseCase {
-    override fun getTransactions(query: GetTransactionsQuery): List<Transaction> =
-        if (query.onlyNegative) {
-            transactionRepository.findNegativeByBookingDateBetween(query.from, query.to, query.accountIban)
-        } else {
-            transactionRepository.findByBookingDateBetween(query.from, query.to, query.accountIban)
-        }
+    override fun getTransactions(query: GetTransactionsQuery): List<Transaction> {
+        val transactions =
+            if (query.onlyNegative) {
+                transactionRepository.findNegativeByBookingDateBetween(query.from, query.to, query.accountIban)
+            } else {
+                transactionRepository.findByBookingDateBetween(query.from, query.to, query.accountIban)
+            }
+        return transactions
+            .let { list -> query.category?.let { cat -> list.filter { it.category == cat } } ?: list }
+            .let { list -> query.subcategory?.let { sub -> list.filter { it.subcategory == sub } } ?: list }
+    }
 }

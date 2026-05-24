@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import SankeyChart from './components/SankeyChart'
 import RawImportPage from './components/RawImportPage'
+import TransactionListPanel from './components/TransactionListPanel'
 import { fetchSankeyData, fetchAccounts, type SankeyResponse, type Account } from './api/transactions'
 
 function isoDate(d: Date) {
@@ -25,6 +26,7 @@ export default function App() {
   const [accounts, setAccounts] = useState<Account[]>([])
   const [selectedIban, setSelectedIban] = useState<string>('')
   const [view, setView] = useState<ViewState>({ phase: 'idle' })
+  const [activeNode, setActiveNode] = useState<string | null>(null)
 
   useEffect(() => {
     fetchAccounts().then(setAccounts).catch(() => {/* accounts unavailable, dropdown stays empty */})
@@ -125,7 +127,19 @@ export default function App() {
             )}
             {view.phase === 'ready' && (
               <div className="chart" key={`${selectedIban}/${from}/${to}`}>
-                <SankeyChart data={view.data} />
+                <SankeyChart
+                  data={view.data}
+                  onNodeClick={nodeKey => setActiveNode(nodeKey)}
+                />
+                {activeNode && (
+                  <TransactionListPanel
+                    nodeKey={activeNode}
+                    from={from}
+                    to={to}
+                    iban={selectedIban || undefined}
+                    onClose={() => setActiveNode(null)}
+                  />
+                )}
               </div>
             )}
           </>
