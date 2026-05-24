@@ -42,6 +42,10 @@ class TransactionPersistenceAdapter(
     }
 
     @Transactional(readOnly = true)
+    override fun findExistingFingerprints(fingerprints: Collection<String>): Set<String> =
+        jpaRepository.findExistingFingerprints(fingerprints).toHashSet()
+
+    @Transactional(readOnly = true)
     override fun findByBookingDateBetween(
         from: LocalDate,
         to: LocalDate,
