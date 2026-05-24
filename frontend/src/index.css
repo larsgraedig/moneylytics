@@ -397,6 +397,12 @@ body {
   background: rgba(248, 113, 113, 0.06);
 }
 
+.ri-chip--prev-ignored {
+  color: #a78bfa;
+  border-color: rgba(167, 139, 250, 0.3);
+  background: rgba(167, 139, 250, 0.06);
+}
+
 .ri-import-btn {
   border-color: rgba(74, 222, 128, 0.4);
   color: #4ade80;
@@ -450,9 +456,12 @@ body {
   vertical-align: middle;
 }
 
-.ri-row--new   { background: rgba(74, 222, 128, 0.05); }
-.ri-row--duplicate { background: rgba(245, 158, 11, 0.06); }
-.ri-row--invalid   { background: rgba(248, 113, 113, 0.06); }
+.ri-row--new                  { background: rgba(74, 222, 128, 0.05); }
+.ri-row--will-ignore          { background: rgba(100, 116, 139, 0.06); opacity: 0.7; }
+.ri-row--duplicate            { background: rgba(245, 158, 11, 0.06); }
+.ri-row--invalid              { background: rgba(248, 113, 113, 0.06); }
+.ri-row--prev-ignored         { background: rgba(167, 139, 250, 0.05); }
+.ri-row--prev-ignored-importing { background: rgba(74, 222, 128, 0.05); }
 
 /* ── status badge ────────────────────────── */
 
@@ -466,9 +475,11 @@ body {
   white-space: nowrap;
 }
 
-.ri-badge--new       { color: #4ade80; border-color: rgba(74,222,128,0.3); }
-.ri-badge--duplicate { color: var(--accent); border-color: var(--accent-dim); }
-.ri-badge--invalid   { color: var(--error); border-color: rgba(248,113,113,0.3); }
+.ri-badge--new          { color: #4ade80; border-color: rgba(74,222,128,0.3); }
+.ri-badge--duplicate    { color: var(--accent); border-color: var(--accent-dim); }
+.ri-badge--invalid      { color: var(--error); border-color: rgba(248,113,113,0.3); }
+.ri-badge--prev-ignored { color: #a78bfa; border-color: rgba(167,139,250,0.3); }
+.ri-badge--will-ignore  { color: var(--text-muted); border-color: var(--border-hi); }
 
 /* ── table cells ─────────────────────────── */
 
@@ -537,3 +548,40 @@ body {
 }
 
 .ri-cat-input::placeholder { color: var(--text-dim); }
+
+/* ── action toggle button ────────────────── */
+
+.ri-cell-action { white-space: nowrap; }
+
+.ri-action-btn {
+  height: 24px;
+  padding: 0 10px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  transition: border-color 0.12s, color 0.12s, background 0.12s;
+}
+
+.ri-action-btn--ignore {
+  color: var(--text-muted);
+}
+
+.ri-action-btn--ignore:hover {
+  color: var(--error);
+  border-color: rgba(248, 113, 113, 0.4);
+  background: rgba(248, 113, 113, 0.06);
+}
+
+.ri-action-btn--import {
+  color: #4ade80;
+  border-color: rgba(74, 222, 128, 0.3);
+}
+
+.ri-action-btn--import:hover {
+  border-color: #4ade80;
+  background: rgba(74, 222, 128, 0.08);
+}

@@ -1,9 +1,11 @@
 package com.moneylytics.api.adapter.input.web
 
 import com.moneylytics.api.application.port.input.CheckDuplicatesUseCase
+import com.moneylytics.api.application.port.input.FindIgnoredFingerprintsUseCase
 import com.moneylytics.api.application.port.input.ImportTransactionsCommand
 import com.moneylytics.api.application.port.input.ImportTransactionsUseCase
 import com.moneylytics.api.application.port.input.SaveCategoriesUseCase
+import com.moneylytics.api.application.port.input.UpdateIgnoredTransactionsUseCase
 import com.moneylytics.api.domain.Category
 import com.moneylytics.api.domain.Transaction
 import kotlinx.coroutines.reactive.awaitSingle
@@ -25,6 +27,8 @@ import java.time.format.DateTimeFormatter
 class RawImportController(
     private val mlpRawCsvParser: MlpRawCsvParser,
     private val checkDuplicatesUseCase: CheckDuplicatesUseCase,
+    private val findIgnoredFingerprintsUseCase: FindIgnoredFingerprintsUseCase,
+    private val updateIgnoredTransactionsUseCase: UpdateIgnoredTransactionsUseCase,
     private val importTransactionsUseCase: ImportTransactionsUseCase,
     private val saveCategoriesUseCase: SaveCategoriesUseCase,
 ) {
@@ -47,6 +51,8 @@ class RawImportController(
                 val allFingerprints = rowFingerprints.values.toSet()
                 val existingFingerprints =
                     if (allFingerprints.isEmpty()) emptySet() else checkDuplicatesUseCase.findExistingFingerprints(allFingerprints)
+                val ignoredFingerprints =
+                    if (allFingerprints.isEmpty()) emptySet() else findIgnoredFingerprintsUseCase.findIgnoredFingerprints(allFingerprints)
 
                 val response =
                     RawPreviewResponse(
@@ -57,6 +63,7 @@ class RawImportController(
                                     when {
                                         !row.isValid -> RowStatus.INVALID
                                         fp in existingFingerprints -> RowStatus.DUPLICATE
+                                        fp in ignoredFingerprints -> RowStatus.PREVIOUSLY_IGNORED
                                         else -> RowStatus.NEW
                                     }
                                 row.toPreviewRow(status, fp)
@@ -71,14 +78,19 @@ class RawImportController(
     suspend fun importRaw(
         @RequestBody request: ImportRawRequest,
     ): ResponseEntity<out Any> {
+        updateIgnoredTransactionsUseCase.update(
+            toIgnore = request.toIgnore,
+            toUnignore = request.toImport.map { it.fingerprint },
+        )
+
         val categories =
-            request.transactions
+            request.toImport
                 .map { Category(name = it.category, subcategory = it.subcategory) }
                 .distinct()
         saveCategoriesUseCase.saveCategories(categories)
 
         val transactions =
-            request.transactions.map { row ->
+            request.toImport.map { row ->
                 Transaction(
                     category = row.category,
                     subcategory = row.subcategory,

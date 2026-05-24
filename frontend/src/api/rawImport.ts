@@ -1,4 +1,4 @@
-export type RowStatus = 'NEW' | 'DUPLICATE' | 'INVALID'
+export type RowStatus = 'NEW' | 'DUPLICATE' | 'INVALID' | 'PREVIOUSLY_IGNORED'
 
 export interface RawPreviewError {
   column: string
@@ -36,6 +36,7 @@ export interface CategoriesResponse {
 }
 
 export interface RawTransactionImport {
+  fingerprint: string
   bookingDate: string
   valueDate: string
   amount: number
@@ -47,7 +48,8 @@ export interface RawTransactionImport {
 export interface ImportRawRequest {
   accountIban: string
   accountName: string
-  transactions: RawTransactionImport[]
+  toImport: RawTransactionImport[]
+  toIgnore: string[]
 }
 
 export interface ImportRawResponse {

@@ -2,7 +2,7 @@ package com.moneylytics.api.adapter.input.web
 
 import java.math.BigDecimal
 
-enum class RowStatus { NEW, DUPLICATE, INVALID }
+enum class RowStatus { NEW, DUPLICATE, INVALID, PREVIOUSLY_IGNORED }
 
 data class RawPreviewResponse(
     val rows: List<RawPreviewRow>,
@@ -33,10 +33,12 @@ data class RawPreviewError(
 data class ImportRawRequest(
     val accountIban: String,
     val accountName: String,
-    val transactions: List<RawTransactionImport>,
+    val toImport: List<RawTransactionImport>,
+    val toIgnore: List<String>,
 )
 
 data class RawTransactionImport(
+    val fingerprint: String,
     val bookingDate: String,
     val valueDate: String,
     val amount: BigDecimal,
