@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import SankeyChart from './components/SankeyChart'
 import RawImportPage from './components/RawImportPage'
+import CamtImportPage from './components/CamtImportPage'
 import TransactionListPanel from './components/TransactionListPanel'
 import { fetchSankeyData, fetchAccounts, type SankeyResponse, type Account } from './api/transactions'
 
@@ -11,7 +12,7 @@ function isoDate(d: Date) {
 const today = isoDate(new Date())
 const firstOfYear = isoDate(new Date(new Date().getFullYear(), 0, 1))
 
-type Tab = 'analytics' | 'import'
+type Tab = 'analytics' | 'import' | 'camt'
 
 type ViewState =
   | { phase: 'idle' }
@@ -58,7 +59,13 @@ export default function App() {
             className={`tab-btn${tab === 'import' ? ' active' : ''}`}
             onClick={() => setTab('import')}
           >
-            import
+            MLP import
+          </button>
+          <button
+            className={`tab-btn${tab === 'camt' ? ' active' : ''}`}
+            onClick={() => setTab('camt')}
+          >
+            CAMT import
           </button>
         </nav>
 
@@ -110,7 +117,7 @@ export default function App() {
           </div>
         )}
 
-        {tab === 'import' && <div className="controls" />}
+        {(tab === 'import' || tab === 'camt') && <div className="controls" />}
       </header>
 
       <main className="stage">
@@ -146,6 +153,7 @@ export default function App() {
         )}
 
         {tab === 'import' && <RawImportPage />}
+        {tab === 'camt' && <CamtImportPage />}
       </main>
     </div>
   )
