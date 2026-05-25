@@ -20,15 +20,14 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestHeader
 import org.springframework.web.bind.annotation.RequestMapping
-import org.springframework.web.bind.annotation.RequestPart
 import org.springframework.web.bind.annotation.RestController
+import org.springframework.web.server.ServerWebExchange
 import java.time.LocalDate
-import java.time.format.DateTimeFormatter
 
 @RestController
 @RequestMapping("/transactions")
-class RawImportController(
-    private val mlpRawCsvParser: MlpRawCsvParser,
+class CamtImportController(
+    private val camtParser: CamtParser,
     private val checkDuplicatesUseCase: CheckDuplicatesUseCase,
     private val findIgnoredFingerprintsUseCase: FindIgnoredFingerprintsUseCase,
     private val updateIgnoredTransactionsUseCase: UpdateIgnoredTransactionsUseCase,
@@ -36,60 +35,77 @@ class RawImportController(
     private val saveCategoriesUseCase: SaveCategoriesUseCase,
     private val resolveUserUseCase: ResolveUserUseCase,
 ) {
-    @PostMapping("/raw/preview", consumes = [MediaType.MULTIPART_FORM_DATA_VALUE])
+    @PostMapping("/camt/preview", consumes = [MediaType.MULTIPART_FORM_DATA_VALUE])
     suspend fun preview(
-        @RequestPart("file") filePart: FilePart,
         @RequestHeader("X-User-Id") externalId: String,
+        exchange: ServerWebExchange,
     ): ResponseEntity<out Any> {
-        val csvContent = filePart.readContent()
         val userId = withContext(Dispatchers.IO) { resolveUserUseCase.resolveUser(externalId) }
 
-        return when (val result = mlpRawCsvParser.parse(csvContent)) {
-            is MlpRawParseResult.FormatError ->
-                ResponseEntity
-                    .unprocessableContent()
-                    .body(mapOf("error" to result.message))
+        val parts = exchange.multipartData.awaitSingle()
+        val fileParts = parts["files"]?.filterIsInstance<FilePart>() ?: emptyList()
 
-            is MlpRawParseResult.Success -> {
-                val validRows = result.rows.filter { it.isValid }
-                val rowFingerprints = assignFingerprints(validRows)
+        if (fileParts.isEmpty()) {
+            return ResponseEntity.badRequest().body(mapOf("error" to "No files provided"))
+        }
 
-                val allFingerprints = rowFingerprints.values.toSet()
-                val existingFingerprints =
-                    if (allFingerprints.isEmpty()) emptySet() else checkDuplicatesUseCase.findExistingFingerprints(allFingerprints, userId)
-                val ignoredFingerprints =
-                    if (allFingerprints.isEmpty()) {
-                        emptySet()
-                    } else {
-                        findIgnoredFingerprintsUseCase.findIgnoredFingerprints(
-                            allFingerprints,
-                            userId,
-                        )
-                    }
+        val allRows = mutableListOf<ParsedRawRow>()
+        var nextRowNumber = 1
 
-                val response =
-                    RawPreviewResponse(
-                        rows =
-                            result.rows.map { row ->
-                                val fp = rowFingerprints[row.rowNumber]
-                                val status =
-                                    when {
-                                        !row.isValid -> RowStatus.INVALID
-                                        fp in existingFingerprints -> RowStatus.DUPLICATE
-                                        fp in ignoredFingerprints -> RowStatus.PREVIOUSLY_IGNORED
-                                        else -> RowStatus.NEW
-                                    }
-                                row.toPreviewRow(status, fp)
-                            },
-                    )
-                ResponseEntity.ok(response)
+        for (filePart in fileParts) {
+            val bytes = filePart.readBytes()
+            when (val result = camtParser.parse(bytes)) {
+                is CamtParseResult.FormatError ->
+                    return ResponseEntity
+                        .status(422)
+                        .body(mapOf("error" to "${filePart.filename()}: ${result.message}"))
+
+                is CamtParseResult.Success -> {
+                    val renumbered = result.rows.mapIndexed { idx, row -> row.copy(rowNumber = nextRowNumber + idx) }
+                    allRows += renumbered
+                    nextRowNumber += result.rows.size
+                }
             }
         }
+
+        val validRows = allRows.filter { it.isValid }
+        val rowFingerprints = assignFingerprints(validRows)
+        val allFingerprints = rowFingerprints.values.toSet()
+
+        val existingFingerprints =
+            if (allFingerprints.isEmpty()) emptySet() else checkDuplicatesUseCase.findExistingFingerprints(allFingerprints, userId)
+        val ignoredFingerprints =
+            if (allFingerprints.isEmpty()) emptySet() else findIgnoredFingerprintsUseCase.findIgnoredFingerprints(allFingerprints, userId)
+
+        val accounts =
+            allRows
+                .filter { it.accountIban.isNotBlank() }
+                .distinctBy { it.accountIban }
+                .map { CamtAccountInfo(iban = it.accountIban, suggestedName = it.accountName) }
+
+        val response =
+            CamtPreviewResponse(
+                rows =
+                    allRows.map { row ->
+                        val fp = rowFingerprints[row.rowNumber]
+                        val status =
+                            when {
+                                !row.isValid -> RowStatus.INVALID
+                                fp in existingFingerprints -> RowStatus.DUPLICATE
+                                fp in ignoredFingerprints -> RowStatus.PREVIOUSLY_IGNORED
+                                else -> RowStatus.NEW
+                            }
+                        row.toPreviewRow(status, fp)
+                    },
+                accounts = accounts,
+            )
+
+        return ResponseEntity.ok(response)
     }
 
-    @PostMapping("/raw/import")
-    suspend fun importRaw(
-        @RequestBody request: ImportRawRequest,
+    @PostMapping("/camt/import")
+    suspend fun importCamt(
+        @RequestBody request: CamtImportRequest,
         @RequestHeader("X-User-Id") externalId: String,
     ): ResponseEntity<out Any> {
         val userId = withContext(Dispatchers.IO) { resolveUserUseCase.resolveUser(externalId) }
@@ -111,11 +127,11 @@ class RawImportController(
                 Transaction(
                     category = row.category,
                     subcategory = row.subcategory,
-                    bookingDate = LocalDate.parse(row.bookingDate, DateTimeFormatter.ISO_LOCAL_DATE),
-                    valueDate = LocalDate.parse(row.valueDate, DateTimeFormatter.ISO_LOCAL_DATE),
+                    bookingDate = LocalDate.parse(row.bookingDate),
+                    valueDate = LocalDate.parse(row.valueDate),
                     amount = row.amount,
                     currency = row.currency,
-                    accountIban = request.accountIban,
+                    accountIban = row.accountIban,
                 )
             }
 
@@ -123,7 +139,7 @@ class RawImportController(
             importTransactionsUseCase.importTransactions(
                 ImportTransactionsCommand(
                     transactions = transactions,
-                    accountNames = mapOf(request.accountIban to request.accountName),
+                    accountNames = request.accountNames,
                     userId = userId,
                 ),
             )
@@ -150,16 +166,13 @@ class RawImportController(
         errors = errors.map { RawPreviewError(column = it.column, value = it.value, message = it.message) },
     )
 
-    private suspend fun FilePart.readContent(): String {
-        val bytes =
-            DataBufferUtils
-                .join(content())
-                .map { buffer ->
-                    val content = ByteArray(buffer.readableByteCount())
-                    buffer.read(content)
-                    DataBufferUtils.release(buffer)
-                    content
-                }.awaitSingle()
-        return String(bytes, Charsets.UTF_8)
-    }
+    private suspend fun FilePart.readBytes(): ByteArray =
+        DataBufferUtils
+            .join(content())
+            .map { buffer ->
+                val bytes = ByteArray(buffer.readableByteCount())
+                buffer.read(bytes)
+                DataBufferUtils.release(buffer)
+                bytes
+            }.awaitSingle()
 }

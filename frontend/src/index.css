@@ -757,3 +757,61 @@ body {
   border-color: #4ade80;
   background: rgba(74, 222, 128, 0.08);
 }
+
+/* ── dropzone hint ───────────────────────── */
+
+.ri-dropzone-hint {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-dim);
+  letter-spacing: 0.04em;
+}
+
+/* ── camt account names ──────────────────── */
+
+.ri-account-names {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px 20px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.ri-account-names-label {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-muted);
+  letter-spacing: 0.06em;
+  margin-right: 4px;
+}
+
+.ri-account-name-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ri-account-iban {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.ri-account-name-input {
+  height: 26px;
+  padding: 0 8px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  color: var(--text);
+  font-size: 12px;
+  font-family: system-ui, sans-serif;
+  width: 180px;
+}
+
+.ri-account-name-input:focus {
+  outline: none;
+  border-color: var(--accent-dim);
+}

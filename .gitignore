@@ -7,3 +7,4 @@
 build
 node_modules
 *.csv
+/web/src/main/resources/**/*.xml

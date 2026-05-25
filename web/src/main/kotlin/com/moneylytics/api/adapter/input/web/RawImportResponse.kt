@@ -47,6 +47,33 @@ data class RawTransactionImport(
     val subcategory: String,
 )
 
+data class CamtPreviewResponse(
+    val rows: List<RawPreviewRow>,
+    val accounts: List<CamtAccountInfo>,
+)
+
+data class CamtAccountInfo(
+    val iban: String,
+    val suggestedName: String,
+)
+
+data class CamtImportRequest(
+    val accountNames: Map<String, String>,
+    val toImport: List<CamtTransactionImport>,
+    val toIgnore: List<String>,
+)
+
+data class CamtTransactionImport(
+    val fingerprint: String,
+    val bookingDate: String,
+    val valueDate: String,
+    val amount: java.math.BigDecimal,
+    val currency: String,
+    val category: String,
+    val subcategory: String,
+    val accountIban: String,
+)
+
 data class CategoriesResponse(
     val categories: List<CategoryGroupResponse>,
 )
