@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react'
 import SankeyChart from './components/SankeyChart'
 import RawImportPage from './components/RawImportPage'
 import CamtImportPage from './components/CamtImportPage'
+import CsvImportPage from './components/CsvImportPage'
+import TrendsPage from './components/TrendsPage'
 import TransactionListPanel from './components/TransactionListPanel'
 import { fetchSankeyData, fetchAccounts, type SankeyResponse, type Account } from './api/transactions'
 
@@ -12,7 +14,7 @@ function isoDate(d: Date) {
 const today = isoDate(new Date())
 const firstOfYear = isoDate(new Date(new Date().getFullYear(), 0, 1))
 
-type Tab = 'analytics' | 'import' | 'camt'
+type Tab = 'analytics' | 'trends' | 'csv' | 'import' | 'camt'
 
 type ViewState =
   | { phase: 'idle' }
@@ -54,6 +56,18 @@ export default function App() {
             onClick={() => setTab('analytics')}
           >
             analytics
+          </button>
+          <button
+            className={`tab-btn${tab === 'trends' ? ' active' : ''}`}
+            onClick={() => setTab('trends')}
+          >
+            trends
+          </button>
+          <button
+            className={`tab-btn${tab === 'csv' ? ' active' : ''}`}
+            onClick={() => setTab('csv')}
+          >
+            CSV import
           </button>
           <button
             className={`tab-btn${tab === 'import' ? ' active' : ''}`}
@@ -117,7 +131,7 @@ export default function App() {
           </div>
         )}
 
-        {(tab === 'import' || tab === 'camt') && <div className="controls" />}
+        {(tab === 'csv' || tab === 'import' || tab === 'camt' || tab === 'trends') && <div className="controls" />}
       </header>
 
       <main className="stage">
@@ -152,6 +166,8 @@ export default function App() {
           </>
         )}
 
+        {tab === 'trends' && <TrendsPage />}
+        {tab === 'csv' && <CsvImportPage />}
         {tab === 'import' && <RawImportPage />}
         {tab === 'camt' && <CamtImportPage />}
       </main>

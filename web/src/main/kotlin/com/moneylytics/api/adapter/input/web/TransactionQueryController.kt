@@ -13,7 +13,10 @@ import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import java.math.BigDecimal
+import java.time.DayOfWeek
 import java.time.LocalDate
+import java.time.YearMonth
+import java.time.temporal.IsoFields
 
 @RestController
 @RequestMapping("/transactions")
@@ -78,6 +81,89 @@ class TransactionQueryController(
             total = transactions.sumOf { it.amount },
         )
     }
+
+    @GetMapping("/trends")
+    suspend fun getTrends(
+        @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) from: LocalDate,
+        @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) to: LocalDate,
+        @RequestParam(required = false) series: List<String>? = null,
+        @RequestParam(required = false) granularity: Granularity = Granularity.MONTHLY,
+        @RequestParam(required = false) iban: String? = null,
+        @RequestHeader("X-User-Id") externalId: String,
+    ): TrendsResponse {
+        val effectiveSeries = series ?: emptyList()
+        val userId = withContext(Dispatchers.IO) { resolveUserUseCase.resolveUser(externalId) }
+        val buckets = generateBuckets(from, to, granularity)
+
+        val seriesData =
+            effectiveSeries.map { spec ->
+                val colonIdx = spec.indexOf(':')
+                val category = if (colonIdx < 0) spec else spec.substring(0, colonIdx)
+                val subcategory = if (colonIdx < 0) null else spec.substring(colonIdx + 1)
+                val label = if (subcategory != null) "$category / $subcategory" else category
+
+                val transactions =
+                    withContext(Dispatchers.IO) {
+                        getTransactionsUseCase.getTransactions(
+                            GetTransactionsQuery(
+                                from = from,
+                                to = to,
+                                userId = userId,
+                                accountIban = iban,
+                                category = category,
+                                subcategory = subcategory,
+                            ),
+                        )
+                    }
+
+                val byBucket = transactions.groupBy { bucketKey(it.bookingDate, granularity) }
+
+                TrendSeries(
+                    label = label,
+                    data = buckets.map { bucket -> byBucket[bucket]?.sumOf { it.amount.abs() } ?: BigDecimal.ZERO },
+                )
+            }
+
+        return TrendsResponse(granularity = granularity, buckets = buckets, series = seriesData)
+    }
+
+    private fun generateBuckets(
+        from: LocalDate,
+        to: LocalDate,
+        granularity: Granularity,
+    ): List<String> =
+        when (granularity) {
+            Granularity.MONTHLY ->
+                generateSequence(YearMonth.from(from)) { it.plusMonths(1) }
+                    .takeWhile { !it.isAfter(YearMonth.from(to)) }
+                    .map { it.toString() }
+                    .toList()
+
+            Granularity.WEEKLY ->
+                generateSequence(from.with(DayOfWeek.MONDAY)) { it.plusWeeks(1) }
+                    .takeWhile { !it.isAfter(to) }
+                    .map { weekKey(it) }
+                    .toList()
+
+            Granularity.DAILY ->
+                generateSequence(from) { it.plusDays(1) }
+                    .takeWhile { !it.isAfter(to) }
+                    .map { it.toString() }
+                    .toList()
+        }
+
+    private fun bucketKey(
+        date: LocalDate,
+        granularity: Granularity,
+    ): String =
+        when (granularity) {
+            Granularity.MONTHLY -> YearMonth.from(date).toString()
+            Granularity.WEEKLY -> weekKey(date.with(DayOfWeek.MONDAY))
+            Granularity.DAILY -> date.toString()
+        }
+
+    private fun weekKey(monday: LocalDate): String =
+        "${monday.get(IsoFields.WEEK_BASED_YEAR)}-W${String.format("%02d", monday.get(IsoFields.WEEK_OF_WEEK_BASED_YEAR))}"
 
     private fun List<Transaction>.toSankeyResponse(): SankeyResponse {
         // Keys are prefixed so that:
