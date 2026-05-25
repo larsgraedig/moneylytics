@@ -10,14 +10,17 @@ class IgnoredTransactionService(
     private val repository: IgnoredTransactionRepository,
 ) : FindIgnoredFingerprintsUseCase,
     UpdateIgnoredTransactionsUseCase {
-    override fun findIgnoredFingerprints(fingerprints: Collection<String>): Set<String> =
-        if (fingerprints.isEmpty()) emptySet() else repository.findExistingFingerprints(fingerprints)
+    override fun findIgnoredFingerprints(
+        fingerprints: Collection<String>,
+        userId: Long,
+    ): Set<String> = if (fingerprints.isEmpty()) emptySet() else repository.findExistingFingerprints(fingerprints, userId)
 
     override fun update(
         toIgnore: Collection<String>,
         toUnignore: Collection<String>,
+        userId: Long,
     ) {
-        if (toIgnore.isNotEmpty()) repository.saveAll(toIgnore)
-        if (toUnignore.isNotEmpty()) repository.deleteAll(toUnignore)
+        if (toIgnore.isNotEmpty()) repository.saveAll(toIgnore, userId)
+        if (toUnignore.isNotEmpty()) repository.deleteAll(toUnignore, userId)
     }
 }

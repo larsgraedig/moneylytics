@@ -7,32 +7,37 @@ import java.math.BigDecimal
 import java.time.LocalDate
 
 interface TransactionJpaRepository : JpaRepository<TransactionEntity, Long> {
-    fun findByBookingDateBetween(
+    fun findByUserIdAndBookingDateBetween(
+        userId: Long,
         from: LocalDate,
         to: LocalDate,
     ): List<TransactionEntity>
 
-    fun findByBookingDateBetweenAndAmountLessThan(
-        from: LocalDate,
-        to: LocalDate,
-        amount: BigDecimal,
-    ): List<TransactionEntity>
-
-    fun findByAccountIbanAndBookingDateBetween(
-        iban: String,
-        from: LocalDate,
-        to: LocalDate,
-    ): List<TransactionEntity>
-
-    fun findByAccountIbanAndBookingDateBetweenAndAmountLessThan(
-        iban: String,
+    fun findByUserIdAndBookingDateBetweenAndAmountLessThan(
+        userId: Long,
         from: LocalDate,
         to: LocalDate,
         amount: BigDecimal,
     ): List<TransactionEntity>
 
-    @Query("SELECT t.fingerprint FROM TransactionEntity t WHERE t.fingerprint IN :fingerprints")
+    fun findByUserIdAndAccountIbanAndBookingDateBetween(
+        userId: Long,
+        iban: String,
+        from: LocalDate,
+        to: LocalDate,
+    ): List<TransactionEntity>
+
+    fun findByUserIdAndAccountIbanAndBookingDateBetweenAndAmountLessThan(
+        userId: Long,
+        iban: String,
+        from: LocalDate,
+        to: LocalDate,
+        amount: BigDecimal,
+    ): List<TransactionEntity>
+
+    @Query("SELECT t.fingerprint FROM TransactionEntity t WHERE t.fingerprint IN :fingerprints AND t.user.id = :userId")
     fun findExistingFingerprints(
         @Param("fingerprints") fingerprints: Collection<String>,
+        @Param("userId") userId: Long,
     ): List<String>
 }

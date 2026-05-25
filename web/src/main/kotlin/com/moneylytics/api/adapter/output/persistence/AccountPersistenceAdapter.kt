@@ -7,14 +7,26 @@ import org.springframework.stereotype.Component
 @Component
 class AccountPersistenceAdapter(
     private val jpaRepository: AccountJpaRepository,
+    private val userJpaRepository: UserJpaRepository,
 ) : AccountRepository {
-    override fun findByIban(iban: String): Account? = jpaRepository.findByIban(iban)?.toDomain()
+    override fun findByIban(
+        iban: String,
+        userId: Long,
+    ): Account? = jpaRepository.findByIbanAndUserId(iban, userId)?.toDomain()
 
-    override fun save(account: Account): Account = jpaRepository.save(account.toEntity()).toDomain()
+    override fun save(
+        account: Account,
+        userId: Long,
+    ): Account = jpaRepository.save(account.toEntity(userId)).toDomain()
 
-    override fun findAll(): List<Account> = jpaRepository.findAll().map { it.toDomain() }
+    override fun findAll(userId: Long): List<Account> = jpaRepository.findAllByUserId(userId).map { it.toDomain() }
 
-    private fun Account.toEntity() = AccountEntity(iban = iban, name = name)
+    private fun Account.toEntity(userId: Long) =
+        AccountEntity(
+            iban = iban,
+            name = name,
+            user = userJpaRepository.getReferenceById(userId),
+        )
 
     private fun AccountEntity.toDomain() = Account(iban = iban, name = name)
 }

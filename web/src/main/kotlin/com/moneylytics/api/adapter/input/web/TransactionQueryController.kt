@@ -2,11 +2,13 @@ package com.moneylytics.api.adapter.input.web
 
 import com.moneylytics.api.application.port.input.GetTransactionsQuery
 import com.moneylytics.api.application.port.input.GetTransactionsUseCase
+import com.moneylytics.api.application.port.input.ResolveUserUseCase
 import com.moneylytics.api.domain.Transaction
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.springframework.format.annotation.DateTimeFormat
 import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.RequestHeader
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
@@ -17,16 +19,21 @@ import java.time.LocalDate
 @RequestMapping("/transactions")
 class TransactionQueryController(
     private val getTransactionsUseCase: GetTransactionsUseCase,
+    private val resolveUserUseCase: ResolveUserUseCase,
 ) {
     @GetMapping("/sankey")
     suspend fun getSankeyData(
         @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) from: LocalDate,
         @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) to: LocalDate,
         @RequestParam(required = false) iban: String? = null,
+        @RequestHeader("X-User-Id") externalId: String,
     ): SankeyResponse {
         val transactions =
             withContext(Dispatchers.IO) {
-                getTransactionsUseCase.getTransactions(GetTransactionsQuery(from, to, onlyNegative = true, accountIban = iban))
+                val userId = resolveUserUseCase.resolveUser(externalId)
+                getTransactionsUseCase.getTransactions(
+                    GetTransactionsQuery(from, to, userId, onlyNegative = true, accountIban = iban),
+                )
             }
         return transactions.toSankeyResponse()
     }
@@ -38,13 +45,16 @@ class TransactionQueryController(
         @RequestParam(required = false) category: String? = null,
         @RequestParam(required = false) subcategory: String? = null,
         @RequestParam(required = false) iban: String? = null,
+        @RequestHeader("X-User-Id") externalId: String,
     ): TransactionListResponse {
         val transactions =
             withContext(Dispatchers.IO) {
+                val userId = resolveUserUseCase.resolveUser(externalId)
                 getTransactionsUseCase.getTransactions(
                     GetTransactionsQuery(
                         from = from,
                         to = to,
+                        userId = userId,
                         onlyNegative = true,
                         accountIban = iban,
                         category = category,
