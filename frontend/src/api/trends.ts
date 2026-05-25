@@ -1,16 +1,23 @@
 import { fetchWithUser } from './client'
 
 export type Granularity = 'MONTHLY' | 'WEEKLY' | 'DAILY'
+export type SeriesRole = 'MAIN_SELECTED' | 'MAIN_CONTEXT' | 'SUB_SELECTED' | 'SUB_CONTEXT'
 
-export interface TrendSeries {
+export interface TrendSeriesEntry {
   label: string
   data: number[]
+  role: SeriesRole
+}
+
+export interface TrendSeriesGroup {
+  main: TrendSeriesEntry
+  subs: TrendSeriesEntry[]
 }
 
 export interface TrendsResponse {
   granularity: Granularity
   buckets: string[]
-  series: TrendSeries[]
+  groups: TrendSeriesGroup[]
 }
 
 export interface SeriesConfig {

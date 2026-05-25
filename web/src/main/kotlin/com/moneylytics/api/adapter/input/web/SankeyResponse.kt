@@ -4,15 +4,35 @@ import java.math.BigDecimal
 
 enum class Granularity { MONTHLY, WEEKLY, DAILY }
 
+enum class SeriesRole {
+    /** Category-only config: the thick aggregate line. */
+    MAIN_SELECTED,
+
+    /** Subcategory config: thin dashed aggregate; makes context clear without dominating. */
+    MAIN_CONTEXT,
+
+    /** Subcategory config: the thick line for the explicitly chosen subcategory. */
+    SUB_SELECTED,
+
+    /** Thin line for every subcategory that is not the primary focus. */
+    SUB_CONTEXT,
+}
+
 data class TrendsResponse(
     val granularity: Granularity,
     val buckets: List<String>,
-    val series: List<TrendSeries>,
+    val groups: List<TrendSeriesGroup>,
 )
 
-data class TrendSeries(
+data class TrendSeriesGroup(
+    val main: TrendSeriesEntry,
+    val subs: List<TrendSeriesEntry>,
+)
+
+data class TrendSeriesEntry(
     val label: String,
     val data: List<BigDecimal>,
+    val role: SeriesRole,
 )
 
 data class SankeyResponse(
