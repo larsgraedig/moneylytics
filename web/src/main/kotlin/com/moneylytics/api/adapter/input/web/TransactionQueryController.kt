@@ -95,36 +95,49 @@ class TransactionQueryController(
         val userId = withContext(Dispatchers.IO) { resolveUserUseCase.resolveUser(externalId) }
         val buckets = generateBuckets(from, to, granularity)
 
-        val seriesData =
+        val groups =
             effectiveSeries.map { spec ->
                 val colonIdx = spec.indexOf(':')
                 val category = if (colonIdx < 0) spec else spec.substring(0, colonIdx)
-                val subcategory = if (colonIdx < 0) null else spec.substring(colonIdx + 1)
-                val label = if (subcategory != null) "$category / $subcategory" else category
+                val selectedSub = if (colonIdx < 0) null else spec.substring(colonIdx + 1)
 
-                val transactions =
+                // One query for the whole category; subcategory breakdown comes from in-memory grouping.
+                val allTransactions =
                     withContext(Dispatchers.IO) {
                         getTransactionsUseCase.getTransactions(
-                            GetTransactionsQuery(
-                                from = from,
-                                to = to,
-                                userId = userId,
-                                accountIban = iban,
-                                category = category,
-                                subcategory = subcategory,
-                            ),
+                            GetTransactionsQuery(from = from, to = to, userId = userId, accountIban = iban, category = category),
                         )
                     }
 
-                val byBucket = transactions.groupBy { bucketKey(it.bookingDate, granularity) }
+                fun bucketSums(txns: List<Transaction>): List<BigDecimal> {
+                    val byBucket = txns.groupBy { bucketKey(it.bookingDate, granularity) }
+                    return buckets.map { bucket -> byBucket[bucket]?.sumOf { it.amount.abs() } ?: BigDecimal.ZERO }
+                }
 
-                TrendSeries(
-                    label = label,
-                    data = buckets.map { bucket -> byBucket[bucket]?.sumOf { it.amount.abs() } ?: BigDecimal.ZERO },
-                )
+                val mainEntry =
+                    TrendSeriesEntry(
+                        label = category,
+                        data = bucketSums(allTransactions),
+                        role = if (selectedSub != null) SeriesRole.MAIN_CONTEXT else SeriesRole.MAIN_SELECTED,
+                    )
+
+                val subEntries =
+                    allTransactions
+                        .groupBy { it.subcategory }
+                        .entries
+                        .sortedBy { it.key }
+                        .map { (subName, txns) ->
+                            TrendSeriesEntry(
+                                label = subName,
+                                data = bucketSums(txns),
+                                role = if (subName == selectedSub) SeriesRole.SUB_SELECTED else SeriesRole.SUB_CONTEXT,
+                            )
+                        }
+
+                TrendSeriesGroup(main = mainEntry, subs = subEntries)
             }
 
-        return TrendsResponse(granularity = granularity, buckets = buckets, series = seriesData)
+        return TrendsResponse(granularity = granularity, buckets = buckets, groups = groups)
     }
 
     private fun generateBuckets(

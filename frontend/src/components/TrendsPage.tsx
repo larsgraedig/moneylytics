@@ -1,7 +1,13 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { ResponsiveLine } from '@nivo/line'
 import { fetchCamtCategories, type CategoryGroup } from '../api/camtImport'
-import { fetchTrends, type Granularity, type SeriesConfig, type TrendsResponse } from '../api/trends'
+import {
+  fetchTrends,
+  type Granularity,
+  type SeriesConfig,
+  type SeriesRole,
+  type TrendsResponse,
+} from '../api/trends'
 
 const COLORS = [
   '#f59e0b',
@@ -22,19 +28,16 @@ const today = isoDate(new Date())
 const firstOfYear = isoDate(new Date(new Date().getFullYear(), 0, 1))
 
 let idSeq = 0
-function newId() {
-  return String(++idSeq)
-}
+function newId() { return String(++idSeq) }
 
 function formatBucket(bucket: string, granularity: Granularity): string {
   if (granularity === 'MONTHLY') {
     const [y, m] = bucket.split('-')
-    const d = new Date(Number(y), Number(m) - 1, 1)
-    return new Intl.DateTimeFormat('de-DE', { month: 'short', year: '2-digit' }).format(d)
+    return new Intl.DateTimeFormat('de-DE', { month: 'short', year: '2-digit' }).format(
+      new Date(Number(y), Number(m) - 1, 1),
+    )
   }
-  if (granularity === 'WEEKLY') {
-    return bucket.replace(/^\d{4}-/, '')
-  }
+  if (granularity === 'WEEKLY') return bucket.replace(/^\d{4}-/, '')
   const [y, m, d] = bucket.split('-')
   return new Intl.DateTimeFormat('de-DE', { day: 'numeric', month: 'short' }).format(
     new Date(Number(y), Number(m) - 1, Number(d)),
@@ -42,6 +45,58 @@ function formatBucket(bucket: string, granularity: Granularity): string {
 }
 
 const EUR = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })
+
+// Unique ID for a series entry within a group.
+function seriesId(groupIdx: number, label: string) { return `${groupIdx}\x00${label}` }
+function seriesLabel(id: string) { return id.split('\x00').slice(1).join('\x00') }
+
+// Line style per role.
+function lineWidth(role: SeriesRole) {
+  return role === 'MAIN_SELECTED' || role === 'SUB_SELECTED' ? 3 : 1.5
+}
+function strokeDash(role: SeriesRole) {
+  return role === 'MAIN_CONTEXT' ? '7 4' : undefined
+}
+function lineOpacity(role: SeriesRole) {
+  if (role === 'MAIN_SELECTED' || role === 'SUB_SELECTED') return 1
+  if (role === 'MAIN_CONTEXT') return 0.55
+  return 0.38  // SUB_CONTEXT
+}
+
+// Custom lines layer — replaces nivo's built-in 'lines' to allow per-series stroke width.
+function makeLineLayer(roles: Map<string, SeriesRole>) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return function LineLayer({ series, lineGenerator }: any) {
+    // Draw context lines first, then primary lines on top.
+    const sorted = [...series].sort((a: any, b: any) => {
+      const ra = roles.get(a.id) ?? 'SUB_CONTEXT'
+      const rb = roles.get(b.id) ?? 'SUB_CONTEXT'
+      const order = { SUB_CONTEXT: 0, MAIN_CONTEXT: 1, MAIN_SELECTED: 2, SUB_SELECTED: 2 }
+      return order[ra] - order[rb]
+    })
+
+    return (
+      <>
+        {sorted.map((serie: any) => {
+          const role = roles.get(serie.id) ?? 'SUB_CONTEXT'
+          return (
+            <path
+              key={serie.id}
+              d={lineGenerator(serie.data.map((d: any) => d.position)) ?? ''}
+              fill="none"
+              stroke={serie.color}
+              strokeWidth={lineWidth(role)}
+              strokeDasharray={strokeDash(role)}
+              opacity={lineOpacity(role)}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          )
+        })}
+      </>
+    )
+  }
+}
 
 type ViewState =
   | { phase: 'idle' }
@@ -62,9 +117,7 @@ export default function TrendsPage() {
   }, [])
 
   const addSeries = () => setSeries(prev => [...prev, { id: newId(), category: '', subcategory: '' }])
-
   const removeSeries = (id: string) => setSeries(prev => prev.filter(s => s.id !== id))
-
   const updateSeries = (id: string, field: 'category' | 'subcategory', value: string) => {
     setSeries(prev => prev.map(s =>
       s.id !== id ? s : { ...s, [field]: value, ...(field === 'category' ? { subcategory: '' } : {}) },
@@ -72,34 +125,43 @@ export default function TrendsPage() {
   }
 
   const load = async () => {
-    const activeSeries = series.filter(s => s.category.trim())
-    if (activeSeries.length === 0) return
+    const active = series.filter(s => s.category.trim())
+    if (active.length === 0) return
     setView({ phase: 'loading' })
     try {
-      const data = await fetchTrends(from, to, activeSeries, granularity)
-      setView({ phase: 'ready', data })
+      setView({ phase: 'ready', data: await fetchTrends(from, to, active, granularity) })
     } catch (e) {
       setView({ phase: 'error', message: e instanceof Error ? e.message : 'request failed' })
     }
   }
 
-  const activeSeries = series.filter(s => s.category.trim())
+  // Flatten groups → nivo line data, all entries in a group share the same color.
+  const { lineData, seriesRoles } = useMemo(() => {
+    if (view.phase !== 'ready') return { lineData: [], seriesRoles: new Map<string, SeriesRole>() }
+    const roles = new Map<string, SeriesRole>()
+    const data = view.data.groups.flatMap((group, i) => {
+      const color = COLORS[i % COLORS.length]
+      const entries = [group.main, ...group.subs]
+      return entries.map(entry => {
+        const id = seriesId(i, entry.label)
+        roles.set(id, entry.role)
+        return { id, color, role: entry.role, data: view.data.buckets.map((b, j) => ({ x: b, y: entry.data[j] ?? 0 })) }
+      })
+    })
+    return { lineData: data, seriesRoles: roles }
+  }, [view])
 
-  const lineData =
-    view.phase === 'ready'
-      ? view.data.series.map((s, i) => ({
-          id: s.label,
-          color: COLORS[i % COLORS.length],
-          data: view.data.buckets.map((b, j) => ({ x: b, y: s.data[j] ?? 0 })),
-        }))
-      : []
+  const CustomLineLayer = useMemo(() => makeLineLayer(seriesRoles), [seriesRoles])
 
   const formatTick = (bucket: string) =>
     view.phase === 'ready' ? formatBucket(bucket, view.data.granularity) : bucket
 
-  const tickCount = view.phase === 'ready'
-    ? Math.min(view.data.buckets.length, granularity === 'DAILY' ? 14 : granularity === 'WEEKLY' ? 12 : 24)
-    : 12
+  const bucketCount = view.phase === 'ready' ? view.data.buckets.length : 12
+  const maxTicks = granularity === 'DAILY' ? 14 : granularity === 'WEEKLY' ? 12 : 24
+  const tickSkip = Math.ceil(bucketCount / maxTicks)
+  const tickValues = view.phase === 'ready'
+    ? view.data.buckets.filter((_, i) => i % tickSkip === 0)
+    : []
 
   return (
     <div className="tr-page">
@@ -129,7 +191,7 @@ export default function TrendsPage() {
         <button
           className="load-btn"
           onClick={load}
-          disabled={view.phase === 'loading' || activeSeries.length === 0}
+          disabled={view.phase === 'loading' || series.every(s => !s.category.trim())}
         >
           {view.phase === 'loading' ? '…' : 'load'}
         </button>
@@ -159,7 +221,7 @@ export default function TrendsPage() {
                 {subcatOptions.map(sub => <option key={sub} value={sub} />)}
               </datalist>
               {series.length > 1 && (
-                <button className="tr-remove-btn" onClick={() => removeSeries(s.id)} title="Remove series">×</button>
+                <button className="tr-remove-btn" onClick={() => removeSeries(s.id)} title="Remove">×</button>
               )}
             </div>
           )
@@ -172,15 +234,16 @@ export default function TrendsPage() {
       </div>
 
       <div className="tr-chart-area">
-        {view.phase === 'idle' && (
-          <p className="hint">configure series above and press <kbd>load</kbd></p>
-        )}
+        {view.phase === 'idle' && <p className="hint">configure series above and press <kbd>load</kbd></p>}
         {view.phase === 'loading' && <p className="hint loading">fetching…</p>}
         {view.phase === 'error' && <p className="hint error">{view.message}</p>}
+        {view.phase === 'ready' && lineData.length === 0 && (
+          <p className="hint">no data for the selected series and date range</p>
+        )}
         {view.phase === 'ready' && lineData.length > 0 && (
           <ResponsiveLine
             data={lineData}
-            colors={d => d.color as string}
+            colors={d => (d as { color: string }).color}
             margin={{ top: 20, right: 24, bottom: 60, left: 72 }}
             xScale={{ type: 'point' }}
             yScale={{ type: 'linear', min: 0, max: 'auto', stacked: false }}
@@ -189,42 +252,31 @@ export default function TrendsPage() {
               tickPadding: 6,
               tickRotation: -40,
               format: formatTick,
-              tickValues: view.data.buckets.filter((_, i) =>
-                i % Math.ceil(view.data.buckets.length / tickCount) === 0,
-              ),
+              tickValues,
             }}
             axisLeft={{
               tickSize: 4,
               tickPadding: 6,
               format: (v: number) => EUR.format(v),
             }}
-            pointSize={view.data.granularity === 'DAILY' ? 3 : 6}
-            pointBorderWidth={2}
-            pointBorderColor={{ from: 'seriesColor' }}
-            pointColor={{ theme: 'background' }}
+            lineWidth={0}
+            pointSize={0}
             enableGridX={false}
             gridYValues={5}
             useMesh={true}
-            legends={lineData.length > 1 ? [{
-              anchor: 'bottom',
-              direction: 'row',
-              justify: false,
-              translateX: 0,
-              translateY: 56,
-              itemsSpacing: 16,
-              itemWidth: 140,
-              itemHeight: 18,
-              itemTextColor: '#9ca3af',
-              symbolSize: 10,
-              symbolShape: 'circle',
-            }] : []}
-            tooltip={({ point }) => (
-              <div className="tr-tooltip">
-                <span className="tr-tooltip-label" style={{ color: point.seriesColor }}>{point.seriesId}</span>
-                <span className="tr-tooltip-val">{EUR.format(point.data.y as number)}</span>
-                <span className="tr-tooltip-date">{formatBucket(point.data.x as string, view.data.granularity)}</span>
-              </div>
-            )}
+            layers={['grid', 'axes', CustomLineLayer, 'crosshair', 'mesh']}
+            tooltip={({ point }) => {
+              const label = seriesLabel(String(point.seriesId))
+              const role = seriesRoles.get(String(point.seriesId))
+              return (
+                <div className="tr-tooltip">
+                  <span className="tr-tooltip-label" style={{ color: point.seriesColor }}>{label}</span>
+                  {role === 'MAIN_CONTEXT' && <span className="tr-tooltip-role">category total</span>}
+                  <span className="tr-tooltip-val">{EUR.format(point.data.y as number)}</span>
+                  <span className="tr-tooltip-date">{formatBucket(point.data.x as string, view.data.granularity)}</span>
+                </div>
+              )
+            }}
             theme={{
               background: 'transparent',
               text: { fill: '#6b6b78', fontSize: 11, fontFamily: "ui-monospace, 'SF Mono', Consolas, monospace" },
@@ -233,9 +285,6 @@ export default function TrendsPage() {
               tooltip: { container: { display: 'none' } },
             }}
           />
-        )}
-        {view.phase === 'ready' && lineData.length === 0 && (
-          <p className="hint">no data for the selected series and date range</p>
         )}
       </div>
     </div>

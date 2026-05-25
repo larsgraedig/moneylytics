@@ -967,6 +967,12 @@ body {
   color: #6b6b78;
 }
 
+.tr-tooltip-role {
+  font-size: 10px;
+  color: #6b6b78;
+  letter-spacing: 0.04em;
+}
+
 /* ── csv import error view ───────────────── */
 
 .csv-error-header {
