@@ -10,6 +10,7 @@ fun interface GetTransactionsUseCase {
 data class GetTransactionsQuery(
     val from: LocalDate,
     val to: LocalDate,
+    val userId: Long,
     val onlyNegative: Boolean = false,
     val accountIban: String? = null,
     val category: String? = null,

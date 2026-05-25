@@ -13,9 +13,9 @@ class TransactionQueryService(
     override fun getTransactions(query: GetTransactionsQuery): List<Transaction> {
         val transactions =
             if (query.onlyNegative) {
-                transactionRepository.findNegativeByBookingDateBetween(query.from, query.to, query.accountIban)
+                transactionRepository.findNegativeByBookingDateBetween(query.from, query.to, query.userId, query.accountIban)
             } else {
-                transactionRepository.findByBookingDateBetween(query.from, query.to, query.accountIban)
+                transactionRepository.findByBookingDateBetween(query.from, query.to, query.userId, query.accountIban)
             }
         return transactions
             .let { list -> query.category?.let { cat -> list.filter { it.category == cat } } ?: list }

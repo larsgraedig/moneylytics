@@ -9,5 +9,5 @@ import org.springframework.stereotype.Service
 class AccountQueryService(
     private val accountRepository: AccountRepository,
 ) : GetAccountsUseCase {
-    override fun getAccounts(): List<Account> = accountRepository.findAll()
+    override fun getAccounts(userId: Long): List<Account> = accountRepository.findAll(userId)
 }

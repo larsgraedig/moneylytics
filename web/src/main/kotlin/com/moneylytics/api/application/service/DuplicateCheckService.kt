@@ -8,6 +8,8 @@ import org.springframework.stereotype.Service
 class DuplicateCheckService(
     private val transactionRepository: TransactionRepository,
 ) : CheckDuplicatesUseCase {
-    override fun findExistingFingerprints(fingerprints: Collection<String>): Set<String> =
-        transactionRepository.findExistingFingerprints(fingerprints)
+    override fun findExistingFingerprints(
+        fingerprints: Collection<String>,
+        userId: Long,
+    ): Set<String> = transactionRepository.findExistingFingerprints(fingerprints, userId)
 }

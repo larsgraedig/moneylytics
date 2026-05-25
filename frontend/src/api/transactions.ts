@@ -1,3 +1,5 @@
+import { fetchWithUser } from './client'
+
 export interface SankeyNode {
   name: string
   value: number
@@ -21,7 +23,7 @@ export interface Account {
 }
 
 export async function fetchAccounts(): Promise<Account[]> {
-  const res = await fetch('/accounts')
+  const res = await fetchWithUser('/accounts')
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
   const data = await res.json() as { accounts: Account[] }
   return data.accounts
@@ -51,7 +53,7 @@ export async function fetchTransactionList(
   if (category) params.set('category', category)
   if (subcategory) params.set('subcategory', subcategory)
   if (iban) params.set('iban', iban)
-  const res = await fetch(`/transactions/list?${params}`)
+  const res = await fetchWithUser(`/transactions/list?${params}`)
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
   return res.json() as Promise<TransactionListResponse>
 }
@@ -59,7 +61,7 @@ export async function fetchTransactionList(
 export async function fetchSankeyData(from: string, to: string, iban?: string): Promise<SankeyResponse> {
   const params = new URLSearchParams({ from, to })
   if (iban) params.set('iban', iban)
-  const res = await fetch(`/transactions/sankey?${params}`)
+  const res = await fetchWithUser(`/transactions/sankey?${params}`)
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
   return res.json() as Promise<SankeyResponse>
 }

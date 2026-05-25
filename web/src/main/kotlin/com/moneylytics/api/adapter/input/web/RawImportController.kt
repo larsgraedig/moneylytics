@@ -4,17 +4,21 @@ import com.moneylytics.api.application.port.input.CheckDuplicatesUseCase
 import com.moneylytics.api.application.port.input.FindIgnoredFingerprintsUseCase
 import com.moneylytics.api.application.port.input.ImportTransactionsCommand
 import com.moneylytics.api.application.port.input.ImportTransactionsUseCase
+import com.moneylytics.api.application.port.input.ResolveUserUseCase
 import com.moneylytics.api.application.port.input.SaveCategoriesUseCase
 import com.moneylytics.api.application.port.input.UpdateIgnoredTransactionsUseCase
 import com.moneylytics.api.domain.Category
 import com.moneylytics.api.domain.Transaction
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.reactive.awaitSingle
+import kotlinx.coroutines.withContext
 import org.springframework.core.io.buffer.DataBufferUtils
 import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
 import org.springframework.http.codec.multipart.FilePart
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
+import org.springframework.web.bind.annotation.RequestHeader
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestPart
 import org.springframework.web.bind.annotation.RestController
@@ -31,12 +35,15 @@ class RawImportController(
     private val updateIgnoredTransactionsUseCase: UpdateIgnoredTransactionsUseCase,
     private val importTransactionsUseCase: ImportTransactionsUseCase,
     private val saveCategoriesUseCase: SaveCategoriesUseCase,
+    private val resolveUserUseCase: ResolveUserUseCase,
 ) {
     @PostMapping("/raw/preview", consumes = [MediaType.MULTIPART_FORM_DATA_VALUE])
     suspend fun preview(
         @RequestPart("file") filePart: FilePart,
+        @RequestHeader("X-User-Id") externalId: String,
     ): ResponseEntity<out Any> {
         val csvContent = filePart.readContent()
+        val userId = withContext(Dispatchers.IO) { resolveUserUseCase.resolveUser(externalId) }
 
         return when (val result = mlpRawCsvParser.parse(csvContent)) {
             is MlpRawParseResult.FormatError ->
@@ -50,9 +57,16 @@ class RawImportController(
 
                 val allFingerprints = rowFingerprints.values.toSet()
                 val existingFingerprints =
-                    if (allFingerprints.isEmpty()) emptySet() else checkDuplicatesUseCase.findExistingFingerprints(allFingerprints)
+                    if (allFingerprints.isEmpty()) emptySet() else checkDuplicatesUseCase.findExistingFingerprints(allFingerprints, userId)
                 val ignoredFingerprints =
-                    if (allFingerprints.isEmpty()) emptySet() else findIgnoredFingerprintsUseCase.findIgnoredFingerprints(allFingerprints)
+                    if (allFingerprints.isEmpty()) {
+                        emptySet()
+                    } else {
+                        findIgnoredFingerprintsUseCase.findIgnoredFingerprints(
+                            allFingerprints,
+                            userId,
+                        )
+                    }
 
                 val response =
                     RawPreviewResponse(
@@ -77,17 +91,21 @@ class RawImportController(
     @PostMapping("/raw/import")
     suspend fun importRaw(
         @RequestBody request: ImportRawRequest,
+        @RequestHeader("X-User-Id") externalId: String,
     ): ResponseEntity<out Any> {
+        val userId = withContext(Dispatchers.IO) { resolveUserUseCase.resolveUser(externalId) }
+
         updateIgnoredTransactionsUseCase.update(
             toIgnore = request.toIgnore,
             toUnignore = request.toImport.map { it.fingerprint },
+            userId = userId,
         )
 
         val categories =
             request.toImport
                 .map { Category(name = it.category, subcategory = it.subcategory) }
                 .distinct()
-        saveCategoriesUseCase.saveCategories(categories)
+        saveCategoriesUseCase.saveCategories(categories, userId)
 
         val transactions =
             request.toImport.map { row ->
@@ -107,6 +125,7 @@ class RawImportController(
                 ImportTransactionsCommand(
                     transactions = transactions,
                     accountNames = mapOf(request.accountIban to request.accountName),
+                    userId = userId,
                 ),
             )
 

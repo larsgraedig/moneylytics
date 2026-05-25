@@ -3,7 +3,10 @@ package com.moneylytics.api.application.port.output
 import com.moneylytics.api.domain.Category
 
 interface CategoryRepository {
-    fun findAll(): List<Category>
+    fun findAll(userId: Long): List<Category>
 
-    fun saveAllIfAbsent(categories: List<Category>)
+    fun saveAllIfAbsent(
+        categories: List<Category>,
+        userId: Long,
+    )
 }

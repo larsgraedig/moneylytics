@@ -12,21 +12,25 @@ import java.time.LocalDate
 class TransactionPersistenceAdapter(
     private val jpaRepository: TransactionJpaRepository,
     private val accountJpaRepository: AccountJpaRepository,
+    private val userJpaRepository: UserJpaRepository,
 ) : TransactionRepository {
     @Transactional
-    override fun saveAll(transactions: List<Transaction>): Int {
+    override fun saveAll(
+        transactions: List<Transaction>,
+        userId: Long,
+    ): Int {
         if (transactions.isEmpty()) return 0
 
         val withFingerprints = assignFingerprints(transactions)
         val existing =
             jpaRepository
-                .findExistingFingerprints(withFingerprints.map { it.second })
+                .findExistingFingerprints(withFingerprints.map { it.second }, userId)
                 .toHashSet()
 
         val newEntities =
             withFingerprints
                 .filter { (_, fp) -> fp !in existing }
-                .map { (tx, fp) -> tx.toEntity(fp) }
+                .map { (tx, fp) -> tx.toEntity(fp, userId) }
 
         jpaRepository.saveAll(newEntities)
         return newEntities.size
@@ -42,42 +46,52 @@ class TransactionPersistenceAdapter(
     }
 
     @Transactional(readOnly = true)
-    override fun findExistingFingerprints(fingerprints: Collection<String>): Set<String> =
-        jpaRepository.findExistingFingerprints(fingerprints).toHashSet()
+    override fun findExistingFingerprints(
+        fingerprints: Collection<String>,
+        userId: Long,
+    ): Set<String> = jpaRepository.findExistingFingerprints(fingerprints, userId).toHashSet()
 
     @Transactional(readOnly = true)
     override fun findByBookingDateBetween(
         from: LocalDate,
         to: LocalDate,
+        userId: Long,
         accountIban: String?,
     ): List<Transaction> =
         if (accountIban != null) {
-            jpaRepository.findByAccountIbanAndBookingDateBetween(accountIban, from, to)
+            jpaRepository.findByUserIdAndAccountIbanAndBookingDateBetween(userId, accountIban, from, to)
         } else {
-            jpaRepository.findByBookingDateBetween(from, to)
+            jpaRepository.findByUserIdAndBookingDateBetween(userId, from, to)
         }.map { it.toDomain() }
 
     @Transactional(readOnly = true)
     override fun findNegativeByBookingDateBetween(
         from: LocalDate,
         to: LocalDate,
+        userId: Long,
         accountIban: String?,
     ): List<Transaction> =
         if (accountIban != null) {
-            jpaRepository.findByAccountIbanAndBookingDateBetweenAndAmountLessThan(
+            jpaRepository.findByUserIdAndAccountIbanAndBookingDateBetweenAndAmountLessThan(
+                userId,
                 accountIban,
                 from,
                 to,
                 BigDecimal.ZERO,
             )
         } else {
-            jpaRepository.findByBookingDateBetweenAndAmountLessThan(from, to, BigDecimal.ZERO)
+            jpaRepository.findByUserIdAndBookingDateBetweenAndAmountLessThan(userId, from, to, BigDecimal.ZERO)
         }.map { it.toDomain() }
 
-    private fun Transaction.toEntity(fingerprint: String): TransactionEntity {
+    private fun Transaction.toEntity(
+        fingerprint: String,
+        userId: Long,
+    ): TransactionEntity {
         val account =
-            accountJpaRepository.findByIban(accountIban)
-                ?: error("Account not found for IBAN $accountIban — ensure accounts are created before importing transactions")
+            accountJpaRepository.findByIbanAndUserId(accountIban, userId)
+                ?: error(
+                    "Account not found for IBAN $accountIban and userId $userId — ensure accounts are created before importing transactions",
+                )
         return TransactionEntity(
             category = category,
             subcategory = subcategory,
@@ -87,6 +101,7 @@ class TransactionPersistenceAdapter(
             currency = currency,
             account = account,
             fingerprint = fingerprint,
+            user = userJpaRepository.getReferenceById(userId),
         )
     }
 

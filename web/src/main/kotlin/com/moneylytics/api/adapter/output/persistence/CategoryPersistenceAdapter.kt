@@ -8,21 +8,27 @@ import org.springframework.transaction.annotation.Transactional
 @Component
 class CategoryPersistenceAdapter(
     private val jpaRepository: CategoryJpaRepository,
+    private val userJpaRepository: UserJpaRepository,
 ) : CategoryRepository {
     @Transactional(readOnly = true)
-    override fun findAll(): List<Category> = jpaRepository.findAll().map { Category(name = it.name, subcategory = it.subcategory) }
+    override fun findAll(userId: Long): List<Category> =
+        jpaRepository.findAllByUserId(userId).map { Category(name = it.name, subcategory = it.subcategory) }
 
     @Transactional
-    override fun saveAllIfAbsent(categories: List<Category>) {
+    override fun saveAllIfAbsent(
+        categories: List<Category>,
+        userId: Long,
+    ) {
         val existing =
             jpaRepository
-                .findAll()
+                .findAllByUserId(userId)
                 .map { it.name to it.subcategory }
                 .toHashSet()
+        val user = userJpaRepository.getReferenceById(userId)
         val toSave =
             categories
                 .filter { (it.name to it.subcategory) !in existing }
-                .map { CategoryEntity(name = it.name, subcategory = it.subcategory) }
+                .map { CategoryEntity(name = it.name, subcategory = it.subcategory, user = user) }
         jpaRepository.saveAll(toSave)
     }
 }

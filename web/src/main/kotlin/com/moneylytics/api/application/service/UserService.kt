@@ -1,19 +1,24 @@
-package com.moneylytics.api.config
+package com.moneylytics.api.application.service
 
-import com.moneylytics.api.application.port.input.SaveCategoriesUseCase
+import com.moneylytics.api.application.port.input.ResolveUserUseCase
+import com.moneylytics.api.application.port.output.CategoryRepository
+import com.moneylytics.api.application.port.output.UserRepository
 import com.moneylytics.api.domain.Category
-import org.springframework.boot.ApplicationArguments
-import org.springframework.boot.ApplicationRunner
-import org.springframework.core.annotation.Order
-import org.springframework.stereotype.Component
+import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
 
-@Component
-@Order(1)
-class CategoryDataInitializer(
-    private val saveCategoriesUseCase: SaveCategoriesUseCase,
-) : ApplicationRunner {
-    override fun run(args: ApplicationArguments) {
-        saveCategoriesUseCase.saveCategories(DEFAULT_CATEGORIES)
+@Service
+class UserService(
+    private val userRepository: UserRepository,
+    private val categoryRepository: CategoryRepository,
+) : ResolveUserUseCase {
+    @Transactional
+    override fun resolveUser(externalId: String): Long {
+        val existing = userRepository.findByExternalId(externalId)
+        if (existing != null) return existing.id
+        val user = userRepository.save(externalId)
+        categoryRepository.saveAllIfAbsent(DEFAULT_CATEGORIES, user.id)
+        return user.id
     }
 
     companion object {

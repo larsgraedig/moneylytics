@@ -2,10 +2,13 @@ package com.moneylytics.api.adapter.input.web
 
 import com.moneylytics.api.application.port.input.GetTransactionsQuery
 import com.moneylytics.api.application.port.input.GetTransactionsUseCase
+import com.moneylytics.api.application.port.input.ResolveUserUseCase
 import com.moneylytics.api.domain.Transaction
 import kotlinx.coroutines.test.runTest
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
+import org.mockito.kotlin.any
+import org.mockito.kotlin.doReturn
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.whenever
 import java.math.BigDecimal
@@ -13,7 +16,8 @@ import java.time.LocalDate
 
 class TransactionQueryControllerTest {
     private val getTransactionsUseCase: GetTransactionsUseCase = mock()
-    private val controller = TransactionQueryController(getTransactionsUseCase)
+    private val resolveUserUseCase: ResolveUserUseCase = mock { on { resolveUser(any()) } doReturn USER_ID }
+    private val controller = TransactionQueryController(getTransactionsUseCase, resolveUserUseCase)
 
     private val from = LocalDate.of(2025, 1, 1)
     private val to = LocalDate.of(2025, 1, 31)
@@ -22,7 +26,11 @@ class TransactionQueryControllerTest {
     fun `should return nodes for each distinct category and subcategory`() =
         runTest {
             // Arrange
-            whenever(getTransactionsUseCase.getTransactions(GetTransactionsQuery(from, to, onlyNegative = true))).thenReturn(
+            whenever(
+                getTransactionsUseCase.getTransactions(
+                    GetTransactionsQuery(from, to, USER_ID, onlyNegative = true),
+                ),
+            ).thenReturn(
                 listOf(
                     transaction(category = "Food", subcategory = "Groceries", amount = BigDecimal("-50.00")),
                     transaction(category = "Food", subcategory = "Restaurant", amount = BigDecimal("-30.00")),
@@ -31,7 +39,7 @@ class TransactionQueryControllerTest {
             )
 
             // Act
-            val response = controller.getSankeyData(from, to)
+            val response = controller.getSankeyData(from, to, externalId = "testUser")
 
             // Assert
             assertThat(response.nodes.map { it.name }).containsExactly(
@@ -47,7 +55,11 @@ class TransactionQueryControllerTest {
     fun `should set node value to the total flow through that node`() =
         runTest {
             // Arrange
-            whenever(getTransactionsUseCase.getTransactions(GetTransactionsQuery(from, to, onlyNegative = true))).thenReturn(
+            whenever(
+                getTransactionsUseCase.getTransactions(
+                    GetTransactionsQuery(from, to, USER_ID, onlyNegative = true),
+                ),
+            ).thenReturn(
                 listOf(
                     transaction(category = "Food", subcategory = "Groceries", amount = BigDecimal("-50.00")),
                     transaction(category = "Food", subcategory = "Restaurant", amount = BigDecimal("-30.00")),
@@ -56,7 +68,7 @@ class TransactionQueryControllerTest {
             )
 
             // Act
-            val response = controller.getSankeyData(from, to)
+            val response = controller.getSankeyData(from, to, externalId = "testUser")
 
             // Assert
             val nodeByName = response.nodes.associateBy { it.name }
@@ -71,7 +83,11 @@ class TransactionQueryControllerTest {
     fun `should aggregate amounts per category-subcategory pair and use absolute values`() =
         runTest {
             // Arrange
-            whenever(getTransactionsUseCase.getTransactions(GetTransactionsQuery(from, to, onlyNegative = true))).thenReturn(
+            whenever(
+                getTransactionsUseCase.getTransactions(
+                    GetTransactionsQuery(from, to, USER_ID, onlyNegative = true),
+                ),
+            ).thenReturn(
                 listOf(
                     transaction(category = "Food", subcategory = "Groceries", amount = BigDecimal("-50.00")),
                     transaction(category = "Food", subcategory = "Groceries", amount = BigDecimal("-20.00")),
@@ -80,7 +96,7 @@ class TransactionQueryControllerTest {
             )
 
             // Act
-            val response = controller.getSankeyData(from, to)
+            val response = controller.getSankeyData(from, to, externalId = "testUser")
 
             // Assert
             val groceriesLink = response.links.single { response.nodes[it.target].name == "Groceries" }
@@ -93,7 +109,11 @@ class TransactionQueryControllerTest {
     fun `should link source category index to target subcategory index`() =
         runTest {
             // Arrange
-            whenever(getTransactionsUseCase.getTransactions(GetTransactionsQuery(from, to, onlyNegative = true))).thenReturn(
+            whenever(
+                getTransactionsUseCase.getTransactions(
+                    GetTransactionsQuery(from, to, USER_ID, onlyNegative = true),
+                ),
+            ).thenReturn(
                 listOf(
                     transaction(category = "Food", subcategory = "Groceries", amount = BigDecimal("-50.00")),
                     transaction(category = "Transport", subcategory = "Fuel", amount = BigDecimal("-40.00")),
@@ -101,7 +121,7 @@ class TransactionQueryControllerTest {
             )
 
             // Act
-            val response = controller.getSankeyData(from, to)
+            val response = controller.getSankeyData(from, to, externalId = "testUser")
 
             // Assert
             val nodeNames = response.nodes.map { it.name }
@@ -120,14 +140,18 @@ class TransactionQueryControllerTest {
     @Test
     fun `should give the same subcategory name under different categories distinct right-side nodes`() =
         runTest {
-            whenever(getTransactionsUseCase.getTransactions(GetTransactionsQuery(from, to, onlyNegative = true))).thenReturn(
+            whenever(
+                getTransactionsUseCase.getTransactions(
+                    GetTransactionsQuery(from, to, USER_ID, onlyNegative = true),
+                ),
+            ).thenReturn(
                 listOf(
                     transaction(category = "Food", subcategory = "Other", amount = BigDecimal("-20.00")),
                     transaction(category = "Transport", subcategory = "Other", amount = BigDecimal("-30.00")),
                 ),
             )
 
-            val response = controller.getSankeyData(from, to)
+            val response = controller.getSankeyData(from, to, externalId = "testUser")
 
             assertThat(response.nodes.map { it.name }).containsExactly("Food", "Transport", "Other", "Other")
             val otherIndices = response.nodes.mapIndexedNotNull { i, n -> i.takeIf { n.name == "Other" } }
@@ -141,7 +165,11 @@ class TransactionQueryControllerTest {
             // "Insurance" is both a top-level category and a subcategory of "Auto".
             // If both map to the same index, D3 sankey merges them and produces a
             // degenerate layout where every link appears the same width.
-            whenever(getTransactionsUseCase.getTransactions(GetTransactionsQuery(from, to, onlyNegative = true))).thenReturn(
+            whenever(
+                getTransactionsUseCase.getTransactions(
+                    GetTransactionsQuery(from, to, USER_ID, onlyNegative = true),
+                ),
+            ).thenReturn(
                 listOf(
                     transaction(category = "Auto", subcategory = "Insurance", amount = BigDecimal("-435.00")),
                     transaction(category = "Insurance", subcategory = "Liability", amount = BigDecimal("-100.00")),
@@ -150,7 +178,7 @@ class TransactionQueryControllerTest {
             )
 
             // Act
-            val response = controller.getSankeyData(from, to)
+            val response = controller.getSankeyData(from, to, externalId = "testUser")
 
             // Assert — four distinct nodes, not three
             assertThat(response.nodes.map { it.name })
@@ -166,14 +194,18 @@ class TransactionQueryControllerTest {
     fun `should exclude transactions with positive amount`() =
         runTest {
             // Arrange
-            whenever(getTransactionsUseCase.getTransactions(GetTransactionsQuery(from, to, onlyNegative = true))).thenReturn(
+            whenever(
+                getTransactionsUseCase.getTransactions(
+                    GetTransactionsQuery(from, to, USER_ID, onlyNegative = true),
+                ),
+            ).thenReturn(
                 listOf(
                     transaction(category = "Food", subcategory = "Groceries", amount = BigDecimal("-50.00")),
                 ),
             )
 
             // Act
-            val response = controller.getSankeyData(from, to)
+            val response = controller.getSankeyData(from, to, externalId = "testUser")
 
             // Assert
             assertThat(response.nodes.map { it.name }).containsExactly("Food", "Groceries")
@@ -183,10 +215,14 @@ class TransactionQueryControllerTest {
     fun `should return empty nodes and links when no transactions exist`() =
         runTest {
             // Arrange
-            whenever(getTransactionsUseCase.getTransactions(GetTransactionsQuery(from, to, onlyNegative = true))).thenReturn(emptyList())
+            whenever(
+                getTransactionsUseCase.getTransactions(
+                    GetTransactionsQuery(from, to, USER_ID, onlyNegative = true),
+                ),
+            ).thenReturn(emptyList())
 
             // Act
-            val response = controller.getSankeyData(from, to)
+            val response = controller.getSankeyData(from, to, externalId = "testUser")
 
             // Assert
             assertThat(response.nodes).isEmpty()
@@ -206,4 +242,8 @@ class TransactionQueryControllerTest {
         currency = "EUR",
         accountIban = "DE00000000000000000000",
     )
+
+    companion object {
+        private const val USER_ID = 1L
+    }
 }

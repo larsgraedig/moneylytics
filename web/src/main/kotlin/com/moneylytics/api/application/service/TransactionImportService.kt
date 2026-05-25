@@ -14,10 +14,10 @@ class TransactionImportService(
 ) : ImportTransactionsUseCase {
     override fun importTransactions(command: ImportTransactionsCommand): Int {
         command.accountNames.forEach { (iban, name) ->
-            if (accountRepository.findByIban(iban) == null) {
-                accountRepository.save(Account(iban = iban, name = name))
+            if (accountRepository.findByIban(iban, command.userId) == null) {
+                accountRepository.save(Account(iban = iban, name = name), command.userId)
             }
         }
-        return transactionRepository.saveAll(command.transactions)
+        return transactionRepository.saveAll(command.transactions, command.userId)
     }
 }
