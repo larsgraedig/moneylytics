@@ -1,10 +1,21 @@
-.PHONY: publish release reset-db run
+.PHONY: publish release reset-db run compose docker-build
 
 publish:
-	./gradlew :api:jib
+	./gradlew :web:jib
+	docker buildx build --platform linux/arm64 --push \
+		-t larsu/moneylytics-frontend:$$(git rev-parse --short HEAD) \
+		./frontend
+
+docker-build:
+	./gradlew :web:jibDockerBuild
+
+compose: docker-build
+	docker compose up -d
+
+ENV ?= dev
 
 release:
-	./deployment/release.sh
+	./deployment/release.sh $(ENV)
 
 run:
 	docker compose up -d

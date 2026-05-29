@@ -12,7 +12,7 @@ type PageState =
   | { phase: 'loading' }
   | { phase: 'error'; message: string }
   | { phase: 'preview'; rows: RawPreviewRow[]; accountIban: string; accountName: string }
-  | { phase: 'imported'; importedCount: number; ignoredCount: number }
+  | { phase: 'imported'; importedCount: number; ignoredCount: number; skippedCount: number }
 
 type RowDecision =
   | { action: 'import'; category: string; subcategory: string }
@@ -109,7 +109,7 @@ export default function RawImportPage() {
       .filter(r => r.status === 'NEW' || r.status === 'PREVIOUSLY_IGNORED')
       .flatMap(r => {
         const d = decisions[r.rowNumber]
-        if (d?.action !== 'import') return []
+        if (d?.action !== 'import' || !d.category.trim() || !d.subcategory.trim()) return []
         return [{
           fingerprint: r.fingerprint!,
           bookingDate: r.bookingDate!,
@@ -125,10 +125,15 @@ export default function RawImportPage() {
       .filter(r => r.status === 'NEW' && decisions[r.rowNumber]?.action === 'ignore')
       .map(r => r.fingerprint!)
 
+    const skippedCount = rows
+      .filter(r => r.status === 'NEW' || r.status === 'PREVIOUSLY_IGNORED')
+      .filter(r => { const d = decisions[r.rowNumber]; return d?.action === 'import' && (!d.category.trim() || !d.subcategory.trim()) })
+      .length
+
     setImporting(true)
     try {
       const result = await importRaw({ accountIban, accountName, toImport, toIgnore })
-      setState({ phase: 'imported', importedCount: result.importedCount, ignoredCount: toIgnore.length })
+      setState({ phase: 'imported', importedCount: result.importedCount, ignoredCount: toIgnore.length, skippedCount })
     } catch (e) {
       setState({ phase: 'error', message: e instanceof Error ? e.message : 'Import failed' })
     } finally {
@@ -151,13 +156,11 @@ export default function RawImportPage() {
     rows.filter(r => r.status === 'NEW' && decisions[r.rowNumber]?.action === 'ignore')
 
   const canImport = (rows: RawPreviewRow[]) => {
-    const importing = toImportRows(rows)
-    const ignoring = toIgnoreRows(rows)
-    if (importing.length === 0 && ignoring.length === 0) return false
-    return importing.every(r => {
+    const readyToImport = toImportRows(rows).filter(r => {
       const d = decisions[r.rowNumber]
       return d?.action === 'import' && d.category.trim() && d.subcategory.trim()
     })
+    return readyToImport.length > 0 || toIgnoreRows(rows).length > 0
   }
 
   // ── result screen ──────────────────────────────────────────────────────────
@@ -166,6 +169,7 @@ export default function RawImportPage() {
     const parts: string[] = []
     if (state.importedCount > 0) parts.push(`${state.importedCount} transaction${state.importedCount !== 1 ? 's' : ''} imported`)
     if (state.ignoredCount > 0) parts.push(`${state.ignoredCount} marked as ignored`)
+    if (state.skippedCount > 0) parts.push(`${state.skippedCount} skipped (no category)`)
     return (
       <div className="ri-center">
         <p className="ri-success">{parts.join(' · ')}</p>
@@ -229,7 +233,7 @@ export default function RawImportPage() {
             className="load-btn ri-import-btn"
             onClick={handleImport}
             disabled={!canImport(rows) || importing}
-            title={!canImport(rows) ? 'Assign category + subcategory to all rows set to import' : ''}
+            title={!canImport(rows) ? 'Assign a category to at least one row to enable import' : ''}
           >
             {importing ? '…' : 'confirm'}
           </button>

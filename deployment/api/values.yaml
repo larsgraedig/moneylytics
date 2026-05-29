@@ -160,3 +160,17 @@ nodeSelector: { }
 tolerations: [ ]
 
 affinity: { }
+
+frontend:
+  image:
+    repository: larsu/moneylytics-frontend
+    tag: "latest"
+  service:
+    type: NodePort
+
+postgres:
+  image: postgres:16-alpine
+  database: moneylyticsdb
+  username: moneylytics
+  password: moneylytics
+  storage: 2Gi

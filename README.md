@@ -48,6 +48,26 @@ transactions on every startup. All data is lost when the application stops.
 ./gradlew :web:bootRun --args='--spring.profiles.active=local'
 ```
 
+### Docker (full stack)
+
+To run the frontend, backend, and Postgres all in Docker:
+
+```bash
+make compose
+```
+
+This builds the backend image to the local Docker daemon via Jib, then starts all three services. Equivalent to:
+
+```bash
+./gradlew :web:jibDockerBuild   # build backend image locally
+docker compose up -d            # start all services
+```
+
+| Service | URL |
+|---------|-----|
+| Frontend | http://localhost:3000 |
+| Backend | http://localhost:8080 |
+
 ### Importing transactions
 
 With the backend running, import a CSV file using the bundled script:
@@ -90,6 +110,17 @@ Runs at **http://localhost:5173** and proxies `/transactions` to the backend on 
 | http://localhost:8080/swagger-ui/index.html | Full interactive Swagger UI |
 | http://localhost:8080/v3/api-docs | Raw OpenAPI JSON spec |
 | http://localhost:8082 | H2 database console (`local` profile only) |
+
+## Deployment
+
+Builds and pushes both the backend (via Jib) and frontend images to Docker Hub, then performs a Helm upgrade into the target Kubernetes namespace.
+
+```bash
+make release            # deploy to moneylytics-dev (default)
+make release ENV=prod   # deploy to moneylytics-prod
+```
+
+Requires `DOCKERHUB_USERNAME` and `DOCKERHUB_PASSWORD` environment variables to be set.
 
 #### H2 console connection (`local` profile only)
 
