@@ -973,6 +973,12 @@ body {
   letter-spacing: 0.04em;
 }
 
+.tr-tooltip-hint {
+  font-size: 10px;
+  color: #44444c;
+  margin-top: 2px;
+}
+
 /* ── csv import error view ───────────────── */
 
 .csv-error-header {

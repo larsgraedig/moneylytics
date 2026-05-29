@@ -8,6 +8,7 @@ import {
   type SeriesRole,
   type TrendsResponse,
 } from '../api/trends'
+import TransactionListPanel from './TransactionListPanel'
 
 const COLORS = [
   '#f59e0b',
@@ -22,6 +23,25 @@ const COLORS = [
 
 function isoDate(d: Date) {
   return d.toISOString().slice(0, 10)
+}
+
+function bucketDateRange(bucket: string, granularity: Granularity): { from: string; to: string } {
+  if (granularity === 'DAILY') return { from: bucket, to: bucket }
+  if (granularity === 'MONTHLY') {
+    const [y, m] = bucket.split('-').map(Number)
+    const lastDay = new Date(y, m, 0).getDate()
+    return { from: `${bucket}-01`, to: `${bucket}-${String(lastDay).padStart(2, '0')}` }
+  }
+  // WEEKLY: "2024-W02" — find the Monday of that ISO week
+  const [yearStr, weekStr] = bucket.split('-W')
+  const year = Number(yearStr)
+  const week = Number(weekStr)
+  const jan4 = new Date(year, 0, 4)
+  const monday = new Date(jan4)
+  monday.setDate(jan4.getDate() - ((jan4.getDay() + 6) % 7) + (week - 1) * 7)
+  const sunday = new Date(monday)
+  sunday.setDate(monday.getDate() + 6)
+  return { from: isoDate(monday), to: isoDate(sunday) }
 }
 
 const today = isoDate(new Date())
@@ -111,6 +131,7 @@ export default function TrendsPage() {
   const [series, setSeries] = useState<SeriesConfig[]>([{ id: newId(), category: '', subcategory: '' }])
   const [categories, setCategories] = useState<CategoryGroup[]>([])
   const [view, setView] = useState<ViewState>({ phase: 'idle' })
+  const [drilldown, setDrilldown] = useState<{ nodeKey: string; from: string; to: string } | null>(null)
 
   useEffect(() => {
     fetchCamtCategories().then(r => setCategories(r.categories)).catch(() => {})
@@ -233,7 +254,7 @@ export default function TrendsPage() {
         </datalist>
       </div>
 
-      <div className="tr-chart-area">
+      <div className="tr-chart-area" style={view.phase === 'ready' && lineData.length > 0 ? { cursor: 'pointer' } : undefined}>
         {view.phase === 'idle' && <p className="hint">configure series above and press <kbd>load</kbd></p>}
         {view.phase === 'loading' && <p className="hint loading">fetching…</p>}
         {view.phase === 'error' && <p className="hint error">{view.message}</p>}
@@ -265,6 +286,20 @@ export default function TrendsPage() {
             gridYValues={5}
             useMesh={true}
             layers={['grid', 'axes', CustomLineLayer, 'crosshair', 'mesh']}
+            onClick={(point: any) => {
+              const id = String(point.seriesId)
+              const nullIdx = id.indexOf('\x00')
+              const groupIdx = Number(id.slice(0, nullIdx))
+              const label = id.slice(nullIdx + 1)
+              const role = seriesRoles.get(id)
+              const seriesConfig = series[groupIdx]
+              if (!seriesConfig) return
+              const category = seriesConfig.category
+              const subcategory = (role === 'SUB_SELECTED' || role === 'SUB_CONTEXT') ? label : undefined
+              const nodeKey = subcategory ? `sub:${category}:${subcategory}` : `cat:${category}`
+              const { from: bucketFrom, to: bucketTo } = bucketDateRange(String(point.data.x), view.data.granularity)
+              setDrilldown({ nodeKey, from: bucketFrom, to: bucketTo })
+            }}
             tooltip={({ point }) => {
               const label = seriesLabel(String(point.seriesId))
               const role = seriesRoles.get(String(point.seriesId))
@@ -274,6 +309,7 @@ export default function TrendsPage() {
                   {role === 'MAIN_CONTEXT' && <span className="tr-tooltip-role">category total</span>}
                   <span className="tr-tooltip-val">{EUR.format(point.data.y as number)}</span>
                   <span className="tr-tooltip-date">{formatBucket(point.data.x as string, view.data.granularity)}</span>
+                  <span className="tr-tooltip-hint">· click to drill down</span>
                 </div>
               )
             }}
@@ -287,6 +323,15 @@ export default function TrendsPage() {
           />
         )}
       </div>
+
+      {drilldown && (
+        <TransactionListPanel
+          nodeKey={drilldown.nodeKey}
+          from={drilldown.from}
+          to={drilldown.to}
+          onClose={() => setDrilldown(null)}
+        />
+      )}
     </div>
   )
 }
