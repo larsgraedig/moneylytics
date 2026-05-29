@@ -1,4 +1,27 @@
 services:
+  frontend:
+    build:
+      context: ./frontend
+    ports:
+      - "3000:80"
+    environment:
+      BACKEND_URL: http://backend:8080
+    depends_on:
+      - backend
+
+  backend:
+    image: larsu/moneylytics:latest
+    pull_policy: never
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/moneylyticsdb
+      SPRING_DATASOURCE_USERNAME: moneylytics
+      SPRING_DATASOURCE_PASSWORD: moneylytics
+    depends_on:
+      postgres:
+        condition: service_healthy
+
   postgres:
     image: postgres:17-alpine
     environment:

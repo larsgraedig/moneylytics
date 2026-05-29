@@ -44,6 +44,19 @@ spec:
             - name: http
               containerPort: {{ .Values.service.port }}
               protocol: TCP
+          env:
+            - name: SPRING_DATASOURCE_URL
+              value: "jdbc:postgresql://{{ include "moneylytics.fullname" . }}-postgres:5432/{{ .Values.postgres.database }}"
+            - name: SPRING_DATASOURCE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "moneylytics.fullname" . }}-postgres
+                  key: username
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "moneylytics.fullname" . }}-postgres
+                  key: password
           {{- with .Values.livenessProbe }}
           livenessProbe:
             {{- toYaml . | nindent 12 }}
