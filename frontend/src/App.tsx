@@ -4,6 +4,7 @@ import RawImportPage from './components/RawImportPage'
 import CamtImportPage from './components/CamtImportPage'
 import CsvImportPage from './components/CsvImportPage'
 import TrendsPage from './components/TrendsPage'
+import ThresholdsPage from './components/ThresholdsPage'
 import TransactionListPanel from './components/TransactionListPanel'
 import { fetchSankeyData, fetchAccounts, type SankeyResponse, type Account } from './api/transactions'
 import { useUser } from './context/UserContext'
@@ -15,7 +16,7 @@ function isoDate(d: Date) {
 const today = isoDate(new Date())
 const firstOfYear = isoDate(new Date(new Date().getFullYear(), 0, 1))
 
-type Tab = 'analytics' | 'trends' | 'csv' | 'import' | 'camt'
+type Tab = 'analytics' | 'trends' | 'thresholds' | 'csv' | 'import' | 'camt'
 
 type ViewState =
   | { phase: 'idle' }
@@ -68,6 +69,12 @@ export default function App() {
             onClick={() => setTab('trends')}
           >
             trends
+          </button>
+          <button
+            className={`tab-btn${tab === 'thresholds' ? ' active' : ''}`}
+            onClick={() => setTab('thresholds')}
+          >
+            thresholds
           </button>
           <button
             className={`tab-btn${tab === 'csv' ? ' active' : ''}`}
@@ -137,7 +144,7 @@ export default function App() {
           </div>
         )}
 
-        {(tab === 'csv' || tab === 'import' || tab === 'camt' || tab === 'trends') && <div className="controls" />}
+        {(tab === 'csv' || tab === 'import' || tab === 'camt' || tab === 'trends' || tab === 'thresholds') && <div className="controls" />}
 
         <select
           className="user-select"
@@ -183,6 +190,7 @@ export default function App() {
         )}
 
         {tab === 'trends' && <TrendsPage key={userId} />}
+        {tab === 'thresholds' && <ThresholdsPage key={userId} />}
         {tab === 'csv' && <CsvImportPage key={userId} />}
         {tab === 'import' && <RawImportPage key={userId} />}
         {tab === 'camt' && <CamtImportPage key={userId} />}

@@ -9,6 +9,7 @@ import {
   type TrendsResponse,
 } from '../api/trends'
 import TransactionListPanel from './TransactionListPanel'
+import { fetchThresholds, type Threshold, type ThresholdPeriod as TThresholdPeriod } from '../api/thresholds'
 
 const COLORS = [
   '#f59e0b',
@@ -27,6 +28,15 @@ function isoDate(d: Date) {
 
 function bucketDateRange(bucket: string, granularity: Granularity): { from: string; to: string } {
   if (granularity === 'DAILY') return { from: bucket, to: bucket }
+  if (granularity === 'QUARTERLY') {
+    const [yearStr, qStr] = bucket.split('-Q')
+    const year = Number(yearStr), q = Number(qStr)
+    const startMonth = (q - 1) * 3 + 1
+    const endMonth = startMonth + 2
+    const lastDay = new Date(year, endMonth, 0).getDate()
+    const pad = (n: number) => String(n).padStart(2, '0')
+    return { from: `${year}-${pad(startMonth)}-01`, to: `${year}-${pad(endMonth)}-${lastDay}` }
+  }
   if (granularity === 'MONTHLY') {
     const [y, m] = bucket.split('-').map(Number)
     const lastDay = new Date(y, m, 0).getDate()
@@ -51,6 +61,10 @@ let idSeq = 0
 function newId() { return String(++idSeq) }
 
 function formatBucket(bucket: string, granularity: Granularity): string {
+  if (granularity === 'QUARTERLY') {
+    const [y, q] = bucket.split('-')
+    return `${q} '${y.slice(2)}`
+  }
   if (granularity === 'MONTHLY') {
     const [y, m] = bucket.split('-')
     return new Intl.DateTimeFormat('de-DE', { month: 'short', year: '2-digit' }).format(
@@ -118,6 +132,50 @@ function makeLineLayer(roles: Map<string, SeriesRole>) {
   }
 }
 
+const SEVERITY_COLORS = { notice: '#fbbf24', warning: '#f97316', critical: '#ef4444' }
+const DAYS_PER_PERIOD: Record<TThresholdPeriod, number> = {
+  WEEKLY: 7, MONTHLY: 365.25 / 12, QUARTERLY: 365.25 / 4, YEARLY: 365.25,
+}
+const DAYS_PER_BUCKET: Record<Granularity, number> = {
+  DAILY: 1, WEEKLY: 7, MONTHLY: 365.25 / 12, QUARTERLY: 365.25 / 4,
+}
+
+function normalizeThreshold(amount: number, period: TThresholdPeriod, granularity: Granularity): number {
+  return (amount / DAYS_PER_PERIOD[period]) * DAYS_PER_BUCKET[granularity]
+}
+
+interface ThresholdLine { value: number; color: string; label: string }
+
+function makeThresholdLayer(lines: ThresholdLine[]) {
+  return function ThresholdLayer({ innerWidth, yScale }: any) {
+    if (lines.length === 0) return null
+    return (
+      <>
+        {lines.map((line, i) => {
+          const y = (yScale as (v: number) => number)(line.value)
+          if (y == null || y < 0) return null
+          return (
+            <g key={i}>
+              <line
+                x1={0} y1={y} x2={innerWidth} y2={y}
+                stroke={line.color} strokeWidth={1}
+                strokeDasharray="6 4" opacity={0.75}
+              />
+              <text
+                x={innerWidth - 4} y={y - 4}
+                fill={line.color} fontSize={9}
+                textAnchor="end" fontFamily="ui-monospace,'SF Mono',Consolas,monospace"
+              >
+                {line.label}
+              </text>
+            </g>
+          )
+        })}
+      </>
+    )
+  }
+}
+
 type ViewState =
   | { phase: 'idle' }
   | { phase: 'loading' }
@@ -132,9 +190,11 @@ export default function TrendsPage() {
   const [categories, setCategories] = useState<CategoryGroup[]>([])
   const [view, setView] = useState<ViewState>({ phase: 'idle' })
   const [drilldown, setDrilldown] = useState<{ nodeKey: string; from: string; to: string } | null>(null)
+  const [thresholds, setThresholds] = useState<Threshold[]>([])
 
   useEffect(() => {
     fetchCamtCategories().then(r => setCategories(r.categories)).catch(() => {})
+    fetchThresholds().then(setThresholds).catch(() => {})
   }, [])
 
   const addSeries = () => setSeries(prev => [...prev, { id: newId(), category: '', subcategory: '' }])
@@ -174,11 +234,34 @@ export default function TrendsPage() {
 
   const CustomLineLayer = useMemo(() => makeLineLayer(seriesRoles), [seriesRoles])
 
+  const thresholdLines = useMemo<ThresholdLine[]>(() => {
+    if (view.phase !== 'ready') return []
+    const gran = view.data.granularity
+    const lines: ThresholdLine[] = []
+    for (const s of series) {
+      if (!s.category.trim()) continue
+      for (const t of thresholds) {
+        if (t.category !== s.category) continue
+        const subcatMatch = t.subcategory == null
+          ? !s.subcategory  // category-level threshold shown when no subcategory is selected
+          : t.subcategory === s.subcategory
+        if (!subcatMatch) continue
+        const scope = t.subcategory ?? t.category
+        if (t.notice != null)   lines.push({ value: normalizeThreshold(t.notice,   t.period, gran), color: SEVERITY_COLORS.notice,   label: `${scope} notice`   })
+        if (t.warning != null)  lines.push({ value: normalizeThreshold(t.warning,  t.period, gran), color: SEVERITY_COLORS.warning,  label: `${scope} warning`  })
+        if (t.critical != null) lines.push({ value: normalizeThreshold(t.critical, t.period, gran), color: SEVERITY_COLORS.critical, label: `${scope} critical` })
+      }
+    }
+    return lines
+  }, [view, series, thresholds])
+
+  const ThresholdLayer = useMemo(() => makeThresholdLayer(thresholdLines), [thresholdLines])
+
   const formatTick = (bucket: string) =>
     view.phase === 'ready' ? formatBucket(bucket, view.data.granularity) : bucket
 
   const bucketCount = view.phase === 'ready' ? view.data.buckets.length : 12
-  const maxTicks = granularity === 'DAILY' ? 14 : granularity === 'WEEKLY' ? 12 : 24
+  const maxTicks = granularity === 'DAILY' ? 14 : granularity === 'WEEKLY' ? 12 : granularity === 'QUARTERLY' ? 8 : 24
   const tickSkip = Math.ceil(bucketCount / maxTicks)
   const tickValues = view.phase === 'ready'
     ? view.data.buckets.filter((_, i) => i % tickSkip === 0)
@@ -204,6 +287,7 @@ export default function TrendsPage() {
           value={granularity}
           onChange={e => setGranularity(e.target.value as Granularity)}
         >
+          <option value="QUARTERLY">quarterly</option>
           <option value="MONTHLY">monthly</option>
           <option value="WEEKLY">weekly</option>
           <option value="DAILY">daily</option>
@@ -285,7 +369,7 @@ export default function TrendsPage() {
             enableGridX={false}
             gridYValues={5}
             useMesh={true}
-            layers={['grid', 'axes', CustomLineLayer, 'crosshair', 'mesh']}
+            layers={['grid', 'axes', CustomLineLayer, ThresholdLayer, 'crosshair', 'mesh']}
             onClick={(point: any) => {
               const id = String(point.seriesId)
               const nullIdx = id.indexOf('\x00')

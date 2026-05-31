@@ -9,6 +9,7 @@ export default defineConfig({
       '/accounts': 'http://localhost:8080',
       '/categories': 'http://localhost:8080',
       '/users': 'http://localhost:8080',
+      '/thresholds': 'http://localhost:8080',
     },
   },
 })
