@@ -8,6 +8,7 @@ export default defineConfig({
       '/transactions': 'http://localhost:8080',
       '/accounts': 'http://localhost:8080',
       '/categories': 'http://localhost:8080',
+      '/users': 'http://localhost:8080',
     },
   },
 })

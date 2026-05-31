@@ -14,5 +14,7 @@ class UserPersistenceAdapter(
     @Transactional
     override fun save(externalId: String): User = jpaRepository.save(UserEntity(externalId = externalId)).toDomain()
 
+    override fun findAll(): List<User> = jpaRepository.findAll().map { it.toDomain() }
+
     private fun UserEntity.toDomain() = User(id = id!!, externalId = externalId)
 }

@@ -6,6 +6,7 @@ import CsvImportPage from './components/CsvImportPage'
 import TrendsPage from './components/TrendsPage'
 import TransactionListPanel from './components/TransactionListPanel'
 import { fetchSankeyData, fetchAccounts, type SankeyResponse, type Account } from './api/transactions'
+import { useUser } from './context/UserContext'
 
 function isoDate(d: Date) {
   return d.toISOString().slice(0, 10)
@@ -23,6 +24,7 @@ type ViewState =
   | { phase: 'ready'; data: SankeyResponse }
 
 export default function App() {
+  const { userId, users, setUserId } = useUser()
   const [tab, setTab] = useState<Tab>('analytics')
   const [from, setFrom] = useState(firstOfYear)
   const [to, setTo] = useState(today)
@@ -32,8 +34,12 @@ export default function App() {
   const [activeNode, setActiveNode] = useState<string | null>(null)
 
   useEffect(() => {
-    fetchAccounts().then(setAccounts).catch(() => {/* accounts unavailable, dropdown stays empty */})
-  }, [])
+    setAccounts([])
+    setSelectedIban('')
+    setView({ phase: 'idle' })
+    setActiveNode(null)
+    fetchAccounts().then(setAccounts).catch(() => {})
+  }, [userId])
 
   async function load() {
     setView({ phase: 'loading' })
@@ -132,6 +138,16 @@ export default function App() {
         )}
 
         {(tab === 'csv' || tab === 'import' || tab === 'camt' || tab === 'trends') && <div className="controls" />}
+
+        <select
+          className="user-select"
+          value={userId}
+          onChange={e => setUserId(e.target.value)}
+        >
+          {[...new Set([userId, ...users])].map(u => (
+            <option key={u} value={u}>{u}</option>
+          ))}
+        </select>
       </header>
 
       <main className="stage">
@@ -166,10 +182,10 @@ export default function App() {
           </>
         )}
 
-        {tab === 'trends' && <TrendsPage />}
-        {tab === 'csv' && <CsvImportPage />}
-        {tab === 'import' && <RawImportPage />}
-        {tab === 'camt' && <CamtImportPage />}
+        {tab === 'trends' && <TrendsPage key={userId} />}
+        {tab === 'csv' && <CsvImportPage key={userId} />}
+        {tab === 'import' && <RawImportPage key={userId} />}
+        {tab === 'camt' && <CamtImportPage key={userId} />}
       </main>
     </div>
   )

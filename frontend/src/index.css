@@ -157,6 +157,28 @@ body {
   color: var(--text);
 }
 
+.user-select {
+  height: 34px;
+  padding: 0 10px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--accent);
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  outline: none;
+  color-scheme: dark;
+  transition: border-color 0.12s;
+  flex-shrink: 0;
+}
+
+.user-select:hover,
+.user-select:focus {
+  border-color: var(--accent);
+}
+
 .load-btn {
   height: 34px;
   padding: 0 18px;
