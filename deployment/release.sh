@@ -24,7 +24,7 @@ docker buildx build \
   ./frontend
 
 # 4. Deploy via Helm, setting image tags to the current commit hash
-helm install moneylytics deployment/api \
+helm upgrade moneylytics deployment/api \
   --namespace "$NAMESPACE" \
   --set image.tag="$COMMIT_HASH" \
   --set frontend.image.tag="$COMMIT_HASH"
