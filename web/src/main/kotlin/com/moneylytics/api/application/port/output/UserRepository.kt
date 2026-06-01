@@ -6,4 +6,6 @@ interface UserRepository {
     fun findByExternalId(externalId: String): User?
 
     fun save(externalId: String): User
+
+    fun findAll(): List<User>
 }

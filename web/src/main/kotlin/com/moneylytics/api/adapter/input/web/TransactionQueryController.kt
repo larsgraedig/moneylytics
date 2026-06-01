@@ -163,6 +163,14 @@ class TransactionQueryController(
                     .takeWhile { !it.isAfter(to) }
                     .map { it.toString() }
                     .toList()
+
+            Granularity.QUARTERLY -> {
+                val startOfQuarter = from.withMonth(((from.monthValue - 1) / 3) * 3 + 1).withDayOfMonth(1)
+                generateSequence(startOfQuarter) { it.plusMonths(3) }
+                    .takeWhile { !it.isAfter(to) }
+                    .map { quarterKey(it) }
+                    .toList()
+            }
         }
 
     private fun bucketKey(
@@ -173,10 +181,16 @@ class TransactionQueryController(
             Granularity.MONTHLY -> YearMonth.from(date).toString()
             Granularity.WEEKLY -> weekKey(date.with(DayOfWeek.MONDAY))
             Granularity.DAILY -> date.toString()
+            Granularity.QUARTERLY -> quarterKey(date)
         }
 
     private fun weekKey(monday: LocalDate): String =
         "${monday.get(IsoFields.WEEK_BASED_YEAR)}-W${String.format("%02d", monday.get(IsoFields.WEEK_OF_WEEK_BASED_YEAR))}"
+
+    private fun quarterKey(date: LocalDate): String {
+        val quarter = (date.monthValue - 1) / 3 + 1
+        return "${date.year}-Q$quarter"
+    }
 
     private fun List<Transaction>.toSankeyResponse(): SankeyResponse {
         // Keys are prefixed so that:

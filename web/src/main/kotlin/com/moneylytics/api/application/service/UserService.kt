@@ -1,9 +1,11 @@
 package com.moneylytics.api.application.service
 
+import com.moneylytics.api.application.port.input.ListUsersUseCase
 import com.moneylytics.api.application.port.input.ResolveUserUseCase
 import com.moneylytics.api.application.port.output.CategoryRepository
 import com.moneylytics.api.application.port.output.UserRepository
 import com.moneylytics.api.domain.Category
+import com.moneylytics.api.domain.User
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
@@ -11,7 +13,10 @@ import org.springframework.transaction.annotation.Transactional
 class UserService(
     private val userRepository: UserRepository,
     private val categoryRepository: CategoryRepository,
-) : ResolveUserUseCase {
+) : ResolveUserUseCase,
+    ListUsersUseCase {
+    override fun listUsers(): List<User> = userRepository.findAll()
+
     @Transactional
     override fun resolveUser(externalId: String): Long {
         val existing = userRepository.findByExternalId(externalId)
