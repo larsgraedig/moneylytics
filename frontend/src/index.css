@@ -1165,3 +1165,98 @@ body {
 }
 
 .th-delete-btn:hover { color: var(--error); }
+
+/* ── breakdown (pie) page ────────────────── */
+
+.pi-page {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.pi-breadcrumb {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 20px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.pi-back-btn {
+  height: 26px;
+  padding: 0 10px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  color: var(--text-muted);
+  font-family: var(--mono);
+  font-size: 11px;
+  cursor: pointer;
+  transition: border-color 0.12s, color 0.12s;
+}
+
+.pi-back-btn:hover {
+  border-color: var(--border-hi);
+  color: var(--text);
+}
+
+.pi-crumb-sep {
+  color: var(--text-dim);
+}
+
+.pi-crumb-current {
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.pi-all-btn {
+  margin-left: auto;
+  height: 26px;
+  padding: 0 10px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  color: var(--text-muted);
+  font-family: var(--mono);
+  font-size: 11px;
+  cursor: pointer;
+  transition: border-color 0.12s, color 0.12s;
+}
+
+.pi-all-btn:hover {
+  border-color: var(--accent-dim);
+  color: var(--accent);
+}
+
+.pi-chart-area {
+  flex: 1;
+  min-height: 0;
+}
+
+.pi-tooltip {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
+  background: #16161a;
+  border: 1px solid #2a2a32;
+  border-radius: 3px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
+  font-family: ui-monospace, 'SF Mono', Consolas, monospace;
+  font-size: 11px;
+}
+
+.pi-tooltip-label {
+  font-weight: 600;
+  font-size: 12px;
+}
+
+.pi-tooltip-value {
+  color: #e4e4ea;
+  font-size: 13px;
+}
