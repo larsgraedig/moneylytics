@@ -198,6 +198,17 @@ class TransactionQueryController(
                     .map { quarterKey(it) }
                     .toList()
             }
+
+            Granularity.YEARLY -> (from.year..to.year).map { it.toString() }
+
+            Granularity.BI_YEARLY -> {
+                val startMonth = if (from.monthValue <= 6) 1 else 7
+                val startDate = from.withMonth(startMonth).withDayOfMonth(1)
+                generateSequence(startDate) { it.plusMonths(6) }
+                    .takeWhile { !it.isAfter(to) }
+                    .map { halfYearKey(it) }
+                    .toList()
+            }
         }
 
     private fun bucketKey(
@@ -209,6 +220,8 @@ class TransactionQueryController(
             Granularity.WEEKLY -> weekKey(date.with(DayOfWeek.MONDAY))
             Granularity.DAILY -> date.toString()
             Granularity.QUARTERLY -> quarterKey(date)
+            Granularity.YEARLY -> date.year.toString()
+            Granularity.BI_YEARLY -> halfYearKey(date)
         }
 
     private fun weekKey(monday: LocalDate): String =
@@ -217,6 +230,11 @@ class TransactionQueryController(
     private fun quarterKey(date: LocalDate): String {
         val quarter = (date.monthValue - 1) / 3 + 1
         return "${date.year}-Q$quarter"
+    }
+
+    private fun halfYearKey(date: LocalDate): String {
+        val half = if (date.monthValue <= 6) 1 else 2
+        return "${date.year}-H$half"
     }
 
     private fun List<Transaction>.toSankeyResponse(): SankeyResponse {

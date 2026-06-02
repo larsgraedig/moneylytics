@@ -1,6 +1,6 @@
 import { fetchWithUser } from './client'
 
-export type Granularity = 'MONTHLY' | 'WEEKLY' | 'DAILY' | 'QUARTERLY'
+export type Granularity = 'MONTHLY' | 'WEEKLY' | 'DAILY' | 'QUARTERLY' | 'YEARLY' | 'BI_YEARLY'
 export type SeriesRole = 'MAIN_SELECTED' | 'MAIN_CONTEXT' | 'SUB_SELECTED' | 'SUB_CONTEXT'
 
 export interface TrendSeriesEntry {
