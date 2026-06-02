@@ -1001,6 +1001,44 @@ body {
   margin-top: 2px;
 }
 
+.tr-threshold-tooltip {
+  position: fixed;
+  z-index: 200;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 10px;
+  background: #16161a;
+  border: 1px solid #2a2a32;
+  border-radius: 3px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
+  font-family: ui-monospace, 'SF Mono', Consolas, monospace;
+  font-size: 11px;
+  min-width: 180px;
+}
+
+.tr-threshold-tooltip-label {
+  font-weight: 600;
+  font-size: 12px;
+  margin-bottom: 2px;
+}
+
+.tr-threshold-tooltip-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+}
+
+.tr-threshold-tooltip-key {
+  color: #6b6b78;
+}
+
+.tr-threshold-tooltip-val {
+  color: #e4e4ea;
+}
+
 /* ── csv import error view ───────────────── */
 
 .csv-error-header {

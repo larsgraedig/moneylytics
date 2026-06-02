@@ -153,14 +153,36 @@ const DAYS_PER_BUCKET: Record<Granularity, number> = {
   DAILY: 1, WEEKLY: 7, MONTHLY: 365.25 / 12, QUARTERLY: 365.25 / 4,
   BI_YEARLY: 365.25 / 2, YEARLY: 365.25,
 }
+const PERIOD_LABELS: Record<TThresholdPeriod, string> = {
+  WEEKLY: 'week', MONTHLY: 'month', QUARTERLY: 'quarter', YEARLY: 'year',
+}
+const GRANULARITY_LABELS: Record<Granularity, string> = {
+  DAILY: 'day', WEEKLY: 'week', MONTHLY: 'month', QUARTERLY: 'quarter',
+  BI_YEARLY: 'half-year', YEARLY: 'year',
+}
 
 function normalizeThreshold(amount: number, period: TThresholdPeriod, granularity: Granularity): number {
   return (amount / DAYS_PER_PERIOD[period]) * DAYS_PER_BUCKET[granularity]
 }
 
-interface ThresholdLine { value: number; color: string; label: string }
+interface ThresholdLine {
+  value: number
+  color: string
+  label: string
+  baselineAmount: number
+  period: TThresholdPeriod
+  granularity: Granularity
+}
 
-function makeThresholdLayer(lines: ThresholdLine[]) {
+interface ThresholdTooltipData {
+  x: number
+  y: number
+  line: ThresholdLine
+}
+
+type TooltipSetter = (data: ThresholdTooltipData | null) => void
+
+function makeThresholdLayer(lines: ThresholdLine[], setTooltip: TooltipSetter) {
   return function ThresholdLayer({ innerWidth, yScale }: any) {
     if (lines.length === 0) return null
     return (
@@ -169,16 +191,24 @@ function makeThresholdLayer(lines: ThresholdLine[]) {
           const y = (yScale as (v: number) => number)(line.value)
           if (y == null || y < 0) return null
           return (
-            <g key={i}>
+            <g
+              key={i}
+              onMouseMove={e => setTooltip({ x: e.clientX, y: e.clientY, line })}
+              onMouseLeave={() => setTooltip(null)}
+            >
+              {/* wider transparent hit area */}
+              <line x1={0} y1={y} x2={innerWidth} y2={y} stroke="transparent" strokeWidth={12} />
               <line
                 x1={0} y1={y} x2={innerWidth} y2={y}
                 stroke={line.color} strokeWidth={1}
                 strokeDasharray="6 4" opacity={0.75}
+                style={{ pointerEvents: 'none' }}
               />
               <text
                 x={innerWidth - 4} y={y - 4}
                 fill={line.color} fontSize={9}
                 textAnchor="end" fontFamily="ui-monospace,'SF Mono',Consolas,monospace"
+                style={{ pointerEvents: 'none' }}
               >
                 {line.label}
               </text>
@@ -205,6 +235,7 @@ export default function TrendsPage() {
   const [view, setView] = useState<ViewState>({ phase: 'idle' })
   const [drilldown, setDrilldown] = useState<{ nodeKey: string; from: string; to: string } | null>(null)
   const [thresholds, setThresholds] = useState<Threshold[]>([])
+  const [hoveredThreshold, setHoveredThreshold] = useState<ThresholdTooltipData | null>(null)
 
   useEffect(() => {
     fetchCamtCategories().then(r => setCategories(r.categories)).catch(() => {})
@@ -261,15 +292,17 @@ export default function TrendsPage() {
           : t.subcategory === s.subcategory
         if (!subcatMatch) continue
         const scope = t.subcategory ?? t.category
-        if (t.notice != null)   lines.push({ value: normalizeThreshold(t.notice,   t.period, gran), color: SEVERITY_COLORS.notice,   label: `${scope} notice`   })
-        if (t.warning != null)  lines.push({ value: normalizeThreshold(t.warning,  t.period, gran), color: SEVERITY_COLORS.warning,  label: `${scope} warning`  })
-        if (t.critical != null) lines.push({ value: normalizeThreshold(t.critical, t.period, gran), color: SEVERITY_COLORS.critical, label: `${scope} critical` })
+        if (t.notice != null)   lines.push({ value: normalizeThreshold(t.notice,   t.period, gran), color: SEVERITY_COLORS.notice,   label: `${scope} notice`,   baselineAmount: t.notice,   period: t.period, granularity: gran })
+        if (t.warning != null)  lines.push({ value: normalizeThreshold(t.warning,  t.period, gran), color: SEVERITY_COLORS.warning,  label: `${scope} warning`,  baselineAmount: t.warning,  period: t.period, granularity: gran })
+        if (t.critical != null) lines.push({ value: normalizeThreshold(t.critical, t.period, gran), color: SEVERITY_COLORS.critical, label: `${scope} critical`, baselineAmount: t.critical, period: t.period, granularity: gran })
       }
     }
     return lines
   }, [view, series, thresholds])
 
-  const ThresholdLayer = useMemo(() => makeThresholdLayer(thresholdLines), [thresholdLines])
+  // setHoveredThreshold is a stable useState setter — intentionally omitted from deps
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const ThresholdLayer = useMemo(() => makeThresholdLayer(thresholdLines, setHoveredThreshold), [thresholdLines])
 
   const formatTick = (bucket: string) =>
     view.phase === 'ready' ? formatBucket(bucket, view.data.granularity) : bucket
@@ -390,7 +423,7 @@ export default function TrendsPage() {
             enableGridX={false}
             gridYValues={5}
             useMesh={true}
-            layers={['grid', 'axes', CustomLineLayer, ThresholdLayer, 'crosshair', 'mesh']}
+            layers={['grid', 'axes', CustomLineLayer, 'crosshair', 'mesh', ThresholdLayer]}
             onClick={(point: any) => {
               const id = String(point.seriesId)
               const nullIdx = id.indexOf('\x00')
@@ -428,6 +461,27 @@ export default function TrendsPage() {
           />
         )}
       </div>
+
+      {hoveredThreshold && (
+        <div
+          className="tr-threshold-tooltip"
+          style={{ left: hoveredThreshold.x + 14, top: hoveredThreshold.y - 10 }}
+        >
+          <span className="tr-threshold-tooltip-label" style={{ color: hoveredThreshold.line.color }}>
+            {hoveredThreshold.line.label}
+          </span>
+          <div className="tr-threshold-tooltip-row">
+            <span className="tr-threshold-tooltip-key">per {GRANULARITY_LABELS[hoveredThreshold.line.granularity]}</span>
+            <span className="tr-threshold-tooltip-val">{EUR.format(hoveredThreshold.line.value)}</span>
+          </div>
+          <div className="tr-threshold-tooltip-row">
+            <span className="tr-threshold-tooltip-key">configured</span>
+            <span className="tr-threshold-tooltip-val">
+              {EUR.format(hoveredThreshold.line.baselineAmount)} / {PERIOD_LABELS[hoveredThreshold.line.period]}
+            </span>
+          </div>
+        </div>
+      )}
 
       {drilldown && (
         <TransactionListPanel
