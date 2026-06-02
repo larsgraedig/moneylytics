@@ -28,6 +28,14 @@ function isoDate(d: Date) {
 
 function bucketDateRange(bucket: string, granularity: Granularity): { from: string; to: string } {
   if (granularity === 'DAILY') return { from: bucket, to: bucket }
+  if (granularity === 'YEARLY') return { from: `${bucket}-01-01`, to: `${bucket}-12-31` }
+  if (granularity === 'BI_YEARLY') {
+    const [yearStr, hStr] = bucket.split('-H')
+    const year = Number(yearStr), half = Number(hStr)
+    return half === 1
+      ? { from: `${year}-01-01`, to: `${year}-06-30` }
+      : { from: `${year}-07-01`, to: `${year}-12-31` }
+  }
   if (granularity === 'QUARTERLY') {
     const [yearStr, qStr] = bucket.split('-Q')
     const year = Number(yearStr), q = Number(qStr)
@@ -61,6 +69,11 @@ let idSeq = 0
 function newId() { return String(++idSeq) }
 
 function formatBucket(bucket: string, granularity: Granularity): string {
+  if (granularity === 'YEARLY') return bucket
+  if (granularity === 'BI_YEARLY') {
+    const [y, h] = bucket.split('-')
+    return `${h} '${y.slice(2)}`
+  }
   if (granularity === 'QUARTERLY') {
     const [y, q] = bucket.split('-')
     return `${q} '${y.slice(2)}`
@@ -138,6 +151,7 @@ const DAYS_PER_PERIOD: Record<TThresholdPeriod, number> = {
 }
 const DAYS_PER_BUCKET: Record<Granularity, number> = {
   DAILY: 1, WEEKLY: 7, MONTHLY: 365.25 / 12, QUARTERLY: 365.25 / 4,
+  BI_YEARLY: 365.25 / 2, YEARLY: 365.25,
 }
 
 function normalizeThreshold(amount: number, period: TThresholdPeriod, granularity: Granularity): number {
@@ -261,7 +275,12 @@ export default function TrendsPage() {
     view.phase === 'ready' ? formatBucket(bucket, view.data.granularity) : bucket
 
   const bucketCount = view.phase === 'ready' ? view.data.buckets.length : 12
-  const maxTicks = granularity === 'DAILY' ? 14 : granularity === 'WEEKLY' ? 12 : granularity === 'QUARTERLY' ? 8 : 24
+  const maxTicks = granularity === 'DAILY' ? 14
+    : granularity === 'WEEKLY' ? 12
+    : granularity === 'QUARTERLY' ? 8
+    : granularity === 'BI_YEARLY' ? 6
+    : granularity === 'YEARLY' ? 10
+    : 24
   const tickSkip = Math.ceil(bucketCount / maxTicks)
   const tickValues = view.phase === 'ready'
     ? view.data.buckets.filter((_, i) => i % tickSkip === 0)
@@ -287,6 +306,8 @@ export default function TrendsPage() {
           value={granularity}
           onChange={e => setGranularity(e.target.value as Granularity)}
         >
+          <option value="YEARLY">yearly</option>
+          <option value="BI_YEARLY">bi-yearly</option>
           <option value="QUARTERLY">quarterly</option>
           <option value="MONTHLY">monthly</option>
           <option value="WEEKLY">weekly</option>
