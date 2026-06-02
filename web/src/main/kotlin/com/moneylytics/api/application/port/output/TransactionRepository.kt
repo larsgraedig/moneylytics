@@ -27,4 +27,11 @@ interface TransactionRepository {
         fingerprints: Collection<String>,
         userId: Long,
     ): Set<String>
+
+    fun updateCategory(
+        id: Long,
+        userId: Long,
+        category: String,
+        subcategory: String,
+    ): Transaction?
 }

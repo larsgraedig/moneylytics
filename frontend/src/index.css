@@ -1260,3 +1260,108 @@ body {
   color: #e4e4ea;
   font-size: 13px;
 }
+
+/* ── transactions view page ──────────────── */
+
+.txnv-page {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.txnv-count {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-muted);
+  letter-spacing: 0.04em;
+}
+
+.txnv-body {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.txnv-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.txnv-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--surface);
+  padding: 8px 12px;
+  text-align: left;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+.txnv-col-amount { text-align: right; }
+
+.txnv-table tbody tr {
+  border-bottom: 1px solid var(--border);
+  transition: background 0.08s;
+}
+
+.txnv-table tbody tr:hover { background: rgba(255,255,255,0.02); }
+
+.txnv-row--dirty { background: color-mix(in srgb, var(--accent-glow) 40%, transparent) !important; }
+
+.txnv-table td {
+  padding: 5px 12px;
+  vertical-align: middle;
+}
+
+.txnv-cell-account {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.txn-cell-amount.positive { color: #4ade80; }
+
+.txnv-cell-actions {
+  white-space: nowrap;
+  text-align: right;
+  padding-right: 16px;
+  min-width: 80px;
+}
+
+.txnv-save-btn {
+  height: 24px;
+  padding: 0 10px;
+  background: transparent;
+  border: 1px solid rgba(74, 222, 128, 0.3);
+  border-radius: 3px;
+  color: #4ade80;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  transition: border-color 0.12s, background 0.12s;
+}
+
+.txnv-save-btn:hover:not(:disabled) {
+  border-color: #4ade80;
+  background: rgba(74, 222, 128, 0.08);
+}
+
+.txnv-save-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.txnv-row-error {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--error);
+  margin-right: 6px;
+}

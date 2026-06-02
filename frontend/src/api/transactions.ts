@@ -30,7 +30,9 @@ export async function fetchAccounts(): Promise<Account[]> {
 }
 
 export interface TransactionItem {
+  id: number
   bookingDate: string
+  accountIban: string
   category: string
   subcategory: string
   amount: number
@@ -56,6 +58,32 @@ export async function fetchTransactionList(
   const res = await fetchWithUser(`/transactions/list?${params}`)
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
   return res.json() as Promise<TransactionListResponse>
+}
+
+export async function fetchAllTransactions(
+  from: string,
+  to: string,
+  iban?: string,
+): Promise<TransactionListResponse> {
+  const params = new URLSearchParams({ from, to, onlyNegative: 'false' })
+  if (iban) params.set('iban', iban)
+  const res = await fetchWithUser(`/transactions/list?${params}`)
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  return res.json() as Promise<TransactionListResponse>
+}
+
+export async function updateTransactionCategory(
+  id: number,
+  category: string,
+  subcategory: string,
+): Promise<TransactionItem> {
+  const res = await fetchWithUser(`/transactions/${id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ category, subcategory }),
+  })
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  return res.json() as Promise<TransactionItem>
 }
 
 export async function fetchSankeyData(from: string, to: string, iban?: string): Promise<SankeyResponse> {

@@ -35,6 +35,12 @@ interface TransactionJpaRepository : JpaRepository<TransactionEntity, Long> {
         amount: BigDecimal,
     ): List<TransactionEntity>
 
+    @Query("SELECT t FROM TransactionEntity t WHERE t.id = :id AND t.user.id = :userId")
+    fun findByIdAndUserId(
+        @Param("id") id: Long,
+        @Param("userId") userId: Long,
+    ): TransactionEntity?
+
     @Query("SELECT t.fingerprint FROM TransactionEntity t WHERE t.fingerprint IN :fingerprints AND t.user.id = :userId")
     fun findExistingFingerprints(
         @Param("fingerprints") fingerprints: Collection<String>,
