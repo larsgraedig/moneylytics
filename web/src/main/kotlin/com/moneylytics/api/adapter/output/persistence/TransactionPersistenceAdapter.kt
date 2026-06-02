@@ -105,6 +105,19 @@ class TransactionPersistenceAdapter(
         )
     }
 
+    @Transactional
+    override fun updateCategory(
+        id: Long,
+        userId: Long,
+        category: String,
+        subcategory: String,
+    ): Transaction? {
+        val entity = jpaRepository.findByIdAndUserId(id, userId) ?: return null
+        entity.category = category
+        entity.subcategory = subcategory
+        return jpaRepository.save(entity).toDomain()
+    }
+
     private fun TransactionEntity.toDomain() =
         Transaction(
             category = category,
@@ -114,6 +127,7 @@ class TransactionPersistenceAdapter(
             amount = amount,
             currency = currency,
             accountIban = account.iban,
+            id = id,
         )
 
     private fun Transaction.fingerprintRaw() =

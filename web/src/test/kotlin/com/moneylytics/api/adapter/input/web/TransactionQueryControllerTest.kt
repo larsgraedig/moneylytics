@@ -3,6 +3,7 @@ package com.moneylytics.api.adapter.input.web
 import com.moneylytics.api.application.port.input.GetTransactionsQuery
 import com.moneylytics.api.application.port.input.GetTransactionsUseCase
 import com.moneylytics.api.application.port.input.ResolveUserUseCase
+import com.moneylytics.api.application.port.input.UpdateTransactionCategoryUseCase
 import com.moneylytics.api.domain.Transaction
 import kotlinx.coroutines.test.runTest
 import org.assertj.core.api.Assertions.assertThat
@@ -17,7 +18,8 @@ import java.time.LocalDate
 class TransactionQueryControllerTest {
     private val getTransactionsUseCase: GetTransactionsUseCase = mock()
     private val resolveUserUseCase: ResolveUserUseCase = mock { on { resolveUser(any()) } doReturn USER_ID }
-    private val controller = TransactionQueryController(getTransactionsUseCase, resolveUserUseCase)
+    private val updateTransactionCategoryUseCase: UpdateTransactionCategoryUseCase = mock()
+    private val controller = TransactionQueryController(getTransactionsUseCase, resolveUserUseCase, updateTransactionCategoryUseCase)
 
     private val from = LocalDate.of(2025, 1, 1)
     private val to = LocalDate.of(2025, 1, 31)

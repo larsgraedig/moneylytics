@@ -16,9 +16,9 @@ import java.time.LocalDate
 @Table(name = "transactions")
 class TransactionEntity(
     @Column(nullable = false)
-    val category: String,
+    var category: String,
     @Column(nullable = false)
-    val subcategory: String,
+    var subcategory: String,
     @Column(nullable = false)
     val bookingDate: LocalDate,
     @Column(nullable = false)

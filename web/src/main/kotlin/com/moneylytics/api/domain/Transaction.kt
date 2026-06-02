@@ -11,4 +11,5 @@ data class Transaction(
     val amount: BigDecimal,
     val currency: String,
     val accountIban: String,
+    val id: Long? = null,
 )

@@ -3,11 +3,16 @@ package com.moneylytics.api.adapter.input.web
 import com.moneylytics.api.application.port.input.GetTransactionsQuery
 import com.moneylytics.api.application.port.input.GetTransactionsUseCase
 import com.moneylytics.api.application.port.input.ResolveUserUseCase
+import com.moneylytics.api.application.port.input.UpdateTransactionCategoryUseCase
 import com.moneylytics.api.domain.Transaction
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.springframework.format.annotation.DateTimeFormat
+import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PatchMapping
+import org.springframework.web.bind.annotation.PathVariable
+import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestHeader
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
@@ -18,11 +23,17 @@ import java.time.LocalDate
 import java.time.YearMonth
 import java.time.temporal.IsoFields
 
+data class UpdateCategoryRequest(
+    val category: String,
+    val subcategory: String,
+)
+
 @RestController
 @RequestMapping("/transactions")
 class TransactionQueryController(
     private val getTransactionsUseCase: GetTransactionsUseCase,
     private val resolveUserUseCase: ResolveUserUseCase,
+    private val updateTransactionCategoryUseCase: UpdateTransactionCategoryUseCase,
 ) {
     @GetMapping("/sankey")
     suspend fun getSankeyData(
@@ -48,6 +59,7 @@ class TransactionQueryController(
         @RequestParam(required = false) category: String? = null,
         @RequestParam(required = false) subcategory: String? = null,
         @RequestParam(required = false) iban: String? = null,
+        @RequestParam(required = false) onlyNegative: Boolean = true,
         @RequestHeader("X-User-Id") externalId: String,
     ): TransactionListResponse {
         val transactions =
@@ -58,7 +70,7 @@ class TransactionQueryController(
                         from = from,
                         to = to,
                         userId = userId,
-                        onlyNegative = true,
+                        onlyNegative = onlyNegative,
                         accountIban = iban,
                         category = category,
                         subcategory = subcategory,
@@ -69,18 +81,33 @@ class TransactionQueryController(
             transactions =
                 transactions
                     .sortedByDescending { it.bookingDate }
-                    .map {
-                        TransactionItem(
-                            bookingDate = it.bookingDate.toString(),
-                            category = it.category,
-                            subcategory = it.subcategory,
-                            amount = it.amount,
-                            currency = it.currency,
-                        )
-                    },
+                    .map { it.toItem() },
             total = transactions.sumOf { it.amount },
         )
     }
+
+    @PatchMapping("/{id}")
+    suspend fun updateTransactionCategory(
+        @PathVariable id: Long,
+        @RequestBody request: UpdateCategoryRequest,
+        @RequestHeader("X-User-Id") externalId: String,
+    ): ResponseEntity<TransactionItem> =
+        withContext(Dispatchers.IO) {
+            val userId = resolveUserUseCase.resolveUser(externalId)
+            val updated = updateTransactionCategoryUseCase.updateCategory(id, userId, request.category, request.subcategory)
+            if (updated != null) ResponseEntity.ok(updated.toItem()) else ResponseEntity.notFound().build()
+        }
+
+    private fun Transaction.toItem() =
+        TransactionItem(
+            id = requireNotNull(id),
+            bookingDate = bookingDate.toString(),
+            accountIban = accountIban,
+            category = category,
+            subcategory = subcategory,
+            amount = amount,
+            currency = currency,
+        )
 
     @GetMapping("/trends")
     suspend fun getTrends(
