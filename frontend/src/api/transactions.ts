@@ -29,6 +29,13 @@ export async function fetchAccounts(): Promise<Account[]> {
   return data.accounts
 }
 
+export interface OffsetLinkItem {
+  id: number
+  linkedTransactionId: number
+  linkedTransactionAmount: number
+  partialAmount: number | null
+}
+
 export interface TransactionItem {
   id: number
   bookingDate: string
@@ -36,12 +43,22 @@ export interface TransactionItem {
   category: string
   subcategory: string
   amount: number
+  effectiveAmount: number
   currency: string
+  offsetLinks: OffsetLinkItem[]
 }
 
 export interface TransactionListResponse {
   transactions: TransactionItem[]
   total: number
+}
+
+export function computeEffectiveAmount(amount: number, offsetLinks: OffsetLinkItem[]): number {
+  return offsetLinks.reduce((acc, link) => {
+    const offsetAmt = link.partialAmount !== null ? link.partialAmount : Math.abs(link.linkedTransactionAmount)
+    const contribution = link.linkedTransactionAmount >= 0 ? offsetAmt : -offsetAmt
+    return acc + contribution
+  }, amount)
 }
 
 export async function fetchTransactionList(
@@ -84,6 +101,32 @@ export async function updateTransactionCategory(
   })
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
   return res.json() as Promise<TransactionItem>
+}
+
+export interface OffsetLinkResult {
+  id: number
+  transactionAId: number
+  transactionBId: number
+  partialAmount: number | null
+}
+
+export async function linkTransactions(
+  transactionId: number,
+  otherTransactionId: number,
+  partialAmount?: number,
+): Promise<OffsetLinkResult> {
+  const res = await fetchWithUser(`/transactions/${transactionId}/offsets`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ otherTransactionId, partialAmount: partialAmount ?? null }),
+  })
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  return res.json() as Promise<OffsetLinkResult>
+}
+
+export async function unlinkTransaction(linkId: number): Promise<void> {
+  const res = await fetchWithUser(`/transactions/offsets/${linkId}`, { method: 'DELETE' })
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
 }
 
 export async function fetchSankeyData(from: string, to: string, iban?: string): Promise<SankeyResponse> {

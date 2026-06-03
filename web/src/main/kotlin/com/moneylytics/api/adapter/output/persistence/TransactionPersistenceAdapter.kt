@@ -2,6 +2,7 @@ package com.moneylytics.api.adapter.output.persistence
 
 import com.moneylytics.api.application.port.output.TransactionRepository
 import com.moneylytics.api.domain.Transaction
+import com.moneylytics.api.domain.TransactionOffsetLink
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
 import java.math.BigDecimal
@@ -13,6 +14,7 @@ class TransactionPersistenceAdapter(
     private val jpaRepository: TransactionJpaRepository,
     private val accountJpaRepository: AccountJpaRepository,
     private val userJpaRepository: UserJpaRepository,
+    private val offsetJpaRepository: TransactionOffsetJpaRepository,
 ) : TransactionRepository {
     @Transactional
     override fun saveAll(
@@ -57,12 +59,15 @@ class TransactionPersistenceAdapter(
         to: LocalDate,
         userId: Long,
         accountIban: String?,
-    ): List<Transaction> =
-        if (accountIban != null) {
-            jpaRepository.findByUserIdAndAccountIbanAndBookingDateBetween(userId, accountIban, from, to)
-        } else {
-            jpaRepository.findByUserIdAndBookingDateBetween(userId, from, to)
-        }.map { it.toDomain() }
+    ): List<Transaction> {
+        val entities =
+            if (accountIban != null) {
+                jpaRepository.findByUserIdAndAccountIbanAndBookingDateBetween(userId, accountIban, from, to)
+            } else {
+                jpaRepository.findByUserIdAndBookingDateBetween(userId, from, to)
+            }
+        return enrichWithOffsetLinks(entities)
+    }
 
     @Transactional(readOnly = true)
     override fun findNegativeByBookingDateBetween(
@@ -70,18 +75,84 @@ class TransactionPersistenceAdapter(
         to: LocalDate,
         userId: Long,
         accountIban: String?,
-    ): List<Transaction> =
-        if (accountIban != null) {
-            jpaRepository.findByUserIdAndAccountIbanAndBookingDateBetweenAndAmountLessThan(
-                userId,
-                accountIban,
-                from,
-                to,
-                BigDecimal.ZERO,
-            )
-        } else {
-            jpaRepository.findByUserIdAndBookingDateBetweenAndAmountLessThan(userId, from, to, BigDecimal.ZERO)
-        }.map { it.toDomain() }
+    ): List<Transaction> {
+        val entities =
+            if (accountIban != null) {
+                jpaRepository.findByUserIdAndAccountIbanAndBookingDateBetweenAndAmountLessThan(
+                    userId,
+                    accountIban,
+                    from,
+                    to,
+                    BigDecimal.ZERO,
+                )
+            } else {
+                jpaRepository.findByUserIdAndBookingDateBetweenAndAmountLessThan(userId, from, to, BigDecimal.ZERO)
+            }
+        return enrichWithOffsetLinks(entities)
+    }
+
+    @Transactional(readOnly = true)
+    override fun findByIdAndUserId(
+        id: Long,
+        userId: Long,
+    ): Transaction? {
+        val entity = jpaRepository.findByIdAndUserId(id, userId) ?: return null
+        return enrichWithOffsetLinks(listOf(entity)).first()
+    }
+
+    @Transactional
+    override fun updateCategory(
+        id: Long,
+        userId: Long,
+        category: String,
+        subcategory: String,
+    ): Transaction? {
+        val entity = jpaRepository.findByIdAndUserId(id, userId) ?: return null
+        entity.category = category
+        entity.subcategory = subcategory
+        return enrichWithOffsetLinks(listOf(jpaRepository.save(entity))).first()
+    }
+
+    private fun enrichWithOffsetLinks(entities: List<TransactionEntity>): List<Transaction> {
+        val ids = entities.mapNotNull { it.id }
+        if (ids.isEmpty()) return emptyList()
+        val linksByTxId = buildLinkMap(offsetJpaRepository.findByTransactionIds(ids))
+        return entities.map { it.toDomain(linksByTxId[it.id] ?: emptyList()) }
+    }
+
+    private fun buildLinkMap(offsets: List<TransactionOffsetEntity>): Map<Long, List<TransactionOffsetLink>> {
+        val result = mutableMapOf<Long, MutableList<TransactionOffsetLink>>()
+        for (offset in offsets) {
+            val aId = requireNotNull(offset.transactionA.id)
+            val bId = requireNotNull(offset.transactionB.id)
+            result.getOrPut(aId) { mutableListOf() }.add(offset.toDomainLinkFor(aId))
+            result.getOrPut(bId) { mutableListOf() }.add(offset.toDomainLinkFor(bId))
+        }
+        return result
+    }
+
+    private fun TransactionOffsetEntity.toDomainLinkFor(requestingTxId: Long): TransactionOffsetLink {
+        val linked = if (transactionA.id == requestingTxId) transactionB else transactionA
+        return TransactionOffsetLink(
+            id = requireNotNull(id),
+            linkedTransactionId = requireNotNull(linked.id),
+            linkedTransactionAmount = linked.amount,
+            partialAmount = amount,
+        )
+    }
+
+    private fun TransactionEntity.toDomain(offsetLinks: List<TransactionOffsetLink> = emptyList()) =
+        Transaction(
+            category = category,
+            subcategory = subcategory,
+            bookingDate = bookingDate,
+            valueDate = valueDate,
+            amount = amount,
+            currency = currency,
+            accountIban = account.iban,
+            id = id,
+            offsetLinks = offsetLinks,
+        )
 
     private fun Transaction.toEntity(
         fingerprint: String,
@@ -104,31 +175,6 @@ class TransactionPersistenceAdapter(
             user = userJpaRepository.getReferenceById(userId),
         )
     }
-
-    @Transactional
-    override fun updateCategory(
-        id: Long,
-        userId: Long,
-        category: String,
-        subcategory: String,
-    ): Transaction? {
-        val entity = jpaRepository.findByIdAndUserId(id, userId) ?: return null
-        entity.category = category
-        entity.subcategory = subcategory
-        return jpaRepository.save(entity).toDomain()
-    }
-
-    private fun TransactionEntity.toDomain() =
-        Transaction(
-            category = category,
-            subcategory = subcategory,
-            bookingDate = bookingDate,
-            valueDate = valueDate,
-            amount = amount,
-            currency = currency,
-            accountIban = account.iban,
-            id = id,
-        )
 
     private fun Transaction.fingerprintRaw() =
         "$accountIban|$bookingDate|$valueDate|${amount.stripTrailingZeros().toPlainString()}|$currency"

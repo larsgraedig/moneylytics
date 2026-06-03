@@ -14,5 +14,14 @@ data class TransactionItem(
     val category: String,
     val subcategory: String,
     val amount: BigDecimal,
+    val effectiveAmount: BigDecimal,
     val currency: String,
+    val offsetLinks: List<OffsetLinkItem>,
+)
+
+data class OffsetLinkItem(
+    val id: Long,
+    val linkedTransactionId: Long,
+    val linkedTransactionAmount: BigDecimal,
+    val partialAmount: BigDecimal?,
 )

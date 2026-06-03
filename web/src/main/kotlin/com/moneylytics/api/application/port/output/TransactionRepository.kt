@@ -28,6 +28,11 @@ interface TransactionRepository {
         userId: Long,
     ): Set<String>
 
+    fun findByIdAndUserId(
+        id: Long,
+        userId: Long,
+    ): Transaction?
+
     fun updateCategory(
         id: Long,
         userId: Long,
