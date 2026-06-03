@@ -1,6 +1,16 @@
 import { useEffect, useMemo, useState } from 'react'
 import { fetchCategories, type CategoryGroup } from '../api/rawImport'
-import { fetchAccounts, fetchAllTransactions, updateTransactionCategory, type Account, type TransactionItem } from '../api/transactions'
+import {
+  computeEffectiveAmount,
+  fetchAccounts,
+  fetchAllTransactions,
+  linkTransactions,
+  unlinkTransaction,
+  updateTransactionCategory,
+  type Account,
+  type OffsetLinkItem,
+  type TransactionItem,
+} from '../api/transactions'
 
 function isoDate(d: Date) {
   return d.toISOString().slice(0, 10)
@@ -29,6 +39,11 @@ type PageState =
   | { phase: 'error'; message: string }
   | { phase: 'ready' }
 
+type LinkingState =
+  | { phase: 'selecting'; sourceIndex: number }
+  | { phase: 'confirming'; sourceIndex: number; targetIndex: number; partialAmount: string }
+  | null
+
 export default function TransactionsPage() {
   const [from, setFrom] = useState(firstOfMonth)
   const [to, setTo] = useState(today)
@@ -37,6 +52,8 @@ export default function TransactionsPage() {
   const [rows, setRows] = useState<RowState[]>([])
   const [page, setPage] = useState<PageState>({ phase: 'idle' })
   const [categories, setCategories] = useState<CategoryGroup[]>([])
+  const [linkingState, setLinkingState] = useState<LinkingState>(null)
+  const [linkError, setLinkError] = useState<string | null>(null)
 
   useEffect(() => {
     fetchAccounts().then(setAccounts).catch(() => {})
@@ -62,6 +79,7 @@ export default function TransactionsPage() {
 
   async function load() {
     setPage({ phase: 'loading' })
+    setLinkingState(null)
     try {
       const data = await fetchAllTransactions(from, to, selectedIban || undefined)
       setRows(
@@ -120,14 +138,185 @@ export default function TransactionsPage() {
     }
   }
 
+  async function confirmLink() {
+    if (!linkingState || linkingState.phase !== 'confirming') return
+    const { sourceIndex, targetIndex, partialAmount } = linkingState
+    const sourceRow = rows[sourceIndex]
+    const targetRow = rows[targetIndex]
+    const parsed = partialAmount !== '' ? parseFloat(partialAmount) : undefined
+    setLinkError(null)
+    try {
+      const result = await linkTransactions(sourceRow.original.id, targetRow.original.id, parsed)
+      setRows(prev => {
+        const next = [...prev]
+        const newForSource: OffsetLinkItem = {
+          id: result.id,
+          linkedTransactionId: targetRow.original.id,
+          linkedTransactionAmount: targetRow.original.amount,
+          partialAmount: result.partialAmount,
+        }
+        const newForTarget: OffsetLinkItem = {
+          id: result.id,
+          linkedTransactionId: sourceRow.original.id,
+          linkedTransactionAmount: sourceRow.original.amount,
+          partialAmount: result.partialAmount,
+        }
+        const srcLinks = [...next[sourceIndex].original.offsetLinks, newForSource]
+        const tgtLinks = [...next[targetIndex].original.offsetLinks, newForTarget]
+        next[sourceIndex] = {
+          ...next[sourceIndex],
+          original: {
+            ...next[sourceIndex].original,
+            offsetLinks: srcLinks,
+            effectiveAmount: computeEffectiveAmount(next[sourceIndex].original.amount, srcLinks),
+          },
+        }
+        next[targetIndex] = {
+          ...next[targetIndex],
+          original: {
+            ...next[targetIndex].original,
+            offsetLinks: tgtLinks,
+            effectiveAmount: computeEffectiveAmount(next[targetIndex].original.amount, tgtLinks),
+          },
+        }
+        return next
+      })
+      setLinkingState(null)
+    } catch (e) {
+      setLinkError(e instanceof Error ? e.message : 'link failed')
+    }
+  }
+
+  async function removeLink(linkId: number) {
+    try {
+      await unlinkTransaction(linkId)
+      setRows(prev =>
+        prev.map(row => {
+          if (!row.original.offsetLinks.some(l => l.id === linkId)) return row
+          const newLinks = row.original.offsetLinks.filter(l => l.id !== linkId)
+          return {
+            ...row,
+            original: {
+              ...row.original,
+              offsetLinks: newLinks,
+              effectiveAmount: computeEffectiveAmount(row.original.amount, newLinks),
+            },
+          }
+        }),
+      )
+    } catch {
+      // silent — the chip stays if the request fails
+    }
+  }
+
   const sublistId = (category: string) =>
-    `txn-sub-${category.replace(/\s+/g, '-').toLowerCase()}`
+    `txnv-sub-${category.replace(/\s+/g, '-').toLowerCase()}`
 
   const uniqueRowCategories = useMemo(() => {
     const seen = new Set<string>()
     rows.forEach(r => seen.add(r.category))
     return [...seen]
   }, [rows])
+
+  function rowClassName(row: RowState, i: number): string {
+    const classes: string[] = []
+    if (row.category !== row.original.category || row.subcategory !== row.original.subcategory)
+      classes.push('txnv-row--dirty')
+    if (linkingState?.sourceIndex === i)
+      classes.push('txnv-row--linking-source')
+    if (linkingState?.phase === 'confirming' && linkingState.targetIndex === i)
+      classes.push('txnv-row--linking-target')
+    return classes.join(' ')
+  }
+
+  function renderOffsetCell(row: RowState, i: number) {
+    const src = linkingState?.sourceIndex
+    const isSource = src === i
+    const isConfirmTarget = linkingState?.phase === 'confirming' && linkingState.targetIndex === i
+    const isLinking = linkingState !== null
+
+    if (isSource) {
+      return (
+        <div className="txnv-linking-from">
+          <span className="txnv-linking-badge">selecting target</span>
+          <button className="txnv-link-cancel-btn" onClick={() => { setLinkingState(null); setLinkError(null) }}>
+            cancel
+          </button>
+        </div>
+      )
+    }
+
+    if (isConfirmTarget) {
+      return (
+        <div className="txnv-linking-confirm">
+          <input
+            className="txnv-partial-input"
+            type="number"
+            step="0.01"
+            min="0"
+            placeholder="partial amt"
+            value={(linkingState as { partialAmount: string }).partialAmount}
+            onChange={e =>
+              setLinkingState(prev =>
+                prev?.phase === 'confirming' ? { ...prev, partialAmount: e.target.value } : prev,
+              )
+            }
+            autoFocus
+          />
+          <button className="txnv-link-confirm-btn" onClick={confirmLink}>link</button>
+          <button
+            className="txnv-link-back-btn"
+            onClick={() => src !== undefined && setLinkingState({ phase: 'selecting', sourceIndex: src })}
+          >
+            ←
+          </button>
+          {linkError && <span className="txnv-link-error">{linkError}</span>}
+        </div>
+      )
+    }
+
+    if (isLinking) {
+      return (
+        <button
+          className="txnv-connect-btn"
+          onClick={() =>
+            src !== undefined &&
+            setLinkingState({ phase: 'confirming', sourceIndex: src, targetIndex: i, partialAmount: '' })
+          }
+        >
+          link here
+        </button>
+      )
+    }
+
+    return (
+      <div className="txnv-links-normal">
+        {row.original.offsetLinks.map(link => (
+          <span key={link.id} className="txnv-link-chip">
+            <span className={`txnv-link-chip-amount ${link.linkedTransactionAmount >= 0 ? 'positive' : 'negative'}`}>
+              {link.partialAmount !== null
+                ? EUR.format(link.partialAmount)
+                : EUR.format(Math.abs(link.linkedTransactionAmount))}
+            </span>
+            <button
+              className="txnv-link-chip-remove"
+              onClick={() => removeLink(link.id)}
+              title="remove link"
+            >
+              ×
+            </button>
+          </span>
+        ))}
+        <button
+          className="txnv-add-link-btn"
+          onClick={() => { setLinkError(null); setLinkingState({ phase: 'selecting', sourceIndex: i }) }}
+          title="link to another transaction"
+        >
+          link
+        </button>
+      </div>
+    )
+  }
 
   return (
     <div className="txnv-page">
@@ -212,25 +401,28 @@ export default function TransactionsPage() {
                 <th className="txnv-col-amount">amount</th>
                 <th>category</th>
                 <th>subcategory</th>
+                <th>offsets</th>
                 <th></th>
               </tr>
             </thead>
             <tbody>
               {rows.map((row, i) => {
-                const isDirty =
-                  row.category !== row.original.category ||
-                  row.subcategory !== row.original.subcategory
+                const effectiveDiffers = row.original.effectiveAmount !== row.original.amount
                 return (
-                  <tr
-                    key={row.original.id}
-                    className={isDirty ? 'txnv-row--dirty' : ''}
-                  >
+                  <tr key={row.original.id} className={rowClassName(row, i)}>
                     <td className="txn-cell-date">{formatDate(row.original.bookingDate)}</td>
                     <td className="txnv-cell-account">
                       {accountMap.get(row.original.accountIban) ?? row.original.accountIban}
                     </td>
                     <td className={`txn-cell-amount txnv-col-amount${row.original.amount < 0 ? ' negative' : ' positive'}`}>
-                      {EUR.format(row.original.amount)}
+                      <span className={effectiveDiffers ? 'txnv-amount-crossed' : ''}>
+                        {EUR.format(row.original.amount)}
+                      </span>
+                      {effectiveDiffers && (
+                        <span className="txnv-effective-amount">
+                          {EUR.format(row.original.effectiveAmount)}
+                        </span>
+                      )}
                     </td>
                     <td>
                       <input
@@ -248,11 +440,14 @@ export default function TransactionsPage() {
                         onChange={e => updateRow(i, 'subcategory', e.target.value)}
                       />
                     </td>
+                    <td className="txnv-cell-offsets">
+                      {renderOffsetCell(row, i)}
+                    </td>
                     <td className="txnv-cell-actions">
                       {row.error && (
                         <span className="txnv-row-error">{row.error}</span>
                       )}
-                      {isDirty && (
+                      {(row.category !== row.original.category || row.subcategory !== row.original.subcategory) && (
                         <button
                           className="txnv-save-btn"
                           onClick={() => saveRow(i)}

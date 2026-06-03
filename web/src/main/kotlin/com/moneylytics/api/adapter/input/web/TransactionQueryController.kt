@@ -82,7 +82,7 @@ class TransactionQueryController(
                 transactions
                     .sortedByDescending { it.bookingDate }
                     .map { it.toItem() },
-            total = transactions.sumOf { it.amount },
+            total = transactions.sumOf { it.effectiveAmount() },
         )
     }
 
@@ -106,7 +106,17 @@ class TransactionQueryController(
             category = category,
             subcategory = subcategory,
             amount = amount,
+            effectiveAmount = effectiveAmount(),
             currency = currency,
+            offsetLinks =
+                offsetLinks.map { link ->
+                    OffsetLinkItem(
+                        id = link.id,
+                        linkedTransactionId = link.linkedTransactionId,
+                        linkedTransactionAmount = link.linkedTransactionAmount,
+                        partialAmount = link.partialAmount,
+                    )
+                },
         )
 
     @GetMapping("/trends")
@@ -138,7 +148,7 @@ class TransactionQueryController(
 
                 fun bucketSums(txns: List<Transaction>): List<BigDecimal> {
                     val byBucket = txns.groupBy { bucketKey(it.bookingDate, granularity) }
-                    return buckets.map { bucket -> byBucket[bucket]?.sumOf { it.amount.abs() } ?: BigDecimal.ZERO }
+                    return buckets.map { bucket -> byBucket[bucket]?.sumOf { it.effectiveAmount().abs() } ?: BigDecimal.ZERO }
                 }
 
                 val mainEntry =
@@ -248,7 +258,7 @@ class TransactionQueryController(
 
         val aggregated =
             groupBy { it.category to it.subcategory }
-                .mapValues { (_, txns) -> txns.sumOf { it.amount.abs() } }
+                .mapValues { (_, txns) -> txns.sumOf { it.effectiveAmount().abs() } }
 
         // Register categories before subcategories so they appear on the left.
         aggregated.keys.forEach { (category, _) -> indexFor("cat:$category") }

@@ -1403,3 +1403,206 @@ body {
   color: var(--error);
   margin-right: 6px;
 }
+
+/* ── offset / linking ─────────────────────── */
+
+.txnv-row--linking-source {
+  background: color-mix(in srgb, rgba(245, 158, 11, 0.12) 100%, transparent) !important;
+  outline: 1px solid var(--accent-dim);
+  outline-offset: -1px;
+}
+
+.txnv-row--linking-target {
+  background: color-mix(in srgb, rgba(74, 222, 128, 0.08) 100%, transparent) !important;
+  outline: 1px solid rgba(74, 222, 128, 0.3);
+  outline-offset: -1px;
+}
+
+.txnv-amount-crossed {
+  text-decoration: line-through;
+  opacity: 0.45;
+  font-size: 11px;
+}
+
+.txnv-effective-amount {
+  display: block;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: #4ade80;
+  margin-top: 1px;
+}
+
+.txnv-cell-offsets {
+  white-space: nowrap;
+  min-width: 120px;
+  max-width: 260px;
+}
+
+/* normal mode: chips + add button */
+.txnv-links-normal {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.txnv-link-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 6px 2px 7px;
+  border: 1px solid var(--border-hi);
+  border-radius: 100px;
+  background: var(--bg);
+  font-family: var(--mono);
+  font-size: 10px;
+}
+
+.txnv-link-chip-amount.positive { color: #4ade80; }
+.txnv-link-chip-amount.negative { color: var(--error); }
+
+.txnv-link-chip-remove {
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  cursor: pointer;
+  font-size: 12px;
+  line-height: 1;
+  padding: 0 1px;
+  transition: color 0.1s;
+}
+
+.txnv-link-chip-remove:hover { color: var(--error); }
+
+.txnv-add-link-btn {
+  height: 20px;
+  padding: 0 7px;
+  background: transparent;
+  border: 1px dashed var(--border-hi);
+  border-radius: 3px;
+  color: var(--text-muted);
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: border-color 0.12s, color 0.12s;
+}
+
+.txnv-add-link-btn:hover {
+  border-color: var(--accent-dim);
+  color: var(--accent);
+}
+
+/* linking-from indicator */
+.txnv-linking-from {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.txnv-linking-badge {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  color: var(--accent);
+  border: 1px solid var(--accent-dim);
+  border-radius: 100px;
+  padding: 1px 8px;
+}
+
+.txnv-link-cancel-btn {
+  height: 20px;
+  padding: 0 7px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  color: var(--text-muted);
+  font-family: var(--mono);
+  font-size: 10px;
+  cursor: pointer;
+  transition: border-color 0.12s, color 0.12s;
+}
+
+.txnv-link-cancel-btn:hover { border-color: var(--error); color: var(--error); }
+
+/* connect button (other rows in linking mode) */
+.txnv-connect-btn {
+  height: 22px;
+  padding: 0 10px;
+  background: transparent;
+  border: 1px solid rgba(74, 222, 128, 0.25);
+  border-radius: 3px;
+  color: rgba(74, 222, 128, 0.7);
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: border-color 0.12s, color 0.12s, background 0.12s;
+}
+
+.txnv-connect-btn:hover {
+  border-color: #4ade80;
+  color: #4ade80;
+  background: rgba(74, 222, 128, 0.06);
+}
+
+/* confirming: amount input + buttons */
+.txnv-linking-confirm {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.txnv-partial-input {
+  width: 90px;
+  height: 22px;
+  padding: 0 6px;
+  background: var(--bg);
+  border: 1px solid rgba(74, 222, 128, 0.4);
+  border-radius: 3px;
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 11px;
+  outline: none;
+}
+
+.txnv-partial-input:focus { border-color: #4ade80; }
+
+.txnv-partial-input::placeholder { color: var(--text-dim); }
+
+.txnv-link-confirm-btn {
+  height: 22px;
+  padding: 0 8px;
+  background: transparent;
+  border: 1px solid rgba(74, 222, 128, 0.4);
+  border-radius: 3px;
+  color: #4ade80;
+  font-family: var(--mono);
+  font-size: 10px;
+  cursor: pointer;
+  transition: border-color 0.12s, background 0.12s;
+}
+
+.txnv-link-confirm-btn:hover { border-color: #4ade80; background: rgba(74, 222, 128, 0.08); }
+
+.txnv-link-back-btn {
+  height: 22px;
+  padding: 0 7px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  color: var(--text-muted);
+  font-family: var(--mono);
+  font-size: 12px;
+  cursor: pointer;
+  transition: border-color 0.12s, color 0.12s;
+}
+
+.txnv-link-back-btn:hover { border-color: var(--border-hi); color: var(--text); }
+
+.txnv-link-error {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--error);
+}
