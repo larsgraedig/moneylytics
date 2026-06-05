@@ -8,6 +8,13 @@ spring:
     hibernate:
       ddl-auto: create-drop
     database-platform: org.hibernate.dialect.H2Dialect
+  security:
+    oauth2:
+      client:
+        registration:
+          apple:
+            client-id: ${APPLE_CLIENT_ID:local-placeholder}
+            client-secret: ${APPLE_CLIENT_SECRET:local-placeholder}
 
 app:
   frontend-url: http://localhost:5173

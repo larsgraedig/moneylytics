@@ -1643,7 +1643,14 @@ body {
   text-align: center;
 }
 
-.login-google-btn {
+.login-providers {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+}
+
+.login-provider-btn {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -1658,13 +1665,14 @@ body {
   text-decoration: none;
   cursor: pointer;
   transition: box-shadow 0.12s;
+  white-space: nowrap;
 }
 
-.login-google-btn:hover {
+.login-provider-btn:hover {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
-.login-google-icon {
+.login-provider-icon {
   width: 18px;
   height: 18px;
   flex-shrink: 0;
