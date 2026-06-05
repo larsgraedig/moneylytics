@@ -8,7 +8,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.springframework.http.ResponseEntity
 import org.springframework.security.core.annotation.AuthenticationPrincipal
-import org.springframework.security.oauth2.core.oidc.user.OidcUser
+import org.springframework.security.oauth2.core.user.OAuth2User
 import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
@@ -39,10 +39,10 @@ class TransactionOffsetController(
     suspend fun linkTransaction(
         @PathVariable id: Long,
         @RequestBody request: LinkTransactionRequest,
-        @AuthenticationPrincipal oidcUser: OidcUser,
+        @AuthenticationPrincipal oauth2User: OAuth2User,
     ): ResponseEntity<OffsetLinkResponse> =
         withContext(Dispatchers.IO) {
-            val userId = resolveUserUseCase.resolveUser(oidcUser.subject)
+            val userId = resolveUserUseCase.resolveUser(oauth2User.name)
             val result =
                 runCatching {
                     manageTransactionOffsetUseCase.linkTransactions(
@@ -66,10 +66,10 @@ class TransactionOffsetController(
     @DeleteMapping("/offsets/{linkId}")
     suspend fun unlinkTransaction(
         @PathVariable linkId: Long,
-        @AuthenticationPrincipal oidcUser: OidcUser,
+        @AuthenticationPrincipal oauth2User: OAuth2User,
     ): ResponseEntity<Void> =
         withContext(Dispatchers.IO) {
-            val userId = resolveUserUseCase.resolveUser(oidcUser.subject)
+            val userId = resolveUserUseCase.resolveUser(oauth2User.name)
             val deleted = manageTransactionOffsetUseCase.unlinkTransactions(linkId, userId)
             if (deleted) ResponseEntity.noContent().build() else ResponseEntity.notFound().build()
         }

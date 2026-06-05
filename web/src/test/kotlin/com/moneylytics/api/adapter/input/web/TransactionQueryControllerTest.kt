@@ -12,7 +12,7 @@ import org.mockito.kotlin.any
 import org.mockito.kotlin.doReturn
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.whenever
-import org.springframework.security.oauth2.core.oidc.user.OidcUser
+import org.springframework.security.oauth2.core.user.OAuth2User
 import java.math.BigDecimal
 import java.time.LocalDate
 
@@ -21,7 +21,7 @@ class TransactionQueryControllerTest {
     private val resolveUserUseCase: ResolveUserUseCase = mock { on { resolveUser(any()) } doReturn USER_ID }
     private val updateTransactionCategoryUseCase: UpdateTransactionCategoryUseCase = mock()
     private val controller = TransactionQueryController(getTransactionsUseCase, resolveUserUseCase, updateTransactionCategoryUseCase)
-    private val oidcUser: OidcUser = mock { on { subject } doReturn "testUser" }
+    private val oauth2User: OAuth2User = mock { on { name } doReturn "testUser" }
 
     private val from = LocalDate.of(2025, 1, 1)
     private val to = LocalDate.of(2025, 1, 31)
@@ -43,7 +43,7 @@ class TransactionQueryControllerTest {
             )
 
             // Act
-            val response = controller.getSankeyData(from, to, oidcUser = oidcUser)
+            val response = controller.getSankeyData(from, to, oauth2User = oauth2User)
 
             // Assert
             assertThat(response.nodes.map { it.name }).containsExactly(
@@ -72,7 +72,7 @@ class TransactionQueryControllerTest {
             )
 
             // Act
-            val response = controller.getSankeyData(from, to, oidcUser = oidcUser)
+            val response = controller.getSankeyData(from, to, oauth2User = oauth2User)
 
             // Assert
             val nodeByName = response.nodes.associateBy { it.name }
@@ -100,7 +100,7 @@ class TransactionQueryControllerTest {
             )
 
             // Act
-            val response = controller.getSankeyData(from, to, oidcUser = oidcUser)
+            val response = controller.getSankeyData(from, to, oauth2User = oauth2User)
 
             // Assert
             val groceriesLink = response.links.single { response.nodes[it.target].name == "Groceries" }
@@ -125,7 +125,7 @@ class TransactionQueryControllerTest {
             )
 
             // Act
-            val response = controller.getSankeyData(from, to, oidcUser = oidcUser)
+            val response = controller.getSankeyData(from, to, oauth2User = oauth2User)
 
             // Assert
             val nodeNames = response.nodes.map { it.name }
@@ -155,7 +155,7 @@ class TransactionQueryControllerTest {
                 ),
             )
 
-            val response = controller.getSankeyData(from, to, oidcUser = oidcUser)
+            val response = controller.getSankeyData(from, to, oauth2User = oauth2User)
 
             assertThat(response.nodes.map { it.name }).containsExactly("Food", "Transport", "Other", "Other")
             val otherIndices = response.nodes.mapIndexedNotNull { i, n -> i.takeIf { n.name == "Other" } }
@@ -182,7 +182,7 @@ class TransactionQueryControllerTest {
             )
 
             // Act
-            val response = controller.getSankeyData(from, to, oidcUser = oidcUser)
+            val response = controller.getSankeyData(from, to, oauth2User = oauth2User)
 
             // Assert — four distinct nodes, not three
             assertThat(response.nodes.map { it.name })
@@ -209,7 +209,7 @@ class TransactionQueryControllerTest {
             )
 
             // Act
-            val response = controller.getSankeyData(from, to, oidcUser = oidcUser)
+            val response = controller.getSankeyData(from, to, oauth2User = oauth2User)
 
             // Assert
             assertThat(response.nodes.map { it.name }).containsExactly("Food", "Groceries")
@@ -226,7 +226,7 @@ class TransactionQueryControllerTest {
             ).thenReturn(emptyList())
 
             // Act
-            val response = controller.getSankeyData(from, to, oidcUser = oidcUser)
+            val response = controller.getSankeyData(from, to, oauth2User = oauth2User)
 
             // Assert
             assertThat(response.nodes).isEmpty()

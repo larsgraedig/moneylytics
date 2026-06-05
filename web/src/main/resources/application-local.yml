@@ -15,6 +15,9 @@ spring:
           apple:
             client-id: ${APPLE_CLIENT_ID:local-placeholder}
             client-secret: ${APPLE_CLIENT_SECRET:local-placeholder}
+          facebook:
+            client-id: ${FACEBOOK_CLIENT_ID:local-placeholder}
+            client-secret: ${FACEBOOK_CLIENT_SECRET:local-placeholder}
 
 app:
   frontend-url: http://localhost:5173

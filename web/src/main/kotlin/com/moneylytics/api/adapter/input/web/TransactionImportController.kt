@@ -11,7 +11,7 @@ import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
 import org.springframework.http.codec.multipart.FilePart
 import org.springframework.security.core.annotation.AuthenticationPrincipal
-import org.springframework.security.oauth2.core.oidc.user.OidcUser
+import org.springframework.security.oauth2.core.user.OAuth2User
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestPart
@@ -27,7 +27,7 @@ class TransactionImportController(
     @PostMapping("/import", consumes = [MediaType.MULTIPART_FORM_DATA_VALUE])
     suspend fun importTransactions(
         @RequestPart("file") filePart: FilePart,
-        @AuthenticationPrincipal oidcUser: OidcUser,
+        @AuthenticationPrincipal oauth2User: OAuth2User,
     ): ResponseEntity<out Any> {
         val bytes =
             DataBufferUtils
@@ -49,7 +49,7 @@ class TransactionImportController(
             }
 
             is CsvParseResult.Valid -> {
-                val userId = withContext(Dispatchers.IO) { resolveUserUseCase.resolveUser(oidcUser.subject) }
+                val userId = withContext(Dispatchers.IO) { resolveUserUseCase.resolveUser(oauth2User.name) }
                 val importedCount =
                     importTransactionsUseCase.importTransactions(
                         ImportTransactionsCommand(

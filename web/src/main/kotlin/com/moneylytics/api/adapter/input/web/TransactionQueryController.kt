@@ -10,7 +10,7 @@ import kotlinx.coroutines.withContext
 import org.springframework.format.annotation.DateTimeFormat
 import org.springframework.http.ResponseEntity
 import org.springframework.security.core.annotation.AuthenticationPrincipal
-import org.springframework.security.oauth2.core.oidc.user.OidcUser
+import org.springframework.security.oauth2.core.user.OAuth2User
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PatchMapping
 import org.springframework.web.bind.annotation.PathVariable
@@ -41,11 +41,11 @@ class TransactionQueryController(
         @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) from: LocalDate,
         @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) to: LocalDate,
         @RequestParam(required = false) iban: String? = null,
-        @AuthenticationPrincipal oidcUser: OidcUser,
+        @AuthenticationPrincipal oauth2User: OAuth2User,
     ): SankeyResponse {
         val transactions =
             withContext(Dispatchers.IO) {
-                val userId = resolveUserUseCase.resolveUser(oidcUser.subject)
+                val userId = resolveUserUseCase.resolveUser(oauth2User.name)
                 getTransactionsUseCase.getTransactions(
                     GetTransactionsQuery(from, to, userId, onlyNegative = true, accountIban = iban),
                 )
@@ -61,11 +61,11 @@ class TransactionQueryController(
         @RequestParam(required = false) subcategory: String? = null,
         @RequestParam(required = false) iban: String? = null,
         @RequestParam(required = false) onlyNegative: Boolean = true,
-        @AuthenticationPrincipal oidcUser: OidcUser,
+        @AuthenticationPrincipal oauth2User: OAuth2User,
     ): TransactionListResponse {
         val transactions =
             withContext(Dispatchers.IO) {
-                val userId = resolveUserUseCase.resolveUser(oidcUser.subject)
+                val userId = resolveUserUseCase.resolveUser(oauth2User.name)
                 getTransactionsUseCase.getTransactions(
                     GetTransactionsQuery(
                         from = from,
@@ -91,10 +91,10 @@ class TransactionQueryController(
     suspend fun updateTransactionCategory(
         @PathVariable id: Long,
         @RequestBody request: UpdateCategoryRequest,
-        @AuthenticationPrincipal oidcUser: OidcUser,
+        @AuthenticationPrincipal oauth2User: OAuth2User,
     ): ResponseEntity<TransactionItem> =
         withContext(Dispatchers.IO) {
-            val userId = resolveUserUseCase.resolveUser(oidcUser.subject)
+            val userId = resolveUserUseCase.resolveUser(oauth2User.name)
             val updated = updateTransactionCategoryUseCase.updateCategory(id, userId, request.category, request.subcategory)
             if (updated != null) ResponseEntity.ok(updated.toItem()) else ResponseEntity.notFound().build()
         }
@@ -127,10 +127,10 @@ class TransactionQueryController(
         @RequestParam(required = false) series: List<String>? = null,
         @RequestParam(required = false) granularity: Granularity = Granularity.MONTHLY,
         @RequestParam(required = false) iban: String? = null,
-        @AuthenticationPrincipal oidcUser: OidcUser,
+        @AuthenticationPrincipal oauth2User: OAuth2User,
     ): TrendsResponse {
         val effectiveSeries = series ?: emptyList()
-        val userId = withContext(Dispatchers.IO) { resolveUserUseCase.resolveUser(oidcUser.subject) }
+        val userId = withContext(Dispatchers.IO) { resolveUserUseCase.resolveUser(oauth2User.name) }
         val buckets = generateBuckets(from, to, granularity)
 
         val groups =

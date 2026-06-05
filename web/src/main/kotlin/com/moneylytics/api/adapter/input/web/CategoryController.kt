@@ -5,7 +5,7 @@ import com.moneylytics.api.application.port.input.ResolveUserUseCase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.springframework.security.core.annotation.AuthenticationPrincipal
-import org.springframework.security.oauth2.core.oidc.user.OidcUser
+import org.springframework.security.oauth2.core.user.OAuth2User
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
@@ -18,11 +18,11 @@ class CategoryController(
 ) {
     @GetMapping
     suspend fun getCategories(
-        @AuthenticationPrincipal oidcUser: OidcUser,
+        @AuthenticationPrincipal oauth2User: OAuth2User,
     ): CategoriesResponse {
         val grouped =
             withContext(Dispatchers.IO) {
-                val userId = resolveUserUseCase.resolveUser(oidcUser.subject)
+                val userId = resolveUserUseCase.resolveUser(oauth2User.name)
                 getCategoriesUseCase
                     .getCategories(userId)
                     .groupBy { it.name }

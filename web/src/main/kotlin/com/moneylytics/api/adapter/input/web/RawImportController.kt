@@ -17,7 +17,7 @@ import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
 import org.springframework.http.codec.multipart.FilePart
 import org.springframework.security.core.annotation.AuthenticationPrincipal
-import org.springframework.security.oauth2.core.oidc.user.OidcUser
+import org.springframework.security.oauth2.core.user.OAuth2User
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
@@ -40,10 +40,10 @@ class RawImportController(
     @PostMapping("/raw/preview", consumes = [MediaType.MULTIPART_FORM_DATA_VALUE])
     suspend fun preview(
         @RequestPart("file") filePart: FilePart,
-        @AuthenticationPrincipal oidcUser: OidcUser,
+        @AuthenticationPrincipal oauth2User: OAuth2User,
     ): ResponseEntity<out Any> {
         val csvContent = filePart.readContent()
-        val userId = withContext(Dispatchers.IO) { resolveUserUseCase.resolveUser(oidcUser.subject) }
+        val userId = withContext(Dispatchers.IO) { resolveUserUseCase.resolveUser(oauth2User.name) }
 
         return when (val result = mlpRawCsvParser.parse(csvContent)) {
             is MlpRawParseResult.FormatError ->
@@ -91,9 +91,9 @@ class RawImportController(
     @PostMapping("/raw/import")
     suspend fun importRaw(
         @RequestBody request: ImportRawRequest,
-        @AuthenticationPrincipal oidcUser: OidcUser,
+        @AuthenticationPrincipal oauth2User: OAuth2User,
     ): ResponseEntity<out Any> {
-        val userId = withContext(Dispatchers.IO) { resolveUserUseCase.resolveUser(oidcUser.subject) }
+        val userId = withContext(Dispatchers.IO) { resolveUserUseCase.resolveUser(oauth2User.name) }
 
         updateIgnoredTransactionsUseCase.update(
             toIgnore = request.toIgnore,

@@ -17,7 +17,7 @@ import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
 import org.springframework.http.codec.multipart.FilePart
 import org.springframework.security.core.annotation.AuthenticationPrincipal
-import org.springframework.security.oauth2.core.oidc.user.OidcUser
+import org.springframework.security.oauth2.core.user.OAuth2User
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
@@ -38,10 +38,10 @@ class CamtImportController(
 ) {
     @PostMapping("/camt/preview", consumes = [MediaType.MULTIPART_FORM_DATA_VALUE])
     suspend fun preview(
-        @AuthenticationPrincipal oidcUser: OidcUser,
+        @AuthenticationPrincipal oauth2User: OAuth2User,
         exchange: ServerWebExchange,
     ): ResponseEntity<out Any> {
-        val userId = withContext(Dispatchers.IO) { resolveUserUseCase.resolveUser(oidcUser.subject) }
+        val userId = withContext(Dispatchers.IO) { resolveUserUseCase.resolveUser(oauth2User.name) }
 
         val parts = exchange.multipartData.awaitSingle()
         val fileParts = parts["files"]?.filterIsInstance<FilePart>() ?: emptyList()
@@ -107,9 +107,9 @@ class CamtImportController(
     @PostMapping("/camt/import")
     suspend fun importCamt(
         @RequestBody request: CamtImportRequest,
-        @AuthenticationPrincipal oidcUser: OidcUser,
+        @AuthenticationPrincipal oauth2User: OAuth2User,
     ): ResponseEntity<out Any> {
-        val userId = withContext(Dispatchers.IO) { resolveUserUseCase.resolveUser(oidcUser.subject) }
+        val userId = withContext(Dispatchers.IO) { resolveUserUseCase.resolveUser(oauth2User.name) }
 
         updateIgnoredTransactionsUseCase.update(
             toIgnore = request.toIgnore,

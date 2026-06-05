@@ -13,6 +13,7 @@ import org.springframework.security.oauth2.client.web.server.DefaultServerOAuth2
 import org.springframework.security.oauth2.client.web.server.ServerOAuth2AuthorizationRequestResolver
 import org.springframework.security.oauth2.core.endpoint.OAuth2AuthorizationRequest
 import org.springframework.security.oauth2.core.oidc.user.OidcUser
+import org.springframework.security.oauth2.core.user.OAuth2User
 import org.springframework.security.web.server.SecurityWebFilterChain
 import org.springframework.security.web.server.authentication.HttpStatusServerEntryPoint
 import org.springframework.security.web.server.authentication.RedirectServerAuthenticationSuccessHandler
@@ -44,9 +45,10 @@ class SecurityConfiguration(
                 oauth2
                     .authorizationRequestResolver(appleAwareRequestResolver())
                     .authenticationSuccessHandler { exchange, authentication ->
-                        val oidcUser = authentication.principal as OidcUser
+                        val principal = authentication.principal as OAuth2User
+                        val externalId = if (principal is OidcUser) principal.subject else principal.name
                         Mono
-                            .fromCallable { resolveUserUseCase.resolveUser(oidcUser.subject) }
+                            .fromCallable { resolveUserUseCase.resolveUser(externalId) }
                             .subscribeOn(Schedulers.boundedElastic())
                             .then(
                                 RedirectServerAuthenticationSuccessHandler(frontendUrl)
