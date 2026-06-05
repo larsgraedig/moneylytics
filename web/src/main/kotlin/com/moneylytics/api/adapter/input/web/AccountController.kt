@@ -4,8 +4,9 @@ import com.moneylytics.api.application.port.input.GetAccountsUseCase
 import com.moneylytics.api.application.port.input.ResolveUserUseCase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import org.springframework.security.core.annotation.AuthenticationPrincipal
+import org.springframework.security.oauth2.core.oidc.user.OidcUser
 import org.springframework.web.bind.annotation.GetMapping
-import org.springframework.web.bind.annotation.RequestHeader
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 
@@ -17,11 +18,11 @@ class AccountController(
 ) {
     @GetMapping
     suspend fun getAccounts(
-        @RequestHeader("X-User-Id") externalId: String,
+        @AuthenticationPrincipal oidcUser: OidcUser,
     ): AccountsResponse {
         val (userId, accounts) =
             withContext(Dispatchers.IO) {
-                val uid = resolveUserUseCase.resolveUser(externalId)
+                val uid = resolveUserUseCase.resolveUser(oidcUser.subject)
                 uid to getAccountsUseCase.getAccounts(uid)
             }
         return AccountsResponse(accounts.map { AccountResponse(iban = it.iban, name = it.name) })

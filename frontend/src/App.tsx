@@ -8,8 +8,9 @@ import ThresholdsPage from './components/ThresholdsPage'
 import PiePage from './components/PiePage'
 import TransactionsPage from './components/TransactionsPage'
 import TransactionListPanel from './components/TransactionListPanel'
+import LoginPage from './components/LoginPage'
 import { fetchSankeyData, fetchAccounts, type SankeyResponse, type Account } from './api/transactions'
-import { useUser } from './context/UserContext'
+import { useAuth } from './context/AuthContext'
 
 function isoDate(d: Date) {
   return d.toISOString().slice(0, 10)
@@ -27,7 +28,7 @@ type ViewState =
   | { phase: 'ready'; data: SankeyResponse }
 
 export default function App() {
-  const { userId, users, setUserId } = useUser()
+  const { user, loading, logout } = useAuth()
   const [tab, setTab] = useState<Tab>('analytics')
   const [from, setFrom] = useState(firstOfYear)
   const [to, setTo] = useState(today)
@@ -37,12 +38,13 @@ export default function App() {
   const [activeNode, setActiveNode] = useState<string | null>(null)
 
   useEffect(() => {
+    if (!user) return
     setAccounts([])
     setSelectedIban('')
     setView({ phase: 'idle' })
     setActiveNode(null)
     fetchAccounts().then(setAccounts).catch(() => {})
-  }, [userId])
+  }, [user])
 
   async function load() {
     setView({ phase: 'loading' })
@@ -52,6 +54,14 @@ export default function App() {
     } catch (e) {
       setView({ phase: 'error', message: e instanceof Error ? e.message : 'request failed' })
     }
+  }
+
+  if (loading) {
+    return <div className="shell"><p className="hint loading">Laden…</p></div>
+  }
+
+  if (!user) {
+    return <LoginPage />
   }
 
   return (
@@ -160,15 +170,13 @@ export default function App() {
 
         {(tab === 'csv' || tab === 'import' || tab === 'camt' || tab === 'trends' || tab === 'thresholds' || tab === 'breakdown' || tab === 'transactions') && <div className="controls" />}
 
-        <select
-          className="user-select"
-          value={userId}
-          onChange={e => setUserId(e.target.value)}
-        >
-          {[...new Set([userId, ...users])].map(u => (
-            <option key={u} value={u}>{u}</option>
-          ))}
-        </select>
+        <div className="user-info">
+          {user.picture && (
+            <img className="user-avatar" src={user.picture} alt={user.name ?? user.email ?? ''} referrerPolicy="no-referrer" />
+          )}
+          <span className="user-name">{user.name ?? user.email}</span>
+          <button className="logout-btn" onClick={logout}>Abmelden</button>
+        </div>
       </header>
 
       <main className="stage">
@@ -203,13 +211,13 @@ export default function App() {
           </>
         )}
 
-        {tab === 'trends' && <TrendsPage key={userId} />}
-        {tab === 'breakdown' && <PiePage key={userId} />}
-        {tab === 'transactions' && <TransactionsPage key={userId} />}
-        {tab === 'thresholds' && <ThresholdsPage key={userId} />}
-        {tab === 'csv' && <CsvImportPage key={userId} />}
-        {tab === 'import' && <RawImportPage key={userId} />}
-        {tab === 'camt' && <CamtImportPage key={userId} />}
+        {tab === 'trends' && <TrendsPage />}
+        {tab === 'breakdown' && <PiePage />}
+        {tab === 'transactions' && <TransactionsPage />}
+        {tab === 'thresholds' && <ThresholdsPage />}
+        {tab === 'csv' && <CsvImportPage />}
+        {tab === 'import' && <RawImportPage />}
+        {tab === 'camt' && <CamtImportPage />}
       </main>
     </div>
   )
