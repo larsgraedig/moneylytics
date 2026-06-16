@@ -13,6 +13,8 @@ import {
   type TransactionItem,
 } from '../api/transactions'
 
+const LINK_COLORS = ['#f59e0b', '#10b981', '#60a5fa', '#f472b6', '#a78bfa', '#fb923c']
+
 function isoDate(d: Date) {
   return d.toISOString().slice(0, 10)
 }
@@ -57,6 +59,7 @@ export default function TransactionsPage() {
   const [categories, setCategories] = useState<CategoryGroup[]>([])
   const [linkingState, setLinkingState] = useState<LinkingState>(null)
   const [linkError, setLinkError] = useState<string | null>(null)
+  const [highlightedId, setHighlightedId] = useState<number | null>(null)
 
   useEffect(() => {
     fetchAccounts().then(setAccounts).catch(() => {})
@@ -245,6 +248,12 @@ export default function TransactionsPage() {
     }
   }
 
+  function scrollToLinked(txId: number) {
+    setHighlightedId(txId)
+    setTimeout(() => setHighlightedId(null), 1500)
+    document.querySelector(`[data-txid="${txId}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }
+
   const sublistId = (category: string) =>
     `txnv-sub-${category.replace(/\s+/g, '-').toLowerCase()}`
 
@@ -253,6 +262,30 @@ export default function TransactionsPage() {
     rows.forEach(r => seen.add(r.category))
     return [...seen]
   }, [rows])
+
+  const idToIndex = useMemo(() => {
+    const map = new Map<number, number>()
+    rows.forEach((row, i) => map.set(row.original.id, i))
+    return map
+  }, [rows])
+
+  // link id → color index, only for links where both ends are currently loaded
+  const linkColorMap = useMemo(() => {
+    const map = new Map<number, number>()
+    let colorIdx = 0
+    const seen = new Set<number>()
+    for (const row of rows) {
+      for (const link of row.original.offsetLinks) {
+        if (seen.has(link.id)) continue
+        seen.add(link.id)
+        if (idToIndex.has(link.linkedTransactionId)) {
+          map.set(link.id, colorIdx % LINK_COLORS.length)
+          colorIdx++
+        }
+      }
+    }
+    return map
+  }, [rows, idToIndex])
 
   function rowClassName(row: RowState, i: number): string {
     const classes: string[] = []
@@ -263,6 +296,8 @@ export default function TransactionsPage() {
       classes.push('txnv-row--linking-source')
     if (linkingState?.phase === 'confirming' && linkingState.targetIndex === i)
       classes.push('txnv-row--linking-target')
+    if (highlightedId === row.original.id)
+      classes.push('txnv-row--highlighted')
     return classes.join(' ')
   }
 
@@ -328,22 +363,36 @@ export default function TransactionsPage() {
 
     return (
       <div className="txnv-links-normal">
-        {row.original.offsetLinks.map(link => (
-          <span key={link.id} className="txnv-link-chip">
-            <span className={`txnv-link-chip-amount ${link.linkedTransactionAmount >= 0 ? 'positive' : 'negative'}`}>
-              {link.partialAmount !== null
-                ? EUR.format(link.partialAmount)
-                : EUR.format(Math.abs(link.linkedTransactionAmount))}
-            </span>
-            <button
-              className="txnv-link-chip-remove"
-              onClick={() => removeLink(link.id)}
-              title="remove link"
+        {row.original.offsetLinks.map(link => {
+          const colorIdx = linkColorMap.get(link.id)
+          const chipColor = colorIdx !== undefined ? LINK_COLORS[colorIdx] : undefined
+          const linkedVisible = idToIndex.has(link.linkedTransactionId)
+          const amtFormatted = link.partialAmount !== null
+            ? EUR.format(link.partialAmount)
+            : EUR.format(Math.abs(link.linkedTransactionAmount))
+          return (
+            <span
+              key={link.id}
+              className="txnv-link-chip"
+              style={chipColor ? { borderColor: chipColor } : undefined}
             >
-              ×
-            </button>
-          </span>
-        ))}
+              <span
+                className={`txnv-link-chip-amount ${link.linkedTransactionAmount >= 0 ? 'positive' : 'negative'}${linkedVisible ? ' txnv-link-chip-nav' : ''}`}
+                onClick={linkedVisible ? () => scrollToLinked(link.linkedTransactionId) : undefined}
+                title={linkedVisible ? 'zur verlinkten Transaktion springen' : undefined}
+              >
+                {amtFormatted}
+              </span>
+              <button
+                className="txnv-link-chip-remove"
+                onClick={() => removeLink(link.id)}
+                title="remove link"
+              >
+                ×
+              </button>
+            </span>
+          )
+        })}
         <button
           className="txnv-add-link-btn"
           onClick={() => { setLinkError(null); setLinkingState({ phase: 'selecting', sourceIndex: i }) }}
@@ -447,9 +496,21 @@ export default function TransactionsPage() {
             <tbody>
               {rows.map((row, i) => {
                 const effectiveDiffers = row.original.effectiveAmount !== row.original.amount
+                const rowLinkColor = (() => {
+                  for (const link of row.original.offsetLinks) {
+                    const idx = linkColorMap.get(link.id)
+                    if (idx !== undefined) return LINK_COLORS[idx]
+                  }
+                  return null
+                })()
                 return (
-                  <tr key={row.original.id} className={rowClassName(row, i)}>
-                    <td className="txn-cell-date">{formatDate(row.original.bookingDate)}</td>
+                  <tr key={row.original.id} className={rowClassName(row, i)} data-txid={row.original.id}>
+                    <td
+                      className="txn-cell-date"
+                      style={rowLinkColor ? { boxShadow: `inset 3px 0 0 0 ${rowLinkColor}`, paddingLeft: '9px' } : undefined}
+                    >
+                      {formatDate(row.original.bookingDate)}
+                    </td>
                     <td className="txnv-cell-account">
                       {accountMap.get(row.original.accountIban) ?? row.original.accountIban}
                     </td>
