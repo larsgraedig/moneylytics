@@ -17,6 +17,7 @@ data class TransactionItem(
     val effectiveAmount: BigDecimal,
     val currency: String,
     val offsetLinks: List<OffsetLinkItem>,
+    val comment: String?,
 )
 
 data class OffsetLinkItem(

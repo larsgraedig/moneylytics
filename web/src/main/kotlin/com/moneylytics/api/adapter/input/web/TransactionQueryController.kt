@@ -4,6 +4,7 @@ import com.moneylytics.api.application.port.input.GetTransactionsQuery
 import com.moneylytics.api.application.port.input.GetTransactionsUseCase
 import com.moneylytics.api.application.port.input.ResolveUserUseCase
 import com.moneylytics.api.application.port.input.UpdateTransactionCategoryUseCase
+import com.moneylytics.api.application.port.input.UpdateTransactionCommentUseCase
 import com.moneylytics.api.domain.Transaction
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -28,12 +29,17 @@ data class UpdateCategoryRequest(
     val subcategory: String,
 )
 
+data class UpdateCommentRequest(
+    val comment: String?,
+)
+
 @RestController
 @RequestMapping("/transactions")
 class TransactionQueryController(
     private val getTransactionsUseCase: GetTransactionsUseCase,
     private val resolveUserUseCase: ResolveUserUseCase,
     private val updateTransactionCategoryUseCase: UpdateTransactionCategoryUseCase,
+    private val updateTransactionCommentUseCase: UpdateTransactionCommentUseCase,
 ) {
     @GetMapping("/sankey")
     suspend fun getSankeyData(
@@ -98,6 +104,18 @@ class TransactionQueryController(
             if (updated != null) ResponseEntity.ok(updated.toItem()) else ResponseEntity.notFound().build()
         }
 
+    @PatchMapping("/{id}/comment")
+    suspend fun updateTransactionComment(
+        @PathVariable id: Long,
+        @RequestBody request: UpdateCommentRequest,
+        @RequestHeader("X-User-Id") externalId: String,
+    ): ResponseEntity<TransactionItem> =
+        withContext(Dispatchers.IO) {
+            val userId = resolveUserUseCase.resolveUser(externalId)
+            val updated = updateTransactionCommentUseCase.updateComment(id, userId, request.comment)
+            if (updated != null) ResponseEntity.ok(updated.toItem()) else ResponseEntity.notFound().build()
+        }
+
     private fun Transaction.toItem() =
         TransactionItem(
             id = requireNotNull(id),
@@ -117,6 +135,7 @@ class TransactionQueryController(
                         partialAmount = link.partialAmount,
                     )
                 },
+            comment = comment,
         )
 
     @GetMapping("/trends")

@@ -46,6 +46,7 @@ export interface TransactionItem {
   effectiveAmount: number
   currency: string
   offsetLinks: OffsetLinkItem[]
+  comment: string | null
 }
 
 export interface TransactionListResponse {
@@ -122,6 +123,19 @@ export async function linkTransactions(
   })
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
   return res.json() as Promise<OffsetLinkResult>
+}
+
+export async function updateTransactionComment(
+  id: number,
+  comment: string | null,
+): Promise<TransactionItem> {
+  const res = await fetchWithUser(`/transactions/${id}/comment`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ comment }),
+  })
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  return res.json() as Promise<TransactionItem>
 }
 
 export async function unlinkTransaction(linkId: number): Promise<void> {

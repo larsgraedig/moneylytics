@@ -13,6 +13,7 @@ data class Transaction(
     val accountIban: String,
     val id: Long? = null,
     val offsetLinks: List<TransactionOffsetLink> = emptyList(),
+    val comment: String? = null,
 ) {
     fun effectiveAmount(): BigDecimal = amount + offsetLinks.sumOf { it.contribution }
 }
