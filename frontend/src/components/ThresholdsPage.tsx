@@ -8,7 +8,7 @@ import {
   type Threshold,
   type ThresholdPeriod,
 } from '../api/thresholds'
-import { fetchTransactionList } from '../api/transactions'
+import { fetchTransactionList, type TransactionItem } from '../api/transactions'
 
 const PERIODS: ThresholdPeriod[] = ['WEEKLY', 'MONTHLY', 'QUARTERLY', 'YEARLY']
 const PERIOD_LABELS: Record<ThresholdPeriod, string> = {
@@ -116,6 +116,16 @@ function parseAmt(s: string): number | null {
   return isNaN(n) || n < 0 ? null : n
 }
 
+// ── drilldown ─────────────────────────────────────────────────────────────
+
+interface DrilldownState {
+  key: string
+  category: string
+  subcategory: string | null
+  transactions: TransactionItem[] | null
+  loading: boolean
+}
+
 // ── row type ──────────────────────────────────────────────────────────────
 
 interface BudgetRow {
@@ -141,6 +151,7 @@ export default function ThresholdsPage() {
   const [form, setForm] = useState<FormState>(EMPTY_FORM)
   const [saving, setSaving] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
+  const [drilldown, setDrilldown] = useState<DrilldownState | null>(null)
 
   useEffect(() => {
     fetchCategories().then(r => setCategories(r.categories)).catch(() => {})
@@ -287,6 +298,18 @@ export default function ThresholdsPage() {
       cancelEdit()
     } catch {
       setFormError('Löschen fehlgeschlagen.')
+    }
+  }
+
+  async function openDrilldown(row: BudgetRow) {
+    setDrilldown({ key: row.key, category: row.category, subcategory: row.subcategory, transactions: null, loading: true })
+    try {
+      const resp = await fetchTransactionList(from, to, row.category, row.subcategory ?? undefined)
+      const txs = resp.transactions.filter(tx => tx.effectiveAmount < 0)
+      txs.sort((a, b) => b.bookingDate.localeCompare(a.bookingDate))
+      setDrilldown(prev => prev?.key === row.key ? { ...prev, transactions: txs, loading: false } : prev)
+    } catch {
+      setDrilldown(prev => prev?.key === row.key ? { ...prev, transactions: [], loading: false } : prev)
     }
   }
 
@@ -459,7 +482,14 @@ export default function ThresholdsPage() {
                     </td>
                     {spendingLoaded && (
                       <td className={`bgt-td-spent${spending === 0 ? ' bgt-cell-muted' : ''}`}>
-                        {spending > 0 ? EUR2.format(spending) : '—'}
+                        {spending > 0 ? (
+                          <button
+                            className="bgt-spent-btn"
+                            onClick={e => { e.stopPropagation(); openDrilldown(row) }}
+                          >
+                            {EUR2.format(spending)}
+                          </button>
+                        ) : '—'}
                       </td>
                     )}
                     <td className="bgt-td-period bgt-cell-muted">
@@ -514,6 +544,14 @@ export default function ThresholdsPage() {
           </table>
         )}
       </div>
+      {drilldown != null && (
+        <DrilldownModal
+          state={drilldown}
+          from={from}
+          to={to}
+          onClose={() => setDrilldown(null)}
+        />
+      )}
     </div>
   )
 }
@@ -546,6 +584,79 @@ function ProgressBar({ progress }: { progress: Progress }) {
         {overBudget && '▲ '}
         {Math.round(progress.pct * 100)}%
       </span>
+    </div>
+  )
+}
+
+function DrilldownModal({
+  state,
+  from,
+  to,
+  onClose,
+}: {
+  state: DrilldownState
+  from: string
+  to: string
+  onClose: () => void
+}) {
+  const title = state.subcategory != null
+    ? `${state.category} / ${state.subcategory}`
+    : state.category
+
+  const total = state.transactions?.reduce((s, tx) => s + Math.abs(tx.effectiveAmount), 0) ?? 0
+
+  return (
+    <div className="bgt-dd-backdrop" onClick={onClose}>
+      <div className="bgt-dd-panel" onClick={e => e.stopPropagation()}>
+        <div className="bgt-dd-header">
+          <div className="bgt-dd-title">
+            <span className="bgt-dd-name">{title}</span>
+            <span className="bgt-dd-range">{from} → {to}</span>
+          </div>
+          <button className="bgt-dd-close" onClick={onClose}>✕</button>
+        </div>
+
+        {state.loading && <p className="bgt-dd-hint">Lade Transaktionen…</p>}
+
+        {!state.loading && state.transactions != null && state.transactions.length === 0 && (
+          <p className="bgt-dd-hint">Keine Transaktionen im Zeitraum.</p>
+        )}
+
+        {!state.loading && state.transactions != null && state.transactions.length > 0 && (
+          <>
+            <div className="bgt-dd-scroll">
+              <table className="bgt-dd-table">
+                <thead>
+                  <tr>
+                    <th>datum</th>
+                    <th>kategorie</th>
+                    <th>verwendungszweck</th>
+                    <th>betrag</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {state.transactions.map(tx => (
+                    <tr key={tx.id}>
+                      <td className="bgt-dd-cell-date">{tx.bookingDate}</td>
+                      <td className="bgt-dd-cell-cat">{tx.category} / {tx.subcategory}</td>
+                      <td className="bgt-dd-cell-purpose" title={tx.purpose ?? undefined}>
+                        {tx.purpose ?? <span className="bgt-cell-muted">—</span>}
+                      </td>
+                      <td className="bgt-dd-cell-amount">
+                        {EUR2.format(Math.abs(tx.effectiveAmount))}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="bgt-dd-footer">
+              <span className="bgt-dd-total-label">gesamt</span>
+              <span className="bgt-dd-total">{EUR2.format(total)}</span>
+            </div>
+          </>
+        )}
+      </div>
     </div>
   )
 }
