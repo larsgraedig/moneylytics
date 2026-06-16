@@ -27,6 +27,7 @@ enum class CsvFormat(
             datePattern = "dd.MM.yyyy",
             accountIban = "IBAN Auftragskonto",
             accountName = "Bezeichnung Auftragskonto",
+            purpose = "Verwendungszweck",
         ),
     ),
 

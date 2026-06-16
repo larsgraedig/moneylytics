@@ -47,6 +47,7 @@ export interface TransactionItem {
   currency: string
   offsetLinks: OffsetLinkItem[]
   comment: string | null
+  purpose: string | null
 }
 
 export interface TransactionListResponse {

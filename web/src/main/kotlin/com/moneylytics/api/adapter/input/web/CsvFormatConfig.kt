@@ -20,6 +20,8 @@ data class CsvFormatConfig(
     val accountIban: String,
     /** Column whose value is used as the human-readable account name, or null to reuse [accountIban]. */
     val accountName: String? = null,
+    /** Column whose value is used as the transaction purpose (Verwendungszweck), or null if absent. */
+    val purpose: String? = null,
 ) {
     val requiredColumns: Set<String> =
         setOf(

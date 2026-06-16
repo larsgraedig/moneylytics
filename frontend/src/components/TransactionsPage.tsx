@@ -439,6 +439,7 @@ export default function TransactionsPage() {
                 <th>category</th>
                 <th>subcategory</th>
                 <th>offsets</th>
+                <th>verwendungszweck</th>
                 <th>kommentar</th>
                 <th></th>
               </tr>
@@ -480,6 +481,9 @@ export default function TransactionsPage() {
                     </td>
                     <td className="txnv-cell-offsets">
                       {renderOffsetCell(row, i)}
+                    </td>
+                    <td className="txnv-cell-purpose" title={row.original.purpose ?? undefined}>
+                      <span className="txnv-purpose-text">{row.original.purpose ?? ''}</span>
                     </td>
                     <td className="txnv-cell-comment">
                       <input

@@ -18,6 +18,7 @@ data class TransactionItem(
     val currency: String,
     val offsetLinks: List<OffsetLinkItem>,
     val comment: String?,
+    val purpose: String?,
 )
 
 data class OffsetLinkItem(

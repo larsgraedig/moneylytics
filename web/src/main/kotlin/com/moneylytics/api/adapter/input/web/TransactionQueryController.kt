@@ -136,6 +136,7 @@ class TransactionQueryController(
                     )
                 },
             comment = comment,
+            purpose = purpose,
         )
 
     @GetMapping("/trends")

@@ -164,6 +164,7 @@ class TransactionPersistenceAdapter(
             id = id,
             offsetLinks = offsetLinks,
             comment = comment,
+            purpose = purpose,
         )
 
     private fun Transaction.toEntity(
@@ -185,6 +186,7 @@ class TransactionPersistenceAdapter(
             account = account,
             fingerprint = fingerprint,
             user = userJpaRepository.getReferenceById(userId),
+            purpose = purpose?.takeIf { it.isNotBlank() },
         )
     }
 
