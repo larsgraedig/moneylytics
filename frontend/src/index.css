@@ -1335,6 +1335,171 @@ body {
   border-color: var(--accent-dim);
 }
 
+.bgt-spent-btn {
+  background: none;
+  border: none;
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+  text-decoration-color: var(--border-hi);
+  text-underline-offset: 2px;
+}
+.bgt-spent-btn:hover { color: var(--accent); text-decoration-color: var(--accent-dim); }
+
+/* ── drilldown modal ─────────────────────── */
+
+.bgt-dd-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+}
+
+.bgt-dd-panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  width: min(780px, 95vw);
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.bgt-dd-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.bgt-dd-title {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.bgt-dd-name {
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--text);
+}
+
+.bgt-dd-range {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-family: var(--mono);
+}
+
+.bgt-dd-close {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 14px;
+  padding: 2px 4px;
+  line-height: 1;
+}
+.bgt-dd-close:hover { color: var(--text); }
+
+.bgt-dd-hint {
+  padding: 24px 18px;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.bgt-dd-scroll {
+  overflow-y: auto;
+  flex: 1;
+}
+
+.bgt-dd-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.bgt-dd-table thead th {
+  padding: 8px 12px;
+  text-align: left;
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  background: var(--surface);
+}
+
+.bgt-dd-table tbody tr {
+  border-bottom: 1px solid var(--border);
+}
+.bgt-dd-table tbody tr:last-child { border-bottom: none; }
+.bgt-dd-table tbody tr:hover { background: rgba(255,255,255,0.02); }
+
+.bgt-dd-table td { padding: 8px 12px; vertical-align: middle; }
+
+.bgt-dd-cell-date {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.bgt-dd-cell-cat {
+  color: var(--text-muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.bgt-dd-cell-purpose {
+  color: var(--text);
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bgt-dd-cell-amount {
+  text-align: right;
+  font-family: var(--mono);
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.bgt-dd-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 18px;
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.bgt-dd-total-label {
+  font-size: 12px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+}
+
+.bgt-dd-total {
+  font-family: var(--mono);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}
+
 /* ── breakdown (pie) page ────────────────── */
 
 .pi-page {
