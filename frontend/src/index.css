@@ -1738,6 +1738,20 @@ body {
   color: var(--error);
 }
 
+.txnv-cell-purpose {
+  max-width: 220px;
+}
+
+.txnv-purpose-text {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+  color: var(--text-muted);
+  font-family: var(--mono);
+}
+
 .txnv-cell-comment {
   min-width: 160px;
   max-width: 260px;

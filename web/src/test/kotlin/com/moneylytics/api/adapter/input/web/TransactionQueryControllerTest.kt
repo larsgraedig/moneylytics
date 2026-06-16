@@ -21,12 +21,13 @@ class TransactionQueryControllerTest {
     private val resolveUserUseCase: ResolveUserUseCase = mock { on { resolveUser(any()) } doReturn USER_ID }
     private val updateTransactionCategoryUseCase: UpdateTransactionCategoryUseCase = mock()
     private val updateTransactionCommentUseCase: UpdateTransactionCommentUseCase = mock()
-    private val controller = TransactionQueryController(
-        getTransactionsUseCase,
-        resolveUserUseCase,
-        updateTransactionCategoryUseCase,
-        updateTransactionCommentUseCase,
-    )
+    private val controller =
+        TransactionQueryController(
+            getTransactionsUseCase,
+            resolveUserUseCase,
+            updateTransactionCategoryUseCase,
+            updateTransactionCommentUseCase,
+        )
 
     private val from = LocalDate.of(2025, 1, 1)
     private val to = LocalDate.of(2025, 1, 31)

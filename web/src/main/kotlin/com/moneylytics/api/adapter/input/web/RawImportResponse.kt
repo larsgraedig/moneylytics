@@ -45,6 +45,7 @@ data class RawTransactionImport(
     val currency: String,
     val category: String,
     val subcategory: String,
+    val purpose: String?,
 )
 
 data class CamtPreviewResponse(
@@ -72,6 +73,7 @@ data class CamtTransactionImport(
     val category: String,
     val subcategory: String,
     val accountIban: String,
+    val purpose: String?,
 )
 
 data class CategoriesResponse(

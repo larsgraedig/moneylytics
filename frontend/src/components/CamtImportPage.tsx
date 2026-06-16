@@ -121,6 +121,7 @@ export default function CamtImportPage() {
           category: d.category,
           subcategory: d.subcategory,
           accountIban: r.accountIban,
+          purpose: r.purpose || null,
         }]
       })
 

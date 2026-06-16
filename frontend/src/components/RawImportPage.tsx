@@ -118,6 +118,7 @@ export default function RawImportPage() {
           currency: r.currency,
           category: d.category,
           subcategory: d.subcategory,
+          purpose: r.purpose || null,
         }]
       })
 

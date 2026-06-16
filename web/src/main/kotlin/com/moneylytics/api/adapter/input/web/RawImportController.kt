@@ -116,6 +116,7 @@ class RawImportController(
                     amount = row.amount,
                     currency = row.currency,
                     accountIban = request.accountIban,
+                    purpose = row.purpose,
                 )
             }
 

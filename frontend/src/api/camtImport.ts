@@ -22,6 +22,7 @@ export interface CamtTransactionImport {
   category: string
   subcategory: string
   accountIban: string
+  purpose: string | null
 }
 
 export interface CamtImportRequest {

@@ -132,6 +132,7 @@ class CamtImportController(
                     amount = row.amount,
                     currency = row.currency,
                     accountIban = row.accountIban,
+                    purpose = row.purpose,
                 )
             }
 

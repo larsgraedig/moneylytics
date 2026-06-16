@@ -63,6 +63,7 @@ class CsvTransactionParser {
         val accountNames = mutableMapOf<String, String>()
         val errors = mutableListOf<CsvValidationError>()
         val hasAccountNameColumn = config.accountName != null && config.accountName in headers
+        val hasPurposeColumn = config.purpose != null && config.purpose in headers
 
         for ((index, record) in csvParser.withIndex()) {
             val rowNumber = index + 2 // header is row 1, data starts at row 2
@@ -76,6 +77,7 @@ class CsvTransactionParser {
                 val accountIban = record[config.accountIban]
                 val accountName = if (hasAccountNameColumn) record[config.accountName!!] else accountIban
                 accountNames[accountIban] = accountName
+                val purpose = if (hasPurposeColumn) record[config.purpose!!].takeIf { it.isNotBlank() } else null
                 transactions.add(
                     Transaction(
                         category = record[config.category],
@@ -85,6 +87,7 @@ class CsvTransactionParser {
                         amount = amount,
                         currency = record[config.currency],
                         accountIban = accountIban,
+                        purpose = purpose,
                     ),
                 )
             }

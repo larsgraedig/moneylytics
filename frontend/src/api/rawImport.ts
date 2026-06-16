@@ -45,6 +45,7 @@ export interface RawTransactionImport {
   currency: string
   category: string
   subcategory: string
+  purpose: string | null
 }
 
 export interface ImportRawRequest {

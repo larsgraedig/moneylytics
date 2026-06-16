@@ -14,6 +14,7 @@ data class Transaction(
     val id: Long? = null,
     val offsetLinks: List<TransactionOffsetLink> = emptyList(),
     val comment: String? = null,
+    val purpose: String? = null,
 ) {
     fun effectiveAmount(): BigDecimal = amount + offsetLinks.sumOf { it.contribution }
 }
