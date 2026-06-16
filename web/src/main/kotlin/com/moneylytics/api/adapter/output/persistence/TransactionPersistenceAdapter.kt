@@ -113,6 +113,17 @@ class TransactionPersistenceAdapter(
         return enrichWithOffsetLinks(listOf(jpaRepository.save(entity))).first()
     }
 
+    @Transactional
+    override fun updateComment(
+        id: Long,
+        userId: Long,
+        comment: String?,
+    ): Transaction? {
+        val entity = jpaRepository.findByIdAndUserId(id, userId) ?: return null
+        entity.comment = comment?.takeIf { it.isNotBlank() }
+        return enrichWithOffsetLinks(listOf(jpaRepository.save(entity))).first()
+    }
+
     private fun enrichWithOffsetLinks(entities: List<TransactionEntity>): List<Transaction> {
         val ids = entities.mapNotNull { it.id }
         if (ids.isEmpty()) return emptyList()
@@ -152,6 +163,7 @@ class TransactionPersistenceAdapter(
             accountIban = account.iban,
             id = id,
             offsetLinks = offsetLinks,
+            comment = comment,
         )
 
     private fun Transaction.toEntity(

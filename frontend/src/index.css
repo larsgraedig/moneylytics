@@ -1606,3 +1606,39 @@ body {
   font-size: 10px;
   color: var(--error);
 }
+
+.txnv-cell-comment {
+  min-width: 160px;
+  max-width: 260px;
+}
+
+.txnv-comment-input {
+  width: 100%;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid transparent;
+  color: var(--text);
+  font-size: 12px;
+  font-family: inherit;
+  padding: 2px 0;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.txnv-comment-input::placeholder {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.txnv-comment-input:hover {
+  border-bottom-color: var(--border-hi);
+}
+
+.txnv-comment-input:focus {
+  border-bottom-color: var(--accent-dim);
+}
+
+.txnv-comment-input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

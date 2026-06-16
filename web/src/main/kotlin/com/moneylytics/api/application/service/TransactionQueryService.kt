@@ -3,6 +3,7 @@ package com.moneylytics.api.application.service
 import com.moneylytics.api.application.port.input.GetTransactionsQuery
 import com.moneylytics.api.application.port.input.GetTransactionsUseCase
 import com.moneylytics.api.application.port.input.UpdateTransactionCategoryUseCase
+import com.moneylytics.api.application.port.input.UpdateTransactionCommentUseCase
 import com.moneylytics.api.application.port.output.TransactionRepository
 import com.moneylytics.api.domain.Transaction
 import org.springframework.stereotype.Service
@@ -11,7 +12,8 @@ import org.springframework.stereotype.Service
 class TransactionQueryService(
     private val transactionRepository: TransactionRepository,
 ) : GetTransactionsUseCase,
-    UpdateTransactionCategoryUseCase {
+    UpdateTransactionCategoryUseCase,
+    UpdateTransactionCommentUseCase {
     override fun getTransactions(query: GetTransactionsQuery): List<Transaction> {
         val transactions =
             if (query.onlyNegative) {
@@ -30,4 +32,10 @@ class TransactionQueryService(
         category: String,
         subcategory: String,
     ): Transaction? = transactionRepository.updateCategory(id, userId, category, subcategory)
+
+    override fun updateComment(
+        id: Long,
+        userId: Long,
+        comment: String?,
+    ): Transaction? = transactionRepository.updateComment(id, userId, comment)
 }

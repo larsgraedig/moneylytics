@@ -7,6 +7,7 @@ import {
   linkTransactions,
   unlinkTransaction,
   updateTransactionCategory,
+  updateTransactionComment,
   type Account,
   type OffsetLinkItem,
   type TransactionItem,
@@ -29,7 +30,9 @@ interface RowState {
   original: TransactionItem
   category: string
   subcategory: string
+  comment: string
   saving: boolean
+  savingComment: boolean
   error: string | null
 }
 
@@ -87,7 +90,9 @@ export default function TransactionsPage() {
           original: tx,
           category: tx.category,
           subcategory: tx.subcategory,
+          comment: tx.comment ?? '',
           saving: false,
+          savingComment: false,
           error: null,
         })),
       )
@@ -97,7 +102,7 @@ export default function TransactionsPage() {
     }
   }
 
-  function updateRow(index: number, field: 'category' | 'subcategory', value: string) {
+  function updateRow(index: number, field: 'category' | 'subcategory' | 'comment', value: string) {
     setRows(prev => {
       const next = [...prev]
       next[index] = { ...next[index], [field]: value }
@@ -117,6 +122,7 @@ export default function TransactionsPage() {
       setRows(prev => {
         const next = [...prev]
         next[index] = {
+          ...next[index],
           original: updated,
           category: updated.category,
           subcategory: updated.subcategory,
@@ -133,6 +139,36 @@ export default function TransactionsPage() {
           saving: false,
           error: e instanceof Error ? e.message : 'save failed',
         }
+        return next
+      })
+    }
+  }
+
+  async function saveComment(index: number) {
+    const row = rows[index]
+    const newComment = row.comment.trim() || null
+    if (newComment === (row.original.comment ?? null)) return
+    setRows(prev => {
+      const next = [...prev]
+      next[index] = { ...next[index], savingComment: true }
+      return next
+    })
+    try {
+      const updated = await updateTransactionComment(row.original.id, newComment)
+      setRows(prev => {
+        const next = [...prev]
+        next[index] = {
+          ...next[index],
+          original: updated,
+          comment: updated.comment ?? '',
+          savingComment: false,
+        }
+        return next
+      })
+    } catch {
+      setRows(prev => {
+        const next = [...prev]
+        next[index] = { ...next[index], savingComment: false }
         return next
       })
     }
@@ -220,7 +256,8 @@ export default function TransactionsPage() {
 
   function rowClassName(row: RowState, i: number): string {
     const classes: string[] = []
-    if (row.category !== row.original.category || row.subcategory !== row.original.subcategory)
+    const commentDirty = row.comment.trim() !== (row.original.comment ?? '')
+    if (row.category !== row.original.category || row.subcategory !== row.original.subcategory || commentDirty)
       classes.push('txnv-row--dirty')
     if (linkingState?.sourceIndex === i)
       classes.push('txnv-row--linking-source')
@@ -402,6 +439,7 @@ export default function TransactionsPage() {
                 <th>category</th>
                 <th>subcategory</th>
                 <th>offsets</th>
+                <th>kommentar</th>
                 <th></th>
               </tr>
             </thead>
@@ -442,6 +480,18 @@ export default function TransactionsPage() {
                     </td>
                     <td className="txnv-cell-offsets">
                       {renderOffsetCell(row, i)}
+                    </td>
+                    <td className="txnv-cell-comment">
+                      <input
+                        className="txnv-comment-input"
+                        type="text"
+                        value={row.comment}
+                        placeholder="Kommentar hinzufügen…"
+                        disabled={row.savingComment}
+                        onChange={e => updateRow(i, 'comment', e.target.value)}
+                        onBlur={() => saveComment(i)}
+                        onKeyDown={e => { if (e.key === 'Enter') { e.currentTarget.blur() } }}
+                      />
                     </td>
                     <td className="txnv-cell-actions">
                       {row.error && (

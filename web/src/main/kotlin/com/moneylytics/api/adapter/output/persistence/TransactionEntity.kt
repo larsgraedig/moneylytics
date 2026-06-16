@@ -35,6 +35,8 @@ class TransactionEntity(
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "user_id", nullable = false)
     val user: UserEntity,
+    @Column(nullable = true, length = 1000)
+    var comment: String? = null,
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     var id: Long? = null,

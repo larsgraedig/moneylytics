@@ -39,4 +39,10 @@ interface TransactionRepository {
         category: String,
         subcategory: String,
     ): Transaction?
+
+    fun updateComment(
+        id: Long,
+        userId: Long,
+        comment: String?,
+    ): Transaction?
 }
