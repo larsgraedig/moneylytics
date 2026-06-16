@@ -1714,6 +1714,15 @@ body {
   outline-offset: -1px;
 }
 
+@keyframes txnv-flash {
+  0%   { background: rgba(255, 255, 255, 0.10); }
+  100% { background: transparent; }
+}
+
+.txnv-row--highlighted {
+  animation: txnv-flash 1.5s ease-out forwards;
+}
+
 .txnv-amount-crossed {
   text-decoration: line-through;
   opacity: 0.45;
@@ -1756,6 +1765,16 @@ body {
 
 .txnv-link-chip-amount.positive { color: #4ade80; }
 .txnv-link-chip-amount.negative { color: var(--error); }
+
+.txnv-link-chip-amount.txnv-link-chip-nav {
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  text-decoration-style: dashed;
+  text-decoration-color: currentColor;
+  opacity: 0.9;
+}
+.txnv-link-chip-amount.txnv-link-chip-nav:hover { opacity: 1; }
 
 .txnv-link-chip-remove {
   background: none;
