@@ -3,6 +3,7 @@ package com.moneylytics.api.adapter.input.web
 import com.moneylytics.api.application.port.input.GetTransactionsQuery
 import com.moneylytics.api.application.port.input.GetTransactionsUseCase
 import com.moneylytics.api.application.port.input.ResolveUserUseCase
+import com.moneylytics.api.application.port.input.UpdateTransactionAccountingDateUseCase
 import com.moneylytics.api.application.port.input.UpdateTransactionCategoryUseCase
 import com.moneylytics.api.application.port.input.UpdateTransactionCommentUseCase
 import com.moneylytics.api.domain.Transaction
@@ -33,6 +34,11 @@ data class UpdateCommentRequest(
     val comment: String?,
 )
 
+data class UpdateAccountingDateRequest(
+    @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+    val accountingDate: LocalDate,
+)
+
 @RestController
 @RequestMapping("/transactions")
 class TransactionQueryController(
@@ -40,6 +46,7 @@ class TransactionQueryController(
     private val resolveUserUseCase: ResolveUserUseCase,
     private val updateTransactionCategoryUseCase: UpdateTransactionCategoryUseCase,
     private val updateTransactionCommentUseCase: UpdateTransactionCommentUseCase,
+    private val updateTransactionAccountingDateUseCase: UpdateTransactionAccountingDateUseCase,
 ) {
     @GetMapping("/sankey")
     suspend fun getSankeyData(
@@ -86,7 +93,7 @@ class TransactionQueryController(
         return TransactionListResponse(
             transactions =
                 transactions
-                    .sortedByDescending { it.bookingDate }
+                    .sortedByDescending { it.accountingDate }
                     .map { it.toItem() },
             total = transactions.sumOf { it.effectiveAmount() },
         )
@@ -101,6 +108,18 @@ class TransactionQueryController(
         withContext(Dispatchers.IO) {
             val userId = resolveUserUseCase.resolveUser(externalId)
             val updated = updateTransactionCategoryUseCase.updateCategory(id, userId, request.category, request.subcategory)
+            if (updated != null) ResponseEntity.ok(updated.toItem()) else ResponseEntity.notFound().build()
+        }
+
+    @PatchMapping("/{id}/accounting-date")
+    suspend fun updateTransactionAccountingDate(
+        @PathVariable id: Long,
+        @RequestBody request: UpdateAccountingDateRequest,
+        @RequestHeader("X-User-Id") externalId: String,
+    ): ResponseEntity<TransactionItem> =
+        withContext(Dispatchers.IO) {
+            val userId = resolveUserUseCase.resolveUser(externalId)
+            val updated = updateTransactionAccountingDateUseCase.updateAccountingDate(id, userId, request.accountingDate)
             if (updated != null) ResponseEntity.ok(updated.toItem()) else ResponseEntity.notFound().build()
         }
 
@@ -120,6 +139,7 @@ class TransactionQueryController(
         TransactionItem(
             id = requireNotNull(id),
             bookingDate = bookingDate.toString(),
+            accountingDate = accountingDate.toString(),
             accountIban = accountIban,
             category = category,
             subcategory = subcategory,
@@ -167,7 +187,7 @@ class TransactionQueryController(
                     }
 
                 fun bucketSums(txns: List<Transaction>): List<BigDecimal> {
-                    val byBucket = txns.groupBy { bucketKey(it.bookingDate, granularity) }
+                    val byBucket = txns.groupBy { bucketKey(it.accountingDate, granularity) }
                     return buckets.map { bucket -> byBucket[bucket]?.sumOf { it.effectiveAmount().abs() } ?: BigDecimal.ZERO }
                 }
 

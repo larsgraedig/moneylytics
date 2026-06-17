@@ -113,6 +113,7 @@ class RawImportController(
                     subcategory = row.subcategory,
                     bookingDate = LocalDate.parse(row.bookingDate, DateTimeFormatter.ISO_LOCAL_DATE),
                     valueDate = LocalDate.parse(row.valueDate, DateTimeFormatter.ISO_LOCAL_DATE),
+                    accountingDate = LocalDate.parse(row.bookingDate, DateTimeFormatter.ISO_LOCAL_DATE),
                     amount = row.amount,
                     currency = row.currency,
                     accountIban = request.accountIban,

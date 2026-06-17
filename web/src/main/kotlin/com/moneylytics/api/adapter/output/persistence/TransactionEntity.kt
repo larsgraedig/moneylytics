@@ -23,6 +23,8 @@ class TransactionEntity(
     val bookingDate: LocalDate,
     @Column(nullable = false)
     val valueDate: LocalDate,
+    @Column(nullable = false, name = "accounting_date")
+    var accountingDate: LocalDate,
     @Column(nullable = false, precision = 19, scale = 4)
     val amount: BigDecimal,
     @Column(nullable = false, length = 3)

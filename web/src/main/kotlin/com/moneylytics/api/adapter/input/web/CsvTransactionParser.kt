@@ -84,6 +84,7 @@ class CsvTransactionParser {
                         subcategory = record[config.subcategory],
                         bookingDate = bookingDate,
                         valueDate = valueDate,
+                        accountingDate = bookingDate,
                         amount = amount,
                         currency = record[config.currency],
                         accountIban = accountIban,

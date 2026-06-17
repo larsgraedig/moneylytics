@@ -6,6 +6,7 @@ import {
   fetchAllTransactions,
   linkTransactions,
   unlinkTransaction,
+  updateTransactionAccountingDate,
   updateTransactionCategory,
   updateTransactionComment,
   type Account,
@@ -33,8 +34,10 @@ interface RowState {
   category: string
   subcategory: string
   comment: string
+  accountingDate: string
   saving: boolean
   savingComment: boolean
+  savingAccountingDate: boolean
   error: string | null
 }
 
@@ -94,8 +97,10 @@ export default function TransactionsPage() {
           category: tx.category,
           subcategory: tx.subcategory,
           comment: tx.comment ?? '',
+          accountingDate: tx.accountingDate,
           saving: false,
           savingComment: false,
+          savingAccountingDate: false,
           error: null,
         })),
       )
@@ -105,7 +110,7 @@ export default function TransactionsPage() {
     }
   }
 
-  function updateRow(index: number, field: 'category' | 'subcategory' | 'comment', value: string) {
+  function updateRow(index: number, field: 'category' | 'subcategory' | 'comment' | 'accountingDate', value: string) {
     setRows(prev => {
       const next = [...prev]
       next[index] = { ...next[index], [field]: value }
@@ -142,6 +147,35 @@ export default function TransactionsPage() {
           saving: false,
           error: e instanceof Error ? e.message : 'save failed',
         }
+        return next
+      })
+    }
+  }
+
+  async function saveAccountingDate(index: number) {
+    const row = rows[index]
+    if (!row.accountingDate || row.accountingDate === row.original.accountingDate) return
+    setRows(prev => {
+      const next = [...prev]
+      next[index] = { ...next[index], savingAccountingDate: true }
+      return next
+    })
+    try {
+      const updated = await updateTransactionAccountingDate(row.original.id, row.accountingDate)
+      setRows(prev => {
+        const next = [...prev]
+        next[index] = {
+          ...next[index],
+          original: updated,
+          accountingDate: updated.accountingDate,
+          savingAccountingDate: false,
+        }
+        return next
+      })
+    } catch {
+      setRows(prev => {
+        const next = [...prev]
+        next[index] = { ...next[index], accountingDate: next[index].original.accountingDate, savingAccountingDate: false }
         return next
       })
     }
@@ -290,7 +324,8 @@ export default function TransactionsPage() {
   function rowClassName(row: RowState, i: number): string {
     const classes: string[] = []
     const commentDirty = row.comment.trim() !== (row.original.comment ?? '')
-    if (row.category !== row.original.category || row.subcategory !== row.original.subcategory || commentDirty)
+    const accountingDateDirty = row.accountingDate !== row.original.accountingDate
+    if (row.category !== row.original.category || row.subcategory !== row.original.subcategory || commentDirty || accountingDateDirty)
       classes.push('txnv-row--dirty')
     if (linkingState?.sourceIndex === i)
       classes.push('txnv-row--linking-source')
@@ -482,7 +517,7 @@ export default function TransactionsPage() {
           <table className="txnv-table">
             <thead>
               <tr>
-                <th>date</th>
+                <th>datum</th>
                 <th>account</th>
                 <th className="txnv-col-amount">amount</th>
                 <th>category</th>
@@ -509,7 +544,19 @@ export default function TransactionsPage() {
                       className="txn-cell-date"
                       style={rowLinkColor ? { boxShadow: `inset 3px 0 0 0 ${rowLinkColor}`, paddingLeft: '9px' } : undefined}
                     >
-                      {formatDate(row.original.bookingDate)}
+                      <input
+                        className="txnv-accounting-date-input"
+                        type="date"
+                        value={row.accountingDate}
+                        disabled={row.savingAccountingDate}
+                        onChange={e => updateRow(i, 'accountingDate', e.target.value)}
+                        onBlur={() => saveAccountingDate(i)}
+                      />
+                      {row.original.accountingDate !== row.original.bookingDate && (
+                        <span className="txnv-booking-date-ref" title="reales Buchungsdatum">
+                          {formatDate(row.original.bookingDate)}
+                        </span>
+                      )}
                     </td>
                     <td className="txnv-cell-account">
                       {accountMap.get(row.original.accountIban) ?? row.original.accountIban}

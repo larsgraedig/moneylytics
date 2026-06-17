@@ -9,19 +9,25 @@ interface TransactionRepository {
         userId: Long,
     ): Int
 
-    fun findByBookingDateBetween(
+    fun findByAccountingDateBetween(
         from: LocalDate,
         to: LocalDate,
         userId: Long,
         accountIban: String? = null,
     ): List<Transaction>
 
-    fun findNegativeByBookingDateBetween(
+    fun findNegativeByAccountingDateBetween(
         from: LocalDate,
         to: LocalDate,
         userId: Long,
         accountIban: String? = null,
     ): List<Transaction>
+
+    fun updateAccountingDate(
+        id: Long,
+        userId: Long,
+        accountingDate: LocalDate,
+    ): Transaction?
 
     fun findExistingFingerprints(
         fingerprints: Collection<String>,

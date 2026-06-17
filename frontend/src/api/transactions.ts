@@ -39,6 +39,7 @@ export interface OffsetLinkItem {
 export interface TransactionItem {
   id: number
   bookingDate: string
+  accountingDate: string
   accountIban: string
   category: string
   subcategory: string
@@ -134,6 +135,19 @@ export async function updateTransactionComment(
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ comment }),
+  })
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  return res.json() as Promise<TransactionItem>
+}
+
+export async function updateTransactionAccountingDate(
+  id: number,
+  accountingDate: string,
+): Promise<TransactionItem> {
+  const res = await fetchWithUser(`/transactions/${id}/accounting-date`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ accountingDate }),
   })
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
   return res.json() as Promise<TransactionItem>
