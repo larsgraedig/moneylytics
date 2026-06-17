@@ -129,6 +129,7 @@ class CamtImportController(
                     subcategory = row.subcategory,
                     bookingDate = LocalDate.parse(row.bookingDate),
                     valueDate = LocalDate.parse(row.valueDate),
+                    accountingDate = LocalDate.parse(row.bookingDate),
                     amount = row.amount,
                     currency = row.currency,
                     accountIban = row.accountIban,

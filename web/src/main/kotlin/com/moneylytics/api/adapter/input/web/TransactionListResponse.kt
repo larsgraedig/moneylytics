@@ -10,6 +10,7 @@ data class TransactionListResponse(
 data class TransactionItem(
     val id: Long,
     val bookingDate: String,
+    val accountingDate: String,
     val accountIban: String,
     val category: String,
     val subcategory: String,

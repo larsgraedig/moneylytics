@@ -87,7 +87,7 @@ export default function CashflowPage() {
       const map = new Map<string, { income: number; expenses: number }>()
 
       for (const tx of resp.transactions) {
-        const key = bucketKey(tx.bookingDate, granularity)
+        const key = bucketKey(tx.accountingDate, granularity)
         if (!map.has(key)) map.set(key, { income: 0, expenses: 0 })
         const entry = map.get(key)!
         if (tx.effectiveAmount >= 0) {
@@ -122,7 +122,7 @@ export default function CashflowPage() {
       const resp = await fetchAllTransactions(range.from, range.to)
       const txs = resp.transactions
         .filter(tx => type === 'income' ? tx.effectiveAmount >= 0 : tx.effectiveAmount < 0)
-        .sort((a, b) => b.bookingDate.localeCompare(a.bookingDate))
+        .sort((a, b) => b.accountingDate.localeCompare(a.accountingDate))
       setDrilldown(prev => prev ? { ...prev, transactions: txs, loading: false } : prev)
     } catch {
       setDrilldown(prev => prev ? { ...prev, transactions: [], loading: false } : prev)
@@ -363,7 +363,7 @@ function DrilldownModal({
                 <tbody>
                   {state.transactions.map(tx => (
                     <tr key={tx.id}>
-                      <td className="bgt-dd-cell-date">{tx.bookingDate}</td>
+                      <td className="bgt-dd-cell-date">{tx.accountingDate}</td>
                       <td className="bgt-dd-cell-cat">
                         {tx.category}{tx.subcategory ? ` / ${tx.subcategory}` : ''}
                       </td>

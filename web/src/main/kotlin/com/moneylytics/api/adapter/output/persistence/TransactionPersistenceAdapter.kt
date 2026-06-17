@@ -54,7 +54,7 @@ class TransactionPersistenceAdapter(
     ): Set<String> = jpaRepository.findExistingFingerprints(fingerprints, userId).toHashSet()
 
     @Transactional(readOnly = true)
-    override fun findByBookingDateBetween(
+    override fun findByAccountingDateBetween(
         from: LocalDate,
         to: LocalDate,
         userId: Long,
@@ -62,15 +62,15 @@ class TransactionPersistenceAdapter(
     ): List<Transaction> {
         val entities =
             if (accountIban != null) {
-                jpaRepository.findByUserIdAndAccountIbanAndBookingDateBetween(userId, accountIban, from, to)
+                jpaRepository.findByUserIdAndAccountIbanAndAccountingDateBetween(userId, accountIban, from, to)
             } else {
-                jpaRepository.findByUserIdAndBookingDateBetween(userId, from, to)
+                jpaRepository.findByUserIdAndAccountingDateBetween(userId, from, to)
             }
         return enrichWithOffsetLinks(entities)
     }
 
     @Transactional(readOnly = true)
-    override fun findNegativeByBookingDateBetween(
+    override fun findNegativeByAccountingDateBetween(
         from: LocalDate,
         to: LocalDate,
         userId: Long,
@@ -78,7 +78,7 @@ class TransactionPersistenceAdapter(
     ): List<Transaction> {
         val entities =
             if (accountIban != null) {
-                jpaRepository.findByUserIdAndAccountIbanAndBookingDateBetweenAndAmountLessThan(
+                jpaRepository.findByUserIdAndAccountIbanAndAccountingDateBetweenAndAmountLessThan(
                     userId,
                     accountIban,
                     from,
@@ -86,9 +86,20 @@ class TransactionPersistenceAdapter(
                     BigDecimal.ZERO,
                 )
             } else {
-                jpaRepository.findByUserIdAndBookingDateBetweenAndAmountLessThan(userId, from, to, BigDecimal.ZERO)
+                jpaRepository.findByUserIdAndAccountingDateBetweenAndAmountLessThan(userId, from, to, BigDecimal.ZERO)
             }
         return enrichWithOffsetLinks(entities)
+    }
+
+    @Transactional
+    override fun updateAccountingDate(
+        id: Long,
+        userId: Long,
+        accountingDate: LocalDate,
+    ): Transaction? {
+        val entity = jpaRepository.findByIdAndUserId(id, userId) ?: return null
+        entity.accountingDate = accountingDate
+        return enrichWithOffsetLinks(listOf(jpaRepository.save(entity))).first()
     }
 
     @Transactional(readOnly = true)
@@ -158,6 +169,7 @@ class TransactionPersistenceAdapter(
             subcategory = subcategory,
             bookingDate = bookingDate,
             valueDate = valueDate,
+            accountingDate = accountingDate,
             amount = amount,
             currency = currency,
             accountIban = account.iban,
@@ -181,6 +193,7 @@ class TransactionPersistenceAdapter(
             subcategory = subcategory,
             bookingDate = bookingDate,
             valueDate = valueDate,
+            accountingDate = accountingDate,
             amount = amount,
             currency = currency,
             account = account,

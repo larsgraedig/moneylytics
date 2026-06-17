@@ -3,6 +3,7 @@ package com.moneylytics.api.adapter.input.web
 import com.moneylytics.api.application.port.input.GetTransactionsQuery
 import com.moneylytics.api.application.port.input.GetTransactionsUseCase
 import com.moneylytics.api.application.port.input.ResolveUserUseCase
+import com.moneylytics.api.application.port.input.UpdateTransactionAccountingDateUseCase
 import com.moneylytics.api.application.port.input.UpdateTransactionCategoryUseCase
 import com.moneylytics.api.application.port.input.UpdateTransactionCommentUseCase
 import com.moneylytics.api.domain.Transaction
@@ -21,12 +22,14 @@ class TransactionQueryControllerTest {
     private val resolveUserUseCase: ResolveUserUseCase = mock { on { resolveUser(any()) } doReturn USER_ID }
     private val updateTransactionCategoryUseCase: UpdateTransactionCategoryUseCase = mock()
     private val updateTransactionCommentUseCase: UpdateTransactionCommentUseCase = mock()
+    private val updateTransactionAccountingDateUseCase: UpdateTransactionAccountingDateUseCase = mock()
     private val controller =
         TransactionQueryController(
             getTransactionsUseCase,
             resolveUserUseCase,
             updateTransactionCategoryUseCase,
             updateTransactionCommentUseCase,
+            updateTransactionAccountingDateUseCase,
         )
 
     private val from = LocalDate.of(2025, 1, 1)
@@ -248,6 +251,7 @@ class TransactionQueryControllerTest {
         subcategory = subcategory,
         bookingDate = from,
         valueDate = from,
+        accountingDate = from,
         amount = amount,
         currency = "EUR",
         accountIban = "DE00000000000000000000",

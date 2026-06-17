@@ -637,7 +637,7 @@ function DrilldownModal({
                 <tbody>
                   {state.transactions.map(tx => (
                     <tr key={tx.id}>
-                      <td className="bgt-dd-cell-date">{tx.bookingDate}</td>
+                      <td className="bgt-dd-cell-date">{tx.accountingDate}</td>
                       <td className="bgt-dd-cell-cat">{tx.category} / {tx.subcategory}</td>
                       <td className="bgt-dd-cell-purpose" title={tx.purpose ?? undefined}>
                         {tx.purpose ?? <span className="bgt-cell-muted">—</span>}

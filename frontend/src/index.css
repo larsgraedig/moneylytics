@@ -2070,6 +2070,39 @@ body {
   color: var(--error);
 }
 
+.txnv-accounting-date-input {
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid transparent;
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 12px;
+  padding: 1px 0;
+  outline: none;
+  cursor: pointer;
+  color-scheme: dark;
+  width: 100px;
+  transition: border-color 0.12s;
+}
+
+.txnv-accounting-date-input:hover,
+.txnv-accounting-date-input:focus {
+  border-bottom-color: var(--accent-dim);
+}
+
+.txnv-accounting-date-input:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.txnv-booking-date-ref {
+  display: block;
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-top: 1px;
+}
+
 .txnv-cell-purpose {
   max-width: 220px;
 }

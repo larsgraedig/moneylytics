@@ -86,7 +86,7 @@ export default function TransactionListPanel({ nodeKey, from, to, iban, onClose 
                 <tbody>
                   {state.transactions.map((tx, i) => (
                     <tr key={i}>
-                      <td className="txn-cell-date">{formatDate(tx.bookingDate)}</td>
+                      <td className="txn-cell-date">{formatDate(tx.accountingDate)}</td>
                       {isCat && <td className="txn-cell-sub">{tx.subcategory}</td>}
                       <td className={`txn-cell-amount${tx.amount < 0 ? ' negative' : ''}`}>
                         {EUR.format(tx.amount)}

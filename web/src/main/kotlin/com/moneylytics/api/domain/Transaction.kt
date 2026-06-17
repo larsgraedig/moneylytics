@@ -8,6 +8,7 @@ data class Transaction(
     val subcategory: String,
     val bookingDate: LocalDate,
     val valueDate: LocalDate,
+    val accountingDate: LocalDate,
     val amount: BigDecimal,
     val currency: String,
     val accountIban: String,

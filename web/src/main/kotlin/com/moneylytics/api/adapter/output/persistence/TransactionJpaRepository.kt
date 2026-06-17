@@ -7,27 +7,27 @@ import java.math.BigDecimal
 import java.time.LocalDate
 
 interface TransactionJpaRepository : JpaRepository<TransactionEntity, Long> {
-    fun findByUserIdAndBookingDateBetween(
+    fun findByUserIdAndAccountingDateBetween(
         userId: Long,
         from: LocalDate,
         to: LocalDate,
     ): List<TransactionEntity>
 
-    fun findByUserIdAndBookingDateBetweenAndAmountLessThan(
+    fun findByUserIdAndAccountingDateBetweenAndAmountLessThan(
         userId: Long,
         from: LocalDate,
         to: LocalDate,
         amount: BigDecimal,
     ): List<TransactionEntity>
 
-    fun findByUserIdAndAccountIbanAndBookingDateBetween(
+    fun findByUserIdAndAccountIbanAndAccountingDateBetween(
         userId: Long,
         iban: String,
         from: LocalDate,
         to: LocalDate,
     ): List<TransactionEntity>
 
-    fun findByUserIdAndAccountIbanAndBookingDateBetweenAndAmountLessThan(
+    fun findByUserIdAndAccountIbanAndAccountingDateBetweenAndAmountLessThan(
         userId: Long,
         iban: String,
         from: LocalDate,
