@@ -9,6 +9,21 @@ spring:
     hibernate:
       ddl-auto: update
 
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: ${GOOGLE_CLIENT_ID}
+            client-secret: ${GOOGLE_CLIENT_SECRET}
+            scope:
+              - openid
+              - email
+              - profile
+
+app:
+  oauth2-success-redirect: ${FRONTEND_URL:/}
+
 springdoc:
   swagger-ui:
     enabled: false  # springdoc's UI router uses a Spring Framework 6 API removed in 7; we serve the UI manually

@@ -17,11 +17,12 @@ class UserDetailsServiceImpl(
             .fromCallable { userRepository.findByExternalId(username) }
             .subscribeOn(Schedulers.boundedElastic())
             .flatMap { domainUser ->
-                val hash = domainUser?.passwordHash ?: return@flatMap Mono.empty()
+                if (domainUser == null) return@flatMap Mono.empty()
                 Mono.just<UserDetails>(
                     User
                         .withUsername(domainUser.externalId)
-                        .password(hash)
+                        // OAuth users have no password — empty string never matches any BCrypt hash
+                        .password(domainUser.passwordHash ?: "")
                         .roles("USER")
                         .build(),
                 )
