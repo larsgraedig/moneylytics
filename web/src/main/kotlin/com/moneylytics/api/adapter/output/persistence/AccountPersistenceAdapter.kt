@@ -21,6 +21,11 @@ class AccountPersistenceAdapter(
 
     override fun findAll(userId: Long): List<Account> = jpaRepository.findAllByUserId(userId).map { it.toDomain() }
 
+    override fun delete(
+        iban: String,
+        userId: Long,
+    ) = jpaRepository.deleteByIbanAndUserId(iban, userId)
+
     private fun Account.toEntity(userId: Long) =
         AccountEntity(
             iban = iban,

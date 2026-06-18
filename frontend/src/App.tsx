@@ -9,6 +9,7 @@ import PiePage from './components/PiePage'
 import TransactionsPage from './components/TransactionsPage'
 import TransactionListPanel from './components/TransactionListPanel'
 import CashflowPage from './components/CashflowPage'
+import AccountsPage from './components/AccountsPage'
 import LoginPage from './components/LoginPage'
 import { fetchSankeyData, fetchAccounts, type SankeyResponse, type Account } from './api/transactions'
 import { useAuth } from './context/AuthContext'
@@ -20,7 +21,7 @@ function isoDate(d: Date) {
 const today = isoDate(new Date())
 const firstOfYear = isoDate(new Date(new Date().getFullYear(), 0, 1))
 
-type Tab = 'analytics' | 'trends' | 'breakdown' | 'cashflow' | 'transactions' | 'thresholds' | 'csv' | 'import' | 'camt'
+type Tab = 'analytics' | 'trends' | 'breakdown' | 'cashflow' | 'transactions' | 'thresholds' | 'accounts' | 'csv' | 'import' | 'camt'
 
 type ViewState =
   | { phase: 'idle' }
@@ -76,6 +77,7 @@ export default function App() {
               ['cashflow', 'cashflow'],
               ['transactions', 'transactions'],
               ['thresholds', 'thresholds'],
+              ['accounts', 'accounts'],
               ['csv', 'CSV import'],
               ['import', 'MLP import'],
               ['camt', 'CAMT import'],
@@ -167,6 +169,7 @@ export default function App() {
         {tab === 'breakdown' && <PiePage key={username} from={from} to={to} iban={iban} />}
         {tab === 'transactions' && <TransactionsPage key={username} from={from} to={to} iban={iban} accounts={accounts} />}
         {tab === 'thresholds' && <ThresholdsPage key={username} from={from} to={to} iban={iban} />}
+        {tab === 'accounts' && <AccountsPage key={username} />}
         {tab === 'csv' && <CsvImportPage key={username} />}
         {tab === 'import' && <RawImportPage key={username} />}
         {tab === 'camt' && <CamtImportPage key={username} />}

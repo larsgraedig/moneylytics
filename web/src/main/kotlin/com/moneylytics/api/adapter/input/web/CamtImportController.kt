@@ -118,21 +118,33 @@ class CamtImportController(
         @AuthenticationPrincipal principal: UserDetails,
     ): ResponseEntity<out Any> {
         val userId = withContext(Dispatchers.IO) { resolveUserUseCase.resolveUser(principal.username) }
+        val knownIbans =
+            withContext(Dispatchers.IO) { getAccountsUseCase.getAccounts(userId) }
+                .map { it.iban }
+                .toSet()
+
+        val safeToImport =
+            if (knownIbans.isEmpty()) {
+                request.toImport
+            } else {
+                request.toImport.filter { it.accountIban in knownIbans }
+            }
+        val safeRequest = request.copy(toImport = safeToImport)
 
         updateIgnoredTransactionsUseCase.update(
-            toIgnore = request.toIgnore,
-            toUnignore = request.toImport.map { it.fingerprint },
+            toIgnore = safeRequest.toIgnore,
+            toUnignore = safeRequest.toImport.map { it.fingerprint },
             userId = userId,
         )
 
         val categories =
-            request.toImport
+            safeRequest.toImport
                 .map { Category(name = it.category, subcategory = it.subcategory) }
                 .distinct()
         saveCategoriesUseCase.saveCategories(categories, userId)
 
         val transactions =
-            request.toImport.map { row ->
+            safeRequest.toImport.map { row ->
                 Transaction(
                     category = row.category,
                     subcategory = row.subcategory,
@@ -150,7 +162,7 @@ class CamtImportController(
             importTransactionsUseCase.importTransactions(
                 ImportTransactionsCommand(
                     transactions = transactions,
-                    accountNames = request.accountNames,
+                    accountNames = safeRequest.accountNames,
                     userId = userId,
                 ),
             )

@@ -9,4 +9,9 @@ interface AccountJpaRepository : JpaRepository<AccountEntity, Long> {
     ): AccountEntity?
 
     fun findAllByUserId(userId: Long): List<AccountEntity>
+
+    fun deleteByIbanAndUserId(
+        iban: String,
+        userId: Long,
+    )
 }

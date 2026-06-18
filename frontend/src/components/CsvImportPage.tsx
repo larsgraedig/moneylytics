@@ -317,7 +317,7 @@ export default function CsvImportPage() {
   async function handleImportRows(rows: GenericCsvPreviewRow[], detection: CsvDetectionResult, mapping: CsvMapping, file: File) {
     const toImport: GenericRowToImport[] = rows
       .filter(r => {
-        if (r.status === 'DUPLICATE') return false
+        if (r.status === 'DUPLICATE' || r.unknownAccount) return false
         const d = decisions[r.rowIndex]
         return d?.action === 'import' && d.category.trim() && d.subcategory.trim()
       })
@@ -381,11 +381,11 @@ export default function CsvImportPage() {
     const duplicateCount = rows.filter(r => r.status === 'DUPLICATE').length
     const unknownAccountCount = rows.filter(r => r.status !== 'DUPLICATE' && r.unknownAccount).length
     const readyCount = rows.filter(r => {
-      if (r.status === 'DUPLICATE') return false
+      if (r.status === 'DUPLICATE' || r.unknownAccount) return false
       const d = decisions[r.rowIndex]
       return d?.action === 'import' && d.category.trim() && d.subcategory.trim()
     }).length
-    const skippedCount = rows.filter(r => r.status !== 'DUPLICATE' && decisions[r.rowIndex]?.action === 'skip').length
+    const skippedCount = rows.filter(r => r.status !== 'DUPLICATE' && !r.unknownAccount && decisions[r.rowIndex]?.action === 'skip').length
 
     const EUR = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' })
 
@@ -425,14 +425,14 @@ export default function CsvImportPage() {
                 {rows.map(row => {
                   const isDuplicate = row.status === 'DUPLICATE'
                   const isUnknown = !isDuplicate && row.unknownAccount
+                  const isExcluded = isDuplicate || isUnknown
                   const d = decisions[row.rowIndex]
-                  const isImporting = !isDuplicate && d?.action === 'import'
+                  const isImporting = !isExcluded && d?.action === 'import'
                   const catVal = isImporting ? d.category : ''
                   const subVal = isImporting ? d.subcategory : ''
                   const subcatOptions = subcategoriesFor(catVal)
-                  const rowClass = isDuplicate
+                  const rowClass = isExcluded
                     ? 'ri-row ri-row--duplicate'
-                    : isUnknown && isImporting ? 'ri-row ri-row--new gcv-row--unknown'
                     : isImporting ? 'ri-row ri-row--new' : 'ri-row ri-row--will-ignore'
                   return (
                     <tr key={row.rowIndex} className={rowClass}>
@@ -443,8 +443,8 @@ export default function CsvImportPage() {
                         {isUnknown ? '⚠ Unbekanntes Konto' : row.accountIban}
                       </td>
                       <td className="ri-cell-purpose" title={row.purpose ?? ''}>{row.purpose || '—'}</td>
-                      {isDuplicate ? (
-                        <td colSpan={2} className="ri-cell-muted">bereits importiert</td>
+                      {isExcluded ? (
+                        <td colSpan={2} className="ri-cell-muted">{isDuplicate ? 'bereits importiert' : 'ausgeschlossen'}</td>
                       ) : isImporting ? (
                         <>
                           <td>
@@ -473,7 +473,7 @@ export default function CsvImportPage() {
                         <td colSpan={2} className="ri-cell-muted">—</td>
                       )}
                       <td className="ri-cell-action">
-                        {!isDuplicate && (isImporting ? (
+                        {!isExcluded && (isImporting ? (
                           <button className="ri-action-btn ri-action-btn--ignore" onClick={() => setDecision(row.rowIndex, { action: 'skip' })}>überspringen</button>
                         ) : (
                           <button className="ri-action-btn ri-action-btn--import" onClick={() => setDecision(row.rowIndex, { action: 'import', category: '', subcategory: '' })}>undo</button>
