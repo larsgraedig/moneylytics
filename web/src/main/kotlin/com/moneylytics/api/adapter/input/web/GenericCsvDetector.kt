@@ -31,8 +31,8 @@ class GenericCsvDetector {
         if (lines.isEmpty()) return DetectionData(empty(delimiter), fingerprint = "")
 
         val headers = splitLine(lines[0], delimiter)
-        val dataLines = lines.drop(1).take(10)
-        val sampleRows = dataLines.take(5).map { splitLine(it, delimiter) }
+        val dataLines = lines.drop(1).take(110)
+        val sampleRows = dataLines.take(100).map { splitLine(it, delimiter) }
 
         val columnValues: Map<String, List<String>> =
             headers

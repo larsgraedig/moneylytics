@@ -42,3 +42,24 @@ data class GenericCsvMapping(
     val fixedAccountIban: String?,
     val fixedCurrency: String,
 )
+
+data class GenericCsvPreviewRow(
+    val rowIndex: Int,
+    val date: String,
+    val amount: Double,
+    val currency: String,
+    val accountIban: String,
+    val purpose: String?,
+    val fingerprint: String,
+    val status: RowStatus,
+)
+
+data class GenericRowToImport(
+    val date: String,
+    val amount: Double,
+    val currency: String,
+    val accountIban: String,
+    val purpose: String?,
+    val category: String,
+    val subcategory: String,
+)

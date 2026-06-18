@@ -1,11 +1,16 @@
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   detectCsvFormat,
   importGenericCsv,
+  importGenericRows,
+  previewGenericCsv,
   type AmountFormat,
   type CsvDetectionResult,
   type CsvMapping,
+  type GenericCsvPreviewRow,
+  type GenericRowToImport,
 } from '../api/genericCsvImport'
+import { fetchCamtCategories, type CategoryGroup } from '../api/camtImport'
 
 const COMMON_DATE_FORMATS = [
   'dd.MM.yyyy',
@@ -15,11 +20,16 @@ const COMMON_DATE_FORMATS = [
   'dd.MM.yy',
 ]
 
+type RowDecision = { action: 'import'; category: string; subcategory: string } | { action: 'skip' }
+
 type Phase =
   | { step: 'upload' }
   | { step: 'detecting' }
   | { step: 'mapping'; detection: CsvDetectionResult; mapping: CsvMapping; file: File }
+  | { step: 'previewing'; detection: CsvDetectionResult; mapping: CsvMapping; file: File }
+  | { step: 'categorizing'; rows: GenericCsvPreviewRow[]; detection: CsvDetectionResult; mapping: CsvMapping; file: File }
   | { step: 'importing'; detection: CsvDetectionResult; mapping: CsvMapping; file: File }
+  | { step: 'importing-rows'; rows: GenericCsvPreviewRow[]; detection: CsvDetectionResult; mapping: CsvMapping; file: File }
   | { step: 'success'; count: number }
   | { step: 'error'; message: string }
 
@@ -126,6 +136,8 @@ function MappingView({
   const purpIdx = colIdx(headers, mapping.purposeColumn)
   const catIdx = colIdx(headers, mapping.categoryColumn)
   const subIdx = colIdx(headers, mapping.subcategoryColumn)
+  const ibanIdx = colIdx(headers, mapping.accountIbanColumn)
+  const currIdx = colIdx(headers, mapping.currencyColumn)
 
   const canConfirm = mapping.dateColumn && mapping.amountColumn
 
@@ -209,30 +221,42 @@ function MappingView({
         </div>
 
         <div className="gcv-preview-panel">
-          <div className="gcv-section-title">Vorschau (erste {sampleRows.length} Zeilen)</div>
+          <div className="gcv-section-title">Vorschau ({sampleRows.length} Zeilen)</div>
           <div className="gcv-preview-wrap">
             <table className="gcv-preview-table">
               <thead>
                 <tr>
                   <th>Datum</th>
                   <th>Betrag</th>
+                  {currIdx >= 0 && <th>Währung</th>}
+                  {ibanIdx >= 0 && <th>IBAN</th>}
                   {purpIdx >= 0 && <th>Verwendungszweck</th>}
                   {catIdx >= 0 && <th>Kategorie</th>}
                   {subIdx >= 0 && <th>Unterkategorie</th>}
                 </tr>
               </thead>
               <tbody>
-                {sampleRows.map((row, i) => (
-                  <tr key={i}>
-                    <td>{parsePreviewDate(row[dateIdx] ?? '', mapping.dateFormat)}</td>
-                    <td className={`gcv-amt ${parseFloat((mapping.amountFormat === 'GERMAN' ? (row[amtIdx] ?? '').replace(/\./g, '').replace(',', '.') : (row[amtIdx] ?? '').replace(/,/g, '')) || '0') < 0 ? 'negative' : 'positive'}`}>
-                      {parsePreviewAmount(row[amtIdx] ?? '', mapping.amountFormat)}
-                    </td>
-                    {purpIdx >= 0 && <td className="gcv-purpose">{row[purpIdx] ?? ''}</td>}
-                    {catIdx >= 0 && <td>{row[catIdx] ?? ''}</td>}
-                    {subIdx >= 0 && <td>{row[subIdx] ?? ''}</td>}
-                  </tr>
-                ))}
+                {sampleRows.map((row, i) => {
+                  const amtRaw = row[amtIdx] ?? ''
+                  const amtNum = parseFloat(
+                    mapping.amountFormat === 'GERMAN'
+                      ? amtRaw.replace(/\./g, '').replace(',', '.')
+                      : amtRaw.replace(/,/g, ''),
+                  )
+                  return (
+                    <tr key={i}>
+                      <td>{parsePreviewDate(row[dateIdx] ?? '', mapping.dateFormat)}</td>
+                      <td className={`gcv-amt ${!isNaN(amtNum) && amtNum < 0 ? 'negative' : 'positive'}`}>
+                        {parsePreviewAmount(amtRaw, mapping.amountFormat)}
+                      </td>
+                      {currIdx >= 0 && <td className="gcv-currency">{row[currIdx] ?? ''}</td>}
+                      {ibanIdx >= 0 && <td className="gcv-iban">{row[ibanIdx] ?? ''}</td>}
+                      {purpIdx >= 0 && <td className="gcv-purpose">{row[purpIdx] ?? ''}</td>}
+                      {catIdx >= 0 && <td>{row[catIdx] ?? ''}</td>}
+                      {subIdx >= 0 && <td>{row[subIdx] ?? ''}</td>}
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           </div>
@@ -242,10 +266,18 @@ function MappingView({
   )
 }
 
+const needsCategoryAssignment = (m: CsvMapping) => !m.categoryColumn || !m.subcategoryColumn
+
 export default function CsvImportPage() {
   const [phase, setPhase] = useState<Phase>({ step: 'upload' })
   const [isDragging, setIsDragging] = useState(false)
+  const [categories, setCategories] = useState<CategoryGroup[]>([])
+  const [decisions, setDecisions] = useState<Record<number, RowDecision>>({})
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    fetchCamtCategories().then(r => setCategories(r.categories)).catch(() => {})
+  }, [])
 
   const handleFile = useCallback(async (file: File) => {
     setPhase({ step: 'detecting' })
@@ -259,9 +291,47 @@ export default function CsvImportPage() {
   }, [])
 
   async function handleConfirm(detection: CsvDetectionResult, mapping: CsvMapping, file: File) {
-    setPhase({ step: 'importing', detection, mapping, file })
+    if (needsCategoryAssignment(mapping)) {
+      setPhase({ step: 'previewing', detection, mapping, file })
+      try {
+        const rows = await previewGenericCsv(file, mapping)
+        const initialDecisions: Record<number, RowDecision> = {}
+        rows.forEach(r => {
+          initialDecisions[r.rowIndex] = r.status === 'DUPLICATE'
+            ? { action: 'skip' }
+            : { action: 'import', category: '', subcategory: '' }
+        })
+        setDecisions(initialDecisions)
+        setPhase({ step: 'categorizing', rows, detection, mapping, file })
+      } catch (e) {
+        setPhase({ step: 'error', message: e instanceof Error ? e.message : 'Preview failed' })
+      }
+    } else {
+      setPhase({ step: 'importing', detection, mapping, file })
+      try {
+        const count = await importGenericCsv(file, mapping)
+        setPhase({ step: 'success', count })
+      } catch (e) {
+        setPhase({ step: 'error', message: e instanceof Error ? e.message : 'Import failed' })
+      }
+    }
+  }
+
+  async function handleImportRows(rows: GenericCsvPreviewRow[], detection: CsvDetectionResult, mapping: CsvMapping, file: File) {
+    const toImport: GenericRowToImport[] = rows
+      .filter(r => {
+        if (r.status === 'DUPLICATE') return false
+        const d = decisions[r.rowIndex]
+        return d?.action === 'import' && d.category.trim() && d.subcategory.trim()
+      })
+      .map(r => {
+        const d = decisions[r.rowIndex] as { action: 'import'; category: string; subcategory: string }
+        return { ...r, category: d.category, subcategory: d.subcategory }
+      })
+
+    setPhase({ step: 'importing-rows', rows, detection, mapping, file })
     try {
-      const count = await importGenericCsv(file, mapping)
+      const count = await importGenericRows(toImport)
       setPhase({ step: 'success', count })
     } catch (e) {
       setPhase({ step: 'error', message: e instanceof Error ? e.message : 'Import failed' })
@@ -281,7 +351,7 @@ export default function CsvImportPage() {
     )
   }
 
-  if (phase.step === 'mapping' || phase.step === 'importing') {
+  if (phase.step === 'mapping' || phase.step === 'importing' || phase.step === 'previewing') {
     const { detection, mapping, file } = phase
     return (
       <MappingView
@@ -291,8 +361,132 @@ export default function CsvImportPage() {
         onChange={m => setPhase({ step: 'mapping', detection, mapping: m, file })}
         onConfirm={() => handleConfirm(detection, mapping, file)}
         onCancel={() => setPhase({ step: 'upload' })}
-        importing={phase.step === 'importing'}
+        importing={phase.step === 'importing' || phase.step === 'previewing'}
       />
+    )
+  }
+
+  if (phase.step === 'categorizing' || phase.step === 'importing-rows') {
+    const { rows, detection, mapping, file } = phase
+    const importing = phase.step === 'importing-rows'
+    const allCategoryNames = categories.map(g => g.name)
+    const subcategoriesFor = (cat: string) => categories.find(g => g.name === cat)?.subcategories ?? []
+
+    const setDecision = (rowIndex: number, d: RowDecision) =>
+      setDecisions(prev => ({ ...prev, [rowIndex]: d }))
+    const setCategoryField = (rowIndex: number, field: 'category' | 'subcategory', value: string) =>
+      setDecisions(prev => {
+        const cur = prev[rowIndex]
+        if (cur?.action !== 'import') return prev
+        return { ...prev, [rowIndex]: { ...cur, [field]: value, ...(field === 'category' ? { subcategory: '' } : {}) } }
+      })
+
+    const duplicateCount = rows.filter(r => r.status === 'DUPLICATE').length
+    const readyCount = rows.filter(r => {
+      if (r.status === 'DUPLICATE') return false
+      const d = decisions[r.rowIndex]
+      return d?.action === 'import' && d.category.trim() && d.subcategory.trim()
+    }).length
+    const skippedCount = rows.filter(r => r.status !== 'DUPLICATE' && decisions[r.rowIndex]?.action === 'skip').length
+
+    const EUR = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' })
+
+    return (
+      <div className="ri-page">
+        <div className="ri-preview">
+          <div className="ri-summary-bar">
+            <span className="ri-chip ri-chip--new">{rows.length - duplicateCount} neu</span>
+            {duplicateCount > 0 && <span className="ri-chip ri-chip--dup">{duplicateCount} bereits importiert</span>}
+            {skippedCount > 0 && <span className="ri-chip ri-chip--prev-ignored">{skippedCount} übersprungen</span>}
+            <span className="ri-summary-spacer" />
+            <button className="load-btn" onClick={() => setPhase({ step: 'mapping', detection, mapping, file })} disabled={importing}>← zurück</button>
+            <button
+              className="load-btn ri-import-btn"
+              disabled={readyCount === 0 || importing}
+              onClick={() => handleImportRows(rows, detection, mapping, file)}
+            >
+              {importing ? '…' : `${readyCount} importieren`}
+            </button>
+          </div>
+          <div className="ri-table-wrap">
+            <table className="ri-table">
+              <thead>
+                <tr>
+                  <th>datum</th>
+                  <th>betrag</th>
+                  <th>währung</th>
+                  <th>konto</th>
+                  <th>verwendungszweck</th>
+                  <th>kategorie</th>
+                  <th>unterkategorie</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map(row => {
+                  const isDuplicate = row.status === 'DUPLICATE'
+                  const d = decisions[row.rowIndex]
+                  const isImporting = !isDuplicate && d?.action === 'import'
+                  const catVal = isImporting ? d.category : ''
+                  const subVal = isImporting ? d.subcategory : ''
+                  const subcatOptions = subcategoriesFor(catVal)
+                  const rowClass = isDuplicate
+                    ? 'ri-row ri-row--duplicate'
+                    : isImporting ? 'ri-row ri-row--new' : 'ri-row ri-row--will-ignore'
+                  return (
+                    <tr key={row.rowIndex} className={rowClass}>
+                      <td className="ri-cell-date">{row.date}</td>
+                      <td className={`ri-cell-amount${row.amount < 0 ? ' negative' : ''}`}>{EUR.format(row.amount)}</td>
+                      <td className="ri-cell-date">{row.currency}</td>
+                      <td className="ri-cell-date" title={row.accountIban}>{row.accountIban}</td>
+                      <td className="ri-cell-purpose" title={row.purpose ?? ''}>{row.purpose || '—'}</td>
+                      {isDuplicate ? (
+                        <td colSpan={2} className="ri-cell-muted">bereits importiert</td>
+                      ) : isImporting ? (
+                        <>
+                          <td>
+                            <input
+                              className="ri-cat-input"
+                              list="gcv-cat-list"
+                              placeholder="kategorie"
+                              value={catVal}
+                              onChange={e => setCategoryField(row.rowIndex, 'category', e.target.value)}
+                            />
+                          </td>
+                          <td>
+                            <input
+                              className="ri-cat-input"
+                              list={`gcv-sub-list-${row.rowIndex}`}
+                              placeholder="unterkategorie"
+                              value={subVal}
+                              onChange={e => setCategoryField(row.rowIndex, 'subcategory', e.target.value)}
+                            />
+                            <datalist id={`gcv-sub-list-${row.rowIndex}`}>
+                              {subcatOptions.map(s => <option key={s} value={s} />)}
+                            </datalist>
+                          </td>
+                        </>
+                      ) : (
+                        <td colSpan={2} className="ri-cell-muted">—</td>
+                      )}
+                      <td className="ri-cell-action">
+                        {!isDuplicate && (isImporting ? (
+                          <button className="ri-action-btn ri-action-btn--ignore" onClick={() => setDecision(row.rowIndex, { action: 'skip' })}>überspringen</button>
+                        ) : (
+                          <button className="ri-action-btn ri-action-btn--import" onClick={() => setDecision(row.rowIndex, { action: 'import', category: '', subcategory: '' })}>undo</button>
+                        ))}
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+          <datalist id="gcv-cat-list">
+            {allCategoryNames.map(n => <option key={n} value={n} />)}
+          </datalist>
+        </div>
+      </div>
     )
   }
 

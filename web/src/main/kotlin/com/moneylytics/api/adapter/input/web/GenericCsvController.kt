@@ -1,9 +1,11 @@
 package com.moneylytics.api.adapter.input.web
 
 import com.moneylytics.api.adapter.output.persistence.CsvProfilePersistenceAdapter
+import com.moneylytics.api.application.port.input.CheckDuplicatesUseCase
 import com.moneylytics.api.application.port.input.ImportTransactionsCommand
 import com.moneylytics.api.application.port.input.ImportTransactionsUseCase
 import com.moneylytics.api.application.port.input.ResolveUserUseCase
+import com.moneylytics.api.domain.Transaction
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.reactive.awaitSingle
 import kotlinx.coroutines.withContext
@@ -14,9 +16,12 @@ import org.springframework.http.codec.multipart.FilePart
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.security.core.userdetails.UserDetails
 import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestPart
 import org.springframework.web.bind.annotation.RestController
+import java.math.BigDecimal
+import java.time.LocalDate
 
 @RestController
 @RequestMapping("/transactions/csv")
@@ -24,6 +29,7 @@ class GenericCsvController(
     private val detector: GenericCsvDetector,
     private val parser: GenericCsvParser,
     private val importTransactionsUseCase: ImportTransactionsUseCase,
+    private val checkDuplicatesUseCase: CheckDuplicatesUseCase,
     private val resolveUserUseCase: ResolveUserUseCase,
     private val csvProfileAdapter: CsvProfilePersistenceAdapter,
 ) {
@@ -74,6 +80,59 @@ class GenericCsvController(
                 )
             }
         withContext(Dispatchers.IO) { csvProfileAdapter.saveMapping(userId, fingerprint, mapping) }
+        return ResponseEntity.ok(ImportSuccessResponse(importedCount = count))
+    }
+
+    @PostMapping("/preview", consumes = [MediaType.MULTIPART_FORM_DATA_VALUE])
+    suspend fun preview(
+        @RequestPart("file") filePart: FilePart,
+        @RequestPart("mapping") mapping: GenericCsvMapping,
+        @AuthenticationPrincipal principal: UserDetails,
+    ): List<GenericCsvPreviewRow> {
+        val content = filePart.readUtf8()
+        val rows = withContext(Dispatchers.Default) { parser.preview(content, mapping) }
+        if (rows.isEmpty()) return rows
+
+        val userId = withContext(Dispatchers.IO) { resolveUserUseCase.resolveUser(principal.username) }
+        val allFingerprints = rows.map { it.fingerprint }.toSet()
+        val existingFingerprints =
+            withContext(Dispatchers.IO) {
+                checkDuplicatesUseCase.findExistingFingerprints(allFingerprints, userId)
+            }
+        return rows.map { row ->
+            if (row.fingerprint in existingFingerprints) row.copy(status = RowStatus.DUPLICATE) else row
+        }
+    }
+
+    @PostMapping("/import-rows")
+    suspend fun importRows(
+        @RequestBody rows: List<GenericRowToImport>,
+        @AuthenticationPrincipal principal: UserDetails,
+    ): ResponseEntity<ImportSuccessResponse> {
+        val userId = withContext(Dispatchers.IO) { resolveUserUseCase.resolveUser(principal.username) }
+        val transactions =
+            rows.map { row ->
+                Transaction(
+                    category = row.category,
+                    subcategory = row.subcategory,
+                    bookingDate = LocalDate.parse(row.date),
+                    valueDate = LocalDate.parse(row.date),
+                    accountingDate = LocalDate.parse(row.date),
+                    amount = BigDecimal.valueOf(row.amount),
+                    currency = row.currency,
+                    accountIban = row.accountIban,
+                    purpose = row.purpose,
+                )
+            }
+        val accountNames = rows.associate { it.accountIban to it.accountIban }
+        val count =
+            importTransactionsUseCase.importTransactions(
+                ImportTransactionsCommand(
+                    transactions = transactions,
+                    accountNames = accountNames,
+                    userId = userId,
+                ),
+            )
         return ResponseEntity.ok(ImportSuccessResponse(importedCount = count))
     }
 

@@ -8,6 +8,58 @@ import java.time.format.DateTimeFormatter
 
 @Component
 class GenericCsvParser {
+    fun preview(
+        content: String,
+        mapping: GenericCsvMapping,
+    ): List<GenericCsvPreviewRow> {
+        val delimiter = mapping.delimiter.firstOrNull() ?: ','
+        val dateFormatter = DateTimeFormatter.ofPattern(mapping.dateFormat)
+        val lines = content.lines().filter { it.isNotBlank() }
+        if (lines.isEmpty()) return emptyList()
+
+        val headers = splitLine(lines[0], delimiter).map { it.trim() }
+
+        fun idx(col: String?) = col?.let { headers.indexOf(it).takeIf { i -> i >= 0 } }
+
+        val dateIdx = idx(mapping.dateColumn) ?: return emptyList()
+        val amountIdx = idx(mapping.amountColumn) ?: return emptyList()
+        val purposeIdx = idx(mapping.purposeColumn)
+        val ibanIdx = idx(mapping.accountIbanColumn)
+        val currencyIdx = idx(mapping.currencyColumn)
+
+        val counts = mutableMapOf<String, Int>()
+        return lines.drop(1).mapIndexedNotNull { index, line ->
+            val parts = splitLine(line, delimiter)
+
+            fun get(i: Int?) = i?.let { parts.getOrNull(it)?.trim() } ?: ""
+
+            val date =
+                try {
+                    LocalDate.parse(get(dateIdx).take(10), dateFormatter)
+                } catch (_: Exception) {
+                    return@mapIndexedNotNull null
+                }
+            val amountDecimal = parseAmount(get(amountIdx), mapping.amountFormat) ?: return@mapIndexedNotNull null
+            val iban = ibanIdx?.let { get(it).ifBlank { null } } ?: mapping.fixedAccountIban?.ifBlank { null } ?: "IMPORTED"
+            val currency = currencyIdx?.let { get(it).ifBlank { null } } ?: mapping.fixedCurrency.ifBlank { "EUR" }
+
+            val raw = "$iban|$date|$date|${amountDecimal.stripTrailingZeros().toPlainString()}|$currency"
+            val n = counts.merge(raw, 1, Int::plus)!!
+            val fingerprint = sha256(if (n == 1) raw else "$raw:${n - 1}")
+
+            GenericCsvPreviewRow(
+                rowIndex = index + 2,
+                date = date.toString(),
+                amount = amountDecimal.toDouble(),
+                currency = currency,
+                accountIban = iban,
+                purpose = get(purposeIdx).ifBlank { null },
+                fingerprint = fingerprint,
+                status = RowStatus.NEW,
+            )
+        }
+    }
+
     fun parse(
         content: String,
         mapping: GenericCsvMapping,
