@@ -60,7 +60,13 @@ const NAV: NavSection[] = [
 
 export default function App() {
   const { username, isLoading, logout } = useAuth()
-  const { t } = useTranslation()
+  const { t, i18n: i18next } = useTranslation()
+
+  function toggleLang() {
+    const next = i18next.language === 'de' ? 'en' : 'de'
+    i18next.changeLanguage(next)
+    localStorage.setItem('lang', next)
+  }
   const [tab, setTab] = useState<Tab>('sankey')
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [from, setFrom] = useState(firstOfYear)
@@ -130,6 +136,11 @@ export default function App() {
         <header className="bar">
           <span className="wordmark">moneylytics</span>
           <div className="session">
+            <button className="lang-toggle" onClick={toggleLang}>
+              <span className={i18next.language === 'de' ? 'lang-toggle-active' : ''}>DE</span>
+              <span className="lang-toggle-sep">|</span>
+              <span className={i18next.language === 'en' ? 'lang-toggle-active' : ''}>EN</span>
+            </button>
             <span className="session-user">{username}</span>
             <button className="logout-btn" onClick={logout}>{t('common.signOut')}</button>
           </div>

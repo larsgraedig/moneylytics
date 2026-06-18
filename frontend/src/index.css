@@ -424,6 +424,36 @@ body {
   color: var(--accent);
 }
 
+.lang-toggle {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 28px;
+  padding: 0 10px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  color: var(--text-muted);
+  transition: border-color 0.12s;
+}
+
+.lang-toggle:hover {
+  border-color: var(--border-hi);
+}
+
+.lang-toggle-sep {
+  opacity: 0.3;
+}
+
+.lang-toggle-active {
+  color: var(--accent);
+  font-weight: 600;
+}
+
 .logout-btn {
   height: 28px;
   padding: 0 12px;
