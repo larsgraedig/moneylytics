@@ -47,6 +47,9 @@ export interface GenericCsvPreviewRow {
   purpose: string | null
   fingerprint: string
   status: RowStatus
+  unknownAccount: boolean
+  mappedCategory: string | null
+  mappedSubcategory: string | null
 }
 
 export interface GenericRowToImport {

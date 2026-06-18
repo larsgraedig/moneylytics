@@ -24,6 +24,8 @@ class GenericCsvParser {
         val dateIdx = idx(mapping.dateColumn) ?: return emptyList()
         val amountIdx = idx(mapping.amountColumn) ?: return emptyList()
         val purposeIdx = idx(mapping.purposeColumn)
+        val categoryIdx = idx(mapping.categoryColumn)
+        val subcategoryIdx = idx(mapping.subcategoryColumn)
         val ibanIdx = idx(mapping.accountIbanColumn)
         val currencyIdx = idx(mapping.currencyColumn)
 
@@ -56,6 +58,9 @@ class GenericCsvParser {
                 purpose = get(purposeIdx).ifBlank { null },
                 fingerprint = fingerprint,
                 status = RowStatus.NEW,
+                unknownAccount = false,
+                mappedCategory = get(categoryIdx).ifBlank { null },
+                mappedSubcategory = get(subcategoryIdx).ifBlank { null },
             )
         }
     }

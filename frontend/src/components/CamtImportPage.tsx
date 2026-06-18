@@ -226,6 +226,7 @@ export default function CamtImportPage() {
   const nDup = rows.filter(r => r.status === 'DUPLICATE').length
   const nInv = rows.filter(r => r.status === 'INVALID').length
   const nIgn = rows.filter(r => r.status === 'PREVIOUSLY_IGNORED').length
+  const nUnknown = rows.filter(r => r.unknownAccount && r.status !== 'DUPLICATE').length
 
   return (
     <div className="ri-page">
@@ -235,6 +236,7 @@ export default function CamtImportPage() {
           {nIgn > 0 && <span className="ri-chip ri-chip--prev-ignored">{nIgn} previously ignored</span>}
           {nDup > 0 && <span className="ri-chip ri-chip--dup">{nDup} duplicate</span>}
           {nInv > 0 && <span className="ri-chip ri-chip--inv">{nInv} invalid</span>}
+          {nUnknown > 0 && <span className="ri-chip ri-chip--inv">{nUnknown} unknown account</span>}
           <span className="ri-summary-spacer" />
           <button className="load-btn" onClick={() => setState({ phase: 'idle' })}>← back</button>
           <button
@@ -306,8 +308,10 @@ export default function CamtImportPage() {
                     </td>
 
                     <td className="ri-cell-date">{formatDate(row.bookingDate)}</td>
-                    <td className="ri-cell-date" title={row.accountIban}>
-                      {accountNames[row.accountIban] || row.accountIban}
+                    <td className={`ri-cell-date${row.unknownAccount && row.status !== 'DUPLICATE' ? ' gcv-unknown-iban' : ''}`} title={row.accountIban}>
+                      {row.unknownAccount && row.status !== 'DUPLICATE'
+                        ? '⚠ Unknown account'
+                        : accountNames[row.accountIban] || row.accountIban}
                     </td>
                     <td className="ri-cell-party" title={row.counterparty}>{row.counterparty || '—'}</td>
                     <td className="ri-cell-purpose" title={row.purpose}>{row.purpose || '—'}</td>

@@ -52,6 +52,9 @@ data class GenericCsvPreviewRow(
     val purpose: String?,
     val fingerprint: String,
     val status: RowStatus,
+    val unknownAccount: Boolean,
+    val mappedCategory: String?,
+    val mappedSubcategory: String?,
 )
 
 data class GenericRowToImport(
