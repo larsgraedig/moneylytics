@@ -2,6 +2,7 @@ package com.moneylytics.api.application.service
 
 import com.moneylytics.api.application.port.input.CreateUserUseCase
 import com.moneylytics.api.application.port.input.ListUsersUseCase
+import com.moneylytics.api.application.port.input.LoginOAuthUserUseCase
 import com.moneylytics.api.application.port.input.RegisterUserUseCase
 import com.moneylytics.api.application.port.input.ResolveUserUseCase
 import com.moneylytics.api.application.port.output.CategoryRepository
@@ -24,12 +25,22 @@ class UserService(
 ) : ResolveUserUseCase,
     ListUsersUseCase,
     CreateUserUseCase,
-    RegisterUserUseCase {
+    RegisterUserUseCase,
+    LoginOAuthUserUseCase {
     override fun listUsers(): List<User> = userRepository.findAll()
 
     override fun resolveUser(externalId: String): Long =
         userRepository.findByExternalId(externalId)?.id
             ?: throw IllegalStateException("User '$externalId' not found")
+
+    @Transactional
+    override fun loginOAuthUser(externalId: String): Long {
+        val existing = userRepository.findByExternalId(externalId)
+        if (existing != null) return existing.id
+        val user = userRepository.save(externalId, passwordHash = null)
+        categoryRepository.saveAllIfAbsent(DEFAULT_CATEGORIES, user.id)
+        return user.id
+    }
 
     @Transactional
     override fun registerUser(

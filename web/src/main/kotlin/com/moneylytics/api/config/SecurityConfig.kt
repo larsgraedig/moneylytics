@@ -7,27 +7,22 @@ import org.springframework.security.authentication.UserDetailsRepositoryReactive
 import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity
 import org.springframework.security.config.web.server.ServerHttpSecurity
 import org.springframework.security.core.userdetails.ReactiveUserDetailsService
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
 import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.security.web.server.SecurityWebFilterChain
+import org.springframework.security.web.server.authentication.ServerAuthenticationSuccessHandler
 import org.springframework.security.web.server.context.ServerSecurityContextRepository
-import org.springframework.security.web.server.context.WebSessionServerSecurityContextRepository
 
 @Configuration
 @EnableWebFluxSecurity
 class SecurityConfig(
     private val userDetailsService: ReactiveUserDetailsService,
+    private val oAuth2SuccessHandler: ServerAuthenticationSuccessHandler,
+    private val passwordEncoder: PasswordEncoder,
 ) {
-    @Bean
-    fun passwordEncoder(): PasswordEncoder = BCryptPasswordEncoder()
-
-    @Bean
-    fun securityContextRepository(): ServerSecurityContextRepository = WebSessionServerSecurityContextRepository()
-
     @Bean
     fun authManager(): ReactiveAuthenticationManager =
         UserDetailsRepositoryReactiveAuthenticationManager(userDetailsService).also {
-            it.setPasswordEncoder(passwordEncoder())
+            it.setPasswordEncoder(passwordEncoder)
         }
 
     @Bean
@@ -40,12 +35,14 @@ class SecurityConfig(
             .securityContextRepository(securityContextRepository)
             .authorizeExchange { auth ->
                 auth
-                    .pathMatchers("/auth/login", "/auth/register")
+                    .pathMatchers("/auth/login", "/auth/register", "/oauth2/authorization/**", "/login/oauth2/code/**")
                     .permitAll()
                     .anyExchange()
                     .authenticated()
             }.httpBasic { it.disable() }
             .formLogin { it.disable() }
             .logout { it.disable() }
-            .build()
+            .oauth2Login { oauth2 ->
+                oauth2.authenticationSuccessHandler(oAuth2SuccessHandler)
+            }.build()
 }
