@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   detectCsvFormat,
   importGenericCsv,
@@ -94,6 +95,7 @@ function MappingRow({
   value: string | null
   onChange: (v: string | null) => void
 }) {
+  const { t } = useTranslation()
   return (
     <div className="gcv-map-row">
       <span className="gcv-map-label">
@@ -105,7 +107,7 @@ function MappingRow({
         value={value ?? ''}
         onChange={e => onChange(e.target.value || null)}
       >
-        {!required && <option value="">— not mapped —</option>}
+        {!required && <option value="">{t('csvImport.mapping.notMapped')}</option>}
         {headers.map(h => <option key={h} value={h}>{h}</option>)}
       </select>
     </div>
@@ -129,6 +131,7 @@ function MappingView({
   onCancel: () => void
   importing: boolean
 }) {
+  const { t } = useTranslation()
   const { headers, sampleRows } = detection
 
   const dateIdx = colIdx(headers, mapping.dateColumn)
@@ -150,27 +153,27 @@ function MappingView({
       <div className="gcv-header">
         <div>
           <div className="gcv-title">
-            Spalten-Mapping
+            {t('csvImport.mapping.title')}
             {detection.savedMapping && (
-              <span className="gcv-saved-badge">gespeicherte Konfiguration</span>
+              <span className="gcv-saved-badge">{t('csvImport.mapping.savedBadge')}</span>
             )}
           </div>
-          <div className="gcv-subtitle">{file.name} · Trennzeichen: <code>{mapping.delimiter === '\t' ? 'Tab' : mapping.delimiter}</code></div>
+          <div className="gcv-subtitle">{file.name} · {t('csvImport.mapping.delimiter')}: <code>{mapping.delimiter === '\t' ? 'Tab' : mapping.delimiter}</code></div>
         </div>
         <div className="gcv-header-actions">
-          <button className="gcv-cancel-btn" onClick={onCancel} disabled={importing}>abbrechen</button>
+          <button className="gcv-cancel-btn" onClick={onCancel} disabled={importing}>{t('csvImport.mapping.cancel')}</button>
           <button className="gcv-confirm-btn" onClick={onConfirm} disabled={!canConfirm || importing}>
-            {importing ? 'importiert…' : 'importieren'}
+            {importing ? t('csvImport.mapping.importing') : t('csvImport.mapping.import')}
           </button>
         </div>
       </div>
 
       <div className="gcv-body">
         <div className="gcv-mapping-panel">
-          <div className="gcv-section-title">Pflichtfelder</div>
-          <MappingRow label="Datum" required headers={headers} value={mapping.dateColumn} onChange={v => set('dateColumn', v ?? '')} />
+          <div className="gcv-section-title">{t('csvImport.mapping.requiredFields')}</div>
+          <MappingRow label={t('csvImport.mapping.date')} required headers={headers} value={mapping.dateColumn} onChange={v => set('dateColumn', v ?? '')} />
           <div className="gcv-map-row">
-            <span className="gcv-map-label">Datumsformat<span className="gcv-map-required">*</span></span>
+            <span className="gcv-map-label">{t('csvImport.mapping.dateFormat')}<span className="gcv-map-required">*</span></span>
             <select className="gcv-map-select" value={mapping.dateFormat} onChange={e => set('dateFormat', e.target.value)}>
               {COMMON_DATE_FORMATS.map(f => <option key={f} value={f}>{f}</option>)}
               {!COMMON_DATE_FORMATS.includes(mapping.dateFormat) && (
@@ -178,39 +181,39 @@ function MappingView({
               )}
             </select>
           </div>
-          <MappingRow label="Betrag" required headers={headers} value={mapping.amountColumn} onChange={v => set('amountColumn', v ?? '')} />
+          <MappingRow label={t('csvImport.mapping.amount')} required headers={headers} value={mapping.amountColumn} onChange={v => set('amountColumn', v ?? '')} />
           <div className="gcv-map-row">
-            <span className="gcv-map-label">Betragsformat<span className="gcv-map-required">*</span></span>
+            <span className="gcv-map-label">{t('csvImport.mapping.amountFormat')}<span className="gcv-map-required">*</span></span>
             <div className="gcv-radio-group">
               {(['GERMAN', 'ENGLISH'] as AmountFormat[]).map(f => (
                 <label key={f} className="gcv-radio-label">
                   <input type="radio" checked={mapping.amountFormat === f} onChange={() => set('amountFormat', f)} />
-                  {f === 'GERMAN' ? 'Deutsch (1.234,56)' : 'Englisch (1,234.56)'}
+                  {f === 'GERMAN' ? t('csvImport.mapping.amountGerman') : t('csvImport.mapping.amountEnglish')}
                 </label>
               ))}
             </div>
           </div>
 
-          <div className="gcv-section-title" style={{ marginTop: 16 }}>Optionale Felder</div>
-          <MappingRow label="Verwendungszweck" headers={headers} value={mapping.purposeColumn} onChange={v => set('purposeColumn', v)} />
-          <MappingRow label="Kategorie" headers={headers} value={mapping.categoryColumn} onChange={v => set('categoryColumn', v)} />
-          <MappingRow label="Unterkategorie" headers={headers} value={mapping.subcategoryColumn} onChange={v => set('subcategoryColumn', v)} />
-          <MappingRow label="Konto (IBAN)" headers={headers} value={mapping.accountIbanColumn} onChange={v => set('accountIbanColumn', v)} />
+          <div className="gcv-section-title" style={{ marginTop: 16 }}>{t('csvImport.mapping.optionalFields')}</div>
+          <MappingRow label={t('csvImport.mapping.purpose')} headers={headers} value={mapping.purposeColumn} onChange={v => set('purposeColumn', v)} />
+          <MappingRow label={t('csvImport.mapping.category')} headers={headers} value={mapping.categoryColumn} onChange={v => set('categoryColumn', v)} />
+          <MappingRow label={t('csvImport.mapping.subcategory')} headers={headers} value={mapping.subcategoryColumn} onChange={v => set('subcategoryColumn', v)} />
+          <MappingRow label={t('csvImport.mapping.accountIban')} headers={headers} value={mapping.accountIbanColumn} onChange={v => set('accountIbanColumn', v)} />
           {!mapping.accountIbanColumn && (
             <div className="gcv-map-row">
-              <span className="gcv-map-label gcv-map-label--sub">fester IBAN-Wert</span>
+              <span className="gcv-map-label gcv-map-label--sub">{t('csvImport.mapping.fixedIban')}</span>
               <input
                 className="gcv-map-input"
-                placeholder="z. B. DE00123456789"
+                placeholder={t('csvImport.mapping.fixedIbanPlaceholder')}
                 value={mapping.fixedAccountIban ?? ''}
                 onChange={e => set('fixedAccountIban', e.target.value || null)}
               />
             </div>
           )}
-          <MappingRow label="Währung" headers={headers} value={mapping.currencyColumn} onChange={v => set('currencyColumn', v)} />
+          <MappingRow label={t('csvImport.mapping.currency')} headers={headers} value={mapping.currencyColumn} onChange={v => set('currencyColumn', v)} />
           {!mapping.currencyColumn && (
             <div className="gcv-map-row">
-              <span className="gcv-map-label gcv-map-label--sub">feste Währung</span>
+              <span className="gcv-map-label gcv-map-label--sub">{t('csvImport.mapping.fixedCurrency')}</span>
               <input
                 className="gcv-map-input"
                 value={mapping.fixedCurrency}
@@ -221,18 +224,18 @@ function MappingView({
         </div>
 
         <div className="gcv-preview-panel">
-          <div className="gcv-section-title">Vorschau ({sampleRows.length} Zeilen)</div>
+          <div className="gcv-section-title">{t('csvImport.mapping.previewTitle', { count: sampleRows.length })}</div>
           <div className="gcv-preview-wrap">
             <table className="gcv-preview-table">
               <thead>
                 <tr>
-                  <th>Datum</th>
-                  <th>Betrag</th>
-                  {currIdx >= 0 && <th>Währung</th>}
-                  {ibanIdx >= 0 && <th>IBAN</th>}
-                  {purpIdx >= 0 && <th>Verwendungszweck</th>}
-                  {catIdx >= 0 && <th>Kategorie</th>}
-                  {subIdx >= 0 && <th>Unterkategorie</th>}
+                  <th>{t('csvImport.categorizing.columns.date')}</th>
+                  <th>{t('csvImport.categorizing.columns.amount')}</th>
+                  {currIdx >= 0 && <th>{t('csvImport.categorizing.columns.currency')}</th>}
+                  {ibanIdx >= 0 && <th>{t('csvImport.categorizing.columns.account')}</th>}
+                  {purpIdx >= 0 && <th>{t('csvImport.categorizing.columns.purpose')}</th>}
+                  {catIdx >= 0 && <th>{t('csvImport.categorizing.columns.category')}</th>}
+                  {subIdx >= 0 && <th>{t('csvImport.categorizing.columns.subcategory')}</th>}
                 </tr>
               </thead>
               <tbody>
@@ -270,6 +273,7 @@ const needsPreview = (m: CsvMapping, rows: GenericCsvPreviewRow[]) =>
   !m.categoryColumn || !m.subcategoryColumn || rows.some(r => r.unknownAccount && r.status !== 'DUPLICATE')
 
 export default function CsvImportPage() {
+  const { t } = useTranslation()
   const [phase, setPhase] = useState<Phase>({ step: 'upload' })
   const [isDragging, setIsDragging] = useState(false)
   const [categories, setCategories] = useState<CategoryGroup[]>([])
@@ -340,10 +344,10 @@ export default function CsvImportPage() {
       <div className="ri-center">
         <p className="ri-success">
           {phase.count > 0
-            ? `${phase.count} Transaktion${phase.count !== 1 ? 'en' : ''} importiert`
-            : 'Keine neuen Transaktionen (alle bereits importiert)'}
+            ? t('csvImport.success.imported', { count: phase.count })
+            : t('csvImport.success.none')}
         </p>
-        <button className="load-btn" onClick={() => setPhase({ step: 'upload' })}>weitere Datei importieren</button>
+        <button className="load-btn" onClick={() => setPhase({ step: 'upload' })}>{t('csvImport.success.importMore')}</button>
       </div>
     )
   }
@@ -393,31 +397,31 @@ export default function CsvImportPage() {
       <div className="ri-page">
         <div className="ri-preview">
           <div className="ri-summary-bar">
-            <span className="ri-chip ri-chip--new">{rows.length - duplicateCount} neu</span>
-            {duplicateCount > 0 && <span className="ri-chip ri-chip--dup">{duplicateCount} bereits importiert</span>}
-            {unknownAccountCount > 0 && <span className="ri-chip ri-chip--inv">{unknownAccountCount} unbekanntes Konto</span>}
-            {skippedCount > 0 && <span className="ri-chip ri-chip--prev-ignored">{skippedCount} übersprungen</span>}
+            <span className="ri-chip ri-chip--new">{t('csvImport.categorizing.new', { count: rows.length - duplicateCount })}</span>
+            {duplicateCount > 0 && <span className="ri-chip ri-chip--dup">{t('csvImport.categorizing.duplicate', { count: duplicateCount })}</span>}
+            {unknownAccountCount > 0 && <span className="ri-chip ri-chip--inv">{t('csvImport.categorizing.unknownAccount', { count: unknownAccountCount })}</span>}
+            {skippedCount > 0 && <span className="ri-chip ri-chip--prev-ignored">{t('csvImport.categorizing.skipped', { count: skippedCount })}</span>}
             <span className="ri-summary-spacer" />
-            <button className="load-btn" onClick={() => setPhase({ step: 'mapping', detection, mapping, file })} disabled={importing}>← zurück</button>
+            <button className="load-btn" onClick={() => setPhase({ step: 'mapping', detection, mapping, file })} disabled={importing}>{t('csvImport.categorizing.back')}</button>
             <button
               className="load-btn ri-import-btn"
               disabled={readyCount === 0 || importing}
               onClick={() => handleImportRows(rows, detection, mapping, file)}
             >
-              {importing ? '…' : `${readyCount} importieren`}
+              {importing ? '…' : t('csvImport.categorizing.importCount', { count: readyCount })}
             </button>
           </div>
           <div className="ri-table-wrap">
             <table className="ri-table">
               <thead>
                 <tr>
-                  <th>datum</th>
-                  <th>betrag</th>
-                  <th>währung</th>
-                  <th>konto</th>
-                  <th>verwendungszweck</th>
-                  <th>kategorie</th>
-                  <th>unterkategorie</th>
+                  <th>{t('csvImport.categorizing.columns.date')}</th>
+                  <th>{t('csvImport.categorizing.columns.amount')}</th>
+                  <th>{t('csvImport.categorizing.columns.currency')}</th>
+                  <th>{t('csvImport.categorizing.columns.account')}</th>
+                  <th>{t('csvImport.categorizing.columns.purpose')}</th>
+                  <th>{t('csvImport.categorizing.columns.category')}</th>
+                  <th>{t('csvImport.categorizing.columns.subcategory')}</th>
                   <th></th>
                 </tr>
               </thead>
@@ -440,18 +444,18 @@ export default function CsvImportPage() {
                       <td className={`ri-cell-amount${row.amount < 0 ? ' negative' : ''}`}>{EUR.format(row.amount)}</td>
                       <td className="ri-cell-date">{row.currency}</td>
                       <td className={`ri-cell-date${isUnknown ? ' gcv-unknown-iban' : ''}`} title={row.accountIban}>
-                        {isUnknown ? '⚠ Unbekanntes Konto' : row.accountIban}
+                        {isUnknown ? t('csvImport.categorizing.unknownAccountLabel') : row.accountIban}
                       </td>
                       <td className="ri-cell-purpose" title={row.purpose ?? ''}>{row.purpose || '—'}</td>
                       {isExcluded ? (
-                        <td colSpan={2} className="ri-cell-muted">{isDuplicate ? 'bereits importiert' : 'ausgeschlossen'}</td>
+                        <td colSpan={2} className="ri-cell-muted">{isDuplicate ? t('csvImport.categorizing.alreadyImported') : t('csvImport.categorizing.excluded')}</td>
                       ) : isImporting ? (
                         <>
                           <td>
                             <input
                               className="ri-cat-input"
                               list="gcv-cat-list"
-                              placeholder="kategorie"
+                              placeholder={t('common.category')}
                               value={catVal}
                               onChange={e => setCategoryField(row.rowIndex, 'category', e.target.value)}
                             />
@@ -460,7 +464,7 @@ export default function CsvImportPage() {
                             <input
                               className="ri-cat-input"
                               list={`gcv-sub-list-${row.rowIndex}`}
-                              placeholder="unterkategorie"
+                              placeholder={t('common.subcategory')}
                               value={subVal}
                               onChange={e => setCategoryField(row.rowIndex, 'subcategory', e.target.value)}
                             />
@@ -474,9 +478,9 @@ export default function CsvImportPage() {
                       )}
                       <td className="ri-cell-action">
                         {!isExcluded && (isImporting ? (
-                          <button className="ri-action-btn ri-action-btn--ignore" onClick={() => setDecision(row.rowIndex, { action: 'skip' })}>überspringen</button>
+                          <button className="ri-action-btn ri-action-btn--ignore" onClick={() => setDecision(row.rowIndex, { action: 'skip' })}>{t('common.skip')}</button>
                         ) : (
-                          <button className="ri-action-btn ri-action-btn--import" onClick={() => setDecision(row.rowIndex, { action: 'import', category: '', subcategory: '' })}>undo</button>
+                          <button className="ri-action-btn ri-action-btn--import" onClick={() => setDecision(row.rowIndex, { action: 'import', category: '', subcategory: '' })}>{t('common.undo')}</button>
                         ))}
                       </td>
                     </tr>
@@ -513,10 +517,10 @@ export default function CsvImportPage() {
         />
         <span className="ri-dropzone-icon">↑</span>
         <span className="ri-dropzone-label">
-          {isLoading ? 'analysiere Datei…' : 'beliebige CSV hochladen oder hierher ziehen'}
+          {isLoading ? t('csvImport.dropzone.analyzing') : t('csvImport.dropzone.label')}
         </span>
         <span className="ri-dropzone-hint">
-          {isLoading ? 'Trennzeichen, Spalten und Formate werden erkannt' : 'Trennzeichen und Formate werden automatisch erkannt'}
+          {isLoading ? t('csvImport.dropzone.analyzingHint') : t('csvImport.dropzone.hint')}
         </span>
         {phase.step === 'error' && (
           <span className="ri-dropzone-error">{phase.message}</span>

@@ -1,4 +1,5 @@
 import { type FormEvent, useState } from 'react'
+import { useTranslation, Trans } from 'react-i18next'
 import { useAuth } from '../context/AuthContext'
 
 function GoogleIcon() {
@@ -16,6 +17,7 @@ type Mode = 'login' | 'register'
 
 export default function LoginPage() {
   const { login, register } = useAuth()
+  const { t } = useTranslation()
   const [mode, setMode] = useState<Mode>('login')
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
@@ -35,7 +37,7 @@ export default function LoginPage() {
     setError(null)
 
     if (mode === 'register' && password !== confirmPassword) {
-      setError('Passwords do not match')
+      setError(t('auth.passwordMismatch'))
       return
     }
 
@@ -47,7 +49,11 @@ export default function LoginPage() {
         await register(username, password)
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Something went wrong')
+      const msg = err instanceof Error ? err.message : ''
+      if (msg === 'Username already taken') setError(t('auth.usernameTaken'))
+      else if (msg === 'Registration failed') setError(t('auth.registrationFailed'))
+      else if (msg === 'Invalid credentials') setError(t('auth.invalidCredentials'))
+      else setError(t('auth.error'))
     } finally {
       setLoading(false)
     }
@@ -62,7 +68,7 @@ export default function LoginPage() {
 
         <div className="login-fields">
           <label className="login-field">
-            <span className="login-label">username</span>
+            <span className="login-label">{t('auth.username')}</span>
             <input
               className="login-input"
               type="text"
@@ -73,7 +79,7 @@ export default function LoginPage() {
             />
           </label>
           <label className="login-field">
-            <span className="login-label">password</span>
+            <span className="login-label">{t('auth.password')}</span>
             <input
               className="login-input"
               type="password"
@@ -84,7 +90,7 @@ export default function LoginPage() {
           </label>
           {mode === 'register' && (
             <label className="login-field">
-              <span className="login-label">confirm password</span>
+              <span className="login-label">{t('auth.confirmPassword')}</span>
               <input
                 className="login-input"
                 type="password"
@@ -99,7 +105,7 @@ export default function LoginPage() {
         {error && <p className="login-error">{error}</p>}
 
         <button className="login-btn" type="submit" disabled={isSubmitDisabled}>
-          {loading ? '…' : mode === 'login' ? 'sign in' : 'create account'}
+          {loading ? '…' : mode === 'login' ? t('auth.signIn') : t('auth.createAccount')}
         </button>
 
         {mode === 'login' && (
@@ -107,24 +113,22 @@ export default function LoginPage() {
             <div className="login-divider"><span>or</span></div>
             <a className="login-google-btn" href="/oauth2/authorization/google">
               <GoogleIcon />
-              Sign in with Google
+              {t('auth.signInWithGoogle')}
             </a>
           </>
         )}
 
         <p className="login-switch">
           {mode === 'login' ? (
-            <>no account?{' '}
-              <button type="button" className="login-switch-btn" onClick={() => switchMode('register')}>
-                register
-              </button>
-            </>
+            <Trans i18nKey="auth.noAccount">
+              <span />
+              <button type="button" className="login-switch-btn" onClick={() => switchMode('register')} />
+            </Trans>
           ) : (
-            <>already have one?{' '}
-              <button type="button" className="login-switch-btn" onClick={() => switchMode('login')}>
-                sign in
-              </button>
-            </>
+            <Trans i18nKey="auth.alreadyHaveAccount">
+              <span />
+              <button type="button" className="login-switch-btn" onClick={() => switchMode('login')} />
+            </Trans>
           )}
         </p>
       </form>

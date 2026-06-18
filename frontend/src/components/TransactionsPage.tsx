@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { Trans, useTranslation } from 'react-i18next'
 import { fetchCategories, type CategoryGroup } from '../api/rawImport'
 import {
   computeEffectiveAmount,
@@ -57,6 +58,7 @@ export default function TransactionsPage({
   iban?: string
   accounts: Account[]
 }) {
+  const { t } = useTranslation()
   const [rows, setRows] = useState<RowState[]>([])
   const [page, setPage] = useState<PageState>({ phase: 'idle' })
   const [categories, setCategories] = useState<CategoryGroup[]>([])
@@ -111,7 +113,7 @@ export default function TransactionsPage({
       )
       setPage({ phase: 'ready' })
     } catch (e) {
-      setPage({ phase: 'error', message: e instanceof Error ? e.message : 'request failed' })
+      setPage({ phase: 'error', message: e instanceof Error ? e.message : t('common.requestFailed') })
     }
   }
 
@@ -411,9 +413,9 @@ export default function TransactionsPage({
     if (isSource) {
       return (
         <div className="txnv-linking-from">
-          <span className="txnv-linking-badge">selecting target</span>
+          <span className="txnv-linking-badge">{t('transactions.linkingSelectingTarget')}</span>
           <button className="txnv-link-cancel-btn" onClick={() => { setLinkingState(null); setLinkError(null) }}>
-            cancel
+            {t('common.cancel')}
           </button>
         </div>
       )
@@ -427,7 +429,7 @@ export default function TransactionsPage({
             type="number"
             step="0.01"
             min="0"
-            placeholder="partial amt"
+            placeholder={t('transactions.partialAmount')}
             value={(linkingState as { partialAmount: string }).partialAmount}
             onChange={e =>
               setLinkingState(prev =>
@@ -436,7 +438,7 @@ export default function TransactionsPage({
             }
             autoFocus
           />
-          <button className="txnv-link-confirm-btn" onClick={confirmLink}>link</button>
+          <button className="txnv-link-confirm-btn" onClick={confirmLink}>{t('transactions.link')}</button>
           <button
             className="txnv-link-back-btn"
             onClick={() => src !== undefined && setLinkingState({ phase: 'selecting', sourceIndex: src })}
@@ -457,7 +459,7 @@ export default function TransactionsPage({
             setLinkingState({ phase: 'confirming', sourceIndex: src, targetIndex: i, partialAmount: '' })
           }
         >
-          link here
+          {t('transactions.linkHere')}
         </button>
       )
     }
@@ -480,14 +482,14 @@ export default function TransactionsPage({
               <span
                 className={`txnv-link-chip-amount ${link.linkedTransactionAmount >= 0 ? 'positive' : 'negative'}${linkedVisible ? ' txnv-link-chip-nav' : ''}`}
                 onClick={linkedVisible ? () => scrollToLinked(link.linkedTransactionId) : undefined}
-                title={linkedVisible ? 'zur verlinkten Transaktion springen' : undefined}
+                title={linkedVisible ? t('transactions.jumpToLinked') : undefined}
               >
                 {amtFormatted}
               </span>
               <button
                 className="txnv-link-chip-remove"
                 onClick={() => removeLink(link.id)}
-                title="remove link"
+                title={t('transactions.removeLink')}
               >
                 ×
               </button>
@@ -497,7 +499,7 @@ export default function TransactionsPage({
         <button
           className="txnv-add-link-btn"
           onClick={() => { setLinkError(null); setLinkingState({ phase: 'selecting', sourceIndex: i }) }}
-          title="link to another transaction"
+          title={t('transactions.linkToTransaction')}
         >
           link
         </button>
@@ -513,7 +515,7 @@ export default function TransactionsPage({
           onClick={load}
           disabled={page.phase === 'loading'}
         >
-          {page.phase === 'loading' ? '…' : 'load'}
+          {page.phase === 'loading' ? '…' : t('common.load')}
         </button>
         {allCategoryNames.length > 0 && (
           <select
@@ -527,7 +529,7 @@ export default function TransactionsPage({
               if (page.phase === 'ready') doLoad(cat || undefined)
             }}
           >
-            <option value="">alle kategorien</option>
+            <option value="">{t('transactions.allCategories')}</option>
             {allCategoryNames.map(c => <option key={c} value={c}>{c}</option>)}
           </select>
         )}
@@ -542,12 +544,12 @@ export default function TransactionsPage({
               if (page.phase === 'ready') doLoad(filterCategory, sub || undefined)
             }}
           >
-            <option value="">alle subkategorien</option>
+            <option value="">{t('transactions.allSubcategories')}</option>
             {subcategoriesFor(filterCategory).map(s => <option key={s} value={s}>{s}</option>)}
           </select>
         )}
         {page.phase === 'ready' && (
-          <span className="txnv-count">{rows.length} transactions</span>
+          <span className="txnv-count">{t('transactions.count', { count: rows.length })}</span>
         )}
       </div>
 
@@ -565,16 +567,16 @@ export default function TransactionsPage({
 
       <div className="txnv-body">
         {page.phase === 'idle' && (
-          <p className="hint">select a date range and press <kbd>load</kbd></p>
+          <p className="hint"><Trans i18nKey="common.selectDateAndLoad"><span /><kbd /></Trans></p>
         )}
         {page.phase === 'loading' && (
-          <p className="hint loading">fetching…</p>
+          <p className="hint loading">{t('common.fetching')}</p>
         )}
         {page.phase === 'error' && (
           <p className="hint error">{(page as { phase: 'error'; message: string }).message}</p>
         )}
         {page.phase === 'ready' && rows.length === 0 && (
-          <p className="hint">no transactions in this range</p>
+          <p className="hint">{t('common.noTransactions')}</p>
         )}
         {page.phase === 'ready' && rows.length > 0 && (
           <table className="txnv-table">
@@ -589,14 +591,14 @@ export default function TransactionsPage({
                     onChange={toggleSelectAll}
                   />
                 </th>
-                <th>datum</th>
-                <th>account</th>
-                <th className="txnv-col-amount">amount</th>
-                <th>category</th>
-                <th>subcategory</th>
-                <th>offsets</th>
-                <th>verwendungszweck</th>
-                <th>kommentar</th>
+                <th>{t('transactions.columns.date')}</th>
+                <th>{t('transactions.columns.account')}</th>
+                <th className="txnv-col-amount">{t('transactions.columns.amount')}</th>
+                <th>{t('transactions.columns.category')}</th>
+                <th>{t('transactions.columns.subcategory')}</th>
+                <th>{t('transactions.columns.offsets')}</th>
+                <th>{t('transactions.columns.purpose')}</th>
+                <th>{t('transactions.columns.comment')}</th>
                 <th></th>
               </tr>
             </thead>
@@ -633,7 +635,7 @@ export default function TransactionsPage({
                         onBlur={() => saveAccountingDate(i)}
                       />
                       {row.original.accountingDate !== row.original.bookingDate && (
-                        <span className="txnv-booking-date-ref" title="reales Buchungsdatum">
+                        <span className="txnv-booking-date-ref" title={t('transactions.bookingDateTitle')}>
                           {formatDate(row.original.bookingDate)}
                         </span>
                       )}
@@ -678,7 +680,7 @@ export default function TransactionsPage({
                         className="txnv-comment-input"
                         type="text"
                         value={row.comment}
-                        placeholder="Kommentar hinzufügen…"
+                        placeholder={t('transactions.addComment')}
                         disabled={row.savingComment}
                         onChange={e => updateRow(i, 'comment', e.target.value)}
                         onBlur={() => saveComment(i)}
@@ -695,7 +697,7 @@ export default function TransactionsPage({
                           onClick={() => saveRow(i)}
                           disabled={row.saving}
                         >
-                          {row.saving ? '…' : 'save'}
+                          {row.saving ? '…' : t('common.save')}
                         </button>
                       )}
                     </td>
@@ -709,18 +711,18 @@ export default function TransactionsPage({
 
       {selectedCount > 0 && (
         <div className="txnv-bulk-bar">
-          <span className="txnv-bulk-count">{selectedCount} ausgewählt</span>
+          <span className="txnv-bulk-count">{t('transactions.bulkSelected', { count: selectedCount })}</span>
           <div className="txnv-bulk-inputs">
             <input
               className="ri-cat-input txnv-bulk-cat"
-              placeholder="kategorie"
+              placeholder={t('common.category')}
               value={bulkCategory}
               list="txnv-cat-list"
               onChange={e => { setBulkCategory(e.target.value); setBulkSubcategory('') }}
             />
             <input
               className="ri-cat-input txnv-bulk-cat"
-              placeholder="subkategorie"
+              placeholder={t('common.subcategory')}
               value={bulkSubcategory}
               list={bulkCategory ? sublistId(bulkCategory) : 'txnv-sub-all'}
               onChange={e => setBulkSubcategory(e.target.value)}
@@ -731,7 +733,7 @@ export default function TransactionsPage({
             onClick={applyBulk}
             disabled={bulkApplying || !bulkCategory.trim()}
           >
-            {bulkApplying ? '…' : 'übernehmen'}
+            {bulkApplying ? '…' : t('transactions.applyBulk')}
           </button>
           <button className="txnv-bulk-cancel-btn" onClick={clearSelection} disabled={bulkApplying}>
             ✕

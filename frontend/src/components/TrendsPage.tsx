@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { Trans, useTranslation } from 'react-i18next'
 import { ResponsiveLine } from '@nivo/line'
 import { fetchCamtCategories, type CategoryGroup } from '../api/camtImport'
 import {
@@ -151,13 +152,6 @@ const DAYS_PER_BUCKET: Record<Granularity, number> = {
   DAILY: 1, WEEKLY: 7, MONTHLY: 365.25 / 12, QUARTERLY: 365.25 / 4,
   BI_YEARLY: 365.25 / 2, YEARLY: 365.25,
 }
-const PERIOD_LABELS: Record<TThresholdPeriod, string> = {
-  WEEKLY: 'week', MONTHLY: 'month', QUARTERLY: 'quarter', YEARLY: 'year',
-}
-const GRANULARITY_LABELS: Record<Granularity, string> = {
-  DAILY: 'day', WEEKLY: 'week', MONTHLY: 'month', QUARTERLY: 'quarter',
-  BI_YEARLY: 'half-year', YEARLY: 'year',
-}
 
 function normalizeThreshold(amount: number, period: TThresholdPeriod, granularity: Granularity): number {
   return (amount / DAYS_PER_PERIOD[period]) * DAYS_PER_BUCKET[granularity]
@@ -225,6 +219,7 @@ type ViewState =
   | { phase: 'ready'; data: TrendsResponse }
 
 export default function TrendsPage({ from, to, iban }: { from: string; to: string; iban?: string }) {
+  const { t } = useTranslation()
   const [granularity, setGranularity] = useState<Granularity>('MONTHLY')
   const [series, setSeries] = useState<SeriesConfig[]>([{ id: newId(), category: '', subcategory: '' }])
   const [categories, setCategories] = useState<CategoryGroup[]>([])
@@ -253,7 +248,7 @@ export default function TrendsPage({ from, to, iban }: { from: string; to: strin
     try {
       setView({ phase: 'ready', data: await fetchTrends(from, to, active, granularity, iban) })
     } catch (e) {
-      setView({ phase: 'error', message: e instanceof Error ? e.message : 'request failed' })
+      setView({ phase: 'error', message: e instanceof Error ? e.message : t('common.requestFailed') })
     }
   }
 
@@ -323,12 +318,12 @@ export default function TrendsPage({ from, to, iban }: { from: string; to: strin
           value={granularity}
           onChange={e => setGranularity(e.target.value as Granularity)}
         >
-          <option value="YEARLY">yearly</option>
-          <option value="BI_YEARLY">bi-yearly</option>
-          <option value="QUARTERLY">quarterly</option>
-          <option value="MONTHLY">monthly</option>
-          <option value="WEEKLY">weekly</option>
-          <option value="DAILY">daily</option>
+          <option value="YEARLY">{t('trends.granularity.yearly')}</option>
+          <option value="BI_YEARLY">{t('trends.granularity.biYearly')}</option>
+          <option value="QUARTERLY">{t('trends.granularity.quarterly')}</option>
+          <option value="MONTHLY">{t('trends.granularity.monthly')}</option>
+          <option value="WEEKLY">{t('trends.granularity.weekly')}</option>
+          <option value="DAILY">{t('trends.granularity.daily')}</option>
         </select>
 
         <button
@@ -336,7 +331,7 @@ export default function TrendsPage({ from, to, iban }: { from: string; to: strin
           onClick={load}
           disabled={view.phase === 'loading' || series.every(s => !s.category.trim())}
         >
-          {view.phase === 'loading' ? '…' : 'load'}
+          {view.phase === 'loading' ? '…' : t('common.load')}
         </button>
       </div>
 
@@ -349,14 +344,14 @@ export default function TrendsPage({ from, to, iban }: { from: string; to: strin
               <input
                 className="tr-series-input"
                 list="tr-cat-list"
-                placeholder="category"
+                placeholder={t('trends.category')}
                 value={s.category}
                 onChange={e => updateSeries(s.id, 'category', e.target.value)}
               />
               <input
                 className="tr-series-input tr-series-subcat"
                 list={`tr-sub-list-${s.id}`}
-                placeholder="subcategory (optional)"
+                placeholder={t('trends.subcategory')}
                 value={s.subcategory}
                 onChange={e => updateSeries(s.id, 'subcategory', e.target.value)}
               />
@@ -369,7 +364,7 @@ export default function TrendsPage({ from, to, iban }: { from: string; to: strin
             </div>
           )
         })}
-        <button className="tr-add-btn" onClick={addSeries}>+ add series</button>
+        <button className="tr-add-btn" onClick={addSeries}>{t('trends.addSeries')}</button>
 
         <datalist id="tr-cat-list">
           {categories.map(c => <option key={c.name} value={c.name} />)}
@@ -377,11 +372,11 @@ export default function TrendsPage({ from, to, iban }: { from: string; to: strin
       </div>
 
       <div className="tr-chart-area" style={view.phase === 'ready' && lineData.length > 0 ? { cursor: 'pointer' } : undefined}>
-        {view.phase === 'idle' && <p className="hint">configure series above and press <kbd>load</kbd></p>}
-        {view.phase === 'loading' && <p className="hint loading">fetching…</p>}
+        {view.phase === 'idle' && <p className="hint"><Trans i18nKey="trends.hint"><span /><kbd /></Trans></p>}
+        {view.phase === 'loading' && <p className="hint loading">{t('common.fetching')}</p>}
         {view.phase === 'error' && <p className="hint error">{view.message}</p>}
         {view.phase === 'ready' && lineData.length === 0 && (
-          <p className="hint">no data for the selected series and date range</p>
+          <p className="hint">{t('trends.noData')}</p>
         )}
         {view.phase === 'ready' && lineData.length > 0 && (
           <ResponsiveLine
@@ -428,10 +423,10 @@ export default function TrendsPage({ from, to, iban }: { from: string; to: strin
               return (
                 <div className="tr-tooltip">
                   <span className="tr-tooltip-label" style={{ color: point.seriesColor }}>{label}</span>
-                  {role === 'MAIN_CONTEXT' && <span className="tr-tooltip-role">category total</span>}
+                  {role === 'MAIN_CONTEXT' && <span className="tr-tooltip-role">{t('trends.categoryTotal')}</span>}
                   <span className="tr-tooltip-val">{EUR.format(point.data.y as number)}</span>
                   <span className="tr-tooltip-date">{formatBucket(point.data.x as string, view.data.granularity)}</span>
-                  <span className="tr-tooltip-hint">· click to drill down</span>
+                  <span className="tr-tooltip-hint">{t('trends.clickToDrillDown')}</span>
                 </div>
               )
             }}
@@ -455,13 +450,13 @@ export default function TrendsPage({ from, to, iban }: { from: string; to: strin
             {hoveredThreshold.line.label}
           </span>
           <div className="tr-threshold-tooltip-row">
-            <span className="tr-threshold-tooltip-key">per {GRANULARITY_LABELS[hoveredThreshold.line.granularity]}</span>
+            <span className="tr-threshold-tooltip-key">{t('trends.granularityUnit.' + hoveredThreshold.line.granularity)}</span>
             <span className="tr-threshold-tooltip-val">{EUR.format(hoveredThreshold.line.value)}</span>
           </div>
           <div className="tr-threshold-tooltip-row">
-            <span className="tr-threshold-tooltip-key">configured</span>
+            <span className="tr-threshold-tooltip-key">{t('trends.configured')}</span>
             <span className="tr-threshold-tooltip-val">
-              {EUR.format(hoveredThreshold.line.baselineAmount)} / {PERIOD_LABELS[hoveredThreshold.line.period]}
+              {EUR.format(hoveredThreshold.line.baselineAmount)} / {t('trends.periodUnit.' + hoveredThreshold.line.period)}
             </span>
           </div>
         </div>

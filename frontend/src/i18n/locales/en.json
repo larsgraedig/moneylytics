@@ -1,0 +1,326 @@
+{
+  "nav": {
+    "sections": {
+      "analytics": "Analytics",
+      "accounts": "Accounts",
+      "imports": "Imports"
+    },
+    "sankey": "Sankey",
+    "trends": "Trends",
+    "breakdown": "Breakdown",
+    "cashflow": "Cashflow",
+    "kontoauszug": "Transactions",
+    "konten": "Accounts",
+    "budgets": "Budgets",
+    "csv": "CSV",
+    "camt": "CAMT",
+    "collapse": "Collapse menu",
+    "expand": "Expand menu"
+  },
+  "common": {
+    "allAccounts": "All accounts",
+    "from": "from",
+    "to": "to",
+    "load": "load",
+    "loading": "Loading…",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "back": "← Back",
+    "confirm": "Confirm",
+    "signOut": "sign out",
+    "error": "Error",
+    "noData": "No data",
+    "fetching": "fetching…",
+    "requestFailed": "request failed",
+    "date": "date",
+    "amount": "amount",
+    "currency": "currency",
+    "category": "category",
+    "subcategory": "subcategory",
+    "purpose": "purpose",
+    "total": "total",
+    "account": "account",
+    "import": "Import",
+    "skip": "Skip",
+    "undo": "Undo",
+    "noTransactions": "No transactions found",
+    "selectDateAndLoad": "Select a date range and press <1>load</1>"
+  },
+  "auth": {
+    "username": "username",
+    "password": "password",
+    "confirmPassword": "confirm password",
+    "signIn": "sign in",
+    "signInWithGoogle": "Sign in with Google",
+    "register": "register",
+    "createAccount": "create account",
+    "noAccount": "no account? <1>register</1>",
+    "alreadyHaveAccount": "already have one? <1>sign in</1>",
+    "invalidCredentials": "Invalid username or password",
+    "passwordMismatch": "Passwords do not match",
+    "usernameTaken": "Username already taken",
+    "registrationFailed": "Registration failed",
+    "error": "Something went wrong"
+  },
+  "sankey": {
+    "hint": "Select a date range and press <1>load</1>",
+    "clickToDrillDown": "· click to drill down"
+  },
+  "trends": {
+    "addSeries": "Add series",
+    "removeSeries": "Remove series",
+    "granularity": {
+      "daily": "Daily",
+      "weekly": "Weekly",
+      "monthly": "Monthly",
+      "quarterly": "Quarterly",
+      "biYearly": "Bi-yearly",
+      "yearly": "Yearly"
+    },
+    "granularityUnit": {
+      "DAILY": "day",
+      "WEEKLY": "week",
+      "MONTHLY": "month",
+      "QUARTERLY": "quarter",
+      "BI_YEARLY": "half-year",
+      "YEARLY": "year"
+    },
+    "periodUnit": {
+      "WEEKLY": "week",
+      "MONTHLY": "month",
+      "QUARTERLY": "quarter",
+      "YEARLY": "year"
+    },
+    "category": "category",
+    "subcategory": "subcategory (optional)",
+    "hint": "Configure series above and press <1>load</1>",
+    "noData": "No data for the selected series and date range",
+    "categoryTotal": "category total",
+    "clickToDrillDown": "· click to drill down",
+    "configured": "configured"
+  },
+  "breakdown": {
+    "categories": "categories",
+    "subcategories": "subcategories",
+    "backToCategories": "← categories",
+    "allTransactions": "all transactions",
+    "noData": "no data for this selection"
+  },
+  "cashflow": {
+    "monthly": "monthly",
+    "yearly": "yearly",
+    "income": "income",
+    "expenses": "expenses",
+    "net": "net",
+    "noTransactions": "No transactions in the selected period.",
+    "tooltipIncome": "income",
+    "tooltipExpenses": "expenses",
+    "tooltipNet": "net"
+  },
+  "transactions": {
+    "load": "load",
+    "allCategories": "all categories",
+    "allSubcategories": "all subcategories",
+    "columns": {
+      "date": "date",
+      "bookingDate": "booking date",
+      "account": "account",
+      "category": "category",
+      "subcategory": "subcategory",
+      "amount": "amount",
+      "effectiveAmount": "effective amount",
+      "comment": "comment",
+      "purpose": "purpose",
+      "offsets": "offsets"
+    },
+    "addComment": "add comment…",
+    "partialAmount": "partial amt",
+    "linkToTransaction": "link to another transaction",
+    "removeLink": "remove link",
+    "jumpToLinked": "jump to linked transaction",
+    "bulkCategory": "category (selection)",
+    "bulkSubcategory": "subcategory (selection)",
+    "applyBulk": "apply",
+    "selectAll": "select all",
+    "deselectAll": "deselect all",
+    "count": "{{count}} transactions",
+    "linkingSelectingTarget": "selecting target",
+    "linkHere": "link here",
+    "link": "link",
+    "bulkSelected": "{{count}} selected",
+    "bookingDateTitle": "original booking date",
+    "panel": {
+      "close": "Close",
+      "loading": "loading…",
+      "noTransactions": "no transactions found",
+      "total": "total",
+      "date": "date",
+      "amount": "amount",
+      "subcategory": "subcategory"
+    }
+  },
+  "accounts": {
+    "ibanPlaceholder": "IBAN",
+    "namePlaceholder": "Name (optional)",
+    "addAccount": "+ Add account",
+    "adding": "Saving…",
+    "loadError": "Failed to load accounts.",
+    "empty": "No accounts yet. Add an account to start importing transactions.",
+    "rename": "rename",
+    "save": "save",
+    "cancel": "cancel",
+    "delete": "delete",
+    "addError": "Failed to create account. Check if the IBAN already exists.",
+    "deleteConfirm": "Really delete account {{iban}}? Existing transactions will be kept.",
+    "columns": {
+      "iban": "IBAN",
+      "name": "Name"
+    }
+  },
+  "budgets": {
+    "load": "load",
+    "noCategories": "No categories found — import transactions first",
+    "spendingLoaded": "Spending loaded · {{from}} → {{to}}",
+    "totalSubcat": "total",
+    "minAmount": "At least one amount is required.",
+    "period": {
+      "weekly": "Weekly",
+      "monthly": "Monthly",
+      "quarterly": "Quarterly",
+      "yearly": "Yearly"
+    },
+    "columns": {
+      "category": "Category",
+      "subcategory": "Subcategory",
+      "period": "Period",
+      "notice": "Notice",
+      "warning": "Warning",
+      "critical": "Critical",
+      "spending": "Spending",
+      "progress": "Progress"
+    },
+    "addThreshold": "Add budget",
+    "editThreshold": "Edit budget",
+    "deleteConfirm": "Really delete this budget?",
+    "noThresholds": "No budgets configured yet.",
+    "saveFailed": "Save failed.",
+    "deleteFailed": "Delete failed."
+  },
+  "csvImport": {
+    "dropzone": {
+      "label": "Upload any CSV or drop it here",
+      "hint": "Delimiter and formats are detected automatically",
+      "analyzing": "Analysing file…",
+      "analyzingHint": "Detecting delimiter, columns and formats"
+    },
+    "mapping": {
+      "title": "Column mapping",
+      "savedBadge": "Saved configuration",
+      "delimiter": "Delimiter",
+      "requiredFields": "Required fields",
+      "optionalFields": "Optional fields",
+      "date": "Date",
+      "dateFormat": "Date format",
+      "amount": "Amount",
+      "amountFormat": "Amount format",
+      "amountGerman": "German (1.234,56)",
+      "amountEnglish": "English (1,234.56)",
+      "purpose": "Purpose",
+      "category": "Category",
+      "subcategory": "Subcategory",
+      "accountIban": "Account (IBAN)",
+      "fixedIban": "Fixed IBAN value",
+      "fixedIbanPlaceholder": "e.g. DE00123456789",
+      "currency": "Currency",
+      "fixedCurrency": "Fixed currency",
+      "notMapped": "— not mapped —",
+      "cancel": "cancel",
+      "import": "import",
+      "importing": "importing…",
+      "previewTitle": "Preview ({{count}} rows)"
+    },
+    "categorizing": {
+      "new": "{{count}} new",
+      "duplicate": "{{count}} already imported",
+      "unknownAccount": "{{count}} unknown account",
+      "skipped": "{{count}} skipped",
+      "importCount": "import {{count}}",
+      "excluded": "excluded",
+      "alreadyImported": "already imported",
+      "back": "← back",
+      "unknownAccountLabel": "⚠ Unknown account",
+      "columns": {
+        "date": "date",
+        "amount": "amount",
+        "currency": "currency",
+        "account": "account",
+        "purpose": "purpose",
+        "category": "category",
+        "subcategory": "subcategory"
+      }
+    },
+    "success": {
+      "imported_one": "{{count}} transaction imported",
+      "imported_other": "{{count}} transactions imported",
+      "none": "No new transactions (all already imported)",
+      "importMore": "Import another file"
+    }
+  },
+  "camtImport": {
+    "dropzone": {
+      "label": "drop CAMT.052 XML files here or click to browse",
+      "hint": "multiple files supported"
+    },
+    "status": {
+      "new": "new",
+      "duplicate": "duplicate",
+      "invalid": "invalid",
+      "previouslyIgnored": "ignored before",
+      "willIgnore": "will ignore",
+      "importing": "importing",
+      "excluded": "excluded",
+      "unknownAccount": "unknown account"
+    },
+    "chips": {
+      "new": "{{count}} new",
+      "previouslyIgnored": "{{count}} previously ignored",
+      "duplicate": "{{count}} duplicate",
+      "invalid": "{{count}} invalid",
+      "unknownAccount": "{{count}} unknown account"
+    },
+    "columns": {
+      "row": "#",
+      "status": "status",
+      "date": "date",
+      "account": "account",
+      "counterparty": "counterparty",
+      "purpose": "purpose",
+      "amount": "amount",
+      "category": "category",
+      "subcategory": "subcategory"
+    },
+    "accountNames": "Account names",
+    "accountNamePlaceholder": "account name",
+    "back": "← back",
+    "confirm": "confirm",
+    "skipAgain": "skip again",
+    "importAnyway": "import anyway",
+    "skip": "skip",
+    "undo": "undo",
+    "alreadyImported": "already imported",
+    "unknownAccount": "⚠ Unknown account",
+    "noCategory": "no category",
+    "success": {
+      "imported_one": "{{count}} transaction imported",
+      "imported_other": "{{count}} transactions imported",
+      "ignored": "{{count}} marked as ignored",
+      "skipped": "{{count}} skipped (no category)",
+      "importMore": "import more files"
+    },
+    "parsing": "parsing files…",
+    "noRows": "The files contain no rows.",
+    "noFiles": "No files provided."
+  }
+}

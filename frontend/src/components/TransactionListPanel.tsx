@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { fetchTransactionList, type TransactionItem } from '../api/transactions'
 
 interface Props {
@@ -35,6 +36,7 @@ function formatDate(iso: string): string {
 }
 
 export default function TransactionListPanel({ nodeKey, from, to, iban, onClose }: Props) {
+  const { t } = useTranslation()
   const [state, setState] = useState<State>({ phase: 'loading' })
   const { isCat, category, subcategory, label } = parseNodeKey(nodeKey)
 
@@ -66,7 +68,7 @@ export default function TransactionListPanel({ nodeKey, from, to, iban, onClose 
 
         <div className="txn-panel-body">
           {state.phase === 'loading' && (
-            <p className="txn-hint loading">loading…</p>
+            <p className="txn-hint loading">{t('common.loading')}</p>
           )}
 
           {state.phase === 'error' && (
@@ -78,9 +80,9 @@ export default function TransactionListPanel({ nodeKey, from, to, iban, onClose 
               <table className="txn-list-table">
                 <thead>
                   <tr>
-                    <th>date</th>
-                    {isCat && <th>subcategory</th>}
-                    <th className="txn-col-amount">amount</th>
+                    <th>{t('transactions.panel.date')}</th>
+                    {isCat && <th>{t('transactions.panel.subcategory')}</th>}
+                    <th className="txn-col-amount">{t('transactions.panel.amount')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -97,12 +99,12 @@ export default function TransactionListPanel({ nodeKey, from, to, iban, onClose 
               </table>
 
               {state.transactions.length === 0 && (
-                <p className="txn-hint">no transactions found</p>
+                <p className="txn-hint">{t('transactions.panel.noTransactions')}</p>
               )}
 
               {state.transactions.length > 0 && (
                 <div className="txn-total-row">
-                  <span>total</span>
+                  <span>{t('transactions.panel.total')}</span>
                   <span className={`txn-total-value${state.total < 0 ? ' negative' : ''}`}>
                     {EUR.format(state.total)}
                   </span>

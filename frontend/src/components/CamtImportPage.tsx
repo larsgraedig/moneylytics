@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   fetchCamtCategories,
   importCamt,
@@ -44,6 +45,7 @@ function initDecisions(rows: RawPreviewRow[]): Record<number, RowDecision> {
 }
 
 export default function CamtImportPage() {
+  const { t } = useTranslation()
   const [state, setState] = useState<PageState>({ phase: 'idle' })
   const [categories, setCategories] = useState<CategoryGroup[]>([])
   const [decisions, setDecisions] = useState<Record<number, RowDecision>>({})
@@ -63,7 +65,7 @@ export default function CamtImportPage() {
       const result = await previewCamtImport(files)
       const { rows, accounts } = result
       if (rows.length === 0) {
-        setState({ phase: 'error', message: 'The files contain no rows.' })
+        setState({ phase: 'error', message: t('camtImport.noRows') })
         return
       }
       const names: Record<string, string> = {}
@@ -170,13 +172,13 @@ export default function CamtImportPage() {
 
   if (state.phase === 'imported') {
     const parts: string[] = []
-    if (state.importedCount > 0) parts.push(`${state.importedCount} transaction${state.importedCount !== 1 ? 's' : ''} imported`)
-    if (state.ignoredCount > 0) parts.push(`${state.ignoredCount} marked as ignored`)
-    if (state.skippedCount > 0) parts.push(`${state.skippedCount} skipped (no category)`)
+    if (state.importedCount > 0) parts.push(t('camtImport.success.imported', { count: state.importedCount }))
+    if (state.ignoredCount > 0) parts.push(t('camtImport.success.ignored', { count: state.ignoredCount }))
+    if (state.skippedCount > 0) parts.push(t('camtImport.success.skipped', { count: state.skippedCount }))
     return (
       <div className="ri-center">
         <p className="ri-success">{parts.join(' · ')}</p>
-        <button className="load-btn" onClick={() => setState({ phase: 'idle' })}>import more files</button>
+        <button className="load-btn" onClick={() => setState({ phase: 'idle' })}>{t('camtImport.success.importMore')}</button>
       </div>
     )
   }
@@ -206,8 +208,8 @@ export default function CamtImportPage() {
             }}
           />
           <span className="ri-dropzone-icon">↑</span>
-          <span className="ri-dropzone-label">drop CAMT.052 XML files here or click to browse</span>
-          <span className="ri-dropzone-hint">multiple files supported</span>
+          <span className="ri-dropzone-label">{t('camtImport.dropzone.label')}</span>
+          <span className="ri-dropzone-hint">{t('camtImport.dropzone.hint')}</span>
           {state.phase === 'error' && (
             <span className="ri-dropzone-error">{state.message}</span>
           )}
@@ -217,7 +219,7 @@ export default function CamtImportPage() {
   }
 
   if (state.phase === 'loading') {
-    return <p className="hint loading">parsing files…</p>
+    return <p className="hint loading">{t('camtImport.parsing')}</p>
   }
 
   // ── preview ────────────────────────────────────────────────────────────────
@@ -233,32 +235,31 @@ export default function CamtImportPage() {
     <div className="ri-page">
       <div className="ri-preview">
         <div className="ri-summary-bar">
-          {nNew > 0 && <span className="ri-chip ri-chip--new">{nNew} new</span>}
-          {nIgn > 0 && <span className="ri-chip ri-chip--prev-ignored">{nIgn} previously ignored</span>}
-          {nDup > 0 && <span className="ri-chip ri-chip--dup">{nDup} duplicate</span>}
-          {nInv > 0 && <span className="ri-chip ri-chip--inv">{nInv} invalid</span>}
-          {nUnknown > 0 && <span className="ri-chip ri-chip--inv">{nUnknown} unknown account</span>}
+          {nNew > 0 && <span className="ri-chip ri-chip--new">{t('camtImport.chips.new', { count: nNew })}</span>}
+          {nIgn > 0 && <span className="ri-chip ri-chip--prev-ignored">{t('camtImport.chips.previouslyIgnored', { count: nIgn })}</span>}
+          {nDup > 0 && <span className="ri-chip ri-chip--dup">{t('camtImport.chips.duplicate', { count: nDup })}</span>}
+          {nInv > 0 && <span className="ri-chip ri-chip--inv">{t('camtImport.chips.invalid', { count: nInv })}</span>}
+          {nUnknown > 0 && <span className="ri-chip ri-chip--inv">{t('camtImport.chips.unknownAccount', { count: nUnknown })}</span>}
           <span className="ri-summary-spacer" />
-          <button className="load-btn" onClick={() => setState({ phase: 'idle' })}>← back</button>
+          <button className="load-btn" onClick={() => setState({ phase: 'idle' })}>{t('camtImport.back')}</button>
           <button
             className="load-btn ri-import-btn"
             onClick={handleImport}
             disabled={!canImport(rows) || importing}
-            title={!canImport(rows) ? 'Assign a category to at least one row to enable import' : ''}
           >
-            {importing ? '…' : 'confirm'}
+            {importing ? '…' : t('camtImport.confirm')}
           </button>
         </div>
 
         {accounts.length > 0 && (
           <div className="ri-account-names">
-            <span className="ri-account-names-label">Account names</span>
+            <span className="ri-account-names-label">{t('camtImport.accountNames')}</span>
             {accounts.map(acc => (
               <label key={acc.iban} className="ri-account-name-row">
                 <span className="ri-account-iban">{acc.iban}</span>
                 <input
                   className="ri-account-name-input"
-                  placeholder="account name"
+                  placeholder={t('camtImport.accountNamePlaceholder')}
                   value={accountNames[acc.iban] ?? ''}
                   onChange={e => setAccountNames(prev => ({ ...prev, [acc.iban]: e.target.value }))}
                 />
@@ -271,15 +272,15 @@ export default function CamtImportPage() {
           <table className="ri-table">
             <thead>
               <tr>
-                <th>#</th>
-                <th>status</th>
-                <th>date</th>
-                <th>account</th>
-                <th>counterparty</th>
-                <th>purpose</th>
-                <th>amount</th>
-                <th>category</th>
-                <th>subcategory</th>
+                <th>{t('camtImport.columns.row')}</th>
+                <th>{t('camtImport.columns.status')}</th>
+                <th>{t('camtImport.columns.date')}</th>
+                <th>{t('camtImport.columns.account')}</th>
+                <th>{t('camtImport.columns.counterparty')}</th>
+                <th>{t('camtImport.columns.purpose')}</th>
+                <th>{t('camtImport.columns.amount')}</th>
+                <th>{t('camtImport.columns.category')}</th>
+                <th>{t('camtImport.columns.subcategory')}</th>
                 <th></th>
               </tr>
             </thead>
@@ -312,7 +313,7 @@ export default function CamtImportPage() {
                     <td className="ri-cell-date">{formatDate(row.bookingDate)}</td>
                     <td className={`ri-cell-date${row.unknownAccount && row.status !== 'DUPLICATE' ? ' gcv-unknown-iban' : ''}`} title={row.accountIban}>
                       {row.unknownAccount && row.status !== 'DUPLICATE'
-                        ? '⚠ Unknown account'
+                        ? t('camtImport.unknownAccount')
                         : accountNames[row.accountIban] || row.accountIban}
                     </td>
                     <td className="ri-cell-party" title={row.counterparty}>{row.counterparty || '—'}</td>
@@ -352,16 +353,17 @@ export default function CamtImportPage() {
 // ── sub-components ─────────────────────────────────────────────────────────────
 
 function StatusBadge({ row, decision }: { row: RawPreviewRow; decision: RowDecision | undefined }) {
-  if (row.status === 'INVALID') return <span className="ri-badge ri-badge--invalid">invalid</span>
-  if (row.status === 'DUPLICATE') return <span className="ri-badge ri-badge--duplicate">duplicate</span>
+  const { t } = useTranslation()
+  if (row.status === 'INVALID') return <span className="ri-badge ri-badge--invalid">{t('camtImport.status.invalid')}</span>
+  if (row.status === 'DUPLICATE') return <span className="ri-badge ri-badge--duplicate">{t('camtImport.status.duplicate')}</span>
   if (row.status === 'PREVIOUSLY_IGNORED') {
     return decision?.action === 'import'
-      ? <span className="ri-badge ri-badge--new">importing</span>
-      : <span className="ri-badge ri-badge--prev-ignored">ignored before</span>
+      ? <span className="ri-badge ri-badge--new">{t('camtImport.status.importing')}</span>
+      : <span className="ri-badge ri-badge--prev-ignored">{t('camtImport.status.previouslyIgnored')}</span>
   }
   return decision?.action === 'ignore'
-    ? <span className="ri-badge ri-badge--will-ignore">will ignore</span>
-    : <span className="ri-badge ri-badge--new">new</span>
+    ? <span className="ri-badge ri-badge--will-ignore">{t('camtImport.status.willIgnore')}</span>
+    : <span className="ri-badge ri-badge--new">{t('camtImport.status.new')}</span>
 }
 
 function CategoryCells({
@@ -376,8 +378,9 @@ function CategoryCells({
   onCategoryChange: (v: string) => void
   onSubcategoryChange: (v: string) => void
 }) {
+  const { t: tCat } = useTranslation()
   if (row.unknownAccount) {
-    return <td colSpan={2} className="ri-cell-muted">excluded</td>
+    return <td colSpan={2} className="ri-cell-muted">{tCat('camtImport.status.excluded')}</td>
   }
   if (row.status === 'INVALID') {
     return (
@@ -392,7 +395,7 @@ function CategoryCells({
   }
 
   if (row.status === 'DUPLICATE') {
-    return <td colSpan={2} className="ri-cell-muted">already imported</td>
+    return <td colSpan={2} className="ri-cell-muted">{tCat('camtImport.alreadyImported')}</td>
   }
 
   if (decision?.action === 'ignore') {
@@ -405,7 +408,7 @@ function CategoryCells({
         <input
           className="ri-cat-input"
           list="camt-cat-list"
-          placeholder="category"
+          placeholder={tCat('camtImport.columns.category')}
           value={catVal}
           onChange={e => onCategoryChange(e.target.value)}
         />
@@ -414,7 +417,7 @@ function CategoryCells({
         <input
           className="ri-cat-input"
           list={`camt-sub-list-${row.rowNumber}`}
-          placeholder="subcategory"
+          placeholder={tCat('camtImport.columns.subcategory')}
           value={subVal}
           onChange={e => onSubcategoryChange(e.target.value)}
         />
@@ -433,6 +436,7 @@ function ActionToggle({
   decision: RowDecision | undefined
   onDecide: (d: RowDecision) => void
 }) {
+  const { t } = useTranslation()
   if (row.unknownAccount || row.status === 'INVALID' || row.status === 'DUPLICATE') return null
 
   if (row.status === 'PREVIOUSLY_IGNORED') {
@@ -440,17 +444,15 @@ function ActionToggle({
       <button
         className="ri-action-btn ri-action-btn--ignore"
         onClick={() => onDecide({ action: 'ignore' })}
-        title="Keep ignoring this record"
       >
-        skip again
+        {t('camtImport.skipAgain')}
       </button>
     ) : (
       <button
         className="ri-action-btn ri-action-btn--import"
         onClick={() => onDecide({ action: 'import', category: '', subcategory: '' })}
-        title="Import this record despite previous ignore"
       >
-        import anyway
+        {t('camtImport.importAnyway')}
       </button>
     )
   }
@@ -459,17 +461,15 @@ function ActionToggle({
     <button
       className="ri-action-btn ri-action-btn--import"
       onClick={() => onDecide({ action: 'import', category: '', subcategory: '' })}
-      title="Import this record"
     >
-      undo
+      {t('camtImport.undo')}
     </button>
   ) : (
     <button
       className="ri-action-btn ri-action-btn--ignore"
       onClick={() => onDecide({ action: 'ignore' })}
-      title="Skip this record and remember the decision"
     >
-      skip
+      {t('camtImport.skip')}
     </button>
   )
 }
