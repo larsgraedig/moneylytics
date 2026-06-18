@@ -1,5 +1,6 @@
 package com.moneylytics.api.adapter.input.web
 
+import com.moneylytics.api.adapter.output.persistence.CsvProfilePersistenceAdapter
 import com.moneylytics.api.application.port.input.ImportTransactionsCommand
 import com.moneylytics.api.application.port.input.ImportTransactionsUseCase
 import com.moneylytics.api.application.port.input.ResolveUserUseCase
@@ -24,6 +25,7 @@ class GenericCsvController(
     private val parser: GenericCsvParser,
     private val importTransactionsUseCase: ImportTransactionsUseCase,
     private val resolveUserUseCase: ResolveUserUseCase,
+    private val csvProfileAdapter: CsvProfilePersistenceAdapter,
 ) {
     @PostMapping("/detect", consumes = [MediaType.MULTIPART_FORM_DATA_VALUE])
     suspend fun detect(
@@ -31,7 +33,13 @@ class GenericCsvController(
         @AuthenticationPrincipal principal: UserDetails,
     ): CsvDetectionResult {
         val content = filePart.readUtf8()
-        return withContext(Dispatchers.Default) { detector.detect(content) }
+        val detection = withContext(Dispatchers.Default) { detector.detect(content) }
+        val userId = withContext(Dispatchers.IO) { resolveUserUseCase.resolveUser(principal.username) }
+        val savedMapping =
+            withContext(Dispatchers.IO) {
+                csvProfileAdapter.findMapping(userId, detection.fingerprint)
+            }
+        return detection.result.copy(savedMapping = savedMapping)
     }
 
     @PostMapping("/import", consumes = [MediaType.MULTIPART_FORM_DATA_VALUE])
@@ -51,6 +59,21 @@ class GenericCsvController(
                     userId = userId,
                 ),
             )
+        val fingerprint =
+            withContext(Dispatchers.Default) {
+                detector.computeFingerprint(
+                    headers =
+                        mapping.delimiter.firstOrNull()?.let { delim ->
+                            content
+                                .lines()
+                                .firstOrNull { it.isNotBlank() }
+                                ?.split(delim)
+                                ?.map { it.trim() }
+                        } ?: emptyList(),
+                    delimiter = mapping.delimiter.firstOrNull() ?: ',',
+                )
+            }
+        withContext(Dispatchers.IO) { csvProfileAdapter.saveMapping(userId, fingerprint, mapping) }
         return ResponseEntity.ok(ImportSuccessResponse(importedCount = count))
     }
 

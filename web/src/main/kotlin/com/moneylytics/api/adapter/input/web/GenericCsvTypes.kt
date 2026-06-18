@@ -2,13 +2,20 @@ package com.moneylytics.api.adapter.input.web
 
 enum class AmountFormat { GERMAN, ENGLISH }
 
+data class DetectionData(
+    val result: CsvDetectionResult,
+    val fingerprint: String,
+)
+
 data class CsvDetectionResult(
+    val fingerprint: String,
     val delimiter: String,
     val headers: List<String>,
     val sampleRows: List<List<String>>,
     val suggestions: CsvColumnSuggestions,
     val detectedDateFormat: String?,
     val detectedAmountFormat: AmountFormat,
+    val savedMapping: GenericCsvMapping?,
 )
 
 data class CsvColumnSuggestions(

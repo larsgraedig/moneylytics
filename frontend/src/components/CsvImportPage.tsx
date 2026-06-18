@@ -24,6 +24,7 @@ type Phase =
   | { step: 'error'; message: string }
 
 function buildInitialMapping(d: CsvDetectionResult): CsvMapping {
+  if (d.savedMapping) return d.savedMapping
   return {
     delimiter: d.delimiter,
     dateColumn: d.suggestions.date ?? d.headers[0] ?? '',
@@ -136,7 +137,12 @@ function MappingView({
     <div className="gcv-page">
       <div className="gcv-header">
         <div>
-          <div className="gcv-title">Spalten-Mapping</div>
+          <div className="gcv-title">
+            Spalten-Mapping
+            {detection.savedMapping && (
+              <span className="gcv-saved-badge">gespeicherte Konfiguration</span>
+            )}
+          </div>
           <div className="gcv-subtitle">{file.name} · Trennzeichen: <code>{mapping.delimiter === '\t' ? 'Tab' : mapping.delimiter}</code></div>
         </div>
         <div className="gcv-header-actions">

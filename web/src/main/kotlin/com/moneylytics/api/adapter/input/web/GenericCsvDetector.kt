@@ -25,10 +25,10 @@ class GenericCsvDetector {
         private val ENGLISH_AMOUNT = Regex("""^-?[\d,]*\d\.\d{1,2}$""")
     }
 
-    fun detect(content: String): CsvDetectionResult {
+    fun detect(content: String): DetectionData {
         val delimiter = detectDelimiter(content)
         val lines = content.lines().filter { it.isNotBlank() }
-        if (lines.isEmpty()) return empty(delimiter)
+        if (lines.isEmpty()) return DetectionData(empty(delimiter), fingerprint = "")
 
         val headers = splitLine(lines[0], delimiter)
         val dataLines = lines.drop(1).take(10)
@@ -47,16 +47,28 @@ class GenericCsvDetector {
         val dateFormat = detectDateFormat(columnValues)
         val amountFormat = detectAmountFormat(columnValues)
         val suggestions = suggestColumns(headers, columnValues)
+        val fingerprint = computeFingerprint(headers, delimiter)
 
-        return CsvDetectionResult(
-            delimiter = delimiter.toString(),
-            headers = headers,
-            sampleRows = sampleRows,
-            suggestions = suggestions,
-            detectedDateFormat = dateFormat,
-            detectedAmountFormat = amountFormat,
+        return DetectionData(
+            result =
+                CsvDetectionResult(
+                    fingerprint = fingerprint,
+                    delimiter = delimiter.toString(),
+                    headers = headers,
+                    sampleRows = sampleRows,
+                    suggestions = suggestions,
+                    detectedDateFormat = dateFormat,
+                    detectedAmountFormat = amountFormat,
+                    savedMapping = null,
+                ),
+            fingerprint = fingerprint,
         )
     }
+
+    fun computeFingerprint(
+        headers: List<String>,
+        delimiter: Char,
+    ): String = headers.sorted().joinToString(",") + "|" + delimiter
 
     private fun detectDelimiter(content: String): Char {
         val lines = content.lines().filter { it.isNotBlank() }.take(8)
@@ -196,11 +208,13 @@ class GenericCsvDetector {
 
     private fun empty(delimiter: Char) =
         CsvDetectionResult(
+            fingerprint = "",
             delimiter = delimiter.toString(),
             headers = emptyList(),
             sampleRows = emptyList(),
             suggestions = CsvColumnSuggestions(null, null, null, null, null, null, null),
             detectedDateFormat = null,
+            savedMapping = null,
             detectedAmountFormat = AmountFormat.GERMAN,
         )
 }

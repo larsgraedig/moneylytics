@@ -11,12 +11,14 @@ export interface CsvColumnSuggestions {
 }
 
 export interface CsvDetectionResult {
+  fingerprint: string
   delimiter: string
   headers: string[]
   sampleRows: string[][]
   suggestions: CsvColumnSuggestions
   detectedDateFormat: string | null
   detectedAmountFormat: AmountFormat
+  savedMapping: CsvMapping | null
 }
 
 export interface CsvMapping {
