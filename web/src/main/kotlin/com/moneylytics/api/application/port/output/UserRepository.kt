@@ -5,7 +5,10 @@ import com.moneylytics.api.domain.User
 interface UserRepository {
     fun findByExternalId(externalId: String): User?
 
-    fun save(externalId: String): User
+    fun save(
+        externalId: String,
+        passwordHash: String?,
+    ): User
 
     fun findAll(): List<User>
 }

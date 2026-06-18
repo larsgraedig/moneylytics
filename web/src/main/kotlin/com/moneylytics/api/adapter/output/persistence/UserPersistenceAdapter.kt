@@ -12,9 +12,19 @@ class UserPersistenceAdapter(
     override fun findByExternalId(externalId: String): User? = jpaRepository.findByExternalId(externalId)?.toDomain()
 
     @Transactional
-    override fun save(externalId: String): User = jpaRepository.save(UserEntity(externalId = externalId)).toDomain()
+    override fun save(
+        externalId: String,
+        passwordHash: String?,
+    ): User {
+        val entity =
+            jpaRepository
+                .findByExternalId(externalId)
+                ?.also { it.passwordHash = passwordHash }
+                ?: UserEntity(externalId = externalId, passwordHash = passwordHash)
+        return jpaRepository.save(entity).toDomain()
+    }
 
     override fun findAll(): List<User> = jpaRepository.findAll().map { it.toDomain() }
 
-    private fun UserEntity.toDomain() = User(id = id!!, externalId = externalId)
+    private fun UserEntity.toDomain() = User(id = id!!, externalId = externalId, passwordHash = passwordHash)
 }

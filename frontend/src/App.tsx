@@ -9,8 +9,9 @@ import PiePage from './components/PiePage'
 import TransactionsPage from './components/TransactionsPage'
 import TransactionListPanel from './components/TransactionListPanel'
 import CashflowPage from './components/CashflowPage'
+import LoginPage from './components/LoginPage'
 import { fetchSankeyData, fetchAccounts, type SankeyResponse, type Account } from './api/transactions'
-import { useUser } from './context/UserContext'
+import { useAuth } from './context/AuthContext'
 
 function isoDate(d: Date) {
   return d.toISOString().slice(0, 10)
@@ -28,7 +29,7 @@ type ViewState =
   | { phase: 'ready'; data: SankeyResponse }
 
 export default function App() {
-  const { userId, users, setUserId } = useUser()
+  const { username, isLoading, logout } = useAuth()
   const [tab, setTab] = useState<Tab>('analytics')
   const [from, setFrom] = useState(firstOfYear)
   const [to, setTo] = useState(today)
@@ -38,12 +39,17 @@ export default function App() {
   const [activeNode, setActiveNode] = useState<string | null>(null)
 
   useEffect(() => {
+    if (!username) return
     setAccounts([])
     setSelectedIban('')
     setView({ phase: 'idle' })
     setActiveNode(null)
     fetchAccounts().then(setAccounts).catch(() => {})
-  }, [userId])
+  }, [username])
+
+  if (isLoading) return null
+
+  if (!username) return <LoginPage />
 
   async function load() {
     setView({ phase: 'loading' })
@@ -167,15 +173,10 @@ export default function App() {
 
         {(tab === 'csv' || tab === 'import' || tab === 'camt' || tab === 'trends' || tab === 'thresholds' || tab === 'breakdown' || tab === 'transactions' || tab === 'cashflow') && <div className="controls" />}
 
-        <select
-          className="user-select"
-          value={userId}
-          onChange={e => setUserId(e.target.value)}
-        >
-          {[...new Set([userId, ...users])].map(u => (
-            <option key={u} value={u}>{u}</option>
-          ))}
-        </select>
+        <div className="session">
+          <span className="session-user">{username}</span>
+          <button className="logout-btn" onClick={logout}>sign out</button>
+        </div>
       </header>
 
       <main className="stage">
@@ -210,14 +211,14 @@ export default function App() {
           </>
         )}
 
-        {tab === 'cashflow' && <CashflowPage key={userId} />}
-        {tab === 'trends' && <TrendsPage key={userId} />}
-        {tab === 'breakdown' && <PiePage key={userId} />}
-        {tab === 'transactions' && <TransactionsPage key={userId} />}
-        {tab === 'thresholds' && <ThresholdsPage key={userId} />}
-        {tab === 'csv' && <CsvImportPage key={userId} />}
-        {tab === 'import' && <RawImportPage key={userId} />}
-        {tab === 'camt' && <CamtImportPage key={userId} />}
+        {tab === 'cashflow' && <CashflowPage key={username} />}
+        {tab === 'trends' && <TrendsPage key={username} />}
+        {tab === 'breakdown' && <PiePage key={username} />}
+        {tab === 'transactions' && <TransactionsPage key={username} />}
+        {tab === 'thresholds' && <ThresholdsPage key={username} />}
+        {tab === 'csv' && <CsvImportPage key={username} />}
+        {tab === 'import' && <RawImportPage key={username} />}
+        {tab === 'camt' && <CamtImportPage key={username} />}
       </main>
     </div>
   )

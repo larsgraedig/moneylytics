@@ -26,6 +26,7 @@ repositories {
 dependencies {
     implementation(libs.spring.boot.starter.webflux)
     implementation(libs.spring.boot.starter.data.jpa)
+    implementation(libs.spring.boot.starter.security)
     implementation(libs.reactor.kotlin.extensions)
     implementation(libs.kotlin.reflect)
     implementation(libs.kotlinx.coroutines.reactor)

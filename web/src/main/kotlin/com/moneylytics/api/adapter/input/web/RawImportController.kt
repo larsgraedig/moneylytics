@@ -16,9 +16,10 @@ import org.springframework.core.io.buffer.DataBufferUtils
 import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
 import org.springframework.http.codec.multipart.FilePart
+import org.springframework.security.core.annotation.AuthenticationPrincipal
+import org.springframework.security.core.userdetails.UserDetails
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
-import org.springframework.web.bind.annotation.RequestHeader
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestPart
 import org.springframework.web.bind.annotation.RestController
@@ -39,10 +40,10 @@ class RawImportController(
     @PostMapping("/raw/preview", consumes = [MediaType.MULTIPART_FORM_DATA_VALUE])
     suspend fun preview(
         @RequestPart("file") filePart: FilePart,
-        @RequestHeader("X-User-Id") externalId: String,
+        @AuthenticationPrincipal principal: UserDetails,
     ): ResponseEntity<out Any> {
         val csvContent = filePart.readContent()
-        val userId = withContext(Dispatchers.IO) { resolveUserUseCase.resolveUser(externalId) }
+        val userId = withContext(Dispatchers.IO) { resolveUserUseCase.resolveUser(principal.username) }
 
         return when (val result = mlpRawCsvParser.parse(csvContent)) {
             is MlpRawParseResult.FormatError ->
@@ -90,9 +91,9 @@ class RawImportController(
     @PostMapping("/raw/import")
     suspend fun importRaw(
         @RequestBody request: ImportRawRequest,
-        @RequestHeader("X-User-Id") externalId: String,
+        @AuthenticationPrincipal principal: UserDetails,
     ): ResponseEntity<out Any> {
-        val userId = withContext(Dispatchers.IO) { resolveUserUseCase.resolveUser(externalId) }
+        val userId = withContext(Dispatchers.IO) { resolveUserUseCase.resolveUser(principal.username) }
 
         updateIgnoredTransactionsUseCase.update(
             toIgnore = request.toIgnore,

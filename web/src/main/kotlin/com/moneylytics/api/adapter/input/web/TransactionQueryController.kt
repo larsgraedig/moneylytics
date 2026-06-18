@@ -11,11 +11,12 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.springframework.format.annotation.DateTimeFormat
 import org.springframework.http.ResponseEntity
+import org.springframework.security.core.annotation.AuthenticationPrincipal
+import org.springframework.security.core.userdetails.UserDetails
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PatchMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.RequestBody
-import org.springframework.web.bind.annotation.RequestHeader
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
@@ -53,11 +54,11 @@ class TransactionQueryController(
         @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) from: LocalDate,
         @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) to: LocalDate,
         @RequestParam(required = false) iban: String? = null,
-        @RequestHeader("X-User-Id") externalId: String,
+        @AuthenticationPrincipal principal: UserDetails,
     ): SankeyResponse {
         val transactions =
             withContext(Dispatchers.IO) {
-                val userId = resolveUserUseCase.resolveUser(externalId)
+                val userId = resolveUserUseCase.resolveUser(principal.username)
                 getTransactionsUseCase.getTransactions(
                     GetTransactionsQuery(from, to, userId, onlyNegative = true, accountIban = iban),
                 )
@@ -73,11 +74,11 @@ class TransactionQueryController(
         @RequestParam(required = false) subcategory: String? = null,
         @RequestParam(required = false) iban: String? = null,
         @RequestParam(required = false) onlyNegative: Boolean = true,
-        @RequestHeader("X-User-Id") externalId: String,
+        @AuthenticationPrincipal principal: UserDetails,
     ): TransactionListResponse {
         val transactions =
             withContext(Dispatchers.IO) {
-                val userId = resolveUserUseCase.resolveUser(externalId)
+                val userId = resolveUserUseCase.resolveUser(principal.username)
                 getTransactionsUseCase.getTransactions(
                     GetTransactionsQuery(
                         from = from,
@@ -103,10 +104,10 @@ class TransactionQueryController(
     suspend fun updateTransactionCategory(
         @PathVariable id: Long,
         @RequestBody request: UpdateCategoryRequest,
-        @RequestHeader("X-User-Id") externalId: String,
+        @AuthenticationPrincipal principal: UserDetails,
     ): ResponseEntity<TransactionItem> =
         withContext(Dispatchers.IO) {
-            val userId = resolveUserUseCase.resolveUser(externalId)
+            val userId = resolveUserUseCase.resolveUser(principal.username)
             val updated = updateTransactionCategoryUseCase.updateCategory(id, userId, request.category, request.subcategory)
             if (updated != null) ResponseEntity.ok(updated.toItem()) else ResponseEntity.notFound().build()
         }
@@ -115,10 +116,10 @@ class TransactionQueryController(
     suspend fun updateTransactionAccountingDate(
         @PathVariable id: Long,
         @RequestBody request: UpdateAccountingDateRequest,
-        @RequestHeader("X-User-Id") externalId: String,
+        @AuthenticationPrincipal principal: UserDetails,
     ): ResponseEntity<TransactionItem> =
         withContext(Dispatchers.IO) {
-            val userId = resolveUserUseCase.resolveUser(externalId)
+            val userId = resolveUserUseCase.resolveUser(principal.username)
             val updated = updateTransactionAccountingDateUseCase.updateAccountingDate(id, userId, request.accountingDate)
             if (updated != null) ResponseEntity.ok(updated.toItem()) else ResponseEntity.notFound().build()
         }
@@ -127,10 +128,10 @@ class TransactionQueryController(
     suspend fun updateTransactionComment(
         @PathVariable id: Long,
         @RequestBody request: UpdateCommentRequest,
-        @RequestHeader("X-User-Id") externalId: String,
+        @AuthenticationPrincipal principal: UserDetails,
     ): ResponseEntity<TransactionItem> =
         withContext(Dispatchers.IO) {
-            val userId = resolveUserUseCase.resolveUser(externalId)
+            val userId = resolveUserUseCase.resolveUser(principal.username)
             val updated = updateTransactionCommentUseCase.updateComment(id, userId, request.comment)
             if (updated != null) ResponseEntity.ok(updated.toItem()) else ResponseEntity.notFound().build()
         }
@@ -166,10 +167,10 @@ class TransactionQueryController(
         @RequestParam(required = false) series: List<String>? = null,
         @RequestParam(required = false) granularity: Granularity = Granularity.MONTHLY,
         @RequestParam(required = false) iban: String? = null,
-        @RequestHeader("X-User-Id") externalId: String,
+        @AuthenticationPrincipal principal: UserDetails,
     ): TrendsResponse {
         val effectiveSeries = series ?: emptyList()
-        val userId = withContext(Dispatchers.IO) { resolveUserUseCase.resolveUser(externalId) }
+        val userId = withContext(Dispatchers.IO) { resolveUserUseCase.resolveUser(principal.username) }
         val buckets = generateBuckets(from, to, granularity)
 
         val groups =
