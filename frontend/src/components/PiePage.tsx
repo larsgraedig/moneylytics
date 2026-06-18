@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { Trans, useTranslation } from 'react-i18next'
 import { ResponsivePie } from '@nivo/pie'
 import { fetchSankeyData, type SankeyResponse } from '../api/transactions'
 import TransactionListPanel from './TransactionListPanel'
@@ -21,6 +22,7 @@ type ViewState =
   | { phase: 'ready'; data: SankeyResponse }
 
 export default function PiePage({ from, to, iban }: { from: string; to: string; iban?: string }) {
+  const { t } = useTranslation()
   const [view, setView] = useState<ViewState>({ phase: 'idle' })
   const [level, setLevel] = useState<Level>('categories')
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
@@ -35,7 +37,7 @@ export default function PiePage({ from, to, iban }: { from: string; to: string; 
       const data = await fetchSankeyData(from, to, iban)
       setView(data.nodes.length === 0 ? { phase: 'idle' } : { phase: 'ready', data })
     } catch (e) {
-      setView({ phase: 'error', message: e instanceof Error ? e.message : 'request failed' })
+      setView({ phase: 'error', message: e instanceof Error ? e.message : t('common.requestFailed') })
     }
   }
 
@@ -77,7 +79,7 @@ export default function PiePage({ from, to, iban }: { from: string; to: string; 
           onClick={load}
           disabled={view.phase === 'loading'}
         >
-          {view.phase === 'loading' ? '…' : 'load'}
+          {view.phase === 'loading' ? '…' : t('common.load')}
         </button>
       </div>
 
@@ -87,7 +89,7 @@ export default function PiePage({ from, to, iban }: { from: string; to: string; 
             className="pi-back-btn"
             onClick={() => { setLevel('categories'); setSelectedCategory(null); setDrilldown(null) }}
           >
-            ← categories
+            {t('breakdown.backToCategories')}
           </button>
           <span className="pi-crumb-sep">/</span>
           <span className="pi-crumb-current">{selectedCategory}</span>
@@ -95,23 +97,23 @@ export default function PiePage({ from, to, iban }: { from: string; to: string; 
             className="pi-all-btn"
             onClick={() => setDrilldown({ nodeKey: `cat:${selectedCategory}` })}
           >
-            all transactions
+            {t('breakdown.allTransactions')}
           </button>
         </div>
       )}
 
       <div className="pi-chart-area">
         {view.phase === 'idle' && (
-          <p className="hint">select a date range and press <kbd>load</kbd></p>
+          <p className="hint"><Trans i18nKey="common.selectDateAndLoad"><span /><kbd /></Trans></p>
         )}
         {view.phase === 'loading' && (
-          <p className="hint loading">fetching…</p>
+          <p className="hint loading">{t('common.fetching')}</p>
         )}
         {view.phase === 'error' && (
           <p className="hint error">{view.message}</p>
         )}
         {view.phase === 'ready' && pieItems.length === 0 && (
-          <p className="hint">no data for this selection</p>
+          <p className="hint">{t('breakdown.noData')}</p>
         )}
         {view.phase === 'ready' && pieItems.length > 0 && (
           <ResponsivePie

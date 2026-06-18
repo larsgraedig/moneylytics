@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Trans, useTranslation } from 'react-i18next'
 import { ResponsiveBar } from '@nivo/bar'
 import { fetchAllTransactions, type TransactionItem } from '../api/transactions'
 
@@ -67,6 +68,7 @@ const NIVO_THEME = {
 }
 
 export default function CashflowPage({ from, to, iban }: { from: string; to: string; iban?: string }) {
+  const { t } = useTranslation()
   const [granularity, setGranularity] = useState<Granularity>('monthly')
   const [loading, setLoading] = useState(false)
   const [data, setData] = useState<CashflowBucket[] | null>(null)
@@ -140,27 +142,27 @@ export default function CashflowPage({ from, to, iban }: { from: string; to: str
               className={`cf-gran-btn${granularity === g ? ' active' : ''}`}
               onClick={() => setGranularity(g)}
             >
-              {g === 'monthly' ? 'monatlich' : 'jährlich'}
+              {g === 'monthly' ? t('cashflow.monthly') : t('cashflow.yearly')}
             </button>
           ))}
         </div>
         <button className="load-btn" onClick={load} disabled={loading}>
-          {loading ? '…' : 'load'}
+          {loading ? '…' : t('common.load')}
         </button>
         {totals && (
           <div className="cf-summary">
             <span className="cf-summary-item cf-summary-income">
-              <span className="cf-summary-label">einnahmen</span>
+              <span className="cf-summary-label">{t('cashflow.income')}</span>
               <span className="cf-summary-val">{EUR.format(totals.income)}</span>
             </span>
             <span className="cf-summary-sep">·</span>
             <span className="cf-summary-item cf-summary-expenses">
-              <span className="cf-summary-label">ausgaben</span>
+              <span className="cf-summary-label">{t('cashflow.expenses')}</span>
               <span className="cf-summary-val">{EUR.format(totals.expenses)}</span>
             </span>
             <span className="cf-summary-sep">·</span>
             <span className={`cf-summary-item cf-summary-net${totals.income - totals.expenses >= 0 ? ' positive' : ' negative'}`}>
-              <span className="cf-summary-label">netto</span>
+              <span className="cf-summary-label">{t('cashflow.net')}</span>
               <span className="cf-summary-val">{EUR.format(totals.income - totals.expenses)}</span>
             </span>
           </div>
@@ -170,11 +172,11 @@ export default function CashflowPage({ from, to, iban }: { from: string; to: str
       <div className="cf-body">
         {error && <p className="hint error">{error}</p>}
         {!error && data === null && !loading && (
-          <p className="hint">Zeitraum wählen und <kbd>load</kbd> drücken</p>
+          <p className="hint"><Trans i18nKey="common.selectDateAndLoad"><span /><kbd /></Trans></p>
         )}
-        {loading && <p className="hint loading">fetching…</p>}
+        {loading && <p className="hint loading">{t('common.fetching')}</p>}
         {data !== null && data.length === 0 && (
-          <p className="hint">Keine Transaktionen im Zeitraum.</p>
+          <p className="hint">{t('cashflow.noTransactions')}</p>
         )}
         {data !== null && data.length > 0 && (
           <ResponsiveBar<CashflowBucket>
@@ -213,17 +215,17 @@ export default function CashflowPage({ from, to, iban }: { from: string; to: str
                 <span className="cf-tooltip-period">{indexValue}</span>
                 <div className="cf-tooltip-row">
                   <span className="cf-dot cf-dot--income" />
-                  <span>einnahmen</span>
+                  <span>{t('cashflow.tooltipIncome')}</span>
                   <span className="cf-tooltip-amt">{EUR.format(d.income)}</span>
                 </div>
                 <div className="cf-tooltip-row">
                   <span className="cf-dot cf-dot--expenses" />
-                  <span>ausgaben</span>
+                  <span>{t('cashflow.tooltipExpenses')}</span>
                   <span className="cf-tooltip-amt">{EUR.format(d.expenses)}</span>
                 </div>
                 <div className={`cf-tooltip-row cf-tooltip-net${d.net >= 0 ? ' positive' : ' negative'}`}>
                   <span className="cf-dot cf-dot--net" style={{ background: d.net >= 0 ? '#4ade80' : '#f87171' }} />
-                  <span>netto</span>
+                  <span>{t('cashflow.tooltipNet')}</span>
                   <span className="cf-tooltip-amt">{EUR.format(d.net)}</span>
                 </div>
               </div>
@@ -307,7 +309,8 @@ function DrilldownModal({
   state: DrilldownState
   onClose: () => void
 }) {
-  const title = state.type === 'income' ? 'Einnahmen' : 'Ausgaben'
+  const { t } = useTranslation()
+  const title = state.type === 'income' ? t('cashflow.income') : t('cashflow.expenses')
   const total = state.transactions?.reduce((s, tx) => s + Math.abs(tx.effectiveAmount), 0) ?? 0
 
   return (
@@ -326,10 +329,10 @@ function DrilldownModal({
           <button className="bgt-dd-close" onClick={onClose}>✕</button>
         </div>
 
-        {state.loading && <p className="bgt-dd-hint">Lade Transaktionen…</p>}
+        {state.loading && <p className="bgt-dd-hint">{t('common.loading')}</p>}
 
         {!state.loading && state.transactions != null && state.transactions.length === 0 && (
-          <p className="bgt-dd-hint">Keine Transaktionen im Zeitraum.</p>
+          <p className="bgt-dd-hint">{t('cashflow.noTransactions')}</p>
         )}
 
         {!state.loading && state.transactions != null && state.transactions.length > 0 && (
@@ -338,10 +341,10 @@ function DrilldownModal({
               <table className="bgt-dd-table">
                 <thead>
                   <tr>
-                    <th>datum</th>
-                    <th>kategorie</th>
-                    <th>verwendungszweck</th>
-                    <th style={{ textAlign: 'right' }}>betrag</th>
+                    <th>{t('common.date')}</th>
+                    <th>{t('common.category')}</th>
+                    <th>{t('common.purpose')}</th>
+                    <th style={{ textAlign: 'right' }}>{t('common.amount')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -363,7 +366,7 @@ function DrilldownModal({
               </table>
             </div>
             <div className="bgt-dd-footer">
-              <span className="bgt-dd-total-label">gesamt</span>
+              <span className="bgt-dd-total-label">{t('common.total')}</span>
               <span className="bgt-dd-total">{EUR2.format(total)}</span>
             </div>
           </>

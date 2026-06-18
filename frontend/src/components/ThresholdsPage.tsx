@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { fetchCategories, type CategoryGroup } from '../api/rawImport'
 import {
   deleteThreshold,
@@ -11,12 +12,6 @@ import {
 import { fetchTransactionList, type TransactionItem } from '../api/transactions'
 
 const PERIODS: ThresholdPeriod[] = ['WEEKLY', 'MONTHLY', 'QUARTERLY', 'YEARLY']
-const PERIOD_LABELS: Record<ThresholdPeriod, string> = {
-  WEEKLY: 'weekly',
-  MONTHLY: 'monthly',
-  QUARTERLY: 'quarterly',
-  YEARLY: 'yearly',
-}
 const PERIOD_IDEAL_DAYS: Record<ThresholdPeriod, number> = {
   WEEKLY: 7,
   MONTHLY: 30,
@@ -133,6 +128,7 @@ interface BudgetRow {
 // ── component ─────────────────────────────────────────────────────────────
 
 export default function ThresholdsPage({ from, to, iban }: { from: string; to: string; iban?: string }) {
+  const { t } = useTranslation()
   const [categories, setCategories] = useState<CategoryGroup[]>([])
   const [thresholds, setThresholds] = useState<Threshold[]>([])
   const [spendingMap, setSpendingMap] = useState<Map<string, number>>(new Map())
@@ -258,7 +254,7 @@ export default function ThresholdsPage({ from, to, iban }: { from: string; to: s
       critical: parseAmt(form.critical),
     }
     if (req.notice == null && req.warning == null && req.critical == null) {
-      setFormError('Mindestens ein Betrag erforderlich.')
+      setFormError(t('budgets.minAmount'))
       return
     }
     setSaving(true)
@@ -276,7 +272,7 @@ export default function ThresholdsPage({ from, to, iban }: { from: string; to: s
       })
       cancelEdit()
     } catch {
-      setFormError('Speichern fehlgeschlagen.')
+      setFormError(t('budgets.saveFailed'))
     } finally {
       setSaving(false)
     }
@@ -289,7 +285,7 @@ export default function ThresholdsPage({ from, to, iban }: { from: string; to: s
       setThresholds(prev => prev.filter(t => t.id !== editThresholdId))
       cancelEdit()
     } catch {
-      setFormError('Löschen fehlgeschlagen.')
+      setFormError(t('budgets.deleteFailed'))
     }
   }
 
@@ -311,30 +307,30 @@ export default function ThresholdsPage({ from, to, iban }: { from: string; to: s
     <div className="bgt-page">
       <div className="bgt-controls">
         <button className="load-btn" onClick={loadSpending} disabled={loading}>
-          {loading ? '…' : 'load'}
+          {loading ? '…' : t('budgets.load')}
         </button>
         {spendingLoaded && (
           <span className="bgt-period-badge">
-            Ausgaben geladen · {from} → {to}
+            {t('budgets.spendingLoaded', { from, to })}
           </span>
         )}
       </div>
 
       <div className="bgt-body">
         {rows.length === 0 ? (
-          <p className="hint">Keine Kategorien gefunden — zuerst Transaktionen importieren</p>
+          <p className="hint">{t('budgets.noCategories')}</p>
         ) : (
           <table className="bgt-table">
             <thead>
               <tr>
-                <th className="bgt-th-cat">kategorie</th>
-                <th className="bgt-th-sub">unterkategorie</th>
-                {spendingLoaded && <th className="bgt-th-spent">ausgaben</th>}
-                <th className="bgt-th-period">zeitraum</th>
-                <th className="bgt-th-sev bgt-sev--notice">notice</th>
-                <th className="bgt-th-sev bgt-sev--warning">warning</th>
-                <th className="bgt-th-sev bgt-sev--critical">critical</th>
-                {spendingLoaded && <th className="bgt-th-bar">fortschritt</th>}
+                <th className="bgt-th-cat">{t('budgets.columns.category')}</th>
+                <th className="bgt-th-sub">{t('budgets.columns.subcategory')}</th>
+                {spendingLoaded && <th className="bgt-th-spent">{t('budgets.columns.spending')}</th>}
+                <th className="bgt-th-period">{t('budgets.columns.period')}</th>
+                <th className="bgt-th-sev bgt-sev--notice">{t('budgets.columns.notice')}</th>
+                <th className="bgt-th-sev bgt-sev--warning">{t('budgets.columns.warning')}</th>
+                <th className="bgt-th-sev bgt-sev--critical">{t('budgets.columns.critical')}</th>
+                {spendingLoaded && <th className="bgt-th-bar">{t('budgets.columns.progress')}</th>}
                 <th className="bgt-th-actions" />
               </tr>
             </thead>
@@ -361,7 +357,7 @@ export default function ThresholdsPage({ from, to, iban }: { from: string; to: s
                   return (
                     <tr key={row.key} className={rowClass}>
                       <td className="bgt-td-cat bgt-cell-cat">{row.category}</td>
-                      <td className="bgt-td-sub bgt-cell-muted">{row.subcategory ?? 'gesamt'}</td>
+                      <td className="bgt-td-sub bgt-cell-muted">{row.subcategory ?? t('budgets.totalSubcat')}</td>
                       {spendingLoaded && (
                         <td className="bgt-td-spent">
                           {spending > 0 ? EUR2.format(spending) : '—'}
@@ -377,7 +373,7 @@ export default function ThresholdsPage({ from, to, iban }: { from: string; to: s
                         >
                           {PERIODS.map(p => (
                             <option key={p} value={p}>
-                              {PERIOD_LABELS[p]}
+                              {t(`budgets.period.${p.toLowerCase()}`)}
                             </option>
                           ))}
                         </select>
@@ -422,11 +418,11 @@ export default function ThresholdsPage({ from, to, iban }: { from: string; to: s
                           onClick={() => handleSave(row)}
                           disabled={saving}
                         >
-                          {saving ? '…' : 'save'}
+                          {saving ? '…' : t('common.save')}
                         </button>
                         {editThresholdId != null && (
                           <button className="bgt-btn bgt-btn--delete" onClick={handleDelete}>
-                            del
+                            {t('common.delete')}
                           </button>
                         )}
                         <button className="bgt-btn bgt-btn--cancel" onClick={cancelEdit}>
@@ -448,7 +444,7 @@ export default function ThresholdsPage({ from, to, iban }: { from: string; to: s
                     <td
                       className={`bgt-td-sub ${row.subcategory == null ? 'bgt-cell-all' : 'bgt-cell-sub'}`}
                     >
-                      {row.subcategory ?? 'gesamt'}
+                      {row.subcategory ?? t('budgets.totalSubcat')}
                     </td>
                     {spendingLoaded && (
                       <td className={`bgt-td-spent${spending === 0 ? ' bgt-cell-muted' : ''}`}>
@@ -463,7 +459,7 @@ export default function ThresholdsPage({ from, to, iban }: { from: string; to: s
                       </td>
                     )}
                     <td className="bgt-td-period bgt-cell-muted">
-                      {best ? PERIOD_LABELS[best.period] : '—'}
+                      {best ? t(`budgets.period.${best.period.toLowerCase()}`) : '—'}
                     </td>
                     <td className="bgt-td-sev bgt-sev--notice">
                       {best?.notice != null ? (
@@ -502,7 +498,7 @@ export default function ThresholdsPage({ from, to, iban }: { from: string; to: s
                           e.stopPropagation()
                           startEdit(row)
                         }}
-                        title={best != null ? 'threshold bearbeiten' : 'threshold hinzufügen'}
+                        title={best != null ? t('budgets.editThreshold') : t('budgets.addThreshold')}
                       >
                         {best != null ? '✎' : '+'}
                       </button>
@@ -569,6 +565,7 @@ function DrilldownModal({
   to: string
   onClose: () => void
 }) {
+  const { t } = useTranslation()
   const title = state.subcategory != null
     ? `${state.category} / ${state.subcategory}`
     : state.category
@@ -586,10 +583,10 @@ function DrilldownModal({
           <button className="bgt-dd-close" onClick={onClose}>✕</button>
         </div>
 
-        {state.loading && <p className="bgt-dd-hint">Lade Transaktionen…</p>}
+        {state.loading && <p className="bgt-dd-hint">{t('common.loading')}</p>}
 
         {!state.loading && state.transactions != null && state.transactions.length === 0 && (
-          <p className="bgt-dd-hint">Keine Transaktionen im Zeitraum.</p>
+          <p className="bgt-dd-hint">{t('cashflow.noTransactions')}</p>
         )}
 
         {!state.loading && state.transactions != null && state.transactions.length > 0 && (
@@ -598,10 +595,10 @@ function DrilldownModal({
               <table className="bgt-dd-table">
                 <thead>
                   <tr>
-                    <th>datum</th>
-                    <th>kategorie</th>
-                    <th>verwendungszweck</th>
-                    <th>betrag</th>
+                    <th>{t('common.date')}</th>
+                    <th>{t('common.category')}</th>
+                    <th>{t('common.purpose')}</th>
+                    <th>{t('common.amount')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -621,7 +618,7 @@ function DrilldownModal({
               </table>
             </div>
             <div className="bgt-dd-footer">
-              <span className="bgt-dd-total-label">gesamt</span>
+              <span className="bgt-dd-total-label">{t('common.total')}</span>
               <span className="bgt-dd-total">{EUR2.format(total)}</span>
             </div>
           </>

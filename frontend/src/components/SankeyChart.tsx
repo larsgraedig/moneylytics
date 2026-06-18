@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { ResponsiveSankey } from '@nivo/sankey'
 import type { SankeyResponse } from '../api/transactions'
 
@@ -36,6 +37,7 @@ const MAX_NODE_PX = 120
 const MARGINS = 64 // top + bottom margin
 
 export default function SankeyChart({ data, onNodeClick }: Props) {
+  const { t } = useTranslation()
   const sankeyData = {
     nodes: data.nodes.map((_, i) => ({ id: String(i) })),
     links: data.links.map(link => ({
@@ -114,10 +116,10 @@ export default function SankeyChart({ data, onNodeClick }: Props) {
               flexShrink: 0,
             }} />
             <span style={{ fontWeight: 600 }}>{node.label || '—'}</span>
-            <span style={{ color: '#6b6b78' }}>total</span>
+            <span style={{ color: '#6b6b78' }}>{t('common.total')}</span>
             <span>{node.formattedValue}</span>
             {onNodeClick && (
-              <span style={{ color: '#6b6b78', marginLeft: 4 }}>· click to drill down</span>
+              <span style={{ color: '#6b6b78', marginLeft: 4 }}>{t('sankey.clickToDrillDown')}</span>
             )}
           </div>
         )}

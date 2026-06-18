@@ -1,0 +1,326 @@
+{
+  "nav": {
+    "sections": {
+      "analytics": "Analytics",
+      "accounts": "Accounts",
+      "imports": "Importe"
+    },
+    "sankey": "Sankey",
+    "trends": "Trends",
+    "breakdown": "Breakdown",
+    "cashflow": "Cashflow",
+    "kontoauszug": "Kontoauszug",
+    "konten": "Konten",
+    "budgets": "Budgets",
+    "csv": "CSV",
+    "camt": "CAMT",
+    "collapse": "Menü einklappen",
+    "expand": "Menü ausklappen"
+  },
+  "common": {
+    "allAccounts": "Alle Konten",
+    "from": "von",
+    "to": "bis",
+    "load": "Laden",
+    "loading": "Lädt…",
+    "save": "Speichern",
+    "cancel": "Abbrechen",
+    "delete": "Löschen",
+    "edit": "Bearbeiten",
+    "back": "← Zurück",
+    "confirm": "Bestätigen",
+    "signOut": "Abmelden",
+    "error": "Fehler",
+    "noData": "Keine Daten",
+    "fetching": "Wird geladen…",
+    "requestFailed": "Anfrage fehlgeschlagen",
+    "date": "Datum",
+    "amount": "Betrag",
+    "currency": "Währung",
+    "category": "Kategorie",
+    "subcategory": "Unterkategorie",
+    "purpose": "Verwendungszweck",
+    "total": "Gesamt",
+    "account": "Konto",
+    "import": "Importieren",
+    "skip": "Überspringen",
+    "undo": "Rückgängig",
+    "noTransactions": "Keine Transaktionen gefunden",
+    "selectDateAndLoad": "Zeitraum wählen und <1>Laden</1> drücken"
+  },
+  "auth": {
+    "username": "Benutzername",
+    "password": "Passwort",
+    "confirmPassword": "Passwort bestätigen",
+    "signIn": "Anmelden",
+    "signInWithGoogle": "Mit Google anmelden",
+    "register": "Registrieren",
+    "createAccount": "Konto erstellen",
+    "noAccount": "Kein Konto? <1>Registrieren</1>",
+    "alreadyHaveAccount": "Schon registriert? <1>Anmelden</1>",
+    "invalidCredentials": "Benutzername oder Passwort falsch",
+    "passwordMismatch": "Passwörter stimmen nicht überein",
+    "usernameTaken": "Benutzername bereits vergeben",
+    "registrationFailed": "Registrierung fehlgeschlagen",
+    "error": "Ein Fehler ist aufgetreten"
+  },
+  "sankey": {
+    "hint": "Zeitraum wählen und <1>Laden</1> drücken",
+    "clickToDrillDown": "· klicken zum Aufschlüsseln"
+  },
+  "trends": {
+    "addSeries": "Reihe hinzufügen",
+    "removeSeries": "Reihe entfernen",
+    "granularity": {
+      "daily": "Täglich",
+      "weekly": "Wöchentlich",
+      "monthly": "Monatlich",
+      "quarterly": "Quartalsweise",
+      "biYearly": "Halbjährlich",
+      "yearly": "Jährlich"
+    },
+    "granularityUnit": {
+      "DAILY": "Tag",
+      "WEEKLY": "Woche",
+      "MONTHLY": "Monat",
+      "QUARTERLY": "Quartal",
+      "BI_YEARLY": "Halbjahr",
+      "YEARLY": "Jahr"
+    },
+    "periodUnit": {
+      "WEEKLY": "Woche",
+      "MONTHLY": "Monat",
+      "QUARTERLY": "Quartal",
+      "YEARLY": "Jahr"
+    },
+    "category": "Kategorie",
+    "subcategory": "Unterkategorie (optional)",
+    "hint": "Reihen konfigurieren und <1>Laden</1> drücken",
+    "noData": "Keine Daten für die ausgewählten Reihen und den Zeitraum",
+    "categoryTotal": "Kategorie gesamt",
+    "clickToDrillDown": "· klicken zum Aufschlüsseln",
+    "configured": "konfiguriert"
+  },
+  "breakdown": {
+    "categories": "Kategorien",
+    "subcategories": "Unterkategorien",
+    "backToCategories": "← Kategorien",
+    "allTransactions": "Alle Transaktionen",
+    "noData": "Keine Daten für diese Auswahl"
+  },
+  "cashflow": {
+    "monthly": "Monatlich",
+    "yearly": "Jährlich",
+    "income": "Einnahmen",
+    "expenses": "Ausgaben",
+    "net": "Netto",
+    "noTransactions": "Keine Transaktionen im Zeitraum.",
+    "tooltipIncome": "Einnahmen",
+    "tooltipExpenses": "Ausgaben",
+    "tooltipNet": "Netto"
+  },
+  "transactions": {
+    "load": "Laden",
+    "allCategories": "Alle Kategorien",
+    "allSubcategories": "Alle Unterkategorien",
+    "columns": {
+      "date": "Datum",
+      "bookingDate": "Buchungsdatum",
+      "account": "Konto",
+      "category": "Kategorie",
+      "subcategory": "Unterkategorie",
+      "amount": "Betrag",
+      "effectiveAmount": "Effektiver Betrag",
+      "comment": "Kommentar",
+      "purpose": "Verwendungszweck",
+      "offsets": "Verrechnungen"
+    },
+    "addComment": "Kommentar hinzufügen…",
+    "partialAmount": "Teilbetrag",
+    "linkToTransaction": "Mit Transaktion verknüpfen",
+    "removeLink": "Verknüpfung aufheben",
+    "jumpToLinked": "Zur verknüpften Transaktion",
+    "bulkCategory": "Kategorie (Auswahl)",
+    "bulkSubcategory": "Unterkategorie (Auswahl)",
+    "applyBulk": "Anwenden",
+    "selectAll": "Alle auswählen",
+    "deselectAll": "Auswahl aufheben",
+    "count": "{{count}} Transaktionen",
+    "linkingSelectingTarget": "Ziel auswählen",
+    "linkHere": "hier verknüpfen",
+    "link": "verknüpfen",
+    "bulkSelected": "{{count}} ausgewählt",
+    "bookingDateTitle": "reales Buchungsdatum",
+    "panel": {
+      "close": "Schließen",
+      "loading": "Lädt…",
+      "noTransactions": "Keine Transaktionen gefunden",
+      "total": "Gesamt",
+      "date": "Datum",
+      "amount": "Betrag",
+      "subcategory": "Unterkategorie"
+    }
+  },
+  "accounts": {
+    "ibanPlaceholder": "IBAN",
+    "namePlaceholder": "Name (optional)",
+    "addAccount": "+ Konto anlegen",
+    "adding": "Wird gespeichert…",
+    "loadError": "Konten konnten nicht geladen werden.",
+    "empty": "Noch keine Konten angelegt. Lege ein Konto an um Transaktionen importieren zu können.",
+    "rename": "Umbenennen",
+    "save": "Speichern",
+    "cancel": "Abbrechen",
+    "delete": "Löschen",
+    "addError": "Konto konnte nicht angelegt werden. Prüfe ob die IBAN bereits existiert.",
+    "deleteConfirm": "Konto {{iban}} wirklich löschen? Bestehende Transaktionen bleiben erhalten.",
+    "columns": {
+      "iban": "IBAN",
+      "name": "Name"
+    }
+  },
+  "budgets": {
+    "load": "Laden",
+    "noCategories": "Keine Kategorien gefunden — zuerst Transaktionen importieren",
+    "spendingLoaded": "Ausgaben geladen · {{from}} → {{to}}",
+    "totalSubcat": "gesamt",
+    "minAmount": "Mindestens ein Betrag erforderlich.",
+    "period": {
+      "weekly": "Wöchentlich",
+      "monthly": "Monatlich",
+      "quarterly": "Quartalsweise",
+      "yearly": "Jährlich"
+    },
+    "columns": {
+      "category": "Kategorie",
+      "subcategory": "Unterkategorie",
+      "period": "Zeitraum",
+      "notice": "Hinweis",
+      "warning": "Warnung",
+      "critical": "Kritisch",
+      "spending": "Ausgaben",
+      "progress": "Fortschritt"
+    },
+    "addThreshold": "Budget hinzufügen",
+    "editThreshold": "Budget bearbeiten",
+    "deleteConfirm": "Budget wirklich löschen?",
+    "noThresholds": "Noch keine Budgets konfiguriert.",
+    "saveFailed": "Speichern fehlgeschlagen.",
+    "deleteFailed": "Löschen fehlgeschlagen."
+  },
+  "csvImport": {
+    "dropzone": {
+      "label": "Beliebige CSV hochladen oder hierher ziehen",
+      "hint": "Trennzeichen und Formate werden automatisch erkannt",
+      "analyzing": "Analysiere Datei…",
+      "analyzingHint": "Trennzeichen, Spalten und Formate werden erkannt"
+    },
+    "mapping": {
+      "title": "Spalten-Mapping",
+      "savedBadge": "Gespeicherte Konfiguration",
+      "delimiter": "Trennzeichen",
+      "requiredFields": "Pflichtfelder",
+      "optionalFields": "Optionale Felder",
+      "date": "Datum",
+      "dateFormat": "Datumsformat",
+      "amount": "Betrag",
+      "amountFormat": "Betragsformat",
+      "amountGerman": "Deutsch (1.234,56)",
+      "amountEnglish": "Englisch (1,234.56)",
+      "purpose": "Verwendungszweck",
+      "category": "Kategorie",
+      "subcategory": "Unterkategorie",
+      "accountIban": "Konto (IBAN)",
+      "fixedIban": "Fester IBAN-Wert",
+      "fixedIbanPlaceholder": "z. B. DE00123456789",
+      "currency": "Währung",
+      "fixedCurrency": "Feste Währung",
+      "notMapped": "— Nicht gemappt —",
+      "cancel": "Abbrechen",
+      "import": "Importieren",
+      "importing": "Importiert…",
+      "previewTitle": "Vorschau ({{count}} Zeilen)"
+    },
+    "categorizing": {
+      "new": "{{count}} neu",
+      "duplicate": "{{count}} bereits importiert",
+      "unknownAccount": "{{count}} unbekanntes Konto",
+      "skipped": "{{count}} übersprungen",
+      "importCount": "{{count}} importieren",
+      "excluded": "Ausgeschlossen",
+      "alreadyImported": "Bereits importiert",
+      "back": "← Zurück",
+      "unknownAccountLabel": "⚠ Unbekanntes Konto",
+      "columns": {
+        "date": "Datum",
+        "amount": "Betrag",
+        "currency": "Währung",
+        "account": "Konto",
+        "purpose": "Verwendungszweck",
+        "category": "Kategorie",
+        "subcategory": "Unterkategorie"
+      }
+    },
+    "success": {
+      "imported_one": "{{count}} Transaktion importiert",
+      "imported_other": "{{count}} Transaktionen importiert",
+      "none": "Keine neuen Transaktionen (alle bereits importiert)",
+      "importMore": "Weitere Datei importieren"
+    }
+  },
+  "camtImport": {
+    "dropzone": {
+      "label": "CAMT.052 XML-Dateien hier ablegen oder klicken",
+      "hint": "Mehrere Dateien werden unterstützt"
+    },
+    "status": {
+      "new": "Neu",
+      "duplicate": "Duplikat",
+      "invalid": "Ungültig",
+      "previouslyIgnored": "Früher ignoriert",
+      "willIgnore": "Wird ignoriert",
+      "importing": "Wird importiert",
+      "excluded": "Ausgeschlossen",
+      "unknownAccount": "Unbekanntes Konto"
+    },
+    "chips": {
+      "new": "{{count}} neu",
+      "previouslyIgnored": "{{count}} früher ignoriert",
+      "duplicate": "{{count}} Duplikate",
+      "invalid": "{{count}} ungültig",
+      "unknownAccount": "{{count}} unbekanntes Konto"
+    },
+    "columns": {
+      "row": "Zeile",
+      "status": "Status",
+      "date": "Datum",
+      "account": "Konto",
+      "counterparty": "Auftraggeber / Empfänger",
+      "purpose": "Verwendungszweck",
+      "amount": "Betrag",
+      "category": "Kategorie",
+      "subcategory": "Unterkategorie"
+    },
+    "accountNames": "Kontonamen",
+    "accountNamePlaceholder": "Kontoname",
+    "back": "← Zurück",
+    "confirm": "Bestätigen",
+    "skipAgain": "Nochmals überspringen",
+    "importAnyway": "Trotzdem importieren",
+    "skip": "Überspringen",
+    "undo": "Rückgängig",
+    "alreadyImported": "Bereits importiert",
+    "unknownAccount": "⚠ Unbekanntes Konto",
+    "noCategory": "Keine Kategorie",
+    "success": {
+      "imported_one": "{{count}} Transaktion importiert",
+      "imported_other": "{{count}} Transaktionen importiert",
+      "ignored": "{{count}} als ignoriert markiert",
+      "skipped": "{{count}} übersprungen (keine Kategorie)",
+      "importMore": "Weitere Dateien importieren"
+    },
+    "parsing": "Dateien werden verarbeitet…",
+    "noRows": "Die Dateien enthalten keine Zeilen.",
+    "noFiles": "Keine Dateien angegeben."
+  }
+}

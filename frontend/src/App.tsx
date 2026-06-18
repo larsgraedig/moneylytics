@@ -12,6 +12,7 @@ import AccountsPage from './components/AccountsPage'
 import LoginPage from './components/LoginPage'
 import { fetchSankeyData, fetchAccounts, type SankeyResponse, type Account } from './api/transactions'
 import { useAuth } from './context/AuthContext'
+import { useTranslation, Trans } from 'react-i18next'
 
 function isoDate(d: Date) {
   return d.toISOString().slice(0, 10)
@@ -28,35 +29,38 @@ type ViewState =
   | { phase: 'error'; message: string }
   | { phase: 'ready'; data: SankeyResponse }
 
-const NAV: { section: string; items: [Tab, string][] }[] = [
+type NavSection = { sectionKey: string; items: [Tab, string][] }
+
+const NAV: NavSection[] = [
   {
-    section: 'Analytics',
+    sectionKey: 'analytics',
     items: [
-      ['sankey', 'Sankey'],
-      ['trends', 'Trends'],
-      ['breakdown', 'Breakdown'],
-      ['cashflow', 'Cashflow'],
+      ['sankey', 'nav.sankey'],
+      ['trends', 'nav.trends'],
+      ['breakdown', 'nav.breakdown'],
+      ['cashflow', 'nav.cashflow'],
     ],
   },
   {
-    section: 'Accounts',
+    sectionKey: 'accounts',
     items: [
-      ['kontoauszug', 'Kontoauszug'],
-      ['konten', 'Konten'],
-      ['budgets', 'Budgets'],
+      ['kontoauszug', 'nav.kontoauszug'],
+      ['konten', 'nav.konten'],
+      ['budgets', 'nav.budgets'],
     ],
   },
   {
-    section: 'Importe',
+    sectionKey: 'imports',
     items: [
-      ['csv', 'CSV'],
-      ['camt', 'CAMT'],
+      ['csv', 'nav.csv'],
+      ['camt', 'nav.camt'],
     ],
   },
 ]
 
 export default function App() {
   const { username, isLoading, logout } = useAuth()
+  const { t } = useTranslation()
   const [tab, setTab] = useState<Tab>('sankey')
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [from, setFrom] = useState(firstOfYear)
@@ -97,23 +101,23 @@ export default function App() {
         <button
           className="sidebar-toggle"
           onClick={() => setSidebarOpen(o => !o)}
-          title={sidebarOpen ? 'Menü einklappen' : 'Menü ausklappen'}
+          title={sidebarOpen ? t('nav.collapse') : t('nav.expand')}
         >
           <span className="sidebar-toggle-icon">{sidebarOpen ? '‹' : '›'}</span>
         </button>
 
         <nav className="sidebar-nav">
-          {NAV.map(({ section, items }) => (
-            <div key={section} className="nav-section">
-              <span className="nav-section-title">{section}</span>
-              {items.map(([id, label]) => (
+          {NAV.map(({ sectionKey, items }) => (
+            <div key={sectionKey} className="nav-section">
+              <span className="nav-section-title">{t(`nav.sections.${sectionKey}`)}</span>
+              {items.map(([id, labelKey]) => (
                 <button
                   key={id}
                   className={`nav-item${tab === id ? ' active' : ''}`}
                   onClick={() => setTab(id)}
-                  title={label}
+                  title={t(labelKey)}
                 >
-                  <span className="nav-item-label">{label}</span>
+                  <span className="nav-item-label">{t(labelKey)}</span>
                 </button>
               ))}
             </div>
@@ -127,7 +131,7 @@ export default function App() {
           <span className="wordmark">moneylytics</span>
           <div className="session">
             <span className="session-user">{username}</span>
-            <button className="logout-btn" onClick={logout}>sign out</button>
+            <button className="logout-btn" onClick={logout}>{t('common.signOut')}</button>
           </div>
         </header>
 
@@ -138,7 +142,7 @@ export default function App() {
               value={selectedIban}
               onChange={e => setSelectedIban(e.target.value)}
             >
-              <option value="">all accounts</option>
+              <option value="">{t('common.allAccounts')}</option>
               {accounts.map(a => (
                 <option key={a.iban} value={a.iban}>{a.name}</option>
               ))}
@@ -147,19 +151,19 @@ export default function App() {
 
           <fieldset className="range-group">
             <label className="range-field">
-              <span className="range-label">from</span>
+              <span className="range-label">{t('common.from')}</span>
               <input type="date" value={from} max={to} onChange={e => setFrom(e.target.value)} />
             </label>
             <div className="range-sep" />
             <label className="range-field">
-              <span className="range-label">to</span>
+              <span className="range-label">{t('common.to')}</span>
               <input type="date" value={to} min={from} max={today} onChange={e => setTo(e.target.value)} />
             </label>
           </fieldset>
 
           {tab === 'sankey' && (
             <button className="load-btn" onClick={load} disabled={view.phase === 'loading'}>
-              {view.phase === 'loading' ? '…' : 'load'}
+              {view.phase === 'loading' ? '…' : t('common.load')}
             </button>
           )}
         </div>
@@ -168,10 +172,12 @@ export default function App() {
           {tab === 'sankey' && (
             <>
               {view.phase === 'idle' && (
-                <p className="hint">select a date range and press <kbd>load</kbd></p>
+                <p className="hint">
+                  <Trans i18nKey="sankey.hint"><span /><kbd /></Trans>
+                </p>
               )}
               {view.phase === 'loading' && (
-                <p className="hint loading">fetching…</p>
+                <p className="hint loading">{t('common.fetching')}</p>
               )}
               {view.phase === 'error' && (
                 <p className="hint error">{view.message}</p>

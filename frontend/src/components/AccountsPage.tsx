@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { fetchAccounts, createAccount, updateAccount, deleteAccount, type Account } from '../api/accounts'
 
 export default function AccountsPage() {
+  const { t } = useTranslation()
   const [accounts, setAccounts] = useState<Account[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -24,7 +26,7 @@ export default function AccountsPage() {
     try {
       setAccounts(await fetchAccounts())
     } catch {
-      setError('Konten konnten nicht geladen werden.')
+      setError(t('accounts.loadError'))
     } finally {
       setLoading(false)
     }
@@ -42,7 +44,7 @@ export default function AccountsPage() {
       setNewIban('')
       setNewName('')
     } catch {
-      setAddError('Konto konnte nicht angelegt werden. Prüfe ob die IBAN bereits existiert.')
+      setAddError(t('accounts.addError'))
     } finally {
       setAdding(false)
     }
@@ -69,7 +71,7 @@ export default function AccountsPage() {
   }
 
   async function handleDelete(iban: string) {
-    if (!confirm(`Konto ${iban} wirklich löschen? Bestehende Transaktionen bleiben erhalten.`)) return
+    if (!confirm(t('accounts.deleteConfirm', { iban }))) return
     setDeleting(iban)
     try {
       await deleteAccount(iban)
@@ -86,14 +88,14 @@ export default function AccountsPage() {
       <div className="acc-add-form">
         <input
           className="acc-input"
-          placeholder="IBAN"
+          placeholder={t('accounts.ibanPlaceholder')}
           value={newIban}
           onChange={e => setNewIban(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && handleAdd()}
         />
         <input
           className="acc-input"
-          placeholder="Name (optional)"
+          placeholder={t('accounts.namePlaceholder')}
           value={newName}
           onChange={e => setNewName(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && handleAdd()}
@@ -103,16 +105,16 @@ export default function AccountsPage() {
           onClick={handleAdd}
           disabled={adding || !newIban.trim()}
         >
-          {adding ? '…' : '+ Konto anlegen'}
+          {adding ? '…' : t('accounts.addAccount')}
         </button>
         {addError && <span className="acc-error">{addError}</span>}
       </div>
 
-      {loading && <p className="hint loading">lädt…</p>}
+      {loading && <p className="hint loading">{t('common.loading')}</p>}
       {error && <p className="hint error">{error}</p>}
 
       {!loading && !error && accounts.length === 0 && (
-        <p className="hint">Noch keine Konten angelegt. Lege ein Konto an um Transaktionen importieren zu können.</p>
+        <p className="hint">{t('accounts.empty')}</p>
       )}
 
       {accounts.length > 0 && (
@@ -120,8 +122,8 @@ export default function AccountsPage() {
           <table className="acc-table">
             <thead>
               <tr>
-                <th>IBAN</th>
-                <th>Name</th>
+                <th>{t('accounts.columns.iban')}</th>
+                <th>{t('accounts.columns.name')}</th>
                 <th></th>
               </tr>
             </thead>
@@ -156,13 +158,13 @@ export default function AccountsPage() {
                             onClick={() => handleSaveEdit(account.iban)}
                             disabled={saving}
                           >
-                            {saving ? '…' : 'speichern'}
+                            {saving ? '…' : t('accounts.save')}
                           </button>
                           <button
                             className="acc-btn acc-btn--cancel"
                             onClick={() => setEditingIban(null)}
                           >
-                            abbrechen
+                            {t('accounts.cancel')}
                           </button>
                         </>
                       ) : (
@@ -171,14 +173,14 @@ export default function AccountsPage() {
                             className="acc-btn acc-btn--edit"
                             onClick={() => startEdit(account)}
                           >
-                            umbenennen
+                            {t('accounts.rename')}
                           </button>
                           <button
                             className="acc-btn acc-btn--delete"
                             onClick={() => handleDelete(account.iban)}
                             disabled={isDeleting}
                           >
-                            {isDeleting ? '…' : 'löschen'}
+                            {isDeleting ? '…' : t('accounts.delete')}
                           </button>
                         </>
                       )}

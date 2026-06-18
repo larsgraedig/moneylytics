@@ -13,8 +13,10 @@
     "@nivo/line": "^0.99.0",
     "@nivo/pie": "^0.99.0",
     "@nivo/sankey": "^0.99.0",
+    "i18next": "^26.3.1",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "react-i18next": "^17.0.8"
   },
   "devDependencies": {
     "@types/react": "^19.0.0",
