@@ -1,8 +1,8 @@
 package com.moneylytics.api.config
 
+import com.moneylytics.api.application.port.input.CreateUserUseCase
 import com.moneylytics.api.application.port.input.ImportTransactionsCommand
 import com.moneylytics.api.application.port.input.ImportTransactionsUseCase
-import com.moneylytics.api.application.port.input.ResolveUserUseCase
 import com.moneylytics.api.domain.Transaction
 import org.springframework.boot.ApplicationArguments
 import org.springframework.boot.ApplicationRunner
@@ -17,7 +17,7 @@ import java.util.Random
 @Component
 class LocalDataInitializer(
     private val importTransactionsUseCase: ImportTransactionsUseCase,
-    private val resolveUserUseCase: ResolveUserUseCase,
+    private val createUserUseCase: CreateUserUseCase,
 ) : ApplicationRunner {
     private val mainIban = "DE00LOCAL000000000000"
     private val mainName = "Girokonto"
@@ -26,7 +26,7 @@ class LocalDataInitializer(
     private val savingsName = "Sparkonto"
 
     override fun run(args: ApplicationArguments) {
-        val userId = resolveUserUseCase.resolveUser("local-dev-user")
+        val userId = createUserUseCase.createUser("local-dev-user", "local")
         importTransactionsUseCase.importTransactions(
             ImportTransactionsCommand(
                 transactions = generateMainTransactions() + generateSavingsTransactions(),

@@ -16,9 +16,10 @@ import org.springframework.core.io.buffer.DataBufferUtils
 import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
 import org.springframework.http.codec.multipart.FilePart
+import org.springframework.security.core.annotation.AuthenticationPrincipal
+import org.springframework.security.core.userdetails.UserDetails
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
-import org.springframework.web.bind.annotation.RequestHeader
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.server.ServerWebExchange
@@ -37,10 +38,10 @@ class CamtImportController(
 ) {
     @PostMapping("/camt/preview", consumes = [MediaType.MULTIPART_FORM_DATA_VALUE])
     suspend fun preview(
-        @RequestHeader("X-User-Id") externalId: String,
+        @AuthenticationPrincipal principal: UserDetails,
         exchange: ServerWebExchange,
     ): ResponseEntity<out Any> {
-        val userId = withContext(Dispatchers.IO) { resolveUserUseCase.resolveUser(externalId) }
+        val userId = withContext(Dispatchers.IO) { resolveUserUseCase.resolveUser(principal.username) }
 
         val parts = exchange.multipartData.awaitSingle()
         val fileParts = parts["files"]?.filterIsInstance<FilePart>() ?: emptyList()
@@ -106,9 +107,9 @@ class CamtImportController(
     @PostMapping("/camt/import")
     suspend fun importCamt(
         @RequestBody request: CamtImportRequest,
-        @RequestHeader("X-User-Id") externalId: String,
+        @AuthenticationPrincipal principal: UserDetails,
     ): ResponseEntity<out Any> {
-        val userId = withContext(Dispatchers.IO) { resolveUserUseCase.resolveUser(externalId) }
+        val userId = withContext(Dispatchers.IO) { resolveUserUseCase.resolveUser(principal.username) }
 
         updateIgnoredTransactionsUseCase.update(
             toIgnore = request.toIgnore,

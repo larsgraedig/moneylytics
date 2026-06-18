@@ -12,6 +12,8 @@ import jakarta.persistence.Table
 class UserEntity(
     @Column(nullable = false, unique = true)
     val externalId: String,
+    @Column(nullable = true)
+    var passwordHash: String? = null,
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     var id: Long? = null,

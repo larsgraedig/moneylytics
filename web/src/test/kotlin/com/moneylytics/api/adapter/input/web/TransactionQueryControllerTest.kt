@@ -14,12 +14,19 @@ import org.mockito.kotlin.any
 import org.mockito.kotlin.doReturn
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.whenever
+import org.springframework.security.core.userdetails.User
 import java.math.BigDecimal
 import java.time.LocalDate
 
 class TransactionQueryControllerTest {
     private val getTransactionsUseCase: GetTransactionsUseCase = mock()
     private val resolveUserUseCase: ResolveUserUseCase = mock { on { resolveUser(any()) } doReturn USER_ID }
+    private val principal =
+        User
+            .withUsername("testUser")
+            .password("x")
+            .roles("USER")
+            .build()
     private val updateTransactionCategoryUseCase: UpdateTransactionCategoryUseCase = mock()
     private val updateTransactionCommentUseCase: UpdateTransactionCommentUseCase = mock()
     private val updateTransactionAccountingDateUseCase: UpdateTransactionAccountingDateUseCase = mock()
@@ -52,7 +59,7 @@ class TransactionQueryControllerTest {
             )
 
             // Act
-            val response = controller.getSankeyData(from, to, externalId = "testUser")
+            val response = controller.getSankeyData(from, to, principal = principal)
 
             // Assert
             assertThat(response.nodes.map { it.name }).containsExactly(
@@ -81,7 +88,7 @@ class TransactionQueryControllerTest {
             )
 
             // Act
-            val response = controller.getSankeyData(from, to, externalId = "testUser")
+            val response = controller.getSankeyData(from, to, principal = principal)
 
             // Assert
             val nodeByName = response.nodes.associateBy { it.name }
@@ -109,7 +116,7 @@ class TransactionQueryControllerTest {
             )
 
             // Act
-            val response = controller.getSankeyData(from, to, externalId = "testUser")
+            val response = controller.getSankeyData(from, to, principal = principal)
 
             // Assert
             val groceriesLink = response.links.single { response.nodes[it.target].name == "Groceries" }
@@ -134,7 +141,7 @@ class TransactionQueryControllerTest {
             )
 
             // Act
-            val response = controller.getSankeyData(from, to, externalId = "testUser")
+            val response = controller.getSankeyData(from, to, principal = principal)
 
             // Assert
             val nodeNames = response.nodes.map { it.name }
@@ -164,7 +171,7 @@ class TransactionQueryControllerTest {
                 ),
             )
 
-            val response = controller.getSankeyData(from, to, externalId = "testUser")
+            val response = controller.getSankeyData(from, to, principal = principal)
 
             assertThat(response.nodes.map { it.name }).containsExactly("Food", "Transport", "Other", "Other")
             val otherIndices = response.nodes.mapIndexedNotNull { i, n -> i.takeIf { n.name == "Other" } }
@@ -191,7 +198,7 @@ class TransactionQueryControllerTest {
             )
 
             // Act
-            val response = controller.getSankeyData(from, to, externalId = "testUser")
+            val response = controller.getSankeyData(from, to, principal = principal)
 
             // Assert — four distinct nodes, not three
             assertThat(response.nodes.map { it.name })
@@ -218,7 +225,7 @@ class TransactionQueryControllerTest {
             )
 
             // Act
-            val response = controller.getSankeyData(from, to, externalId = "testUser")
+            val response = controller.getSankeyData(from, to, principal = principal)
 
             // Assert
             assertThat(response.nodes.map { it.name }).containsExactly("Food", "Groceries")
@@ -235,7 +242,7 @@ class TransactionQueryControllerTest {
             ).thenReturn(emptyList())
 
             // Act
-            val response = controller.getSankeyData(from, to, externalId = "testUser")
+            val response = controller.getSankeyData(from, to, principal = principal)
 
             // Assert
             assertThat(response.nodes).isEmpty()
