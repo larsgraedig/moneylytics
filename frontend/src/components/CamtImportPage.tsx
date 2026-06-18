@@ -33,6 +33,7 @@ function formatDate(iso: string | null): string {
 function initDecisions(rows: RawPreviewRow[]): Record<number, RowDecision> {
   const out: Record<number, RowDecision> = {}
   for (const row of rows) {
+    if (row.unknownAccount) continue   // excluded – no decision
     if (row.status === 'NEW') {
       out[row.rowNumber] = { action: 'import', category: '', subcategory: '' }
     } else if (row.status === 'PREVIOUSLY_IGNORED') {
@@ -291,6 +292,7 @@ export default function CamtImportPage() {
                 const subcatOptions = subcategoriesFor(catVal)
 
                 const rowClass = (() => {
+                  if (row.unknownAccount) return 'ri-row ri-row--duplicate'
                   if (row.status === 'INVALID') return 'ri-row ri-row--invalid'
                   if (row.status === 'DUPLICATE') return 'ri-row ri-row--duplicate'
                   if (row.status === 'PREVIOUSLY_IGNORED') {
@@ -374,6 +376,9 @@ function CategoryCells({
   onCategoryChange: (v: string) => void
   onSubcategoryChange: (v: string) => void
 }) {
+  if (row.unknownAccount) {
+    return <td colSpan={2} className="ri-cell-muted">excluded</td>
+  }
   if (row.status === 'INVALID') {
     return (
       <td colSpan={2} className="ri-cell-errors">
@@ -428,7 +433,7 @@ function ActionToggle({
   decision: RowDecision | undefined
   onDecide: (d: RowDecision) => void
 }) {
-  if (row.status === 'INVALID' || row.status === 'DUPLICATE') return null
+  if (row.unknownAccount || row.status === 'INVALID' || row.status === 'DUPLICATE') return null
 
   if (row.status === 'PREVIOUSLY_IGNORED') {
     return decision?.action === 'import' ? (

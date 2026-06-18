@@ -14,4 +14,9 @@ interface AccountRepository {
     ): Account
 
     fun findAll(userId: Long): List<Account>
+
+    fun delete(
+        iban: String,
+        userId: Long,
+    )
 }

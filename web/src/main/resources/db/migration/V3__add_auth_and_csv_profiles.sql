@@ -10,3 +10,11 @@ CREATE TABLE IF NOT EXISTS csv_profiles (
     mapping_json TEXT         NOT NULL,
     CONSTRAINT uq_csv_profiles_user_fingerprint UNIQUE (user_id, fingerprint)
 );
+
+alter table transactions
+drop constraint uktlko6dnlc3ds2jcop242s59da;
+
+alter table transactions
+    add constraint uktlko6dnlc3ds2jcop242s59da
+        unique (fingerprint, account_id);
+

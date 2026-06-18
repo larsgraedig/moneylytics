@@ -116,8 +116,13 @@ class GenericCsvController(
         @AuthenticationPrincipal principal: UserDetails,
     ): ResponseEntity<ImportSuccessResponse> {
         val userId = withContext(Dispatchers.IO) { resolveUserUseCase.resolveUser(principal.username) }
+        val knownIbans =
+            withContext(Dispatchers.IO) { getAccountsUseCase.getAccounts(userId) }
+                .map { it.iban }
+                .toSet()
+        val safeRows = if (knownIbans.isEmpty()) rows else rows.filter { it.accountIban in knownIbans }
         val transactions =
-            rows.map { row ->
+            safeRows.map { row ->
                 Transaction(
                     category = row.category,
                     subcategory = row.subcategory,
@@ -130,7 +135,7 @@ class GenericCsvController(
                     purpose = row.purpose,
                 )
             }
-        val accountNames = rows.associate { it.accountIban to it.accountIban }
+        val accountNames = safeRows.associate { it.accountIban to it.accountIban }
         val count =
             importTransactionsUseCase.importTransactions(
                 ImportTransactionsCommand(
