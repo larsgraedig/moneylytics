@@ -183,7 +183,14 @@ class TransactionQueryController(
                 val allTransactions =
                     withContext(Dispatchers.IO) {
                         getTransactionsUseCase.getTransactions(
-                            GetTransactionsQuery(from = from, to = to, userId = userId, accountIban = iban, category = category, onlyNegative = true),
+                            GetTransactionsQuery(
+                                from = from,
+                                to = to,
+                                userId = userId,
+                                accountIban = iban,
+                                category = category,
+                                onlyNegative = true,
+                            ),
                         )
                     }
 
