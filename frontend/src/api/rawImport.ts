@@ -25,10 +25,6 @@ export interface RawPreviewRow {
   unknownAccount: boolean
 }
 
-export interface RawPreviewResponse {
-  rows: RawPreviewRow[]
-}
-
 export interface CategoryGroup {
   name: string
   subcategories: string[]
@@ -38,51 +34,8 @@ export interface CategoriesResponse {
   categories: CategoryGroup[]
 }
 
-export interface RawTransactionImport {
-  fingerprint: string
-  bookingDate: string
-  valueDate: string
-  amount: number
-  currency: string
-  category: string
-  subcategory: string
-  purpose: string | null
-}
-
-export interface ImportRawRequest {
-  accountIban: string
-  accountName: string
-  toImport: RawTransactionImport[]
-  toIgnore: string[]
-}
-
-export interface ImportRawResponse {
-  importedCount: number
-}
-
-export async function previewRawImport(file: File): Promise<RawPreviewResponse> {
-  const formData = new FormData()
-  formData.append('file', file)
-  const res = await fetchWithUser('/transactions/raw/preview', { method: 'POST', body: formData })
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({})) as Record<string, unknown>
-    throw new Error((body.error as string | undefined) ?? `HTTP ${res.status}`)
-  }
-  return res.json() as Promise<RawPreviewResponse>
-}
-
 export async function fetchCategories(): Promise<CategoriesResponse> {
   const res = await fetchWithUser('/categories')
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
   return res.json() as Promise<CategoriesResponse>
-}
-
-export async function importRaw(request: ImportRawRequest): Promise<ImportRawResponse> {
-  const res = await fetchWithUser('/transactions/raw/import', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(request),
-  })
-  if (!res.ok) throw new Error(`HTTP ${res.status}`)
-  return res.json() as Promise<ImportRawResponse>
 }
