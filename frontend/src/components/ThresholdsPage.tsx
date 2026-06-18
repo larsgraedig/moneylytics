@@ -27,12 +27,6 @@ const PERIOD_IDEAL_DAYS: Record<ThresholdPeriod, number> = {
 const EUR = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })
 const EUR2 = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' })
 
-function isoDate(d: Date) {
-  return d.toISOString().slice(0, 10)
-}
-const today = isoDate(new Date())
-const firstOfMonth = isoDate(new Date(new Date().getFullYear(), new Date().getMonth(), 1))
-
 // ── helpers ──────────────────────────────────────────────────────────────
 
 function rowKey(category: string, subcategory: string | null): string {
@@ -138,13 +132,11 @@ interface BudgetRow {
 
 // ── component ─────────────────────────────────────────────────────────────
 
-export default function ThresholdsPage() {
+export default function ThresholdsPage({ from, to, iban }: { from: string; to: string; iban?: string }) {
   const [categories, setCategories] = useState<CategoryGroup[]>([])
   const [thresholds, setThresholds] = useState<Threshold[]>([])
   const [spendingMap, setSpendingMap] = useState<Map<string, number>>(new Map())
   const [spendingLoaded, setSpendingLoaded] = useState(false)
-  const [from, setFrom] = useState(firstOfMonth)
-  const [to, setTo] = useState(today)
   const [loading, setLoading] = useState(false)
   const [editingKey, setEditingKey] = useState<string | null>(null)
   const [editThresholdId, setEditThresholdId] = useState<number | null>(null)
@@ -167,7 +159,7 @@ export default function ThresholdsPage() {
   async function loadSpending() {
     setLoading(true)
     try {
-      const resp = await fetchTransactionList(from, to)
+      const resp = await fetchTransactionList(from, to, undefined, undefined, iban)
       const map = new Map<string, number>()
       for (const tx of resp.transactions) {
         if (tx.effectiveAmount >= 0) continue
@@ -304,7 +296,7 @@ export default function ThresholdsPage() {
   async function openDrilldown(row: BudgetRow) {
     setDrilldown({ key: row.key, category: row.category, subcategory: row.subcategory, transactions: null, loading: true })
     try {
-      const resp = await fetchTransactionList(from, to, row.category, row.subcategory ?? undefined)
+      const resp = await fetchTransactionList(from, to, row.category, row.subcategory ?? undefined, iban)
       const txs = resp.transactions.filter(tx => tx.effectiveAmount < 0)
       txs.sort((a, b) => b.bookingDate.localeCompare(a.bookingDate))
       setDrilldown(prev => prev?.key === row.key ? { ...prev, transactions: txs, loading: false } : prev)
@@ -318,28 +310,6 @@ export default function ThresholdsPage() {
   return (
     <div className="bgt-page">
       <div className="bgt-controls">
-        <fieldset className="range-group">
-          <label className="range-field">
-            <span className="range-label">from</span>
-            <input
-              type="date"
-              value={from}
-              max={to}
-              onChange={e => setFrom(e.target.value)}
-            />
-          </label>
-          <div className="range-sep" />
-          <label className="range-field">
-            <span className="range-label">to</span>
-            <input
-              type="date"
-              value={to}
-              min={from}
-              max={today}
-              onChange={e => setTo(e.target.value)}
-            />
-          </label>
-        </fieldset>
         <button className="load-btn" onClick={loadSpending} disabled={loading}>
           {loading ? '…' : 'load'}
         </button>

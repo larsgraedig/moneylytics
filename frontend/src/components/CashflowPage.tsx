@@ -7,10 +7,6 @@ type Granularity = 'monthly' | 'yearly'
 const EUR = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })
 const EUR2 = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' })
 
-function isoDate(d: Date) { return d.toISOString().slice(0, 10) }
-
-const today = isoDate(new Date())
-const threeYearsAgo = isoDate(new Date(new Date().getFullYear() - 2, 0, 1))
 
 interface CashflowBucket {
   [key: string]: string | number
@@ -70,9 +66,7 @@ const NIVO_THEME = {
   tooltip: { container: { display: 'none' } },
 }
 
-export default function CashflowPage() {
-  const [from, setFrom] = useState(threeYearsAgo)
-  const [to, setTo] = useState(today)
+export default function CashflowPage({ from, to, iban }: { from: string; to: string; iban?: string }) {
   const [granularity, setGranularity] = useState<Granularity>('monthly')
   const [loading, setLoading] = useState(false)
   const [data, setData] = useState<CashflowBucket[] | null>(null)
@@ -83,7 +77,7 @@ export default function CashflowPage() {
     setLoading(true)
     setError(null)
     try {
-      const resp = await fetchAllTransactions(from, to)
+      const resp = await fetchAllTransactions(from, to, iban)
       const map = new Map<string, { income: number; expenses: number }>()
 
       for (const tx of resp.transactions) {
@@ -119,7 +113,7 @@ export default function CashflowPage() {
     const range = periodRange(periodKey, granularity, from, to)
     setDrilldown({ period, type, from: range.from, to: range.to, transactions: null, loading: true })
     try {
-      const resp = await fetchAllTransactions(range.from, range.to)
+      const resp = await fetchAllTransactions(range.from, range.to, iban)
       const txs = resp.transactions
         .filter(tx => type === 'income' ? tx.effectiveAmount >= 0 : tx.effectiveAmount < 0)
         .sort((a, b) => b.accountingDate.localeCompare(a.accountingDate))
@@ -139,17 +133,6 @@ export default function CashflowPage() {
   return (
     <div className="cf-page">
       <div className="cf-controls">
-        <fieldset className="range-group">
-          <label className="range-field">
-            <span className="range-label">from</span>
-            <input type="date" value={from} max={to} onChange={e => setFrom(e.target.value)} />
-          </label>
-          <div className="range-sep" />
-          <label className="range-field">
-            <span className="range-label">to</span>
-            <input type="date" value={to} min={from} max={today} onChange={e => setTo(e.target.value)} />
-          </label>
-        </fieldset>
         <div className="cf-gran-toggle">
           {(['monthly', 'yearly'] as const).map(g => (
             <button
@@ -203,6 +186,7 @@ export default function CashflowPage() {
             borderRadius={2}
             padding={0.25}
             innerPadding={3}
+            valueScale={{ type: 'linear', min: Math.min(0, ...data.map(d => d.net)), max: 'auto' }}
             margin={{ top: 24, right: 24, bottom: data.length > 20 ? 72 : 48, left: 88 }}
             axisBottom={{
               tickSize: 0,
