@@ -48,13 +48,14 @@ export default function App() {
   }, [username])
 
   if (isLoading) return null
-
   if (!username) return <LoginPage />
+
+  const iban = selectedIban || undefined
 
   async function load() {
     setView({ phase: 'loading' })
     try {
-      const data = await fetchSankeyData(from, to, selectedIban || undefined)
+      const data = await fetchSankeyData(from, to, iban)
       setView(data.nodes.length === 0 ? { phase: 'idle' } : { phase: 'ready', data })
     } catch (e) {
       setView({ phase: 'error', message: e instanceof Error ? e.message : 'request failed' })
@@ -67,117 +68,67 @@ export default function App() {
         <span className="wordmark">moneylytics</span>
 
         <nav className="tab-nav">
-          <button
-            className={`tab-btn${tab === 'analytics' ? ' active' : ''}`}
-            onClick={() => setTab('analytics')}
-          >
-            analytics
-          </button>
-          <button
-            className={`tab-btn${tab === 'trends' ? ' active' : ''}`}
-            onClick={() => setTab('trends')}
-          >
-            trends
-          </button>
-          <button
-            className={`tab-btn${tab === 'breakdown' ? ' active' : ''}`}
-            onClick={() => setTab('breakdown')}
-          >
-            breakdown
-          </button>
-          <button
-            className={`tab-btn${tab === 'cashflow' ? ' active' : ''}`}
-            onClick={() => setTab('cashflow')}
-          >
-            cashflow
-          </button>
-          <button
-            className={`tab-btn${tab === 'transactions' ? ' active' : ''}`}
-            onClick={() => setTab('transactions')}
-          >
-            transactions
-          </button>
-          <button
-            className={`tab-btn${tab === 'thresholds' ? ' active' : ''}`}
-            onClick={() => setTab('thresholds')}
-          >
-            thresholds
-          </button>
-          <button
-            className={`tab-btn${tab === 'csv' ? ' active' : ''}`}
-            onClick={() => setTab('csv')}
-          >
-            CSV import
-          </button>
-          <button
-            className={`tab-btn${tab === 'import' ? ' active' : ''}`}
-            onClick={() => setTab('import')}
-          >
-            MLP import
-          </button>
-          <button
-            className={`tab-btn${tab === 'camt' ? ' active' : ''}`}
-            onClick={() => setTab('camt')}
-          >
-            CAMT import
-          </button>
-        </nav>
-
-        {tab === 'analytics' && (
-          <div className="controls">
-            {accounts.length > 0 && (
-              <select
-                className="account-select"
-                value={selectedIban}
-                onChange={e => setSelectedIban(e.target.value)}
-              >
-                <option value="">all accounts</option>
-                {accounts.map(a => (
-                  <option key={a.iban} value={a.iban}>{a.name}</option>
-                ))}
-              </select>
-            )}
-
-            <fieldset className="range-group">
-              <label className="range-field">
-                <span className="range-label">from</span>
-                <input
-                  type="date"
-                  value={from}
-                  max={to}
-                  onChange={e => setFrom(e.target.value)}
-                />
-              </label>
-              <div className="range-sep" />
-              <label className="range-field">
-                <span className="range-label">to</span>
-                <input
-                  type="date"
-                  value={to}
-                  min={from}
-                  max={today}
-                  onChange={e => setTo(e.target.value)}
-                />
-              </label>
-            </fieldset>
-
+          {(
+            [
+              ['analytics', 'analytics'],
+              ['trends', 'trends'],
+              ['breakdown', 'breakdown'],
+              ['cashflow', 'cashflow'],
+              ['transactions', 'transactions'],
+              ['thresholds', 'thresholds'],
+              ['csv', 'CSV import'],
+              ['import', 'MLP import'],
+              ['camt', 'CAMT import'],
+            ] as [Tab, string][]
+          ).map(([id, label]) => (
             <button
-              className="load-btn"
-              onClick={load}
-              disabled={view.phase === 'loading'}
+              key={id}
+              className={`tab-btn${tab === id ? ' active' : ''}`}
+              onClick={() => setTab(id)}
             >
-              {view.phase === 'loading' ? '…' : 'load'}
+              {label}
             </button>
-          </div>
-        )}
-
-        {(tab === 'csv' || tab === 'import' || tab === 'camt' || tab === 'trends' || tab === 'thresholds' || tab === 'breakdown' || tab === 'transactions' || tab === 'cashflow') && <div className="controls" />}
+          ))}
+        </nav>
 
         <div className="session">
           <span className="session-user">{username}</span>
           <button className="logout-btn" onClick={logout}>sign out</button>
         </div>
       </header>
+
+      <div className="subbar">
+        {accounts.length > 0 && (
+          <select
+            className="account-select"
+            value={selectedIban}
+            onChange={e => setSelectedIban(e.target.value)}
+          >
+            <option value="">all accounts</option>
+            {accounts.map(a => (
+              <option key={a.iban} value={a.iban}>{a.name}</option>
+            ))}
+          </select>
+        )}
+
+        <fieldset className="range-group">
+          <label className="range-field">
+            <span className="range-label">from</span>
+            <input type="date" value={from} max={to} onChange={e => setFrom(e.target.value)} />
+          </label>
+          <div className="range-sep" />
+          <label className="range-field">
+            <span className="range-label">to</span>
+            <input type="date" value={to} min={from} max={today} onChange={e => setTo(e.target.value)} />
+          </label>
+        </fieldset>
+
+        {tab === 'analytics' && (
+          <button className="load-btn" onClick={load} disabled={view.phase === 'loading'}>
+            {view.phase === 'loading' ? '…' : 'load'}
+          </button>
+        )}
+      </div>
 
       <main className="stage">
         {tab === 'analytics' && (
@@ -192,7 +143,7 @@ export default function App() {
               <p className="hint error">{view.message}</p>
             )}
             {view.phase === 'ready' && (
-              <div className="chart" key={`${selectedIban}/${from}/${to}`}>
+              <div className="chart" key={`${iban}/${from}/${to}`}>
                 <SankeyChart
                   data={view.data}
                   onNodeClick={nodeKey => setActiveNode(nodeKey)}
@@ -202,7 +153,7 @@ export default function App() {
                     nodeKey={activeNode}
                     from={from}
                     to={to}
-                    iban={selectedIban || undefined}
+                    iban={iban}
                     onClose={() => setActiveNode(null)}
                   />
                 )}
@@ -211,11 +162,11 @@ export default function App() {
           </>
         )}
 
-        {tab === 'cashflow' && <CashflowPage key={username} />}
-        {tab === 'trends' && <TrendsPage key={username} />}
-        {tab === 'breakdown' && <PiePage key={username} />}
-        {tab === 'transactions' && <TransactionsPage key={username} />}
-        {tab === 'thresholds' && <ThresholdsPage key={username} />}
+        {tab === 'cashflow' && <CashflowPage key={username} from={from} to={to} iban={iban} />}
+        {tab === 'trends' && <TrendsPage key={username} from={from} to={to} iban={iban} />}
+        {tab === 'breakdown' && <PiePage key={username} from={from} to={to} iban={iban} />}
+        {tab === 'transactions' && <TransactionsPage key={username} from={from} to={to} iban={iban} accounts={accounts} />}
+        {tab === 'thresholds' && <ThresholdsPage key={username} from={from} to={to} iban={iban} />}
         {tab === 'csv' && <CsvImportPage key={username} />}
         {tab === 'import' && <RawImportPage key={username} />}
         {tab === 'camt' && <CamtImportPage key={username} />}

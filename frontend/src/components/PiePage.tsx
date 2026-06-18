@@ -1,14 +1,7 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { ResponsivePie } from '@nivo/pie'
-import { fetchSankeyData, fetchAccounts, type SankeyResponse, type Account } from '../api/transactions'
+import { fetchSankeyData, type SankeyResponse } from '../api/transactions'
 import TransactionListPanel from './TransactionListPanel'
-
-function isoDate(d: Date) {
-  return d.toISOString().slice(0, 10)
-}
-
-const today = isoDate(new Date())
-const firstOfYear = isoDate(new Date(new Date().getFullYear(), 0, 1))
 
 const EUR = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' })
 
@@ -27,19 +20,11 @@ type ViewState =
   | { phase: 'error'; message: string }
   | { phase: 'ready'; data: SankeyResponse }
 
-export default function PiePage() {
-  const [from, setFrom] = useState(firstOfYear)
-  const [to, setTo] = useState(today)
-  const [accounts, setAccounts] = useState<Account[]>([])
-  const [selectedIban, setSelectedIban] = useState('')
+export default function PiePage({ from, to, iban }: { from: string; to: string; iban?: string }) {
   const [view, setView] = useState<ViewState>({ phase: 'idle' })
   const [level, setLevel] = useState<Level>('categories')
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
   const [drilldown, setDrilldown] = useState<{ nodeKey: string } | null>(null)
-
-  useEffect(() => {
-    fetchAccounts().then(setAccounts).catch(() => {})
-  }, [])
 
   async function load() {
     setView({ phase: 'loading' })
@@ -47,7 +32,7 @@ export default function PiePage() {
     setSelectedCategory(null)
     setDrilldown(null)
     try {
-      const data = await fetchSankeyData(from, to, selectedIban || undefined)
+      const data = await fetchSankeyData(from, to, iban)
       setView(data.nodes.length === 0 ? { phase: 'idle' } : { phase: 'ready', data })
     } catch (e) {
       setView({ phase: 'error', message: e instanceof Error ? e.message : 'request failed' })
@@ -87,40 +72,6 @@ export default function PiePage() {
   return (
     <div className="pi-page">
       <div className="tr-controls">
-        {accounts.length > 0 && (
-          <select
-            className="account-select"
-            value={selectedIban}
-            onChange={e => setSelectedIban(e.target.value)}
-          >
-            <option value="">all accounts</option>
-            {accounts.map(a => (
-              <option key={a.iban} value={a.iban}>{a.name}</option>
-            ))}
-          </select>
-        )}
-        <fieldset className="range-group">
-          <label className="range-field">
-            <span className="range-label">from</span>
-            <input
-              type="date"
-              value={from}
-              max={to}
-              onChange={e => setFrom(e.target.value)}
-            />
-          </label>
-          <div className="range-sep" />
-          <label className="range-field">
-            <span className="range-label">to</span>
-            <input
-              type="date"
-              value={to}
-              min={from}
-              max={today}
-              onChange={e => setTo(e.target.value)}
-            />
-          </label>
-        </fieldset>
         <button
           className="load-btn"
           onClick={load}
@@ -196,7 +147,7 @@ export default function PiePage() {
           nodeKey={drilldown.nodeKey}
           from={from}
           to={to}
-          iban={selectedIban || undefined}
+          iban={iban}
           onClose={() => setDrilldown(null)}
         />
       )}

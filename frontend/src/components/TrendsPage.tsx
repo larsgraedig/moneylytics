@@ -62,8 +62,6 @@ function bucketDateRange(bucket: string, granularity: Granularity): { from: stri
   return { from: isoDate(monday), to: isoDate(sunday) }
 }
 
-const today = isoDate(new Date())
-const firstOfYear = isoDate(new Date(new Date().getFullYear(), 0, 1))
 
 let idSeq = 0
 function newId() { return String(++idSeq) }
@@ -226,9 +224,7 @@ type ViewState =
   | { phase: 'error'; message: string }
   | { phase: 'ready'; data: TrendsResponse }
 
-export default function TrendsPage() {
-  const [from, setFrom] = useState(firstOfYear)
-  const [to, setTo] = useState(today)
+export default function TrendsPage({ from, to, iban }: { from: string; to: string; iban?: string }) {
   const [granularity, setGranularity] = useState<Granularity>('MONTHLY')
   const [series, setSeries] = useState<SeriesConfig[]>([{ id: newId(), category: '', subcategory: '' }])
   const [categories, setCategories] = useState<CategoryGroup[]>([])
@@ -255,7 +251,7 @@ export default function TrendsPage() {
     if (active.length === 0) return
     setView({ phase: 'loading' })
     try {
-      setView({ phase: 'ready', data: await fetchTrends(from, to, active, granularity) })
+      setView({ phase: 'ready', data: await fetchTrends(from, to, active, granularity, iban) })
     } catch (e) {
       setView({ phase: 'error', message: e instanceof Error ? e.message : 'request failed' })
     }
@@ -322,18 +318,6 @@ export default function TrendsPage() {
   return (
     <div className="tr-page">
       <div className="tr-controls">
-        <fieldset className="range-group">
-          <label className="range-field">
-            <span className="range-label">from</span>
-            <input type="date" value={from} max={to} onChange={e => setFrom(e.target.value)} />
-          </label>
-          <div className="range-sep" />
-          <label className="range-field">
-            <span className="range-label">to</span>
-            <input type="date" value={to} min={from} max={today} onChange={e => setTo(e.target.value)} />
-          </label>
-        </fieldset>
-
         <select
           className="tr-gran-select"
           value={granularity}

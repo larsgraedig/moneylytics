@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from 'react'
 import { fetchCategories, type CategoryGroup } from '../api/rawImport'
 import {
   computeEffectiveAmount,
-  fetchAccounts,
   fetchAllTransactions,
   linkTransactions,
   unlinkTransaction,
@@ -16,17 +15,11 @@ import {
 
 const LINK_COLORS = ['#f59e0b', '#10b981', '#60a5fa', '#f472b6', '#a78bfa', '#fb923c']
 
-function isoDate(d: Date) {
-  return d.toISOString().slice(0, 10)
-}
-
 function formatDate(iso: string): string {
   const [y, m, d] = iso.split('-')
   return `${d}.${m}.${y}`
 }
 
-const today = isoDate(new Date())
-const firstOfMonth = isoDate(new Date(new Date().getFullYear(), new Date().getMonth(), 1))
 const EUR = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' })
 
 interface RowState {
@@ -53,11 +46,17 @@ type LinkingState =
   | { phase: 'confirming'; sourceIndex: number; targetIndex: number; partialAmount: string }
   | null
 
-export default function TransactionsPage() {
-  const [from, setFrom] = useState(firstOfMonth)
-  const [to, setTo] = useState(today)
-  const [accounts, setAccounts] = useState<Account[]>([])
-  const [selectedIban, setSelectedIban] = useState('')
+export default function TransactionsPage({
+  from,
+  to,
+  iban,
+  accounts,
+}: {
+  from: string
+  to: string
+  iban?: string
+  accounts: Account[]
+}) {
   const [rows, setRows] = useState<RowState[]>([])
   const [page, setPage] = useState<PageState>({ phase: 'idle' })
   const [categories, setCategories] = useState<CategoryGroup[]>([])
@@ -71,7 +70,6 @@ export default function TransactionsPage() {
   const [bulkApplying, setBulkApplying] = useState(false)
 
   useEffect(() => {
-    fetchAccounts().then(setAccounts).catch(() => {})
     fetchCategories().then(r => setCategories(r.categories)).catch(() => {})
   }, [])
 
@@ -96,7 +94,7 @@ export default function TransactionsPage() {
     setPage({ phase: 'loading' })
     setLinkingState(null)
     try {
-      const data = await fetchAllTransactions(from, to, selectedIban || undefined, category, subcategory)
+      const data = await fetchAllTransactions(from, to, iban, category, subcategory)
       setRows(
         data.transactions.map(tx => ({
           original: tx,
@@ -510,40 +508,6 @@ export default function TransactionsPage() {
   return (
     <div className="txnv-page">
       <div className="tr-controls">
-        {accounts.length > 0 && (
-          <select
-            className="account-select"
-            value={selectedIban}
-            onChange={e => setSelectedIban(e.target.value)}
-          >
-            <option value="">all accounts</option>
-            {accounts.map(a => (
-              <option key={a.iban} value={a.iban}>{a.name}</option>
-            ))}
-          </select>
-        )}
-        <fieldset className="range-group">
-          <label className="range-field">
-            <span className="range-label">from</span>
-            <input
-              type="date"
-              value={from}
-              max={to}
-              onChange={e => setFrom(e.target.value)}
-            />
-          </label>
-          <div className="range-sep" />
-          <label className="range-field">
-            <span className="range-label">to</span>
-            <input
-              type="date"
-              value={to}
-              min={from}
-              max={today}
-              onChange={e => setTo(e.target.value)}
-            />
-          </label>
-        </fieldset>
         <button
           className="load-btn"
           onClick={load}
