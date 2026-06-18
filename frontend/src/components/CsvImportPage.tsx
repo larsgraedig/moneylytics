@@ -266,7 +266,8 @@ function MappingView({
   )
 }
 
-const needsCategoryAssignment = (m: CsvMapping) => !m.categoryColumn || !m.subcategoryColumn
+const needsPreview = (m: CsvMapping, rows: GenericCsvPreviewRow[]) =>
+  !m.categoryColumn || !m.subcategoryColumn || rows.some(r => r.unknownAccount && r.status !== 'DUPLICATE')
 
 export default function CsvImportPage() {
   const [phase, setPhase] = useState<Phase>({ step: 'upload' })
@@ -291,29 +292,25 @@ export default function CsvImportPage() {
   }, [])
 
   async function handleConfirm(detection: CsvDetectionResult, mapping: CsvMapping, file: File) {
-    if (needsCategoryAssignment(mapping)) {
-      setPhase({ step: 'previewing', detection, mapping, file })
-      try {
-        const rows = await previewGenericCsv(file, mapping)
+    setPhase({ step: 'previewing', detection, mapping, file })
+    try {
+      const rows = await previewGenericCsv(file, mapping)
+      if (needsPreview(mapping, rows)) {
         const initialDecisions: Record<number, RowDecision> = {}
         rows.forEach(r => {
           initialDecisions[r.rowIndex] = r.status === 'DUPLICATE'
             ? { action: 'skip' }
-            : { action: 'import', category: '', subcategory: '' }
+            : { action: 'import', category: r.mappedCategory ?? '', subcategory: r.mappedSubcategory ?? '' }
         })
         setDecisions(initialDecisions)
         setPhase({ step: 'categorizing', rows, detection, mapping, file })
-      } catch (e) {
-        setPhase({ step: 'error', message: e instanceof Error ? e.message : 'Preview failed' })
-      }
-    } else {
-      setPhase({ step: 'importing', detection, mapping, file })
-      try {
+      } else {
+        setPhase({ step: 'importing', detection, mapping, file })
         const count = await importGenericCsv(file, mapping)
         setPhase({ step: 'success', count })
-      } catch (e) {
-        setPhase({ step: 'error', message: e instanceof Error ? e.message : 'Import failed' })
       }
+    } catch (e) {
+      setPhase({ step: 'error', message: e instanceof Error ? e.message : 'Preview failed' })
     }
   }
 
@@ -382,6 +379,7 @@ export default function CsvImportPage() {
       })
 
     const duplicateCount = rows.filter(r => r.status === 'DUPLICATE').length
+    const unknownAccountCount = rows.filter(r => r.status !== 'DUPLICATE' && r.unknownAccount).length
     const readyCount = rows.filter(r => {
       if (r.status === 'DUPLICATE') return false
       const d = decisions[r.rowIndex]
@@ -397,6 +395,7 @@ export default function CsvImportPage() {
           <div className="ri-summary-bar">
             <span className="ri-chip ri-chip--new">{rows.length - duplicateCount} neu</span>
             {duplicateCount > 0 && <span className="ri-chip ri-chip--dup">{duplicateCount} bereits importiert</span>}
+            {unknownAccountCount > 0 && <span className="ri-chip ri-chip--inv">{unknownAccountCount} unbekanntes Konto</span>}
             {skippedCount > 0 && <span className="ri-chip ri-chip--prev-ignored">{skippedCount} übersprungen</span>}
             <span className="ri-summary-spacer" />
             <button className="load-btn" onClick={() => setPhase({ step: 'mapping', detection, mapping, file })} disabled={importing}>← zurück</button>
@@ -425,6 +424,7 @@ export default function CsvImportPage() {
               <tbody>
                 {rows.map(row => {
                   const isDuplicate = row.status === 'DUPLICATE'
+                  const isUnknown = !isDuplicate && row.unknownAccount
                   const d = decisions[row.rowIndex]
                   const isImporting = !isDuplicate && d?.action === 'import'
                   const catVal = isImporting ? d.category : ''
@@ -432,13 +432,16 @@ export default function CsvImportPage() {
                   const subcatOptions = subcategoriesFor(catVal)
                   const rowClass = isDuplicate
                     ? 'ri-row ri-row--duplicate'
+                    : isUnknown && isImporting ? 'ri-row ri-row--new gcv-row--unknown'
                     : isImporting ? 'ri-row ri-row--new' : 'ri-row ri-row--will-ignore'
                   return (
                     <tr key={row.rowIndex} className={rowClass}>
                       <td className="ri-cell-date">{row.date}</td>
                       <td className={`ri-cell-amount${row.amount < 0 ? ' negative' : ''}`}>{EUR.format(row.amount)}</td>
                       <td className="ri-cell-date">{row.currency}</td>
-                      <td className="ri-cell-date" title={row.accountIban}>{row.accountIban}</td>
+                      <td className={`ri-cell-date${isUnknown ? ' gcv-unknown-iban' : ''}`} title={row.accountIban}>
+                        {isUnknown ? '⚠ Unbekanntes Konto' : row.accountIban}
+                      </td>
                       <td className="ri-cell-purpose" title={row.purpose ?? ''}>{row.purpose || '—'}</td>
                       {isDuplicate ? (
                         <td colSpan={2} className="ri-cell-muted">bereits importiert</td>

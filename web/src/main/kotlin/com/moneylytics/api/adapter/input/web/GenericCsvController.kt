@@ -2,6 +2,7 @@ package com.moneylytics.api.adapter.input.web
 
 import com.moneylytics.api.adapter.output.persistence.CsvProfilePersistenceAdapter
 import com.moneylytics.api.application.port.input.CheckDuplicatesUseCase
+import com.moneylytics.api.application.port.input.GetAccountsUseCase
 import com.moneylytics.api.application.port.input.ImportTransactionsCommand
 import com.moneylytics.api.application.port.input.ImportTransactionsUseCase
 import com.moneylytics.api.application.port.input.ResolveUserUseCase
@@ -30,6 +31,7 @@ class GenericCsvController(
     private val parser: GenericCsvParser,
     private val importTransactionsUseCase: ImportTransactionsUseCase,
     private val checkDuplicatesUseCase: CheckDuplicatesUseCase,
+    private val getAccountsUseCase: GetAccountsUseCase,
     private val resolveUserUseCase: ResolveUserUseCase,
     private val csvProfileAdapter: CsvProfilePersistenceAdapter,
 ) {
@@ -95,12 +97,16 @@ class GenericCsvController(
 
         val userId = withContext(Dispatchers.IO) { resolveUserUseCase.resolveUser(principal.username) }
         val allFingerprints = rows.map { it.fingerprint }.toSet()
-        val existingFingerprints =
+        val (existingFingerprints, knownIbans) =
             withContext(Dispatchers.IO) {
-                checkDuplicatesUseCase.findExistingFingerprints(allFingerprints, userId)
+                checkDuplicatesUseCase.findExistingFingerprints(allFingerprints, userId) to
+                    getAccountsUseCase.getAccounts(userId).map { it.iban }.toSet()
             }
         return rows.map { row ->
-            if (row.fingerprint in existingFingerprints) row.copy(status = RowStatus.DUPLICATE) else row
+            row.copy(
+                status = if (row.fingerprint in existingFingerprints) RowStatus.DUPLICATE else row.status,
+                unknownAccount = knownIbans.isNotEmpty() && row.accountIban !in knownIbans,
+            )
         }
     }
 

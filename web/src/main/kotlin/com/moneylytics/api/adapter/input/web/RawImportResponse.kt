@@ -22,6 +22,7 @@ data class RawPreviewRow(
     val accountName: String,
     val fingerprint: String?,
     val errors: List<RawPreviewError>,
+    val unknownAccount: Boolean = false,
 )
 
 data class RawPreviewError(

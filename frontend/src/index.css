@@ -867,6 +867,15 @@ body {
   color: var(--text-muted);
 }
 
+.gcv-row--unknown {
+  background: rgba(251, 146, 60, 0.04);
+}
+
+.gcv-unknown-iban {
+  color: #fb923c !important;
+  font-size: 11px;
+}
+
 .gcv-iban {
   font-family: var(--mono);
   font-size: 11px;

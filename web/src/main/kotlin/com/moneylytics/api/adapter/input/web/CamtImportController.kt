@@ -2,6 +2,7 @@ package com.moneylytics.api.adapter.input.web
 
 import com.moneylytics.api.application.port.input.CheckDuplicatesUseCase
 import com.moneylytics.api.application.port.input.FindIgnoredFingerprintsUseCase
+import com.moneylytics.api.application.port.input.GetAccountsUseCase
 import com.moneylytics.api.application.port.input.ImportTransactionsCommand
 import com.moneylytics.api.application.port.input.ImportTransactionsUseCase
 import com.moneylytics.api.application.port.input.ResolveUserUseCase
@@ -31,6 +32,7 @@ class CamtImportController(
     private val camtParser: CamtParser,
     private val checkDuplicatesUseCase: CheckDuplicatesUseCase,
     private val findIgnoredFingerprintsUseCase: FindIgnoredFingerprintsUseCase,
+    private val getAccountsUseCase: GetAccountsUseCase,
     private val updateIgnoredTransactionsUseCase: UpdateIgnoredTransactionsUseCase,
     private val importTransactionsUseCase: ImportTransactionsUseCase,
     private val saveCategoriesUseCase: SaveCategoriesUseCase,
@@ -77,6 +79,8 @@ class CamtImportController(
             if (allFingerprints.isEmpty()) emptySet() else checkDuplicatesUseCase.findExistingFingerprints(allFingerprints, userId)
         val ignoredFingerprints =
             if (allFingerprints.isEmpty()) emptySet() else findIgnoredFingerprintsUseCase.findIgnoredFingerprints(allFingerprints, userId)
+        val knownIbans =
+            withContext(Dispatchers.IO) { getAccountsUseCase.getAccounts(userId) }.map { it.iban }.toSet()
 
         val accounts =
             allRows
@@ -96,7 +100,11 @@ class CamtImportController(
                                 fp in ignoredFingerprints -> RowStatus.PREVIOUSLY_IGNORED
                                 else -> RowStatus.NEW
                             }
-                        row.toPreviewRow(status, fp)
+                        row.toPreviewRow(
+                            status = status,
+                            fingerprint = fp,
+                            unknownAccount = knownIbans.isNotEmpty() && row.accountIban !in knownIbans,
+                        )
                     },
                 accounts = accounts,
             )
@@ -153,6 +161,7 @@ class CamtImportController(
     private fun ParsedRawRow.toPreviewRow(
         status: RowStatus,
         fingerprint: String?,
+        unknownAccount: Boolean = false,
     ) = RawPreviewRow(
         rowNumber = rowNumber,
         status = status,
@@ -167,6 +176,7 @@ class CamtImportController(
         accountName = accountName,
         fingerprint = fingerprint,
         errors = errors.map { RawPreviewError(column = it.column, value = it.value, message = it.message) },
+        unknownAccount = unknownAccount,
     )
 
     private suspend fun FilePart.readBytes(): ByteArray =

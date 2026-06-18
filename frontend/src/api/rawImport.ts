@@ -22,6 +22,7 @@ export interface RawPreviewRow {
   accountName: string
   fingerprint: string | null
   errors: RawPreviewError[]
+  unknownAccount: boolean
 }
 
 export interface RawPreviewResponse {
