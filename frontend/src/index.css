@@ -2070,6 +2070,101 @@ body {
   color: var(--error);
 }
 
+.txnv-col-check {
+  width: 32px;
+  text-align: center;
+  padding: 0 4px !important;
+}
+
+.txnv-checkbox {
+  cursor: pointer;
+  accent-color: var(--accent);
+  width: 14px;
+  height: 14px;
+}
+
+.txnv-row--selected {
+  background: color-mix(in srgb, var(--accent-glow) 60%, transparent) !important;
+}
+
+/* ── bulk action bar ─────────────────────── */
+
+.txnv-bulk-bar {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  background: var(--surface);
+  border-top: 1px solid var(--accent-dim);
+  flex-shrink: 0;
+  z-index: 10;
+}
+
+.txnv-bulk-count {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--accent);
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+  min-width: 90px;
+}
+
+.txnv-bulk-inputs {
+  display: flex;
+  gap: 6px;
+  flex: 1;
+}
+
+.txnv-bulk-cat {
+  width: 180px;
+  flex-shrink: 0;
+}
+
+.txnv-bulk-apply-btn {
+  height: 30px;
+  padding: 0 16px;
+  background: transparent;
+  border: 1px solid var(--accent-dim);
+  border-radius: 4px;
+  color: var(--accent);
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s;
+  white-space: nowrap;
+}
+
+.txnv-bulk-apply-btn:hover:not(:disabled) {
+  background: var(--accent-glow);
+  border-color: var(--accent);
+}
+
+.txnv-bulk-apply-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.txnv-bulk-cancel-btn {
+  height: 30px;
+  width: 30px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-muted);
+  font-size: 12px;
+  cursor: pointer;
+  transition: border-color 0.12s, color 0.12s;
+  flex-shrink: 0;
+}
+
+.txnv-bulk-cancel-btn:hover:not(:disabled) {
+  border-color: var(--border-hi);
+  color: var(--text);
+}
+
 .txnv-accounting-date-input {
   background: transparent;
   border: none;

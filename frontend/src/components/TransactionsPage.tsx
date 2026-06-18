@@ -35,6 +35,7 @@ interface RowState {
   subcategory: string
   comment: string
   accountingDate: string
+  selected: boolean
   saving: boolean
   savingComment: boolean
   savingAccountingDate: boolean
@@ -63,6 +64,11 @@ export default function TransactionsPage() {
   const [linkingState, setLinkingState] = useState<LinkingState>(null)
   const [linkError, setLinkError] = useState<string | null>(null)
   const [highlightedId, setHighlightedId] = useState<number | null>(null)
+  const [filterCategory, setFilterCategory] = useState('')
+  const [filterSubcategory, setFilterSubcategory] = useState('')
+  const [bulkCategory, setBulkCategory] = useState('')
+  const [bulkSubcategory, setBulkSubcategory] = useState('')
+  const [bulkApplying, setBulkApplying] = useState(false)
 
   useEffect(() => {
     fetchAccounts().then(setAccounts).catch(() => {})
@@ -86,11 +92,11 @@ export default function TransactionsPage() {
     return categories.find(c => c.name === category)?.subcategories ?? []
   }
 
-  async function load() {
+  async function doLoad(category?: string, subcategory?: string) {
     setPage({ phase: 'loading' })
     setLinkingState(null)
     try {
-      const data = await fetchAllTransactions(from, to, selectedIban || undefined)
+      const data = await fetchAllTransactions(from, to, selectedIban || undefined, category, subcategory)
       setRows(
         data.transactions.map(tx => ({
           original: tx,
@@ -98,6 +104,7 @@ export default function TransactionsPage() {
           subcategory: tx.subcategory,
           comment: tx.comment ?? '',
           accountingDate: tx.accountingDate,
+          selected: false,
           saving: false,
           savingComment: false,
           savingAccountingDate: false,
@@ -108,6 +115,12 @@ export default function TransactionsPage() {
     } catch (e) {
       setPage({ phase: 'error', message: e instanceof Error ? e.message : 'request failed' })
     }
+  }
+
+  function load() {
+    setFilterCategory('')
+    setFilterSubcategory('')
+    doLoad()
   }
 
   function updateRow(index: number, field: 'category' | 'subcategory' | 'comment' | 'accountingDate', value: string) {
@@ -288,6 +301,59 @@ export default function TransactionsPage() {
     document.querySelector(`[data-txid="${txId}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
   }
 
+  const selectedCount = rows.filter(r => r.selected).length
+  const allSelected = rows.length > 0 && selectedCount === rows.length
+
+  function toggleSelect(index: number) {
+    setRows(prev => {
+      const next = [...prev]
+      next[index] = { ...next[index], selected: !next[index].selected }
+      return next
+    })
+  }
+
+  function toggleSelectAll() {
+    const next = !allSelected
+    setRows(prev => prev.map(r => ({ ...r, selected: next })))
+  }
+
+  function clearSelection() {
+    setRows(prev => prev.map(r => ({ ...r, selected: false })))
+    setBulkCategory('')
+    setBulkSubcategory('')
+  }
+
+  async function applyBulk() {
+    if (!bulkCategory.trim() || selectedCount === 0) return
+    setBulkApplying(true)
+    const cat = bulkCategory.trim()
+    const sub = bulkSubcategory.trim()
+    const indices = rows.map((r, i) => ({ r, i })).filter(({ r }) => r.selected).map(({ i }) => i)
+    const results = await Promise.allSettled(
+      indices.map(i => updateTransactionCategory(rows[i].original.id, cat, sub)),
+    )
+    setRows(prev => {
+      const next = [...prev]
+      results.forEach((result, idx) => {
+        const i = indices[idx]
+        if (result.status === 'fulfilled') {
+          const updated = result.value
+          next[i] = {
+            ...next[i],
+            original: updated,
+            category: updated.category,
+            subcategory: updated.subcategory,
+            selected: false,
+          }
+        }
+      })
+      return next
+    })
+    setBulkApplying(false)
+    setBulkCategory('')
+    setBulkSubcategory('')
+  }
+
   const sublistId = (category: string) =>
     `txnv-sub-${category.replace(/\s+/g, '-').toLowerCase()}`
 
@@ -333,6 +399,8 @@ export default function TransactionsPage() {
       classes.push('txnv-row--linking-target')
     if (highlightedId === row.original.id)
       classes.push('txnv-row--highlighted')
+    if (row.selected)
+      classes.push('txnv-row--selected')
     return classes.join(' ')
   }
 
@@ -483,6 +551,37 @@ export default function TransactionsPage() {
         >
           {page.phase === 'loading' ? '…' : 'load'}
         </button>
+        {allCategoryNames.length > 0 && (
+          <select
+            className="account-select"
+            value={filterCategory}
+            onChange={e => {
+              const cat = e.target.value
+              setFilterCategory(cat)
+              setFilterSubcategory('')
+              setLinkingState(null)
+              if (page.phase === 'ready') doLoad(cat || undefined)
+            }}
+          >
+            <option value="">alle kategorien</option>
+            {allCategoryNames.map(c => <option key={c} value={c}>{c}</option>)}
+          </select>
+        )}
+        {filterCategory && subcategoriesFor(filterCategory).length > 0 && (
+          <select
+            className="account-select"
+            value={filterSubcategory}
+            onChange={e => {
+              const sub = e.target.value
+              setFilterSubcategory(sub)
+              setLinkingState(null)
+              if (page.phase === 'ready') doLoad(filterCategory, sub || undefined)
+            }}
+          >
+            <option value="">alle subkategorien</option>
+            {subcategoriesFor(filterCategory).map(s => <option key={s} value={s}>{s}</option>)}
+          </select>
+        )}
         {page.phase === 'ready' && (
           <span className="txnv-count">{rows.length} transactions</span>
         )}
@@ -517,6 +616,15 @@ export default function TransactionsPage() {
           <table className="txnv-table">
             <thead>
               <tr>
+                <th className="txnv-col-check">
+                  <input
+                    type="checkbox"
+                    className="txnv-checkbox"
+                    checked={allSelected}
+                    ref={el => { if (el) el.indeterminate = selectedCount > 0 && !allSelected }}
+                    onChange={toggleSelectAll}
+                  />
+                </th>
                 <th>datum</th>
                 <th>account</th>
                 <th className="txnv-col-amount">amount</th>
@@ -540,6 +648,14 @@ export default function TransactionsPage() {
                 })()
                 return (
                   <tr key={row.original.id} className={rowClassName(row, i)} data-txid={row.original.id}>
+                    <td className="txnv-col-check">
+                      <input
+                        type="checkbox"
+                        className="txnv-checkbox"
+                        checked={row.selected}
+                        onChange={() => toggleSelect(i)}
+                      />
+                    </td>
                     <td
                       className="txn-cell-date"
                       style={rowLinkColor ? { boxShadow: `inset 3px 0 0 0 ${rowLinkColor}`, paddingLeft: '9px' } : undefined}
@@ -626,6 +742,38 @@ export default function TransactionsPage() {
           </table>
         )}
       </div>
+
+      {selectedCount > 0 && (
+        <div className="txnv-bulk-bar">
+          <span className="txnv-bulk-count">{selectedCount} ausgewählt</span>
+          <div className="txnv-bulk-inputs">
+            <input
+              className="ri-cat-input txnv-bulk-cat"
+              placeholder="kategorie"
+              value={bulkCategory}
+              list="txnv-cat-list"
+              onChange={e => { setBulkCategory(e.target.value); setBulkSubcategory('') }}
+            />
+            <input
+              className="ri-cat-input txnv-bulk-cat"
+              placeholder="subkategorie"
+              value={bulkSubcategory}
+              list={bulkCategory ? sublistId(bulkCategory) : 'txnv-sub-all'}
+              onChange={e => setBulkSubcategory(e.target.value)}
+            />
+          </div>
+          <button
+            className="txnv-bulk-apply-btn"
+            onClick={applyBulk}
+            disabled={bulkApplying || !bulkCategory.trim()}
+          >
+            {bulkApplying ? '…' : 'übernehmen'}
+          </button>
+          <button className="txnv-bulk-cancel-btn" onClick={clearSelection} disabled={bulkApplying}>
+            ✕
+          </button>
+        </div>
+      )}
     </div>
   )
 }
