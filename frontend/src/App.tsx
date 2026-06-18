@@ -20,7 +20,7 @@ function isoDate(d: Date) {
 const today = isoDate(new Date())
 const firstOfYear = isoDate(new Date(new Date().getFullYear(), 0, 1))
 
-type Tab = 'analytics' | 'trends' | 'breakdown' | 'cashflow' | 'transactions' | 'thresholds' | 'accounts' | 'csv' | 'camt'
+type Tab = 'sankey' | 'trends' | 'breakdown' | 'cashflow' | 'kontoauszug' | 'konten' | 'budgets' | 'csv' | 'camt'
 
 type ViewState =
   | { phase: 'idle' }
@@ -28,9 +28,37 @@ type ViewState =
   | { phase: 'error'; message: string }
   | { phase: 'ready'; data: SankeyResponse }
 
+const NAV: { section: string; items: [Tab, string][] }[] = [
+  {
+    section: 'Analytics',
+    items: [
+      ['sankey', 'Sankey'],
+      ['trends', 'Trends'],
+      ['breakdown', 'Breakdown'],
+      ['cashflow', 'Cashflow'],
+    ],
+  },
+  {
+    section: 'Accounts',
+    items: [
+      ['kontoauszug', 'Kontoauszug'],
+      ['konten', 'Konten'],
+      ['budgets', 'Budgets'],
+    ],
+  },
+  {
+    section: 'Importe',
+    items: [
+      ['csv', 'CSV'],
+      ['camt', 'CAMT'],
+    ],
+  },
+]
+
 export default function App() {
   const { username, isLoading, logout } = useAuth()
-  const [tab, setTab] = useState<Tab>('analytics')
+  const [tab, setTab] = useState<Tab>('sankey')
+  const [sidebarOpen, setSidebarOpen] = useState(true)
   const [from, setFrom] = useState(firstOfYear)
   const [to, setTo] = useState(today)
   const [accounts, setAccounts] = useState<Account[]>([])
@@ -64,113 +92,120 @@ export default function App() {
 
   return (
     <div className="shell">
-      <header className="bar">
-        <span className="wordmark">moneylytics</span>
+      {/* ── sidebar ── */}
+      <aside className={`sidebar${sidebarOpen ? '' : ' sidebar--collapsed'}`}>
+        <button
+          className="sidebar-toggle"
+          onClick={() => setSidebarOpen(o => !o)}
+          title={sidebarOpen ? 'Menü einklappen' : 'Menü ausklappen'}
+        >
+          <span className="sidebar-toggle-icon">{sidebarOpen ? '‹' : '›'}</span>
+        </button>
 
-        <nav className="tab-nav">
-          {(
-            [
-              ['analytics', 'analytics'],
-              ['trends', 'trends'],
-              ['breakdown', 'breakdown'],
-              ['cashflow', 'cashflow'],
-              ['transactions', 'transactions'],
-              ['thresholds', 'thresholds'],
-              ['accounts', 'accounts'],
-              ['csv', 'CSV import'],
-              ['camt', 'CAMT import'],
-            ] as [Tab, string][]
-          ).map(([id, label]) => (
-            <button
-              key={id}
-              className={`tab-btn${tab === id ? ' active' : ''}`}
-              onClick={() => setTab(id)}
-            >
-              {label}
-            </button>
+        <nav className="sidebar-nav">
+          {NAV.map(({ section, items }) => (
+            <div key={section} className="nav-section">
+              <span className="nav-section-title">{section}</span>
+              {items.map(([id, label]) => (
+                <button
+                  key={id}
+                  className={`nav-item${tab === id ? ' active' : ''}`}
+                  onClick={() => setTab(id)}
+                  title={label}
+                >
+                  <span className="nav-item-label">{label}</span>
+                </button>
+              ))}
+            </div>
           ))}
         </nav>
+      </aside>
 
-        <div className="session">
-          <span className="session-user">{username}</span>
-          <button className="logout-btn" onClick={logout}>sign out</button>
+      {/* ── main column ── */}
+      <div className="main-col">
+        <header className="bar">
+          <span className="wordmark">moneylytics</span>
+          <div className="session">
+            <span className="session-user">{username}</span>
+            <button className="logout-btn" onClick={logout}>sign out</button>
+          </div>
+        </header>
+
+        <div className="subbar">
+          {accounts.length > 0 && (
+            <select
+              className="account-select"
+              value={selectedIban}
+              onChange={e => setSelectedIban(e.target.value)}
+            >
+              <option value="">all accounts</option>
+              {accounts.map(a => (
+                <option key={a.iban} value={a.iban}>{a.name}</option>
+              ))}
+            </select>
+          )}
+
+          <fieldset className="range-group">
+            <label className="range-field">
+              <span className="range-label">from</span>
+              <input type="date" value={from} max={to} onChange={e => setFrom(e.target.value)} />
+            </label>
+            <div className="range-sep" />
+            <label className="range-field">
+              <span className="range-label">to</span>
+              <input type="date" value={to} min={from} max={today} onChange={e => setTo(e.target.value)} />
+            </label>
+          </fieldset>
+
+          {tab === 'sankey' && (
+            <button className="load-btn" onClick={load} disabled={view.phase === 'loading'}>
+              {view.phase === 'loading' ? '…' : 'load'}
+            </button>
+          )}
         </div>
-      </header>
 
-      <div className="subbar">
-        {accounts.length > 0 && (
-          <select
-            className="account-select"
-            value={selectedIban}
-            onChange={e => setSelectedIban(e.target.value)}
-          >
-            <option value="">all accounts</option>
-            {accounts.map(a => (
-              <option key={a.iban} value={a.iban}>{a.name}</option>
-            ))}
-          </select>
-        )}
-
-        <fieldset className="range-group">
-          <label className="range-field">
-            <span className="range-label">from</span>
-            <input type="date" value={from} max={to} onChange={e => setFrom(e.target.value)} />
-          </label>
-          <div className="range-sep" />
-          <label className="range-field">
-            <span className="range-label">to</span>
-            <input type="date" value={to} min={from} max={today} onChange={e => setTo(e.target.value)} />
-          </label>
-        </fieldset>
-
-        {tab === 'analytics' && (
-          <button className="load-btn" onClick={load} disabled={view.phase === 'loading'}>
-            {view.phase === 'loading' ? '…' : 'load'}
-          </button>
-        )}
-      </div>
-
-      <main className="stage">
-        {tab === 'analytics' && (
-          <>
-            {view.phase === 'idle' && (
-              <p className="hint">select a date range and press <kbd>load</kbd></p>
-            )}
-            {view.phase === 'loading' && (
-              <p className="hint loading">fetching…</p>
-            )}
-            {view.phase === 'error' && (
-              <p className="hint error">{view.message}</p>
-            )}
-            {view.phase === 'ready' && (
-              <div className="chart" key={`${iban}/${from}/${to}`}>
-                <SankeyChart
-                  data={view.data}
-                  onNodeClick={nodeKey => setActiveNode(nodeKey)}
-                />
-                {activeNode && (
-                  <TransactionListPanel
-                    nodeKey={activeNode}
-                    from={from}
-                    to={to}
-                    iban={iban}
-                    onClose={() => setActiveNode(null)}
+        <main className="stage">
+          {tab === 'sankey' && (
+            <>
+              {view.phase === 'idle' && (
+                <p className="hint">select a date range and press <kbd>load</kbd></p>
+              )}
+              {view.phase === 'loading' && (
+                <p className="hint loading">fetching…</p>
+              )}
+              {view.phase === 'error' && (
+                <p className="hint error">{view.message}</p>
+              )}
+              {view.phase === 'ready' && (
+                <div className="chart" key={`${iban}/${from}/${to}`}>
+                  <SankeyChart
+                    data={view.data}
+                    onNodeClick={nodeKey => setActiveNode(nodeKey)}
                   />
-                )}
-              </div>
-            )}
-          </>
-        )}
+                  {activeNode && (
+                    <TransactionListPanel
+                      nodeKey={activeNode}
+                      from={from}
+                      to={to}
+                      iban={iban}
+                      onClose={() => setActiveNode(null)}
+                    />
+                  )}
+                </div>
+              )}
+            </>
+          )}
 
-        {tab === 'cashflow' && <CashflowPage key={username} from={from} to={to} iban={iban} />}
-        {tab === 'trends' && <TrendsPage key={username} from={from} to={to} iban={iban} />}
-        {tab === 'breakdown' && <PiePage key={username} from={from} to={to} iban={iban} />}
-        {tab === 'transactions' && <TransactionsPage key={username} from={from} to={to} iban={iban} accounts={accounts} />}
-        {tab === 'thresholds' && <ThresholdsPage key={username} from={from} to={to} iban={iban} />}
-        {tab === 'accounts' && <AccountsPage key={username} />}
-        {tab === 'csv' && <CsvImportPage key={username} />}
-        {tab === 'camt' && <CamtImportPage key={username} />}
-      </main>
+          {tab === 'cashflow' && <CashflowPage key={username} from={from} to={to} iban={iban} />}
+          {tab === 'trends' && <TrendsPage key={username} from={from} to={to} iban={iban} />}
+          {tab === 'breakdown' && <PiePage key={username} from={from} to={to} iban={iban} />}
+          {tab === 'kontoauszug' && <TransactionsPage key={username} from={from} to={to} iban={iban} accounts={accounts} />}
+          {tab === 'budgets' && <ThresholdsPage key={username} from={from} to={to} iban={iban} />}
+          {tab === 'konten' && <AccountsPage key={username} />}
+          {tab === 'csv' && <CsvImportPage key={username} />}
+          {tab === 'camt' && <CamtImportPage key={username} />}
+        </main>
+      </div>
     </div>
   )
 }
