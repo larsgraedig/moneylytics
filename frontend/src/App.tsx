@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react'
 import SankeyChart from './components/SankeyChart'
-import RawImportPage from './components/RawImportPage'
 import CamtImportPage from './components/CamtImportPage'
 import CsvImportPage from './components/CsvImportPage'
 import TrendsPage from './components/TrendsPage'
@@ -21,7 +20,7 @@ function isoDate(d: Date) {
 const today = isoDate(new Date())
 const firstOfYear = isoDate(new Date(new Date().getFullYear(), 0, 1))
 
-type Tab = 'analytics' | 'trends' | 'breakdown' | 'cashflow' | 'transactions' | 'thresholds' | 'accounts' | 'csv' | 'import' | 'camt'
+type Tab = 'analytics' | 'trends' | 'breakdown' | 'cashflow' | 'transactions' | 'thresholds' | 'accounts' | 'csv' | 'camt'
 
 type ViewState =
   | { phase: 'idle' }
@@ -79,7 +78,6 @@ export default function App() {
               ['thresholds', 'thresholds'],
               ['accounts', 'accounts'],
               ['csv', 'CSV import'],
-              ['import', 'MLP import'],
               ['camt', 'CAMT import'],
             ] as [Tab, string][]
           ).map(([id, label]) => (
@@ -171,7 +169,6 @@ export default function App() {
         {tab === 'thresholds' && <ThresholdsPage key={username} from={from} to={to} iban={iban} />}
         {tab === 'accounts' && <AccountsPage key={username} />}
         {tab === 'csv' && <CsvImportPage key={username} />}
-        {tab === 'import' && <RawImportPage key={username} />}
         {tab === 'camt' && <CamtImportPage key={username} />}
       </main>
     </div>

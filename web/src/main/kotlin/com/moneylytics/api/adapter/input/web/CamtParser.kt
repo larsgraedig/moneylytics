@@ -53,7 +53,7 @@ class CamtParser {
             val entries = rpt.childNodes.elements().filter { it.localName == "Ntry" }
 
             for (entry in entries) {
-                val errors = mutableListOf<MlpRowError>()
+                val errors = mutableListOf<ParsedRawError>()
 
                 val amtEl = entry.firstChildEl("Amt")
                 val amtRaw = amtEl?.textContent?.trim() ?: ""
@@ -92,7 +92,7 @@ class CamtParser {
                         ?: ""
 
                 if (acctIban.isBlank()) {
-                    errors.add(MlpRowError("IBAN", acctIban, "Account IBAN not found in file"))
+                    errors.add(ParsedRawError("IBAN", acctIban, "Account IBAN not found in file"))
                 }
 
                 rows.add(
@@ -140,16 +140,16 @@ class CamtParser {
     private fun parseDate(
         value: String,
         column: String,
-        errors: MutableList<MlpRowError>,
+        errors: MutableList<ParsedRawError>,
     ): LocalDate? {
         if (value.isBlank()) {
-            errors.add(MlpRowError(column, value, "Date must not be blank"))
+            errors.add(ParsedRawError(column, value, "Date must not be blank"))
             return null
         }
         return try {
             LocalDate.parse(value)
         } catch (_: DateTimeParseException) {
-            errors.add(MlpRowError(column, value, "Invalid date format, expected yyyy-MM-dd"))
+            errors.add(ParsedRawError(column, value, "Invalid date format, expected yyyy-MM-dd"))
             null
         }
     }
@@ -157,17 +157,17 @@ class CamtParser {
     private fun parseAmount(
         value: String,
         cdtDbt: String,
-        errors: MutableList<MlpRowError>,
+        errors: MutableList<ParsedRawError>,
     ): BigDecimal? {
         if (value.isBlank()) {
-            errors.add(MlpRowError("Amt", value, "Amount must not be blank"))
+            errors.add(ParsedRawError("Amt", value, "Amount must not be blank"))
             return null
         }
         return try {
             val abs = BigDecimal(value)
             if (cdtDbt == "DBIT") abs.negate() else abs
         } catch (_: NumberFormatException) {
-            errors.add(MlpRowError("Amt", value, "Invalid amount: $value"))
+            errors.add(ParsedRawError("Amt", value, "Invalid amount: $value"))
             null
         }
     }

@@ -4,10 +4,6 @@ import java.math.BigDecimal
 
 enum class RowStatus { NEW, DUPLICATE, INVALID, PREVIOUSLY_IGNORED }
 
-data class RawPreviewResponse(
-    val rows: List<RawPreviewRow>,
-)
-
 data class RawPreviewRow(
     val rowNumber: Int,
     val status: RowStatus,
@@ -29,24 +25,6 @@ data class RawPreviewError(
     val column: String,
     val value: String,
     val message: String,
-)
-
-data class ImportRawRequest(
-    val accountIban: String,
-    val accountName: String,
-    val toImport: List<RawTransactionImport>,
-    val toIgnore: List<String>,
-)
-
-data class RawTransactionImport(
-    val fingerprint: String,
-    val bookingDate: String,
-    val valueDate: String,
-    val amount: BigDecimal,
-    val currency: String,
-    val category: String,
-    val subcategory: String,
-    val purpose: String?,
 )
 
 data class CamtPreviewResponse(
