@@ -10,8 +10,9 @@ import org.springframework.transaction.annotation.Transactional
 class CsvProfilePersistenceAdapter(
     private val jpaRepository: CsvProfileJpaRepository,
 ) {
-    private val objectMapper = jacksonObjectMapper()
-        .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
+    private val objectMapper =
+        jacksonObjectMapper()
+            .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
 
     fun findMapping(
         userId: Long,

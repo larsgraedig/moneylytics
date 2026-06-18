@@ -36,12 +36,55 @@ export interface CsvMapping {
   fixedCurrency: string
 }
 
+export type RowStatus = 'NEW' | 'DUPLICATE'
+
+export interface GenericCsvPreviewRow {
+  rowIndex: number
+  date: string
+  amount: number
+  currency: string
+  accountIban: string
+  purpose: string | null
+  fingerprint: string
+  status: RowStatus
+}
+
+export interface GenericRowToImport {
+  date: string
+  amount: number
+  currency: string
+  accountIban: string
+  purpose: string | null
+  category: string
+  subcategory: string
+}
+
 export async function detectCsvFormat(file: File): Promise<CsvDetectionResult> {
   const form = new FormData()
   form.append('file', file)
   const res = await fetch('/transactions/csv/detect', { method: 'POST', body: form })
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
   return res.json() as Promise<CsvDetectionResult>
+}
+
+export async function previewGenericCsv(file: File, mapping: CsvMapping): Promise<GenericCsvPreviewRow[]> {
+  const form = new FormData()
+  form.append('file', file)
+  form.append('mapping', new Blob([JSON.stringify(mapping)], { type: 'application/json' }))
+  const res = await fetch('/transactions/csv/preview', { method: 'POST', body: form })
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  return res.json() as Promise<GenericCsvPreviewRow[]>
+}
+
+export async function importGenericRows(rows: GenericRowToImport[]): Promise<number> {
+  const res = await fetch('/transactions/csv/import-rows', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(rows),
+  })
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  const data = await res.json() as { importedCount: number }
+  return data.importedCount
 }
 
 export async function importGenericCsv(file: File, mapping: CsvMapping): Promise<number> {
