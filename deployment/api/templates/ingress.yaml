@@ -28,16 +28,21 @@ spec:
     - host: {{ .host | quote }}
       http:
         paths:
-          {{- range .paths }}
-          - path: {{ .path }}
-            {{- with .pathType }}
-            pathType: {{ . }}
-            {{- end }}
+          {{- range $.Values.ingress.apiPaths }}
+          - path: {{ . }}
+            pathType: Prefix
             backend:
               service:
                 name: {{ include "moneylytics.fullname" $ }}
                 port:
                   number: {{ $.Values.service.port }}
           {{- end }}
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "moneylytics.fullname" $ }}-frontend
+                port:
+                  number: 80
     {{- end }}
 {{- end }}

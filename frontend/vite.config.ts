@@ -1,17 +1,20 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
+const backendUrl = process.env.BACKEND_URL ?? 'http://localhost:8080'
+
 export default defineConfig({
   plugins: [react()],
   server: {
     proxy: {
-      '/auth': 'http://localhost:8080',
-      '/oauth2': { target: 'http://localhost:8080', changeOrigin: true },
-      '/transactions': 'http://localhost:8080',
-      '/accounts': 'http://localhost:8080',
-      '/categories': 'http://localhost:8080',
-      '/users': 'http://localhost:8080',
-      '/thresholds': 'http://localhost:8080',
+      '/auth': backendUrl,
+      '/oauth2': { target: backendUrl, changeOrigin: true },
+      '/login': backendUrl,
+      '/transactions': backendUrl,
+      '/accounts': backendUrl,
+      '/categories': backendUrl,
+      '/users': backendUrl,
+      '/thresholds': backendUrl,
     },
   },
 })
