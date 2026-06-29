@@ -254,7 +254,7 @@ export default function ThresholdsPage({ from, to, iban }: { from: string; to: s
       critical: parseAmt(form.critical),
     }
     if (req.notice == null && req.warning == null && req.critical == null) {
-      setFormError(t('budgets.minAmount'))
+      setFormError(t('limits.minAmount'))
       return
     }
     setSaving(true)
@@ -272,7 +272,7 @@ export default function ThresholdsPage({ from, to, iban }: { from: string; to: s
       })
       cancelEdit()
     } catch {
-      setFormError(t('budgets.saveFailed'))
+      setFormError(t('limits.saveFailed'))
     } finally {
       setSaving(false)
     }
@@ -285,7 +285,7 @@ export default function ThresholdsPage({ from, to, iban }: { from: string; to: s
       setThresholds(prev => prev.filter(t => t.id !== editThresholdId))
       cancelEdit()
     } catch {
-      setFormError(t('budgets.deleteFailed'))
+      setFormError(t('limits.deleteFailed'))
     }
   }
 
@@ -307,30 +307,30 @@ export default function ThresholdsPage({ from, to, iban }: { from: string; to: s
     <div className="bgt-page">
       <div className="bgt-controls">
         <button className="load-btn" onClick={loadSpending} disabled={loading}>
-          {loading ? '…' : t('budgets.load')}
+          {loading ? '…' : t('limits.load')}
         </button>
         {spendingLoaded && (
           <span className="bgt-period-badge">
-            {t('budgets.spendingLoaded', { from, to })}
+            {t('limits.spendingLoaded', { from, to })}
           </span>
         )}
       </div>
 
       <div className="bgt-body">
         {rows.length === 0 ? (
-          <p className="hint">{t('budgets.noCategories')}</p>
+          <p className="hint">{t('limits.noCategories')}</p>
         ) : (
           <table className="bgt-table">
             <thead>
               <tr>
-                <th className="bgt-th-cat">{t('budgets.columns.category')}</th>
-                <th className="bgt-th-sub">{t('budgets.columns.subcategory')}</th>
-                {spendingLoaded && <th className="bgt-th-spent">{t('budgets.columns.spending')}</th>}
-                <th className="bgt-th-period">{t('budgets.columns.period')}</th>
-                <th className="bgt-th-sev bgt-sev--notice">{t('budgets.columns.notice')}</th>
-                <th className="bgt-th-sev bgt-sev--warning">{t('budgets.columns.warning')}</th>
-                <th className="bgt-th-sev bgt-sev--critical">{t('budgets.columns.critical')}</th>
-                {spendingLoaded && <th className="bgt-th-bar">{t('budgets.columns.progress')}</th>}
+                <th className="bgt-th-cat">{t('limits.columns.category')}</th>
+                <th className="bgt-th-sub">{t('limits.columns.subcategory')}</th>
+                {spendingLoaded && <th className="bgt-th-spent">{t('limits.columns.spending')}</th>}
+                <th className="bgt-th-period">{t('limits.columns.period')}</th>
+                <th className="bgt-th-sev bgt-sev--notice">{t('limits.columns.notice')}</th>
+                <th className="bgt-th-sev bgt-sev--warning">{t('limits.columns.warning')}</th>
+                <th className="bgt-th-sev bgt-sev--critical">{t('limits.columns.critical')}</th>
+                {spendingLoaded && <th className="bgt-th-bar">{t('limits.columns.progress')}</th>}
                 <th className="bgt-th-actions" />
               </tr>
             </thead>
@@ -357,7 +357,7 @@ export default function ThresholdsPage({ from, to, iban }: { from: string; to: s
                   return (
                     <tr key={row.key} className={rowClass}>
                       <td className="bgt-td-cat bgt-cell-cat">{row.category}</td>
-                      <td className="bgt-td-sub bgt-cell-muted">{row.subcategory ?? t('budgets.totalSubcat')}</td>
+                      <td className="bgt-td-sub bgt-cell-muted">{row.subcategory ?? t('limits.totalSubcat')}</td>
                       {spendingLoaded && (
                         <td className="bgt-td-spent">
                           {spending > 0 ? EUR2.format(spending) : '—'}
@@ -444,7 +444,7 @@ export default function ThresholdsPage({ from, to, iban }: { from: string; to: s
                     <td
                       className={`bgt-td-sub ${row.subcategory == null ? 'bgt-cell-all' : 'bgt-cell-sub'}`}
                     >
-                      {row.subcategory ?? t('budgets.totalSubcat')}
+                      {row.subcategory ?? t('limits.totalSubcat')}
                     </td>
                     {spendingLoaded && (
                       <td className={`bgt-td-spent${spending === 0 ? ' bgt-cell-muted' : ''}`}>
@@ -498,7 +498,7 @@ export default function ThresholdsPage({ from, to, iban }: { from: string; to: s
                           e.stopPropagation()
                           startEdit(row)
                         }}
-                        title={best != null ? t('budgets.editThreshold') : t('budgets.addThreshold')}
+                        title={best != null ? t('limits.editThreshold') : t('limits.addThreshold')}
                       >
                         {best != null ? '✎' : '+'}
                       </button>

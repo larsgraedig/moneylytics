@@ -13,8 +13,15 @@ import {
   type OffsetLinkItem,
   type TransactionItem,
 } from '../api/transactions'
+import {
+  assignTransaction as assignToBudget,
+  fetchBudgets,
+  removeTransactionLink as removeBudgetLink,
+  type Budget,
+} from '../api/budgets'
 
 const LINK_COLORS = ['#f59e0b', '#10b981', '#60a5fa', '#f472b6', '#a78bfa', '#fb923c']
+const BUDGET_COLORS = ['#34d399', '#818cf8', '#fb7185', '#fbbf24', '#38bdf8', '#a3e635']
 
 function formatDate(iso: string): string {
   const [y, m, d] = iso.split('-')
@@ -22,6 +29,13 @@ function formatDate(iso: string): string {
 }
 
 const EUR = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' })
+
+interface BudgetAssignment {
+  linkId: number
+  budgetId: number
+  budgetName: string
+  amount: number | null
+}
 
 interface RowState {
   original: TransactionItem
@@ -34,6 +48,8 @@ interface RowState {
   savingComment: boolean
   savingAccountingDate: boolean
   error: string | null
+  budgetAssignments: BudgetAssignment[]
+  addingBudget: { budgetId: string; amount: string } | null
 }
 
 type PageState =
@@ -62,6 +78,7 @@ export default function TransactionsPage({
   const [rows, setRows] = useState<RowState[]>([])
   const [page, setPage] = useState<PageState>({ phase: 'idle' })
   const [categories, setCategories] = useState<CategoryGroup[]>([])
+  const [budgets, setBudgets] = useState<Budget[]>([])
   const [linkingState, setLinkingState] = useState<LinkingState>(null)
   const [linkError, setLinkError] = useState<string | null>(null)
   const [highlightedId, setHighlightedId] = useState<number | null>(null)
@@ -73,12 +90,27 @@ export default function TransactionsPage({
 
   useEffect(() => {
     fetchCategories().then(r => setCategories(r.categories)).catch(() => {})
+    fetchBudgets().then(setBudgets).catch(() => {})
   }, [])
 
   const accountMap = useMemo(
     () => new Map(accounts.map(a => [a.iban, a.name])),
     [accounts],
   )
+
+  const txBudgetMap = useMemo(() => {
+    const map = new Map<number, BudgetAssignment[]>()
+    budgets.forEach(b => {
+      b.transactionLinks.forEach(link => {
+        const existing = map.get(link.transactionId) ?? []
+        map.set(link.transactionId, [
+          ...existing,
+          { linkId: link.id, budgetId: b.id, budgetName: b.name, amount: link.amount },
+        ])
+      })
+    })
+    return map
+  }, [budgets])
 
   const allCategoryNames = useMemo(() => categories.map(c => c.name), [categories])
 
@@ -109,6 +141,8 @@ export default function TransactionsPage({
           savingComment: false,
           savingAccountingDate: false,
           error: null,
+          budgetAssignments: txBudgetMap.get(tx.id) ?? [],
+          addingBudget: null,
         })),
       )
       setPage({ phase: 'ready' })
@@ -292,6 +326,66 @@ export default function TransactionsPage({
       )
     } catch {
       // silent — the chip stays if the request fails
+    }
+  }
+
+  async function confirmBudgetAssign(rowIndex: number) {
+    const row = rows[rowIndex]
+    const adding = row.addingBudget
+    if (!adding || !adding.budgetId) return
+    const budgetId = Number(adding.budgetId)
+    const amount = adding.amount !== '' ? parseFloat(adding.amount) || null : null
+    try {
+      const link = await assignToBudget(budgetId, row.original.id, amount)
+      const budget = budgets.find(b => b.id === budgetId)
+      if (!budget) return
+      const newAssignment: BudgetAssignment = {
+        linkId: link.id,
+        budgetId,
+        budgetName: budget.name,
+        amount: link.amount,
+      }
+      setBudgets(prev =>
+        prev.map(b =>
+          b.id === budgetId
+            ? { ...b, transactionLinks: [...b.transactionLinks, link], balance: b.balance + (link.amount ?? row.original.amount) }
+            : b,
+        ),
+      )
+      setRows(prev => {
+        const next = [...prev]
+        next[rowIndex] = {
+          ...next[rowIndex],
+          budgetAssignments: [...next[rowIndex].budgetAssignments, newAssignment],
+          addingBudget: null,
+        }
+        return next
+      })
+    } catch {
+      // silent — user can retry
+    }
+  }
+
+  async function removeBudgetAssign(rowIndex: number, linkId: number, budgetId: number) {
+    try {
+      await removeBudgetLink(linkId)
+      setBudgets(prev =>
+        prev.map(b =>
+          b.id === budgetId
+            ? { ...b, transactionLinks: b.transactionLinks.filter(l => l.id !== linkId) }
+            : b,
+        ),
+      )
+      setRows(prev => {
+        const next = [...prev]
+        next[rowIndex] = {
+          ...next[rowIndex],
+          budgetAssignments: next[rowIndex].budgetAssignments.filter(a => a.linkId !== linkId),
+        }
+        return next
+      })
+    } catch {
+      // silent
     }
   }
 
@@ -507,6 +601,99 @@ export default function TransactionsPage({
     )
   }
 
+  function renderBudgetCell(row: RowState, i: number) {
+    const availableBudgets = budgets.filter(
+      b => !row.budgetAssignments.some(a => a.budgetId === b.id),
+    )
+    const adding = row.addingBudget
+
+    return (
+      <div className="txnv-budget-cell">
+        {row.budgetAssignments.map((a, bi) => (
+          <span
+            key={a.linkId}
+            className="txnv-budget-chip"
+            style={{ borderColor: BUDGET_COLORS[bi % BUDGET_COLORS.length] }}
+          >
+            <span className="txnv-budget-chip-name">{a.budgetName}</span>
+            {a.amount != null && (
+              <span className="txnv-budget-chip-amt">{EUR.format(a.amount)}</span>
+            )}
+            <button
+              className="txnv-link-chip-remove"
+              onClick={() => removeBudgetAssign(i, a.linkId, a.budgetId)}
+              title={t('budgets.remove')}
+            >
+              ×
+            </button>
+          </span>
+        ))}
+        {adding == null && availableBudgets.length > 0 && (
+          <button
+            className="txnv-add-link-btn"
+            onClick={() => setRows(prev => {
+              const next = [...prev]
+              next[i] = { ...next[i], addingBudget: { budgetId: '', amount: '' } }
+              return next
+            })}
+            title={t('budgets.assign')}
+          >
+            budget
+          </button>
+        )}
+        {adding != null && (
+          <div className="txnv-budget-assign">
+            <select
+              className="txnv-budget-select"
+              value={adding.budgetId}
+              onChange={e => setRows(prev => {
+                const next = [...prev]
+                next[i] = { ...next[i], addingBudget: { ...next[i].addingBudget!, budgetId: e.target.value } }
+                return next
+              })}
+              autoFocus
+            >
+              <option value="">—</option>
+              {availableBudgets.map(b => (
+                <option key={b.id} value={b.id}>{b.name}</option>
+              ))}
+            </select>
+            <input
+              className="txnv-partial-input"
+              type="number"
+              step="0.01"
+              min="0"
+              placeholder={t('transactions.partialAmount')}
+              value={adding.amount}
+              onChange={e => setRows(prev => {
+                const next = [...prev]
+                next[i] = { ...next[i], addingBudget: { ...next[i].addingBudget!, amount: e.target.value } }
+                return next
+              })}
+            />
+            <button
+              className="txnv-link-confirm-btn"
+              onClick={() => confirmBudgetAssign(i)}
+              disabled={!adding.budgetId}
+            >
+              ✓
+            </button>
+            <button
+              className="txnv-link-back-btn"
+              onClick={() => setRows(prev => {
+                const next = [...prev]
+                next[i] = { ...next[i], addingBudget: null }
+                return next
+              })}
+            >
+              ×
+            </button>
+          </div>
+        )}
+      </div>
+    )
+  }
+
   return (
     <div className="txnv-page">
       <div className="tr-controls">
@@ -597,6 +784,7 @@ export default function TransactionsPage({
                 <th>{t('transactions.columns.category')}</th>
                 <th>{t('transactions.columns.subcategory')}</th>
                 <th>{t('transactions.columns.offsets')}</th>
+                <th>{t('budgets.columns.budget')}</th>
                 <th>{t('transactions.columns.purpose')}</th>
                 <th>{t('transactions.columns.comment')}</th>
                 <th></th>
@@ -671,6 +859,9 @@ export default function TransactionsPage({
                     </td>
                     <td className="txnv-cell-offsets">
                       {renderOffsetCell(row, i)}
+                    </td>
+                    <td className="txnv-cell-budget">
+                      {renderBudgetCell(row, i)}
                     </td>
                     <td className="txnv-cell-purpose" title={row.original.purpose ?? undefined}>
                       <span className="txnv-purpose-text">{row.original.purpose ?? ''}</span>

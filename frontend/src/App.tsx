@@ -4,6 +4,7 @@ import CamtImportPage from './components/CamtImportPage'
 import CsvImportPage from './components/CsvImportPage'
 import TrendsPage from './components/TrendsPage'
 import ThresholdsPage from './components/ThresholdsPage'
+import BudgetsPage from './components/BudgetsPage'
 import PiePage from './components/PiePage'
 import TransactionsPage from './components/TransactionsPage'
 import TransactionListPanel from './components/TransactionListPanel'
@@ -21,7 +22,7 @@ function isoDate(d: Date) {
 const today = isoDate(new Date())
 const firstOfYear = isoDate(new Date(new Date().getFullYear(), 0, 1))
 
-type Tab = 'sankey' | 'trends' | 'breakdown' | 'cashflow' | 'kontoauszug' | 'konten' | 'budgets' | 'csv' | 'camt'
+type Tab = 'sankey' | 'trends' | 'breakdown' | 'cashflow' | 'kontoauszug' | 'konten' | 'budgets' | 'limits' | 'csv' | 'camt'
 
 type ViewState =
   | { phase: 'idle' }
@@ -47,6 +48,7 @@ const NAV: NavSection[] = [
       ['kontoauszug', 'nav.kontoauszug'],
       ['konten', 'nav.konten'],
       ['budgets', 'nav.budgets'],
+      ['limits', 'nav.limits'],
     ],
   },
   {
@@ -217,7 +219,8 @@ export default function App() {
           {tab === 'trends' && <TrendsPage key={username} from={from} to={to} iban={iban} />}
           {tab === 'breakdown' && <PiePage key={username} from={from} to={to} iban={iban} />}
           {tab === 'kontoauszug' && <TransactionsPage key={username} from={from} to={to} iban={iban} accounts={accounts} />}
-          {tab === 'budgets' && <ThresholdsPage key={username} from={from} to={to} iban={iban} />}
+          {tab === 'budgets' && <BudgetsPage key={username} from={from} to={to} iban={iban} />}
+          {tab === 'limits' && <ThresholdsPage key={username} from={from} to={to} iban={iban} />}
           {tab === 'konten' && <AccountsPage key={username} />}
           {tab === 'csv' && <CsvImportPage key={username} />}
           {tab === 'camt' && <CamtImportPage key={username} />}
