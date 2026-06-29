@@ -30,6 +30,11 @@ function parseAmt(s: string): number | null {
   return isNaN(n) || n < 0 ? null : n
 }
 
+function effectiveContrib(amount: number | null, transactionAmount: number): number {
+  if (amount === null) return transactionAmount
+  return transactionAmount < 0 ? -Math.abs(amount) : Math.abs(amount)
+}
+
 interface FormState {
   name: string
   targetAmount: string
@@ -134,7 +139,7 @@ export default function BudgetsPage({ from, to, iban }: { from: string; to: stri
           return {
             ...b,
             transactionLinks: b.transactionLinks.filter(l => l.id !== linkId),
-            balance: b.balance - (removed?.amount ?? removed?.transactionAmount ?? 0),
+            balance: b.balance - effectiveContrib(removed?.amount ?? null, removed?.transactionAmount ?? 0),
           }
         }),
       )
@@ -148,7 +153,7 @@ export default function BudgetsPage({ from, to, iban }: { from: string; to: stri
         return {
           ...b,
           transactionLinks: [...b.transactionLinks, link],
-          balance: b.balance + (link.amount ?? link.transactionAmount),
+          balance: b.balance + effectiveContrib(link.amount, link.transactionAmount),
         }
       }),
     )
@@ -309,7 +314,7 @@ function BudgetPanel({
   t: (key: string, opts?: Record<string, unknown>) => string
 }) {
   const links = [...budget.transactionLinks].sort((a, b) => b.transactionDate.localeCompare(a.transactionDate))
-  const total = links.reduce((s, l) => s + (l.amount ?? l.transactionAmount), 0)
+  const total = links.reduce((s, l) => s + effectiveContrib(l.amount, l.transactionAmount), 0)
 
   return (
     <>
@@ -344,8 +349,8 @@ function BudgetPanel({
                     <tr key={link.id}>
                       <td className="txn-cell-date">{formatDate(link.transactionDate)}</td>
                       <td className="txn-cell-sub">{link.transactionCategory} / {link.transactionSubcategory}</td>
-                      <td className={`txn-cell-amount${(link.amount ?? link.transactionAmount) < 0 ? ' negative' : ''}`}>
-                        {EUR.format(link.amount ?? link.transactionAmount)}
+                      <td className={`txn-cell-amount${effectiveContrib(link.amount, link.transactionAmount) < 0 ? ' negative' : ''}`}>
+                        {EUR.format(effectiveContrib(link.amount, link.transactionAmount))}
                       </td>
                       <td>
                         <button className="bdg-remove-btn" title={t('budgets.remove')} onClick={() => onRemoveLink(link.id)}>

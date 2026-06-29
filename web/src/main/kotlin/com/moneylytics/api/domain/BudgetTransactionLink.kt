@@ -15,5 +15,7 @@ data class BudgetTransactionLink(
     val transactionPurpose: String?,
     val transactionComment: String?,
 ) {
-    fun effectiveAmount(): BigDecimal = amount ?: transactionAmount
+    fun effectiveAmount(): BigDecimal =
+        amount?.let { if (transactionAmount.signum() < 0) it.abs().negate() else it.abs() }
+            ?: transactionAmount
 }
