@@ -27,7 +27,7 @@ function formatDate(iso: string): string {
 
 function parseAmt(s: string): number | null {
   const n = parseFloat(s.replace(',', '.'))
-  return isNaN(n) || n < 0 ? null : n
+  return isNaN(n) ? null : n
 }
 
 function effectiveContrib(amount: number | null, transactionAmount: number): number {
@@ -560,7 +560,6 @@ function AssignTransactionModal({
                               className="txnv-partial-input"
                               type="number"
                               step="0.01"
-                              min="0"
                               placeholder={t('budgets.partialAmount')}
                               value={partialAmount}
                               onChange={e => setPartialAmount(e.target.value)}
