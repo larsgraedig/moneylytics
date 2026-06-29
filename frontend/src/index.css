@@ -3282,3 +3282,66 @@ body {
   flex-direction: column;
   gap: 12px;
 }
+
+/* ── assign modal filters & results ─────────────── */
+
+.bdg-assign-modal--lg {
+  width: 780px;
+  max-width: 95vw;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.bdg-assign-filters {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.bdg-assign-results {
+  flex: 1;
+  overflow-y: auto;
+  margin-top: 4px;
+}
+
+.bdg-assign-col-action {
+  width: 120px;
+  text-align: right;
+}
+
+.bdg-assign-row--active {
+  background: color-mix(in srgb, var(--accent-glow) 15%, transparent) !important;
+}
+
+.bdg-assign-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  justify-content: flex-end;
+}
+
+.bdg-assign-row-btn {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  width: 22px;
+  height: 22px;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.bdg-assign-row-btn:hover {
+  border-color: var(--accent-dim);
+  color: var(--accent-dim);
+}

@@ -8,8 +8,15 @@ import {
   removeTransactionLink,
   updateBudget,
   type Budget,
+  type BudgetTransactionLink,
 } from '../api/budgets'
-import { fetchAllTransactions, type TransactionItem } from '../api/transactions'
+import { fetchCategories, type CategoryGroup } from '../api/rawImport'
+import {
+  fetchAccounts,
+  fetchAllTransactions,
+  type Account,
+  type TransactionItem,
+} from '../api/transactions'
 
 const EUR = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' })
 
@@ -39,16 +46,6 @@ function budgetToForm(b: Budget): FormState {
   }
 }
 
-interface AssignState {
-  budgetId: number
-  transactions: TransactionItem[] | null
-  loading: boolean
-  selectedId: number | null
-  amount: string
-  assigning: boolean
-  error: string | null
-}
-
 export default function BudgetsPage({ from, to, iban }: { from: string; to: string; iban?: string }) {
   const { t } = useTranslation()
   const [budgets, setBudgets] = useState<Budget[]>([])
@@ -59,7 +56,7 @@ export default function BudgetsPage({ from, to, iban }: { from: string; to: stri
   const [saving, setSaving] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
   const [drilldownId, setDrilldownId] = useState<number | null>(null)
-  const [assignState, setAssignState] = useState<AssignState | null>(null)
+  const [assigningBudget, setAssigningBudget] = useState<Budget | null>(null)
 
   useEffect(() => {
     setLoading(true)
@@ -94,10 +91,7 @@ export default function BudgetsPage({ from, to, iban }: { from: string; to: stri
 
   async function handleSave() {
     const name = form.name.trim()
-    if (!name) {
-      setFormError(t('budgets.nameRequired'))
-      return
-    }
+    if (!name) { setFormError(t('budgets.nameRequired')); return }
     const targetAmount = form.targetAmount !== '' ? parseAmt(form.targetAmount) : null
     const note = form.note.trim() || null
     setSaving(true)
@@ -108,7 +102,7 @@ export default function BudgetsPage({ from, to, iban }: { from: string; to: stri
         setBudgets(prev => [...prev, created])
       } else if (editingId != null) {
         const updated = await updateBudget(editingId, name, targetAmount, note)
-        setBudgets(prev => prev.map(b => (b.id === updated.id ? { ...updated, transactionLinks: b.transactionLinks } : b)))
+        setBudgets(prev => prev.map(b => b.id === updated.id ? { ...updated, transactionLinks: b.transactionLinks } : b))
       }
       cancelForm()
     } catch {
@@ -137,62 +131,30 @@ export default function BudgetsPage({ from, to, iban }: { from: string; to: stri
         prev.map(b => {
           if (b.id !== budgetId) return b
           const removed = b.transactionLinks.find(l => l.id === linkId)
-          const newLinks = b.transactionLinks.filter(l => l.id !== linkId)
-          const removedAmt = removed?.amount ?? removed?.transactionAmount ?? 0
-          return { ...b, transactionLinks: newLinks, balance: b.balance - removedAmt }
-        }),
-      )
-    } catch {
-      // silent
-    }
-  }
-
-  async function openAssign(budget: Budget) {
-    setAssignState({
-      budgetId: budget.id,
-      transactions: null,
-      loading: true,
-      selectedId: null,
-      amount: '',
-      assigning: false,
-      error: null,
-    })
-    try {
-      const resp = await fetchAllTransactions(from, to, iban)
-      const assignedIds = new Set(budget.transactionLinks.map(l => l.transactionId))
-      const available = resp.transactions.filter(tx => !assignedIds.has(tx.id))
-      setAssignState(prev => prev ? { ...prev, transactions: available, loading: false } : null)
-    } catch {
-      setAssignState(prev => prev ? { ...prev, transactions: [], loading: false } : null)
-    }
-  }
-
-  async function confirmAssign() {
-    if (!assignState || assignState.selectedId == null) return
-    const amount = assignState.amount !== '' ? parseAmt(assignState.amount) : null
-    setAssignState(prev => prev ? { ...prev, assigning: true, error: null } : null)
-    try {
-      const link = await assignTransaction(assignState.budgetId, assignState.selectedId, amount)
-      const tx = assignState.transactions?.find(t => t.id === assignState.selectedId)
-      setBudgets(prev =>
-        prev.map(b => {
-          if (b.id !== assignState.budgetId) return b
           return {
             ...b,
-            transactionLinks: [...b.transactionLinks, link],
-            balance: b.balance + (amount ?? (tx?.amount ?? 0)),
+            transactionLinks: b.transactionLinks.filter(l => l.id !== linkId),
+            balance: b.balance - (removed?.amount ?? removed?.transactionAmount ?? 0),
           }
         }),
       )
-      setAssignState(null)
-    } catch {
-      setAssignState(prev => prev ? { ...prev, assigning: false, error: t('budgets.assignFailed') } : null)
-    }
+    } catch { /* silent */ }
   }
 
-  if (loading) {
-    return <div className="bdg-page"><p className="hint">{t('common.fetching')}</p></div>
+  function handleAssigned(budgetId: number, link: BudgetTransactionLink) {
+    setBudgets(prev =>
+      prev.map(b => {
+        if (b.id !== budgetId) return b
+        return {
+          ...b,
+          transactionLinks: [...b.transactionLinks, link],
+          balance: b.balance + (link.amount ?? link.transactionAmount),
+        }
+      }),
+    )
   }
+
+  if (loading) return <div className="bdg-page"><p className="hint">{t('common.fetching')}</p></div>
 
   return (
     <div className="bdg-page">
@@ -254,7 +216,6 @@ export default function BudgetsPage({ from, to, iban }: { from: string; to: stri
                 const isEditing = editingId === budget.id
                 const hasTarget = budget.targetAmount != null && budget.targetAmount > 0
                 const pct = hasTarget ? Math.abs(budget.balance) / budget.targetAmount! : null
-
                 return (
                   <tr
                     key={budget.id}
@@ -269,7 +230,9 @@ export default function BudgetsPage({ from, to, iban }: { from: string; to: stri
                       {EUR.format(budget.balance)}
                     </td>
                     <td className="bdg-cell-target">
-                      {budget.targetAmount != null ? EUR.format(budget.targetAmount) : <span className="bdg-muted">—</span>}
+                      {budget.targetAmount != null
+                        ? EUR.format(budget.targetAmount)
+                        : <span className="bdg-muted">—</span>}
                     </td>
                     <td className="bdg-cell-progress">
                       {pct != null ? (
@@ -284,15 +247,13 @@ export default function BudgetsPage({ from, to, iban }: { from: string; to: stri
                             {Math.round(pct * 100)}%
                           </span>
                         </div>
-                      ) : (
-                        <span className="bdg-muted">—</span>
-                      )}
+                      ) : <span className="bdg-muted">—</span>}
                     </td>
                     <td className="bdg-cell-actions" onClick={e => e.stopPropagation()}>
                       <button
                         className="bdg-icon-btn"
                         title={t('common.edit')}
-                        onClick={() => (isEditing ? cancelForm() : startEdit(budget))}
+                        onClick={() => isEditing ? cancelForm() : startEdit(budget)}
                       >
                         {isEditing ? '✕' : '✎'}
                       </button>
@@ -317,70 +278,29 @@ export default function BudgetsPage({ from, to, iban }: { from: string; to: stri
           budget={drilldownBudget}
           onClose={() => setDrilldownId(null)}
           onRemoveLink={linkId => handleRemoveLink(drilldownBudget.id, linkId)}
-          onAssign={() => openAssign(drilldownBudget)}
+          onAssign={() => setAssigningBudget(drilldownBudget)}
           t={t}
         />
       )}
 
-      {assignState != null && (
-        <div className="bdg-assign-backdrop" onClick={() => setAssignState(null)}>
-          <div className="bdg-assign-modal" onClick={e => e.stopPropagation()}>
-            <div className="bdg-modal-header">
-              <span className="bdg-modal-title">
-                {t('budgets.assignTitle', { name: drilldownBudget?.name ?? '' })}
-              </span>
-              <button className="bdg-modal-close" onClick={() => setAssignState(null)}>✕</button>
-            </div>
-            {assignState.loading && <p className="txn-hint loading">{t('common.fetching')}</p>}
-            {!assignState.loading && assignState.transactions != null && assignState.transactions.length === 0 && (
-              <p className="txn-hint">{t('common.noTransactions')}</p>
-            )}
-            {!assignState.loading && assignState.transactions != null && assignState.transactions.length > 0 && (
-              <div className="bdg-modal-body">
-                <select
-                  className="bdg-modal-select"
-                  value={assignState.selectedId ?? ''}
-                  onChange={e => setAssignState(prev => prev ? { ...prev, selectedId: Number(e.target.value) || null } : null)}
-                >
-                  <option value="">{t('budgets.selectTransaction')}</option>
-                  {assignState.transactions.map(tx => (
-                    <option key={tx.id} value={tx.id}>
-                      {tx.accountingDate}  {EUR.format(tx.amount)}  {tx.category} / {tx.subcategory}
-                    </option>
-                  ))}
-                </select>
-                <input
-                  className="bdg-modal-amt"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  placeholder={t('budgets.partialAmount')}
-                  value={assignState.amount}
-                  onChange={e => setAssignState(prev => prev ? { ...prev, amount: e.target.value } : null)}
-                />
-                <button
-                  className="bdg-btn bdg-btn--save"
-                  disabled={assignState.selectedId == null || assignState.assigning}
-                  onClick={confirmAssign}
-                >
-                  {assignState.assigning ? '…' : t('budgets.confirm')}
-                </button>
-                {assignState.error && <span className="bdg-form-error">{assignState.error}</span>}
-              </div>
-            )}
-          </div>
-        </div>
+      {assigningBudget != null && (
+        <AssignTransactionModal
+          budget={assigningBudget}
+          defaultFrom={from}
+          defaultTo={to}
+          defaultIban={iban}
+          onClose={() => setAssigningBudget(null)}
+          onAssigned={link => handleAssigned(assigningBudget.id, link)}
+        />
       )}
     </div>
   )
 }
 
+// ── Budget panel (slide-in) ───────────────────────────────────────────────
+
 function BudgetPanel({
-  budget,
-  onClose,
-  onRemoveLink,
-  onAssign,
-  t,
+  budget, onClose, onRemoveLink, onAssign, t,
 }: {
   budget: Budget
   onClose: () => void
@@ -388,9 +308,7 @@ function BudgetPanel({
   onAssign: () => void
   t: (key: string, opts?: Record<string, unknown>) => string
 }) {
-  const links = [...budget.transactionLinks].sort((a, b) =>
-    b.transactionDate.localeCompare(a.transactionDate),
-  )
+  const links = [...budget.transactionLinks].sort((a, b) => b.transactionDate.localeCompare(a.transactionDate))
   const total = links.reduce((s, l) => s + (l.amount ?? l.transactionAmount), 0)
 
   return (
@@ -408,12 +326,8 @@ function BudgetPanel({
             <button className="txn-panel-close" onClick={onClose} title={t('common.cancel')}>✕</button>
           </div>
         </div>
-
         <div className="txn-panel-body">
-          {links.length === 0 && (
-            <p className="txn-hint">{t('budgets.noTransactions')}</p>
-          )}
-
+          {links.length === 0 && <p className="txn-hint">{t('budgets.noTransactions')}</p>}
           {links.length > 0 && (
             <>
               <table className="txn-list-table">
@@ -429,18 +343,12 @@ function BudgetPanel({
                   {links.map(link => (
                     <tr key={link.id}>
                       <td className="txn-cell-date">{formatDate(link.transactionDate)}</td>
-                      <td className="txn-cell-sub">
-                        {link.transactionCategory} / {link.transactionSubcategory}
-                      </td>
+                      <td className="txn-cell-sub">{link.transactionCategory} / {link.transactionSubcategory}</td>
                       <td className={`txn-cell-amount${(link.amount ?? link.transactionAmount) < 0 ? ' negative' : ''}`}>
                         {EUR.format(link.amount ?? link.transactionAmount)}
                       </td>
                       <td>
-                        <button
-                          className="bdg-remove-btn"
-                          title={t('budgets.remove')}
-                          onClick={() => onRemoveLink(link.id)}
-                        >
+                        <button className="bdg-remove-btn" title={t('budgets.remove')} onClick={() => onRemoveLink(link.id)}>
                           ×
                         </button>
                       </td>
@@ -448,17 +356,242 @@ function BudgetPanel({
                   ))}
                 </tbody>
               </table>
-
               <div className="txn-total-row">
                 <span>{t('transactions.panel.total')}</span>
-                <span className={`txn-total-value${total < 0 ? ' negative' : ''}`}>
-                  {EUR.format(total)}
-                </span>
+                <span className={`txn-total-value${total < 0 ? ' negative' : ''}`}>{EUR.format(total)}</span>
               </div>
             </>
           )}
         </div>
       </div>
     </>
+  )
+}
+
+// ── Assign transaction modal ──────────────────────────────────────────────
+
+function AssignTransactionModal({
+  budget,
+  defaultFrom,
+  defaultTo,
+  defaultIban,
+  onClose,
+  onAssigned,
+}: {
+  budget: Budget
+  defaultFrom: string
+  defaultTo: string
+  defaultIban?: string
+  onClose: () => void
+  onAssigned: (link: BudgetTransactionLink) => void
+}) {
+  const { t } = useTranslation()
+  const [accounts, setAccounts] = useState<Account[]>([])
+  const [categories, setCategories] = useState<CategoryGroup[]>([])
+
+  const [filterFrom, setFilterFrom] = useState(defaultFrom)
+  const [filterTo, setFilterTo] = useState(defaultTo)
+  const [filterIban, setFilterIban] = useState(defaultIban ?? '')
+  const [filterCategory, setFilterCategory] = useState('')
+  const [filterSubcategory, setFilterSubcategory] = useState('')
+
+  const [transactions, setTransactions] = useState<TransactionItem[] | null>(null)
+  const [loadingTx, setLoadingTx] = useState(false)
+
+  const [assigningId, setAssigningId] = useState<number | null>(null)
+  const [partialAmount, setPartialAmount] = useState('')
+  const [assigning, setAssigning] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const assignedIds = new Set(budget.transactionLinks.map(l => l.transactionId))
+
+  useEffect(() => {
+    fetchAccounts().then(setAccounts).catch(() => {})
+    fetchCategories().then(r => setCategories(r.categories)).catch(() => {})
+  }, [])
+
+  const subcategoriesFor = (cat: string) => categories.find(c => c.name === cat)?.subcategories ?? []
+
+  async function load() {
+    setLoadingTx(true)
+    setTransactions(null)
+    setAssigningId(null)
+    setError(null)
+    try {
+      const resp = await fetchAllTransactions(
+        filterFrom,
+        filterTo,
+        filterIban || undefined,
+        filterCategory || undefined,
+        filterSubcategory || undefined,
+      )
+      setTransactions(resp.transactions.filter(tx => !assignedIds.has(tx.id)))
+    } catch {
+      setTransactions([])
+    } finally {
+      setLoadingTx(false)
+    }
+  }
+
+  async function doAssign(txId: number) {
+    const amount = partialAmount !== '' ? parseAmt(partialAmount) : null
+    setAssigning(true)
+    setError(null)
+    try {
+      const link = await assignTransaction(budget.id, txId, amount)
+      onAssigned(link)
+      setTransactions(prev => prev ? prev.filter(tx => tx.id !== txId) : null)
+      setAssigningId(null)
+      setPartialAmount('')
+    } catch {
+      setError(t('budgets.assignFailed'))
+    } finally {
+      setAssigning(false)
+    }
+  }
+
+  return (
+    <div className="bdg-assign-backdrop" onClick={onClose}>
+      <div className="bdg-assign-modal bdg-assign-modal--lg" onClick={e => e.stopPropagation()}>
+
+        <div className="bdg-modal-header">
+          <span className="bdg-modal-title">{t('budgets.assignTitle', { name: budget.name })}</span>
+          <button className="bdg-modal-close" onClick={onClose}>✕</button>
+        </div>
+
+        <div className="bdg-assign-filters">
+          <label className="range-field">
+            <span className="range-label">{t('common.from')}</span>
+            <input
+              type="date"
+              value={filterFrom}
+              max={filterTo}
+              onChange={e => setFilterFrom(e.target.value)}
+            />
+          </label>
+          <div className="range-sep" />
+          <label className="range-field">
+            <span className="range-label">{t('common.to')}</span>
+            <input
+              type="date"
+              value={filterTo}
+              min={filterFrom}
+              onChange={e => setFilterTo(e.target.value)}
+            />
+          </label>
+
+          {accounts.length > 0 && (
+            <select
+              className="account-select"
+              value={filterIban}
+              onChange={e => setFilterIban(e.target.value)}
+            >
+              <option value="">{t('common.allAccounts')}</option>
+              {accounts.map(a => <option key={a.iban} value={a.iban}>{a.name || a.iban}</option>)}
+            </select>
+          )}
+
+          <select
+            className="account-select"
+            value={filterCategory}
+            onChange={e => { setFilterCategory(e.target.value); setFilterSubcategory('') }}
+          >
+            <option value="">{t('transactions.allCategories')}</option>
+            {categories.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
+          </select>
+
+          {filterCategory && subcategoriesFor(filterCategory).length > 0 && (
+            <select
+              className="account-select"
+              value={filterSubcategory}
+              onChange={e => setFilterSubcategory(e.target.value)}
+            >
+              <option value="">{t('transactions.allSubcategories')}</option>
+              {subcategoriesFor(filterCategory).map(s => <option key={s} value={s}>{s}</option>)}
+            </select>
+          )}
+
+          <button className="load-btn" onClick={load} disabled={loadingTx}>
+            {loadingTx ? '…' : t('common.load')}
+          </button>
+        </div>
+
+        <div className="bdg-assign-results">
+          {transactions === null && !loadingTx && (
+            <p className="txn-hint">{t('common.selectDateAndLoad', { defaultValue: 'Filter setzen und Laden drücken.' })}</p>
+          )}
+          {loadingTx && <p className="txn-hint loading">{t('common.fetching')}</p>}
+          {transactions != null && transactions.length === 0 && (
+            <p className="txn-hint">{t('common.noTransactions')}</p>
+          )}
+          {error && <p className="txn-hint" style={{ color: 'var(--error)' }}>{error}</p>}
+
+          {transactions != null && transactions.length > 0 && (
+            <table className="txn-list-table">
+              <thead>
+                <tr>
+                  <th>{t('transactions.columns.date')}</th>
+                  <th>{t('transactions.columns.category')}</th>
+                  <th>{t('transactions.columns.subcategory')}</th>
+                  <th className="txn-col-amount">{t('transactions.columns.amount')}</th>
+                  <th className="bdg-assign-col-action" />
+                </tr>
+              </thead>
+              <tbody>
+                {transactions.map(tx => {
+                  const isActive = assigningId === tx.id
+                  return (
+                    <tr key={tx.id} className={isActive ? 'bdg-assign-row--active' : undefined}>
+                      <td className="txn-cell-date">{formatDate(tx.accountingDate)}</td>
+                      <td className="txn-cell-sub">{tx.category}</td>
+                      <td className="txn-cell-sub">{tx.subcategory}</td>
+                      <td className={`txn-cell-amount${tx.amount < 0 ? ' negative' : ''}`}>
+                        {EUR.format(tx.amount)}
+                      </td>
+                      <td className="bdg-assign-col-action">
+                        {isActive ? (
+                          <div className="bdg-assign-inline">
+                            <input
+                              className="txnv-partial-input"
+                              type="number"
+                              step="0.01"
+                              min="0"
+                              placeholder={t('budgets.partialAmount')}
+                              value={partialAmount}
+                              onChange={e => setPartialAmount(e.target.value)}
+                              autoFocus
+                            />
+                            <button
+                              className="txnv-link-confirm-btn"
+                              onClick={() => doAssign(tx.id)}
+                              disabled={assigning}
+                            >
+                              {assigning ? '…' : '✓'}
+                            </button>
+                            <button
+                              className="txnv-link-back-btn"
+                              onClick={() => { setAssigningId(null); setPartialAmount('') }}
+                            >
+                              ×
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            className="bdg-assign-row-btn"
+                            onClick={() => { setAssigningId(tx.id); setPartialAmount('') }}
+                          >
+                            +
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </div>
+    </div>
   )
 }
