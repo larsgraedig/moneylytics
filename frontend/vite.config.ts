@@ -12,6 +12,7 @@ export default defineConfig({
       '/categories': 'http://localhost:8080',
       '/users': 'http://localhost:8080',
       '/thresholds': 'http://localhost:8080',
+      '/budgets': 'http://localhost:8080',
     },
   },
 })

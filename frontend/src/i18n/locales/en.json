@@ -12,6 +12,7 @@
     "kontoauszug": "Transactions",
     "konten": "Accounts",
     "budgets": "Budgets",
+    "limits": "Limits",
     "csv": "CSV",
     "camt": "CAMT",
     "collapse": "Collapse menu",
@@ -133,7 +134,8 @@
       "effectiveAmount": "effective amount",
       "comment": "comment",
       "purpose": "purpose",
-      "offsets": "offsets"
+      "offsets": "offsets",
+      "budget": "budget"
     },
     "addComment": "add comment…",
     "partialAmount": "partial amt",
@@ -179,7 +181,7 @@
       "name": "Name"
     }
   },
-  "budgets": {
+  "limits": {
     "load": "load",
     "noCategories": "No categories found — import transactions first",
     "spendingLoaded": "Spending loaded · {{from}} → {{to}}",
@@ -201,12 +203,54 @@
       "spending": "Spending",
       "progress": "Progress"
     },
-    "addThreshold": "Add budget",
-    "editThreshold": "Edit budget",
-    "deleteConfirm": "Really delete this budget?",
-    "noThresholds": "No budgets configured yet.",
+    "addThreshold": "Add limit",
+    "editThreshold": "Edit limit",
+    "deleteConfirm": "Really delete this limit?",
+    "noThresholds": "No limits configured yet.",
     "saveFailed": "Save failed.",
     "deleteFailed": "Delete failed."
+  },
+  "budgets": {
+    "createBudget": "Create budget",
+    "editBudget": "Edit budget",
+    "deleteConfirm": "Really delete this budget? All transaction assignments will be removed.",
+    "noBudgets": "No budgets yet. Create your first budget.",
+    "noTransactions": "No transactions assigned yet.",
+    "assignedTransactions": "transactions",
+    "namePlaceholder": "Name",
+    "targetAmountPlaceholder": "Target amount (optional)",
+    "notePlaceholder": "Note (optional)",
+    "nameRequired": "Name is required.",
+    "saveFailed": "Save failed.",
+    "deleteFailed": "Delete failed.",
+    "assignFailed": "Assignment failed.",
+    "assign": "Assign transaction",
+    "remove": "Remove from budget",
+    "selectTransaction": "Select transaction…",
+    "partialAmount": "Partial amount (optional)",
+    "fullAmount": "full amount",
+    "confirm": "Assign",
+    "assignTitle": "Assign transaction to «{{name}}»",
+    "presets": {
+      "placeholder": "Select period…",
+      "currentMonth": "Current month",
+      "lastMonth": "Last month",
+      "currentQuarter": "Current quarter",
+      "lastQuarter": "Last quarter",
+      "currentHalf": "Current half-year",
+      "lastHalf": "Last half-year",
+      "currentYear": "Current year",
+      "lastYear": "Last year"
+    },
+    "columns": {
+      "name": "Name",
+      "balance": "Balance",
+      "target": "Target",
+      "progress": "Progress",
+      "transactionId": "Transaction",
+      "amount": "Amount",
+      "budget": "Budget"
+    }
   },
   "csvImport": {
     "dropzone": {

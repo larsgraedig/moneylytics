@@ -12,6 +12,7 @@
     "kontoauszug": "Kontoauszug",
     "konten": "Konten",
     "budgets": "Budgets",
+    "limits": "Limits",
     "csv": "CSV",
     "camt": "CAMT",
     "collapse": "Menü einklappen",
@@ -133,7 +134,8 @@
       "effectiveAmount": "Effektiver Betrag",
       "comment": "Kommentar",
       "purpose": "Verwendungszweck",
-      "offsets": "Verrechnungen"
+      "offsets": "Verrechnungen",
+      "budget": "Budget"
     },
     "addComment": "Kommentar hinzufügen…",
     "partialAmount": "Teilbetrag",
@@ -179,7 +181,7 @@
       "name": "Name"
     }
   },
-  "budgets": {
+  "limits": {
     "load": "Laden",
     "noCategories": "Keine Kategorien gefunden — zuerst Transaktionen importieren",
     "spendingLoaded": "Ausgaben geladen · {{from}} → {{to}}",
@@ -201,12 +203,54 @@
       "spending": "Ausgaben",
       "progress": "Fortschritt"
     },
-    "addThreshold": "Budget hinzufügen",
-    "editThreshold": "Budget bearbeiten",
-    "deleteConfirm": "Budget wirklich löschen?",
-    "noThresholds": "Noch keine Budgets konfiguriert.",
+    "addThreshold": "Limit hinzufügen",
+    "editThreshold": "Limit bearbeiten",
+    "deleteConfirm": "Limit wirklich löschen?",
+    "noThresholds": "Noch keine Limits konfiguriert.",
     "saveFailed": "Speichern fehlgeschlagen.",
     "deleteFailed": "Löschen fehlgeschlagen."
+  },
+  "budgets": {
+    "createBudget": "Budget anlegen",
+    "editBudget": "Budget bearbeiten",
+    "deleteConfirm": "Budget wirklich löschen? Alle Transaktionszuweisungen werden entfernt.",
+    "noBudgets": "Noch keine Budgets. Lege dein erstes Budget an.",
+    "noTransactions": "Noch keine Transaktionen zugewiesen.",
+    "assignedTransactions": "Transaktionen",
+    "namePlaceholder": "Name",
+    "targetAmountPlaceholder": "Zielbetrag (optional)",
+    "notePlaceholder": "Notiz (optional)",
+    "nameRequired": "Name ist erforderlich.",
+    "saveFailed": "Speichern fehlgeschlagen.",
+    "deleteFailed": "Löschen fehlgeschlagen.",
+    "assignFailed": "Zuweisung fehlgeschlagen.",
+    "assign": "Transaktion zuweisen",
+    "remove": "Aus Budget entfernen",
+    "selectTransaction": "Transaktion auswählen…",
+    "partialAmount": "Teilbetrag (optional)",
+    "fullAmount": "vollständiger Betrag",
+    "confirm": "Zuweisen",
+    "assignTitle": "Transaktion zu «{{name}}» zuweisen",
+    "presets": {
+      "placeholder": "Zeitraum wählen…",
+      "currentMonth": "Aktueller Monat",
+      "lastMonth": "Letzter Monat",
+      "currentQuarter": "Aktuelles Quartal",
+      "lastQuarter": "Letztes Quartal",
+      "currentHalf": "Aktuelles Halbjahr",
+      "lastHalf": "Letztes Halbjahr",
+      "currentYear": "Aktuelles Jahr",
+      "lastYear": "Letztes Jahr"
+    },
+    "columns": {
+      "name": "Name",
+      "balance": "Saldo",
+      "target": "Ziel",
+      "progress": "Fortschritt",
+      "transactionId": "Transaktion",
+      "amount": "Betrag",
+      "budget": "Budget"
+    }
   },
   "csvImport": {
     "dropzone": {
