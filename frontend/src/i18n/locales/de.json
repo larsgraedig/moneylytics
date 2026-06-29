@@ -231,6 +231,17 @@
     "fullAmount": "vollständiger Betrag",
     "confirm": "Zuweisen",
     "assignTitle": "Transaktion zu «{{name}}» zuweisen",
+    "presets": {
+      "placeholder": "Zeitraum wählen…",
+      "currentMonth": "Aktueller Monat",
+      "lastMonth": "Letzter Monat",
+      "currentQuarter": "Aktuelles Quartal",
+      "lastQuarter": "Letztes Quartal",
+      "currentHalf": "Aktuelles Halbjahr",
+      "lastHalf": "Letztes Halbjahr",
+      "currentYear": "Aktuelles Jahr",
+      "lastYear": "Letztes Jahr"
+    },
     "columns": {
       "name": "Name",
       "balance": "Saldo",

@@ -231,6 +231,17 @@
     "fullAmount": "full amount",
     "confirm": "Assign",
     "assignTitle": "Assign transaction to «{{name}}»",
+    "presets": {
+      "placeholder": "Select period…",
+      "currentMonth": "Current month",
+      "lastMonth": "Last month",
+      "currentQuarter": "Current quarter",
+      "lastQuarter": "Last quarter",
+      "currentHalf": "Current half-year",
+      "lastHalf": "Last half-year",
+      "currentYear": "Current year",
+      "lastYear": "Last year"
+    },
     "columns": {
       "name": "Name",
       "balance": "Balance",

@@ -30,6 +30,59 @@ function parseAmt(s: string): number | null {
   return isNaN(n) ? null : n
 }
 
+function localIso(d: Date): string {
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
+
+type Preset =
+  | 'currentMonth' | 'lastMonth'
+  | 'currentQuarter' | 'lastQuarter'
+  | 'currentHalf' | 'lastHalf'
+  | 'currentYear' | 'lastYear'
+
+const PRESETS: Preset[] = [
+  'currentMonth', 'lastMonth',
+  'currentQuarter', 'lastQuarter',
+  'currentHalf', 'lastHalf',
+  'currentYear', 'lastYear',
+]
+
+function getPresetRange(preset: Preset): { from: string; to: string } {
+  const now = new Date()
+  const y = now.getFullYear()
+  const m = now.getMonth()
+  const q = Math.floor(m / 3)
+  const h = m < 6 ? 0 : 1
+
+  switch (preset) {
+    case 'currentMonth':
+      return { from: localIso(new Date(y, m, 1)), to: localIso(new Date(y, m + 1, 0)) }
+    case 'lastMonth':
+      return { from: localIso(new Date(y, m - 1, 1)), to: localIso(new Date(y, m, 0)) }
+    case 'currentQuarter':
+      return { from: localIso(new Date(y, q * 3, 1)), to: localIso(new Date(y, q * 3 + 3, 0)) }
+    case 'lastQuarter': {
+      const lq = q === 0 ? 3 : q - 1
+      const ly = q === 0 ? y - 1 : y
+      return { from: localIso(new Date(ly, lq * 3, 1)), to: localIso(new Date(ly, lq * 3 + 3, 0)) }
+    }
+    case 'currentHalf':
+      return { from: localIso(new Date(y, h * 6, 1)), to: localIso(new Date(y, h * 6 + 6, 0)) }
+    case 'lastHalf': {
+      const lh = 1 - h
+      const ly = h === 0 ? y - 1 : y
+      return { from: localIso(new Date(ly, lh * 6, 1)), to: localIso(new Date(ly, lh * 6 + 6, 0)) }
+    }
+    case 'currentYear':
+      return { from: `${y}-01-01`, to: `${y}-12-31` }
+    case 'lastYear':
+      return { from: `${y - 1}-01-01`, to: `${y - 1}-12-31` }
+  }
+}
+
 function effectiveContrib(amount: number | null, transactionAmount: number): number {
   if (amount === null) return transactionAmount
   return transactionAmount < 0 ? -Math.abs(amount) : Math.abs(amount)
@@ -399,6 +452,7 @@ function AssignTransactionModal({
   const [filterIban, setFilterIban] = useState(defaultIban ?? '')
   const [filterCategory, setFilterCategory] = useState('')
   const [filterSubcategory, setFilterSubcategory] = useState('')
+  const [activePreset, setActivePreset] = useState<Preset | ''>('')
 
   const [transactions, setTransactions] = useState<TransactionItem[] | null>(null)
   const [loadingTx, setLoadingTx] = useState(false)
@@ -417,15 +471,15 @@ function AssignTransactionModal({
 
   const subcategoriesFor = (cat: string) => categories.find(c => c.name === cat)?.subcategories ?? []
 
-  async function load() {
+  async function loadWith(from: string, to: string) {
     setLoadingTx(true)
     setTransactions(null)
     setAssigningId(null)
     setError(null)
     try {
       const resp = await fetchAllTransactions(
-        filterFrom,
-        filterTo,
+        from,
+        to,
         filterIban || undefined,
         filterCategory || undefined,
         filterSubcategory || undefined,
@@ -436,6 +490,16 @@ function AssignTransactionModal({
     } finally {
       setLoadingTx(false)
     }
+  }
+
+  function load() { loadWith(filterFrom, filterTo) }
+
+  function applyPreset(preset: Preset) {
+    const { from, to } = getPresetRange(preset)
+    setActivePreset(preset)
+    setFilterFrom(from)
+    setFilterTo(to)
+    loadWith(from, to)
   }
 
   async function doAssign(txId: number) {
@@ -465,13 +529,26 @@ function AssignTransactionModal({
         </div>
 
         <div className="bdg-assign-filters">
+          <select
+            className="account-select"
+            value={activePreset}
+            onChange={e => e.target.value && applyPreset(e.target.value as Preset)}
+          >
+            <option value="">{t('budgets.presets.placeholder')}</option>
+            {PRESETS.map(p => (
+              <option key={p} value={p}>{t(`budgets.presets.${p}`)}</option>
+            ))}
+          </select>
+
+          <div className="bdg-filter-sep" />
+
           <label className="range-field">
             <span className="range-label">{t('common.from')}</span>
             <input
               type="date"
               value={filterFrom}
               max={filterTo}
-              onChange={e => setFilterFrom(e.target.value)}
+              onChange={e => { setFilterFrom(e.target.value); setActivePreset('') }}
             />
           </label>
           <div className="range-sep" />
@@ -481,7 +558,7 @@ function AssignTransactionModal({
               type="date"
               value={filterTo}
               min={filterFrom}
-              onChange={e => setFilterTo(e.target.value)}
+              onChange={e => { setFilterTo(e.target.value); setActivePreset('') }}
             />
           </label>
 

@@ -3345,3 +3345,23 @@ body {
   border-color: var(--accent-dim);
   color: var(--accent-dim);
 }
+
+.bdg-preset-select {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 3px 6px;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.bdg-preset-select:focus { outline: none; border-color: var(--accent-dim); }
+
+.bdg-filter-sep {
+  width: 1px;
+  height: 18px;
+  background: var(--border);
+  flex-shrink: 0;
+  margin: 0 4px;
+}
