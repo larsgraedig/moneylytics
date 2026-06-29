@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { getPresetRange, PRESETS, type Preset } from './utils/datePresets'
 import SankeyChart from './components/SankeyChart'
 import CamtImportPage from './components/CamtImportPage'
 import CsvImportPage from './components/CsvImportPage'
@@ -73,6 +74,7 @@ export default function App() {
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [from, setFrom] = useState(firstOfYear)
   const [to, setTo] = useState(today)
+  const [activePreset, setActivePreset] = useState<Preset | ''>('')
   const [accounts, setAccounts] = useState<Account[]>([])
   const [selectedIban, setSelectedIban] = useState<string>('')
   const [view, setView] = useState<ViewState>({ phase: 'idle' })
@@ -162,15 +164,33 @@ export default function App() {
             </select>
           )}
 
+          <select
+            className="account-select"
+            value={activePreset}
+            onChange={e => {
+              const p = e.target.value as Preset
+              if (!p) return
+              const range = getPresetRange(p)
+              setActivePreset(p)
+              setFrom(range.from)
+              setTo(range.to)
+            }}
+          >
+            <option value="">{t('budgets.presets.placeholder')}</option>
+            {PRESETS.map(p => (
+              <option key={p} value={p}>{t(`budgets.presets.${p}`)}</option>
+            ))}
+          </select>
+
           <fieldset className="range-group">
             <label className="range-field">
               <span className="range-label">{t('common.from')}</span>
-              <input type="date" value={from} max={to} onChange={e => setFrom(e.target.value)} />
+              <input type="date" value={from} max={to} onChange={e => { setFrom(e.target.value); setActivePreset('') }} />
             </label>
             <div className="range-sep" />
             <label className="range-field">
               <span className="range-label">{t('common.to')}</span>
-              <input type="date" value={to} min={from} max={today} onChange={e => setTo(e.target.value)} />
+              <input type="date" value={to} min={from} max={today} onChange={e => { setTo(e.target.value); setActivePreset('') }} />
             </label>
           </fieldset>
 
