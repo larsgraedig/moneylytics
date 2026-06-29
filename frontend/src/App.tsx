@@ -1,4 +1,10 @@
 import { useState, useEffect } from 'react'
+import type { LucideIcon } from 'lucide-react'
+import {
+  Workflow, TrendingUp, PieChart, BarChart2,
+  List, Landmark, Wallet, Gauge,
+  FileSpreadsheet, FileCode,
+} from 'lucide-react'
 import { getPresetRange, PRESETS, type Preset } from './utils/datePresets'
 import SankeyChart from './components/SankeyChart'
 import CamtImportPage from './components/CamtImportPage'
@@ -31,32 +37,32 @@ type ViewState =
   | { phase: 'error'; message: string }
   | { phase: 'ready'; data: SankeyResponse }
 
-type NavSection = { sectionKey: string; items: [Tab, string][] }
+type NavSection = { sectionKey: string; items: [Tab, string, LucideIcon][] }
 
 const NAV: NavSection[] = [
   {
     sectionKey: 'analytics',
     items: [
-      ['sankey', 'nav.sankey'],
-      ['trends', 'nav.trends'],
-      ['breakdown', 'nav.breakdown'],
-      ['cashflow', 'nav.cashflow'],
+      ['sankey', 'nav.sankey', Workflow],
+      ['trends', 'nav.trends', TrendingUp],
+      ['breakdown', 'nav.breakdown', PieChart],
+      ['cashflow', 'nav.cashflow', BarChart2],
     ],
   },
   {
     sectionKey: 'accounts',
     items: [
-      ['kontoauszug', 'nav.kontoauszug'],
-      ['konten', 'nav.konten'],
-      ['budgets', 'nav.budgets'],
-      ['limits', 'nav.limits'],
+      ['kontoauszug', 'nav.kontoauszug', List],
+      ['konten', 'nav.konten', Landmark],
+      ['budgets', 'nav.budgets', Wallet],
+      ['limits', 'nav.limits', Gauge],
     ],
   },
   {
     sectionKey: 'imports',
     items: [
-      ['csv', 'nav.csv'],
-      ['camt', 'nav.camt'],
+      ['csv', 'nav.csv', FileSpreadsheet],
+      ['camt', 'nav.camt', FileCode],
     ],
   },
 ]
@@ -120,13 +126,14 @@ export default function App() {
           {NAV.map(({ sectionKey, items }) => (
             <div key={sectionKey} className="nav-section">
               <span className="nav-section-title">{t(`nav.sections.${sectionKey}`)}</span>
-              {items.map(([id, labelKey]) => (
+              {items.map(([id, labelKey, Icon]) => (
                 <button
                   key={id}
                   className={`nav-item${tab === id ? ' active' : ''}`}
                   onClick={() => setTab(id)}
                   title={t(labelKey)}
                 >
+                  <span className="nav-item-icon"><Icon size={15} strokeWidth={1.6} /></span>
                   <span className="nav-item-label">{t(labelKey)}</span>
                 </button>
               ))}
