@@ -1,0 +1,2 @@
+ALTER TABLE users ADD COLUMN default_account_id BIGINT REFERENCES accounts(id) ON DELETE SET NULL;
+ALTER TABLE users ADD COLUMN language VARCHAR(10);

@@ -371,6 +371,8 @@
   },
   "settings": {
     "title": "Settings",
-    "language": "Language"
+    "language": "Language",
+    "defaultAccount": "Default account",
+    "noDefaultAccount": "No default"
   }
 }

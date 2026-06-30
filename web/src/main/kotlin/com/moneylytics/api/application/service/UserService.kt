@@ -1,14 +1,17 @@
 package com.moneylytics.api.application.service
 
 import com.moneylytics.api.application.port.input.CreateUserUseCase
+import com.moneylytics.api.application.port.input.GetUserSettingsUseCase
 import com.moneylytics.api.application.port.input.ListUsersUseCase
 import com.moneylytics.api.application.port.input.LoginOAuthUserUseCase
 import com.moneylytics.api.application.port.input.RegisterUserUseCase
 import com.moneylytics.api.application.port.input.ResolveUserUseCase
+import com.moneylytics.api.application.port.input.UpdateUserSettingsUseCase
 import com.moneylytics.api.application.port.output.CategoryRepository
 import com.moneylytics.api.application.port.output.UserRepository
 import com.moneylytics.api.domain.Category
 import com.moneylytics.api.domain.User
+import com.moneylytics.api.domain.UserSettings
 import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -26,8 +29,18 @@ class UserService(
     ListUsersUseCase,
     CreateUserUseCase,
     RegisterUserUseCase,
-    LoginOAuthUserUseCase {
+    LoginOAuthUserUseCase,
+    GetUserSettingsUseCase,
+    UpdateUserSettingsUseCase {
     override fun listUsers(): List<User> = userRepository.findAll()
+
+    override fun getSettings(userId: Long): UserSettings = userRepository.getSettings(userId)
+
+    override fun updateSettings(
+        userId: Long,
+        defaultAccountIban: String?,
+        language: String?,
+    ): UserSettings = userRepository.updateSettings(userId, defaultAccountIban, language)
 
     override fun resolveUser(externalId: String): Long =
         userRepository.findByExternalId(externalId)?.id
