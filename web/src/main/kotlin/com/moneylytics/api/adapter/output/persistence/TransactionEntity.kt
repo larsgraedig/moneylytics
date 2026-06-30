@@ -41,6 +41,10 @@ class TransactionEntity(
     var comment: String? = null,
     @Column(nullable = true, length = 2000)
     var purpose: String? = null,
+    @Column(nullable = true, length = 255)
+    var counterpartyName: String? = null,
+    @Column(nullable = true, length = 34)
+    var counterpartyIban: String? = null,
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     var id: Long? = null,

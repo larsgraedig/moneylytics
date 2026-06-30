@@ -81,7 +81,7 @@ class CamtParser {
 
                 val txDtls = entry.firstChildEl("NtryDtls")?.firstChildEl("TxDtls")
                 val rltdPties = txDtls?.firstChildEl("RltdPties")
-                val counterparty = resolveCounterparty(rltdPties, cdtDbt)
+                val (counterparty, counterpartyIban) = resolveCounterparty(rltdPties, cdtDbt)
                 val purpose =
                     txDtls
                         ?.firstChildEl("RmtInf")
@@ -103,6 +103,7 @@ class CamtParser {
                         bookingDateRaw = bookingDateRaw,
                         valueDateRaw = valueDateRaw,
                         counterparty = counterparty,
+                        counterpartyIban = counterpartyIban,
                         purpose = purpose,
                         amount = amount,
                         amountRaw = amtRaw,
@@ -121,15 +122,28 @@ class CamtParser {
     private fun resolveCounterparty(
         rltdPties: Element?,
         cdtDbt: String,
-    ): String {
-        if (rltdPties == null) return ""
-        val dbtrName = rltdPties.firstChildEl("Dbtr")?.partyName()
-        val cdtrName = rltdPties.firstChildEl("Cdtr")?.partyName()
+    ): Pair<String, String?> {
+        if (rltdPties == null) return "" to null
         return when (cdtDbt) {
-            "DBIT" -> cdtrName ?: dbtrName ?: ""
-            else -> dbtrName ?: cdtrName ?: ""
+            "DBIT" -> {
+                val name = rltdPties.firstChildEl("Cdtr")?.partyName()
+                    ?: rltdPties.firstChildEl("Dbtr")?.partyName() ?: ""
+                val iban = rltdPties.firstChildEl("CdtrAcct")?.ibanText()
+                    ?: rltdPties.firstChildEl("DbtrAcct")?.ibanText()
+                name to iban
+            }
+            else -> {
+                val name = rltdPties.firstChildEl("Dbtr")?.partyName()
+                    ?: rltdPties.firstChildEl("Cdtr")?.partyName() ?: ""
+                val iban = rltdPties.firstChildEl("DbtrAcct")?.ibanText()
+                    ?: rltdPties.firstChildEl("CdtrAcct")?.ibanText()
+                name to iban
+            }
         }
     }
+
+    private fun Element.ibanText(): String? =
+        firstChildEl("Id")?.firstChildEl("IBAN")?.textContent?.trim()?.takeIf { it.isNotBlank() }
 
     private fun Element.partyName(): String? {
         val direct = firstChildEl("Nm")?.textContent?.trim()

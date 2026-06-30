@@ -125,6 +125,8 @@ export default function CamtImportPage() {
           subcategory: d.subcategory,
           accountIban: r.accountIban,
           purpose: r.purpose || null,
+          counterpartyName: r.counterparty ?? null,
+          counterpartyIban: r.counterpartyIban ?? null,
         }]
       })
 

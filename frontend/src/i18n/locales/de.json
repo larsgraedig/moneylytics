@@ -137,7 +137,8 @@
       "comment": "Kommentar",
       "purpose": "Verwendungszweck",
       "offsets": "Verrechnungen",
-      "budget": "Budget"
+      "budget": "Budget",
+      "counterpartyName": "Zahlungsbeteiligte"
     },
     "addComment": "Kommentar hinzufügen…",
     "partialAmount": "Teilbetrag",
@@ -281,6 +282,8 @@
       "fixedIbanPlaceholder": "z. B. DE00123456789",
       "currency": "Währung",
       "fixedCurrency": "Feste Währung",
+      "counterpartyName": "Zahlungsbeteiligte",
+      "counterpartyIban": "Zahlungsbeteiligte IBAN",
       "notMapped": "— Nicht gemappt —",
       "cancel": "Abbrechen",
       "import": "Importieren",

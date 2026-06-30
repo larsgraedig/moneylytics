@@ -137,7 +137,8 @@
       "comment": "comment",
       "purpose": "purpose",
       "offsets": "offsets",
-      "budget": "budget"
+      "budget": "budget",
+      "counterpartyName": "Counterparty"
     },
     "addComment": "add comment…",
     "partialAmount": "partial amt",
@@ -281,6 +282,8 @@
       "fixedIbanPlaceholder": "e.g. DE00123456789",
       "currency": "Currency",
       "fixedCurrency": "Fixed currency",
+      "counterpartyName": "Counterparty",
+      "counterpartyIban": "Counterparty IBAN",
       "notMapped": "— not mapped —",
       "cancel": "cancel",
       "import": "import",

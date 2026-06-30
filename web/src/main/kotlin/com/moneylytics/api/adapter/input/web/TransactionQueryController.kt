@@ -160,6 +160,8 @@ class TransactionQueryController(
                 },
             comment = comment,
             purpose = purpose,
+            counterpartyName = counterpartyName,
+            counterpartyIban = counterpartyIban,
         )
 
     @GetMapping("/trends")

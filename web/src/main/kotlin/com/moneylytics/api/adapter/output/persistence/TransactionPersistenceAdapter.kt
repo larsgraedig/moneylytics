@@ -177,6 +177,8 @@ class TransactionPersistenceAdapter(
             offsetLinks = offsetLinks,
             comment = comment,
             purpose = purpose,
+            counterpartyName = counterpartyName,
+            counterpartyIban = counterpartyIban,
         )
 
     private fun Transaction.toEntity(
@@ -200,6 +202,8 @@ class TransactionPersistenceAdapter(
             fingerprint = fingerprint,
             user = userJpaRepository.getReferenceById(userId),
             purpose = purpose?.takeIf { it.isNotBlank() },
+            counterpartyName = counterpartyName?.takeIf { it.isNotBlank() },
+            counterpartyIban = counterpartyIban?.takeIf { it.isNotBlank() },
         )
     }
 

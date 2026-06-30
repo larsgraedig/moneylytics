@@ -20,6 +20,8 @@ data class TransactionItem(
     val offsetLinks: List<OffsetLinkItem>,
     val comment: String?,
     val purpose: String?,
+    val counterpartyName: String?,
+    val counterpartyIban: String?,
 )
 
 data class OffsetLinkItem(

@@ -49,6 +49,8 @@ export interface TransactionItem {
   offsetLinks: OffsetLinkItem[]
   comment: string | null
   purpose: string | null
+  counterpartyName: string | null
+  counterpartyIban: string | null
 }
 
 export interface TransactionListResponse {

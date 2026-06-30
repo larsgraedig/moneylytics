@@ -49,6 +49,8 @@ function buildInitialMapping(d: CsvDetectionResult): CsvMapping {
     currencyColumn: d.suggestions.currency ?? null,
     fixedAccountIban: null,
     fixedCurrency: 'EUR',
+    counterpartyNameColumn: d.suggestions.counterpartyName ?? null,
+    counterpartyIbanColumn: d.suggestions.counterpartyIban ?? null,
   }
 }
 
@@ -221,6 +223,8 @@ function MappingView({
               />
             </div>
           )}
+          <MappingRow label={t('csvImport.mapping.counterpartyName')} headers={headers} value={mapping.counterpartyNameColumn} onChange={v => set('counterpartyNameColumn', v)} />
+          <MappingRow label={t('csvImport.mapping.counterpartyIban')} headers={headers} value={mapping.counterpartyIbanColumn} onChange={v => set('counterpartyIbanColumn', v)} />
         </div>
 
         <div className="gcv-preview-panel">
