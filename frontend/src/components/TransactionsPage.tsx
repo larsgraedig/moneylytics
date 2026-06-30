@@ -881,10 +881,12 @@ export default function TransactionsPage({
                       {renderBudgetCell(row, i)}
                     </td>
                     <td className="txnv-cell-counterparty">
-                      <span className="txnv-counterparty-name">{row.original.counterpartyName ?? ''}</span>
-                      {row.original.counterpartyIban && (
-                        <span className="txnv-counterparty-iban">{row.original.counterpartyIban}</span>
-                      )}
+                      <span
+                        className="txnv-counterparty-name"
+                        title={row.original.counterpartyIban ?? undefined}
+                      >
+                        {row.original.counterpartyName ?? ''}
+                      </span>
                     </td>
                     <td className="txnv-cell-purpose" title={row.original.purpose ?? undefined}>
                       <span className="txnv-purpose-text">{row.original.purpose ?? ''}</span>
