@@ -4,8 +4,8 @@ import java.math.BigDecimal
 import java.time.LocalDate
 
 data class Transaction(
-    val category: String,
-    val subcategory: String,
+    val category: String?,
+    val subcategory: String?,
     val bookingDate: LocalDate,
     val valueDate: LocalDate,
     val accountingDate: LocalDate,

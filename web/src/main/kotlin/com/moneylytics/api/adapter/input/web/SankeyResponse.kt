@@ -30,7 +30,7 @@ data class TrendSeriesGroup(
 )
 
 data class TrendSeriesEntry(
-    val label: String,
+    val label: String?,
     val data: List<BigDecimal>,
     val role: SeriesRole,
 )

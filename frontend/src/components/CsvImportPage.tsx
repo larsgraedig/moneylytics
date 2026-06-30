@@ -323,7 +323,7 @@ export default function CsvImportPage() {
       .filter(r => {
         if (r.status === 'DUPLICATE' || r.unknownAccount) return false
         const d = decisions[r.rowIndex]
-        return d?.action === 'import' && d.category.trim() && d.subcategory.trim()
+        return d?.action === 'import'
       })
       .map(r => {
         const d = decisions[r.rowIndex] as { action: 'import'; category: string; subcategory: string }
@@ -387,7 +387,7 @@ export default function CsvImportPage() {
     const readyCount = rows.filter(r => {
       if (r.status === 'DUPLICATE' || r.unknownAccount) return false
       const d = decisions[r.rowIndex]
-      return d?.action === 'import' && d.category.trim() && d.subcategory.trim()
+      return d?.action === 'import'
     }).length
     const skippedCount = rows.filter(r => r.status !== 'DUPLICATE' && !r.unknownAccount && decisions[r.rowIndex]?.action === 'skip').length
 

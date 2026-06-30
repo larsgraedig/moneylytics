@@ -114,7 +114,7 @@ export default function CamtImportPage() {
       .filter(r => r.status === 'NEW' || r.status === 'PREVIOUSLY_IGNORED')
       .flatMap(r => {
         const d = decisions[r.rowNumber]
-        if (d?.action !== 'import' || !d.category.trim() || !d.subcategory.trim()) return []
+        if (d?.action !== 'import') return []
         return [{
           fingerprint: r.fingerprint!,
           bookingDate: r.bookingDate!,
@@ -161,10 +161,7 @@ export default function CamtImportPage() {
     rows.filter(r => r.status === 'NEW' && decisions[r.rowNumber]?.action === 'ignore')
 
   const canImport = (rows: RawPreviewRow[]) => {
-    const readyToImport = toImportRows(rows).filter(r => {
-      const d = decisions[r.rowNumber]
-      return d?.action === 'import' && d.category.trim() && d.subcategory.trim()
-    })
+    const readyToImport = toImportRows(rows).filter(r => decisions[r.rowNumber]?.action === 'import')
     return readyToImport.length > 0 || toIgnoreRows(rows).length > 0
   }
 

@@ -64,6 +64,8 @@ class CsvTransactionParser {
         val errors = mutableListOf<CsvValidationError>()
         val hasAccountNameColumn = config.accountName != null && config.accountName in headers
         val hasPurposeColumn = config.purpose != null && config.purpose in headers
+        val hasCategoryColumn = config.category != null && config.category in headers
+        val hasSubcategoryColumn = config.subcategory != null && config.subcategory in headers
 
         for ((index, record) in csvParser.withIndex()) {
             val rowNumber = index + 2 // header is row 1, data starts at row 2
@@ -80,8 +82,8 @@ class CsvTransactionParser {
                 val purpose = if (hasPurposeColumn) record[config.purpose!!].takeIf { it.isNotBlank() } else null
                 transactions.add(
                     Transaction(
-                        category = record[config.category],
-                        subcategory = record[config.subcategory],
+                        category = if (hasCategoryColumn) record[config.category!!].takeIf { it.isNotBlank() } else null,
+                        subcategory = if (hasSubcategoryColumn) record[config.subcategory!!].takeIf { it.isNotBlank() } else null,
                         bookingDate = bookingDate,
                         valueDate = valueDate,
                         accountingDate = bookingDate,

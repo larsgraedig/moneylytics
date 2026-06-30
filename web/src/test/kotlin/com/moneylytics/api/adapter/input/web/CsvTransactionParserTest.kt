@@ -203,6 +203,45 @@ class CsvTransactionParserTest {
     }
 
     @Test
+    fun `should parse CSV without category columns and set category and subcategory to null`() {
+        // Arrange
+        val csv =
+            """
+            Buchungstag,Valutadatum,Betrag,EUR,IBAN Auftragskonto
+            02.01.2025,02.01.2025,-1.5,EUR,DE33000000000000000000
+            """.trimIndent()
+
+        // Act
+        val result = parser.parse(csv)
+
+        // Assert
+        assertThat(result).isInstanceOf(CsvParseResult.Valid::class.java)
+        val valid = result as CsvParseResult.Valid
+        assertThat(valid.transactions).hasSize(1)
+        assertThat(valid.transactions[0].category).isNull()
+        assertThat(valid.transactions[0].subcategory).isNull()
+    }
+
+    @Test
+    fun `should parse CSV with blank category cells and set category and subcategory to null`() {
+        // Arrange — category column present but cells are empty
+        val csv =
+            """
+            Kategorie,Unterkategorie,Buchungstag,Valutadatum,Betrag,EUR,IBAN Auftragskonto
+            ,,02.01.2025,02.01.2025,-1.5,EUR,DE33000000000000000000
+            """.trimIndent()
+
+        // Act
+        val result = parser.parse(csv)
+
+        // Assert
+        assertThat(result).isInstanceOf(CsvParseResult.Valid::class.java)
+        val valid = result as CsvParseResult.Valid
+        assertThat(valid.transactions[0].category).isNull()
+        assertThat(valid.transactions[0].subcategory).isNull()
+    }
+
+    @Test
     fun `should return error for completely unrecognized CSV format`() {
         // Arrange — none of the known formats can match these headers
         val csv =
