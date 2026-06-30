@@ -84,6 +84,7 @@ export default function TransactionsPage({
   const [highlightedId, setHighlightedId] = useState<number | null>(null)
   const [filterCategory, setFilterCategory] = useState('')
   const [filterSubcategory, setFilterSubcategory] = useState('')
+  const [filterUncategorized, setFilterUncategorized] = useState(false)
   const [bulkCategory, setBulkCategory] = useState('')
   const [bulkSubcategory, setBulkSubcategory] = useState('')
   const [bulkApplying, setBulkApplying] = useState(false)
@@ -124,11 +125,11 @@ export default function TransactionsPage({
     return categories.find(c => c.name === category)?.subcategories ?? []
   }
 
-  async function doLoad(category?: string, subcategory?: string) {
+  async function doLoad(category?: string, subcategory?: string, uncategorized?: boolean) {
     setPage({ phase: 'loading' })
     setLinkingState(null)
     try {
-      const data = await fetchAllTransactions(from, to, iban, category, subcategory)
+      const data = await fetchAllTransactions(from, to, iban, category, subcategory, uncategorized)
       setRows(
         data.transactions.map(tx => ({
           original: tx,
@@ -154,6 +155,7 @@ export default function TransactionsPage({
   function load() {
     setFilterCategory('')
     setFilterSubcategory('')
+    setFilterUncategorized(false)
     doLoad()
   }
 
@@ -453,7 +455,7 @@ export default function TransactionsPage({
 
   const uniqueRowCategories = useMemo(() => {
     const seen = new Set<string>()
-    rows.forEach(r => seen.add(r.category))
+    rows.forEach(r => { if (r.category) seen.add(r.category) })
     return [...seen]
   }, [rows])
 
@@ -708,6 +710,7 @@ export default function TransactionsPage({
           <select
             className="account-select"
             value={filterCategory}
+            disabled={filterUncategorized}
             onChange={e => {
               const cat = e.target.value
               setFilterCategory(cat)
@@ -735,6 +738,19 @@ export default function TransactionsPage({
             {subcategoriesFor(filterCategory).map(s => <option key={s} value={s}>{s}</option>)}
           </select>
         )}
+        <button
+          className={`load-btn${filterUncategorized ? ' load-btn--active' : ''}`}
+          onClick={() => {
+            const next = !filterUncategorized
+            setFilterUncategorized(next)
+            setFilterCategory('')
+            setFilterSubcategory('')
+            setLinkingState(null)
+            if (page.phase === 'ready') doLoad(undefined, undefined, next || undefined)
+          }}
+        >
+          {t('transactions.filterUncategorized')}
+        </button>
         {page.phase === 'ready' && (
           <span className="txnv-count">{t('transactions.count', { count: rows.length })}</span>
         )}
@@ -853,7 +869,7 @@ export default function TransactionsPage({
                       <input
                         className="ri-cat-input"
                         value={row.subcategory}
-                        list={sublistId(row.category)}
+                        list={row.category ? sublistId(row.category) : undefined}
                         onChange={e => updateRow(i, 'subcategory', e.target.value)}
                       />
                     </td>

@@ -25,6 +25,7 @@ class TransactionQueryService(
                 transactionRepository.findByAccountingDateBetween(query.from, query.to, query.userId, query.accountIban)
             }
         return transactions
+            .let { list -> if (query.uncategorized) list.filter { it.category == null } else list }
             .let { list -> query.category?.let { cat -> list.filter { it.category == cat } } ?: list }
             .let { list -> query.subcategory?.let { sub -> list.filter { it.subcategory == sub } } ?: list }
     }

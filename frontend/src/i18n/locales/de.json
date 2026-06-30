@@ -125,6 +125,7 @@
     "load": "Laden",
     "allCategories": "Alle Kategorien",
     "allSubcategories": "Alle Unterkategorien",
+    "filterUncategorized": "Ohne Kategorie",
     "columns": {
       "date": "Datum",
       "bookingDate": "Buchungsdatum",

@@ -74,6 +74,7 @@ class TransactionQueryController(
         @RequestParam(required = false) subcategory: String? = null,
         @RequestParam(required = false) iban: String? = null,
         @RequestParam(required = false) onlyNegative: Boolean = true,
+        @RequestParam(required = false) uncategorized: Boolean = false,
         @AuthenticationPrincipal principal: UserDetails,
     ): TransactionListResponse {
         val transactions =
@@ -88,6 +89,7 @@ class TransactionQueryController(
                         accountIban = iban,
                         category = category,
                         subcategory = subcategory,
+                        uncategorized = uncategorized,
                     ),
                 )
             }

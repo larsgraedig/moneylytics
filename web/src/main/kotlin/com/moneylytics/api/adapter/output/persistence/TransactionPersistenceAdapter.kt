@@ -119,8 +119,8 @@ class TransactionPersistenceAdapter(
         subcategory: String,
     ): Transaction? {
         val entity = jpaRepository.findByIdAndUserId(id, userId) ?: return null
-        entity.category = category
-        entity.subcategory = subcategory
+        entity.category = category.takeIf { it.isNotBlank() }
+        entity.subcategory = subcategory.takeIf { it.isNotBlank() }
         return enrichWithOffsetLinks(listOf(jpaRepository.save(entity))).first()
     }
 
@@ -189,8 +189,8 @@ class TransactionPersistenceAdapter(
                     "Account not found for IBAN $accountIban and userId $userId — ensure accounts are created before importing transactions",
                 )
         return TransactionEntity(
-            category = category,
-            subcategory = subcategory,
+            category = category?.takeIf { it.isNotBlank() },
+            subcategory = subcategory?.takeIf { it.isNotBlank() },
             bookingDate = bookingDate,
             valueDate = valueDate,
             accountingDate = accountingDate,
