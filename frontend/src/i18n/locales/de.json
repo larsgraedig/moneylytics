@@ -31,6 +31,7 @@
     "back": "← Zurück",
     "confirm": "Bestätigen",
     "signOut": "Abmelden",
+    "close": "Schließen",
     "error": "Fehler",
     "noData": "Keine Daten",
     "fetching": "Wird geladen…",
@@ -366,5 +367,9 @@
     "parsing": "Dateien werden verarbeitet…",
     "noRows": "Die Dateien enthalten keine Zeilen.",
     "noFiles": "Keine Dateien angegeben."
+  },
+  "settings": {
+    "title": "Einstellungen",
+    "language": "Sprache"
   }
 }
