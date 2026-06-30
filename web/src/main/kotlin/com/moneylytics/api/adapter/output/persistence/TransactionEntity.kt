@@ -15,10 +15,10 @@ import java.time.LocalDate
 @Entity
 @Table(name = "transactions")
 class TransactionEntity(
-    @Column(nullable = false)
-    var category: String,
-    @Column(nullable = false)
-    var subcategory: String,
+    @Column(nullable = true)
+    var category: String?,
+    @Column(nullable = true)
+    var subcategory: String?,
     @Column(nullable = false)
     val bookingDate: LocalDate,
     @Column(nullable = false)

@@ -172,8 +172,8 @@ data class BudgetTransactionLinkDto(
     val amount: BigDecimal?,
     val transactionAmount: BigDecimal,
     val transactionDate: String,
-    val transactionCategory: String,
-    val transactionSubcategory: String,
+    val transactionCategory: String?,
+    val transactionSubcategory: String?,
     val transactionPurpose: String?,
     val transactionComment: String?,
 )
