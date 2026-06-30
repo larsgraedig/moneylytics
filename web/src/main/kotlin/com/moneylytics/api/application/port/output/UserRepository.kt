@@ -19,5 +19,6 @@ interface UserRepository {
         userId: Long,
         defaultAccountIban: String?,
         language: String?,
+        transactionsColumnOrder: List<String>?,
     ): UserSettings
 }

@@ -2560,6 +2560,10 @@ body {
 
 .txnv-col-amount { text-align: right; }
 
+.txnv-th-draggable { cursor: grab; user-select: none; }
+.txnv-th-dragging { opacity: 0.5; }
+.txnv-th-drag-over { border-left: 2px solid var(--accent); }
+
 .txnv-table tbody tr {
   border-bottom: 1px solid var(--border);
   transition: background 0.08s;

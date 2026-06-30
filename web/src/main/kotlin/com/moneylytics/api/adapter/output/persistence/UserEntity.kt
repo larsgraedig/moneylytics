@@ -22,6 +22,8 @@ class UserEntity(
     var defaultAccount: AccountEntity? = null,
     @Column(nullable = true, length = 10)
     var language: String? = null,
+    @Column(nullable = true, length = 500)
+    var transactionsColumnOrder: String? = null,
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     var id: Long? = null,

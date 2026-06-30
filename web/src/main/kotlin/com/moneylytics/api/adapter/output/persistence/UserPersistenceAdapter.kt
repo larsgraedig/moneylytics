@@ -38,10 +38,12 @@ class UserPersistenceAdapter(
         userId: Long,
         defaultAccountIban: String?,
         language: String?,
+        transactionsColumnOrder: List<String>?,
     ): UserSettings {
         val entity = jpaRepository.getReferenceById(userId)
         entity.defaultAccount = defaultAccountIban?.let { accountJpaRepository.findByIbanAndUserId(it, userId) }
         entity.language = language
+        entity.transactionsColumnOrder = transactionsColumnOrder?.joinToString(",")
         return jpaRepository.save(entity).toSettings()
     }
 
@@ -50,5 +52,6 @@ class UserPersistenceAdapter(
     private fun UserEntity.toSettings() = UserSettings(
         defaultAccountIban = defaultAccount?.iban,
         language = language,
+        transactionsColumnOrder = transactionsColumnOrder?.split(",")?.filter { it.isNotBlank() }?.takeIf { it.isNotEmpty() },
     )
 }

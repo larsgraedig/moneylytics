@@ -19,9 +19,13 @@ import {
   removeTransactionLink as removeBudgetLink,
   type Budget,
 } from '../api/budgets'
+import { updateUserSettings } from '../api/settings'
 
 const LINK_COLORS = ['#f59e0b', '#10b981', '#60a5fa', '#f472b6', '#a78bfa', '#fb923c']
 const BUDGET_COLORS = ['#34d399', '#818cf8', '#fb7185', '#fbbf24', '#38bdf8', '#a3e635']
+
+const DEFAULT_COLUMN_ORDER = ['date', 'account', 'amount', 'category', 'subcategory', 'offsets', 'budget', 'counterparty', 'purpose', 'comment'] as const
+type ColumnKey = typeof DEFAULT_COLUMN_ORDER[number]
 
 function formatDate(iso: string): string {
   const [y, m, d] = iso.split('-')
@@ -68,11 +72,15 @@ export default function TransactionsPage({
   to,
   iban,
   accounts,
+  columnOrder,
+  onColumnOrderChange,
 }: {
   from: string
   to: string
   iban?: string
   accounts: Account[]
+  columnOrder?: string[]
+  onColumnOrderChange?: (order: string[]) => void
 }) {
   const { t } = useTranslation()
   const [rows, setRows] = useState<RowState[]>([])
@@ -88,6 +96,8 @@ export default function TransactionsPage({
   const [bulkCategory, setBulkCategory] = useState('')
   const [bulkSubcategory, setBulkSubcategory] = useState('')
   const [bulkApplying, setBulkApplying] = useState(false)
+  const [dragCol, setDragCol] = useState<ColumnKey | null>(null)
+  const [dragOverCol, setDragOverCol] = useState<ColumnKey | null>(null)
 
   useEffect(() => {
     fetchCategories().then(r => setCategories(r.categories)).catch(() => {})
@@ -120,6 +130,35 @@ export default function TransactionsPage({
     categories.forEach(c => c.subcategories.forEach(s => subs.add(s)))
     return [...subs].sort()
   }, [categories])
+
+  const colOrder = useMemo<ColumnKey[]>(() => {
+    const order = (columnOrder ?? DEFAULT_COLUMN_ORDER) as ColumnKey[]
+    return [
+      ...DEFAULT_COLUMN_ORDER.filter(c => order.includes(c as ColumnKey)).sort((a, b) => order.indexOf(a) - order.indexOf(b)),
+      ...DEFAULT_COLUMN_ORDER.filter(c => !order.includes(c as ColumnKey)),
+    ]
+  }, [columnOrder])
+
+  function saveColumnOrder(order: ColumnKey[]) {
+    updateUserSettings({ transactionsColumnOrder: order }).catch(() => {})
+    onColumnOrderChange?.(order)
+  }
+
+  function handleDrop(targetCol: ColumnKey) {
+    if (!dragCol || dragCol === targetCol) {
+      setDragCol(null)
+      setDragOverCol(null)
+      return
+    }
+    const newOrder = [...colOrder]
+    const from = newOrder.indexOf(dragCol)
+    const to = newOrder.indexOf(targetCol)
+    newOrder.splice(from, 1)
+    newOrder.splice(to, 0, dragCol)
+    setDragCol(null)
+    setDragOverCol(null)
+    saveColumnOrder(newOrder)
+  }
 
   function subcategoriesFor(category: string): string[] {
     return categories.find(c => c.name === category)?.subcategories ?? []
@@ -696,6 +735,158 @@ export default function TransactionsPage({
     )
   }
 
+  function renderColumnHeader(col: ColumnKey) {
+    const isDragging = dragCol === col
+    const isDragOver = dragOverCol === col
+    const thClass = [
+      'txnv-th-draggable',
+      isDragging ? 'txnv-th-dragging' : '',
+      isDragOver ? 'txnv-th-drag-over' : '',
+    ].filter(Boolean).join(' ')
+
+    let label: string
+    switch (col) {
+      case 'date': label = t('transactions.columns.date'); break
+      case 'account': label = t('transactions.columns.account'); break
+      case 'amount': label = t('transactions.columns.amount'); break
+      case 'category': label = t('transactions.columns.category'); break
+      case 'subcategory': label = t('transactions.columns.subcategory'); break
+      case 'offsets': label = t('transactions.columns.offsets'); break
+      case 'budget': label = t('budgets.columns.budget'); break
+      case 'counterparty': label = t('transactions.columns.counterpartyName'); break
+      case 'purpose': label = t('transactions.columns.purpose'); break
+      case 'comment': label = t('transactions.columns.comment'); break
+    }
+
+    return (
+      <th
+        key={col}
+        className={thClass}
+        draggable={true}
+        onDragStart={() => setDragCol(col)}
+        onDragEnd={() => { setDragCol(null); setDragOverCol(null) }}
+        onDragOver={e => { e.preventDefault(); setDragOverCol(col) }}
+        onDragEnter={e => { e.preventDefault(); setDragOverCol(col) }}
+        onDragLeave={() => setDragOverCol(null)}
+        onDrop={() => handleDrop(col)}
+      >
+        {label}
+      </th>
+    )
+  }
+
+  function renderCell(col: ColumnKey, row: RowState, i: number, rowLinkColor: string | null) {
+    switch (col) {
+      case 'date':
+        return (
+          <td
+            key={col}
+            className="txn-cell-date"
+            style={rowLinkColor ? { boxShadow: `inset 3px 0 0 0 ${rowLinkColor}`, paddingLeft: '9px' } : undefined}
+          >
+            <input
+              className="txnv-accounting-date-input"
+              type="date"
+              value={row.accountingDate}
+              disabled={row.savingAccountingDate}
+              onChange={e => updateRow(i, 'accountingDate', e.target.value)}
+              onBlur={() => saveAccountingDate(i)}
+            />
+            {row.original.accountingDate !== row.original.bookingDate && (
+              <span className="txnv-booking-date-ref" title={t('transactions.bookingDateTitle')}>
+                {formatDate(row.original.bookingDate)}
+              </span>
+            )}
+          </td>
+        )
+      case 'account':
+        return (
+          <td key={col} className="txnv-cell-account">
+            {accountMap.get(row.original.accountIban) ?? row.original.accountIban}
+          </td>
+        )
+      case 'amount':
+        return (
+          <td key={col} className={`txn-cell-amount txnv-col-amount${row.original.amount < 0 ? ' negative' : ' positive'}`}>
+            <span className={row.original.effectiveAmount !== row.original.amount ? 'txnv-amount-crossed' : ''}>
+              {EUR.format(row.original.amount)}
+            </span>
+            {row.original.effectiveAmount !== row.original.amount && (
+              <span className="txnv-effective-amount">
+                {EUR.format(row.original.effectiveAmount)}
+              </span>
+            )}
+          </td>
+        )
+      case 'category':
+        return (
+          <td key={col}>
+            <input
+              className="ri-cat-input"
+              value={row.category}
+              list="txnv-cat-list"
+              onChange={e => updateRow(i, 'category', e.target.value)}
+            />
+          </td>
+        )
+      case 'subcategory':
+        return (
+          <td key={col}>
+            <input
+              className="ri-cat-input"
+              value={row.subcategory}
+              list={row.category ? sublistId(row.category) : undefined}
+              onChange={e => updateRow(i, 'subcategory', e.target.value)}
+            />
+          </td>
+        )
+      case 'offsets':
+        return (
+          <td key={col} className="txnv-cell-offsets">
+            {renderOffsetCell(row, i)}
+          </td>
+        )
+      case 'budget':
+        return (
+          <td key={col} className="txnv-cell-budget">
+            {renderBudgetCell(row, i)}
+          </td>
+        )
+      case 'counterparty':
+        return (
+          <td key={col} className="txnv-cell-counterparty">
+            <span
+              className="txnv-counterparty-name"
+              title={row.original.counterpartyIban ?? undefined}
+            >
+              {row.original.counterpartyName ?? ''}
+            </span>
+          </td>
+        )
+      case 'purpose':
+        return (
+          <td key={col} className="txnv-cell-purpose" title={row.original.purpose ?? undefined}>
+            <span className="txnv-purpose-text">{row.original.purpose ?? ''}</span>
+          </td>
+        )
+      case 'comment':
+        return (
+          <td key={col} className="txnv-cell-comment">
+            <input
+              className="txnv-comment-input"
+              type="text"
+              value={row.comment}
+              placeholder={t('transactions.addComment')}
+              disabled={row.savingComment}
+              onChange={e => updateRow(i, 'comment', e.target.value)}
+              onBlur={() => saveComment(i)}
+              onKeyDown={e => { if (e.key === 'Enter') { e.currentTarget.blur() } }}
+            />
+          </td>
+        )
+    }
+  }
+
   return (
     <div className="txnv-page">
       <div className="tr-controls">
@@ -794,22 +985,12 @@ export default function TransactionsPage({
                     onChange={toggleSelectAll}
                   />
                 </th>
-                <th>{t('transactions.columns.date')}</th>
-                <th>{t('transactions.columns.account')}</th>
-                <th className="txnv-col-amount">{t('transactions.columns.amount')}</th>
-                <th>{t('transactions.columns.category')}</th>
-                <th>{t('transactions.columns.subcategory')}</th>
-                <th>{t('transactions.columns.offsets')}</th>
-                <th>{t('budgets.columns.budget')}</th>
-                <th>{t('transactions.columns.counterpartyName')}</th>
-                <th>{t('transactions.columns.purpose')}</th>
-                <th>{t('transactions.columns.comment')}</th>
+                {colOrder.map(col => renderColumnHeader(col))}
                 <th></th>
               </tr>
             </thead>
             <tbody>
               {rows.map((row, i) => {
-                const effectiveDiffers = row.original.effectiveAmount !== row.original.amount
                 const rowLinkColor = (() => {
                   for (const link of row.original.offsetLinks) {
                     const idx = linkColorMap.get(link.id)
@@ -827,80 +1008,7 @@ export default function TransactionsPage({
                         onChange={() => toggleSelect(i)}
                       />
                     </td>
-                    <td
-                      className="txn-cell-date"
-                      style={rowLinkColor ? { boxShadow: `inset 3px 0 0 0 ${rowLinkColor}`, paddingLeft: '9px' } : undefined}
-                    >
-                      <input
-                        className="txnv-accounting-date-input"
-                        type="date"
-                        value={row.accountingDate}
-                        disabled={row.savingAccountingDate}
-                        onChange={e => updateRow(i, 'accountingDate', e.target.value)}
-                        onBlur={() => saveAccountingDate(i)}
-                      />
-                      {row.original.accountingDate !== row.original.bookingDate && (
-                        <span className="txnv-booking-date-ref" title={t('transactions.bookingDateTitle')}>
-                          {formatDate(row.original.bookingDate)}
-                        </span>
-                      )}
-                    </td>
-                    <td className="txnv-cell-account">
-                      {accountMap.get(row.original.accountIban) ?? row.original.accountIban}
-                    </td>
-                    <td className={`txn-cell-amount txnv-col-amount${row.original.amount < 0 ? ' negative' : ' positive'}`}>
-                      <span className={effectiveDiffers ? 'txnv-amount-crossed' : ''}>
-                        {EUR.format(row.original.amount)}
-                      </span>
-                      {effectiveDiffers && (
-                        <span className="txnv-effective-amount">
-                          {EUR.format(row.original.effectiveAmount)}
-                        </span>
-                      )}
-                    </td>
-                    <td>
-                      <input
-                        className="ri-cat-input"
-                        value={row.category}
-                        list="txnv-cat-list"
-                        onChange={e => updateRow(i, 'category', e.target.value)}
-                      />
-                    </td>
-                    <td>
-                      <input
-                        className="ri-cat-input"
-                        value={row.subcategory}
-                        list={row.category ? sublistId(row.category) : undefined}
-                        onChange={e => updateRow(i, 'subcategory', e.target.value)}
-                      />
-                    </td>
-                    <td className="txnv-cell-offsets">
-                      {renderOffsetCell(row, i)}
-                    </td>
-                    <td className="txnv-cell-budget">
-                      {renderBudgetCell(row, i)}
-                    </td>
-                    <td className="txnv-cell-counterparty">
-                      <span className="txnv-counterparty-name">{row.original.counterpartyName ?? ''}</span>
-                      {row.original.counterpartyIban && (
-                        <span className="txnv-counterparty-iban">{row.original.counterpartyIban}</span>
-                      )}
-                    </td>
-                    <td className="txnv-cell-purpose" title={row.original.purpose ?? undefined}>
-                      <span className="txnv-purpose-text">{row.original.purpose ?? ''}</span>
-                    </td>
-                    <td className="txnv-cell-comment">
-                      <input
-                        className="txnv-comment-input"
-                        type="text"
-                        value={row.comment}
-                        placeholder={t('transactions.addComment')}
-                        disabled={row.savingComment}
-                        onChange={e => updateRow(i, 'comment', e.target.value)}
-                        onBlur={() => saveComment(i)}
-                        onKeyDown={e => { if (e.key === 'Enter') { e.currentTarget.blur() } }}
-                      />
-                    </td>
+                    {colOrder.map(col => renderCell(col, row, i, rowLinkColor))}
                     <td className="txnv-cell-actions">
                       {row.error && (
                         <span className="txnv-row-error">{row.error}</span>

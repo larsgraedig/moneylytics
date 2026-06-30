@@ -80,6 +80,7 @@ export default function App() {
   const [activePreset, setActivePreset] = useState<Preset | ''>('')
   const [accounts, setAccounts] = useState<Account[]>([])
   const [selectedIban, setSelectedIban] = useState<string>('')
+  const [txColumnOrder, setTxColumnOrder] = useState<string[] | null>(null)
   const [view, setView] = useState<ViewState>({ phase: 'idle' })
   const [activeNode, setActiveNode] = useState<string | null>(null)
 
@@ -87,6 +88,7 @@ export default function App() {
     if (!username) return
     setAccounts([])
     setSelectedIban('')
+    setTxColumnOrder(null)
     setView({ phase: 'idle' })
     setActiveNode(null)
     Promise.all([fetchAccounts(), fetchUserSettings()]).then(([accs, settings]) => {
@@ -99,6 +101,7 @@ export default function App() {
       if (defaultIban && accs.some(a => a.iban === defaultIban)) {
         setSelectedIban(defaultIban)
       }
+      setTxColumnOrder(settings.transactionsColumnOrder ?? null)
     }).catch(() => {
       fetchAccounts().then(accs => {
         setAccounts(accs)
@@ -257,7 +260,7 @@ export default function App() {
           {tab === 'cashflow' && <CashflowPage key={username} from={from} to={to} iban={iban} />}
           {tab === 'trends' && <TrendsPage key={username} from={from} to={to} iban={iban} />}
           {tab === 'breakdown' && <PiePage key={username} from={from} to={to} iban={iban} />}
-          {tab === 'kontoauszug' && <TransactionsPage key={username} from={from} to={to} iban={iban} accounts={accounts} />}
+          {tab === 'kontoauszug' && <TransactionsPage key={username} from={from} to={to} iban={iban} accounts={accounts} columnOrder={txColumnOrder ?? undefined} onColumnOrderChange={order => setTxColumnOrder(order)} />}
           {tab === 'budgets' && <BudgetsPage key={username} from={from} to={to} iban={iban} />}
           {tab === 'limits' && <ThresholdsPage key={username} from={from} to={to} iban={iban} />}
           {tab === 'konten' && <AccountsPage key={username} />}
