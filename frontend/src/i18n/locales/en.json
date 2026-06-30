@@ -31,6 +31,7 @@
     "back": "← Back",
     "confirm": "Confirm",
     "signOut": "sign out",
+    "close": "close",
     "error": "Error",
     "noData": "No data",
     "fetching": "fetching…",
@@ -366,5 +367,9 @@
     "parsing": "parsing files…",
     "noRows": "The files contain no rows.",
     "noFiles": "No files provided."
+  },
+  "settings": {
+    "title": "Settings",
+    "language": "Language"
   }
 }

@@ -18,6 +18,7 @@ import TransactionListPanel from './components/TransactionListPanel'
 import CashflowPage from './components/CashflowPage'
 import AccountsPage from './components/AccountsPage'
 import LoginPage from './components/LoginPage'
+import SettingsPanel from './components/SettingsPanel'
 import { fetchSankeyData, fetchAccounts, type SankeyResponse, type Account } from './api/transactions'
 import { useAuth } from './context/AuthContext'
 import { useTranslation, Trans } from 'react-i18next'
@@ -69,14 +70,9 @@ const NAV: NavSection[] = [
 
 export default function App() {
   const { username, isLoading, logout } = useAuth()
-  const { t, i18n: i18next } = useTranslation()
-
-  function toggleLang() {
-    const next = i18next.language === 'de' ? 'en' : 'de'
-    i18next.changeLanguage(next)
-    localStorage.setItem('lang', next)
-  }
+  const { t } = useTranslation()
   const [tab, setTab] = useState<Tab>('sankey')
+  const [settingsOpen, setSettingsOpen] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [from, setFrom] = useState(firstOfYear)
   const [to, setTo] = useState(today)
@@ -147,12 +143,9 @@ export default function App() {
         <header className="bar">
           <span className="wordmark">moneylytics</span>
           <div className="session">
-            <button className="lang-toggle" onClick={toggleLang}>
-              <span className={i18next.language === 'de' ? 'lang-toggle-active' : ''}>DE</span>
-              <span className="lang-toggle-sep">|</span>
-              <span className={i18next.language === 'en' ? 'lang-toggle-active' : ''}>EN</span>
+            <button className="session-user-btn" onClick={() => setSettingsOpen(true)}>
+              {username}
             </button>
-            <span className="session-user">{username}</span>
             <button className="logout-btn" onClick={logout}>{t('common.signOut')}</button>
           </div>
         </header>
@@ -253,6 +246,7 @@ export default function App() {
           {tab === 'camt' && <CamtImportPage key={username} />}
         </main>
       </div>
+      {settingsOpen && <SettingsPanel onClose={() => setSettingsOpen(false)} />}
     </div>
   )
 }
