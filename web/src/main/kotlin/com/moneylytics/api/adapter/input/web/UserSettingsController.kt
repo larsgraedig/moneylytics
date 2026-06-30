@@ -40,6 +40,7 @@ class UserSettingsController(
                 userId = userId,
                 defaultAccountIban = request.defaultAccountIban,
                 language = request.language,
+                transactionsColumnOrder = request.transactionsColumnOrder,
             ).toResponse()
         }
 
@@ -47,15 +48,18 @@ class UserSettingsController(
         UserSettingsResponse(
             defaultAccountIban = defaultAccountIban,
             language = language,
+            transactionsColumnOrder = transactionsColumnOrder,
         )
 }
 
 data class UserSettingsResponse(
     val defaultAccountIban: String?,
     val language: String?,
+    val transactionsColumnOrder: List<String>?,
 )
 
 data class UpdateUserSettingsRequest(
     val defaultAccountIban: String?,
     val language: String?,
+    val transactionsColumnOrder: List<String>?,
 )
