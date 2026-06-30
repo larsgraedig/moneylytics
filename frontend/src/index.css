@@ -760,6 +760,12 @@ body {
   cursor: not-allowed;
 }
 
+.load-btn--active {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-glow);
+}
+
 /* ── stage ───────────────────────────────── */
 
 .stage {

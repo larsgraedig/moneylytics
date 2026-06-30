@@ -15,4 +15,5 @@ data class GetTransactionsQuery(
     val accountIban: String? = null,
     val category: String? = null,
     val subcategory: String? = null,
+    val uncategorized: Boolean = false,
 )
