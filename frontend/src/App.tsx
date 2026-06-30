@@ -20,6 +20,7 @@ import AccountsPage from './components/AccountsPage'
 import LoginPage from './components/LoginPage'
 import SettingsPanel from './components/SettingsPanel'
 import { fetchSankeyData, fetchAccounts, type SankeyResponse, type Account } from './api/transactions'
+import { fetchUserSettings } from './api/settings'
 import { useAuth } from './context/AuthContext'
 import { useTranslation, Trans } from 'react-i18next'
 
@@ -70,7 +71,7 @@ const NAV: NavSection[] = [
 
 export default function App() {
   const { username, isLoading, logout } = useAuth()
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const [tab, setTab] = useState<Tab>('sankey')
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(true)
@@ -88,7 +89,25 @@ export default function App() {
     setSelectedIban('')
     setView({ phase: 'idle' })
     setActiveNode(null)
-    fetchAccounts().then(setAccounts).catch(() => {})
+    Promise.all([fetchAccounts(), fetchUserSettings()]).then(([accs, settings]) => {
+      setAccounts(accs)
+      if (settings.language) {
+        i18n.changeLanguage(settings.language)
+        localStorage.setItem('lang', settings.language)
+      }
+      const defaultIban = settings.defaultAccountIban ?? localStorage.getItem('defaultIban') ?? ''
+      if (defaultIban && accs.some(a => a.iban === defaultIban)) {
+        setSelectedIban(defaultIban)
+      }
+    }).catch(() => {
+      fetchAccounts().then(accs => {
+        setAccounts(accs)
+        const defaultIban = localStorage.getItem('defaultIban') ?? ''
+        if (defaultIban && accs.some(a => a.iban === defaultIban)) {
+          setSelectedIban(defaultIban)
+        }
+      }).catch(() => {})
+    })
   }, [username])
 
   if (isLoading) return null
@@ -246,7 +265,7 @@ export default function App() {
           {tab === 'camt' && <CamtImportPage key={username} />}
         </main>
       </div>
-      {settingsOpen && <SettingsPanel onClose={() => setSettingsOpen(false)} />}
+      {settingsOpen && <SettingsPanel accounts={accounts} defaultAccountIban={selectedIban} onClose={() => setSettingsOpen(false)} />}
     </div>
   )
 }
