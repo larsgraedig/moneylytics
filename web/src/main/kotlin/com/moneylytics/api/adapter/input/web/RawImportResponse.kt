@@ -19,6 +19,7 @@ data class RawPreviewRow(
     val fingerprint: String?,
     val errors: List<RawPreviewError>,
     val unknownAccount: Boolean = false,
+    val counterpartyIban: String? = null,
 )
 
 data class RawPreviewError(
@@ -53,6 +54,8 @@ data class CamtTransactionImport(
     val subcategory: String,
     val accountIban: String,
     val purpose: String?,
+    val counterpartyName: String? = null,
+    val counterpartyIban: String? = null,
 )
 
 data class CategoriesResponse(

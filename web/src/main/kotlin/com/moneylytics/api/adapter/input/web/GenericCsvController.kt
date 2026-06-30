@@ -133,6 +133,8 @@ class GenericCsvController(
                     currency = row.currency,
                     accountIban = row.accountIban,
                     purpose = row.purpose,
+                    counterpartyName = row.counterpartyName,
+                    counterpartyIban = row.counterpartyIban,
                 )
             }
         val accountNames = safeRows.associate { it.accountIban to it.accountIban }

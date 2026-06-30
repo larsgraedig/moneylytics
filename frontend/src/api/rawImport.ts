@@ -23,6 +23,7 @@ export interface RawPreviewRow {
   fingerprint: string | null
   errors: RawPreviewError[]
   unknownAccount: boolean
+  counterpartyIban: string | null
 }
 
 export interface CategoryGroup {

@@ -801,6 +801,7 @@ export default function TransactionsPage({
                 <th>{t('transactions.columns.subcategory')}</th>
                 <th>{t('transactions.columns.offsets')}</th>
                 <th>{t('budgets.columns.budget')}</th>
+                <th>{t('transactions.columns.counterpartyName')}</th>
                 <th>{t('transactions.columns.purpose')}</th>
                 <th>{t('transactions.columns.comment')}</th>
                 <th></th>
@@ -878,6 +879,12 @@ export default function TransactionsPage({
                     </td>
                     <td className="txnv-cell-budget">
                       {renderBudgetCell(row, i)}
+                    </td>
+                    <td className="txnv-cell-counterparty">
+                      <span className="txnv-counterparty-name">{row.original.counterpartyName ?? ''}</span>
+                      {row.original.counterpartyIban && (
+                        <span className="txnv-counterparty-iban">{row.original.counterpartyIban}</span>
+                      )}
                     </td>
                     <td className="txnv-cell-purpose" title={row.original.purpose ?? undefined}>
                       <span className="txnv-purpose-text">{row.original.purpose ?? ''}</span>

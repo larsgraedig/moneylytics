@@ -155,6 +155,8 @@ class CamtImportController(
                     currency = row.currency,
                     accountIban = row.accountIban,
                     purpose = row.purpose,
+                    counterpartyName = row.counterpartyName,
+                    counterpartyIban = row.counterpartyIban,
                 )
             }
 
@@ -189,6 +191,7 @@ class CamtImportController(
         fingerprint = fingerprint,
         errors = errors.map { RawPreviewError(column = it.column, value = it.value, message = it.message) },
         unknownAccount = unknownAccount,
+        counterpartyIban = counterpartyIban,
     )
 
     private suspend fun FilePart.readBytes(): ByteArray =

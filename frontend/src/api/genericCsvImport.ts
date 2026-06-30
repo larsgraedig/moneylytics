@@ -8,6 +8,8 @@ export interface CsvColumnSuggestions {
   accountIban: string | null
   category: string | null
   subcategory: string | null
+  counterpartyName: string | null
+  counterpartyIban: string | null
 }
 
 export interface CsvDetectionResult {
@@ -34,6 +36,8 @@ export interface CsvMapping {
   currencyColumn: string | null
   fixedAccountIban: string | null
   fixedCurrency: string
+  counterpartyNameColumn: string | null
+  counterpartyIbanColumn: string | null
 }
 
 export type RowStatus = 'NEW' | 'DUPLICATE'
@@ -50,6 +54,8 @@ export interface GenericCsvPreviewRow {
   unknownAccount: boolean
   mappedCategory: string | null
   mappedSubcategory: string | null
+  counterpartyName: string | null
+  counterpartyIban: string | null
 }
 
 export interface GenericRowToImport {
@@ -60,6 +66,8 @@ export interface GenericRowToImport {
   purpose: string | null
   category: string
   subcategory: string
+  counterpartyName: string | null
+  counterpartyIban: string | null
 }
 
 export async function detectCsvFormat(file: File): Promise<CsvDetectionResult> {

@@ -10,6 +10,7 @@ data class ParsedRawRow(
     val bookingDateRaw: String,
     val valueDateRaw: String,
     val counterparty: String,
+    val counterpartyIban: String?,
     val purpose: String,
     val amount: BigDecimal?,
     val amountRaw: String,

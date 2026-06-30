@@ -28,6 +28,8 @@ class GenericCsvParser {
         val subcategoryIdx = idx(mapping.subcategoryColumn)
         val ibanIdx = idx(mapping.accountIbanColumn)
         val currencyIdx = idx(mapping.currencyColumn)
+        val counterpartyNameIdx = idx(mapping.counterpartyNameColumn)
+        val counterpartyIbanIdx = idx(mapping.counterpartyIbanColumn)
 
         val counts = mutableMapOf<String, Int>()
         return lines.drop(1).mapIndexedNotNull { index, line ->
@@ -61,6 +63,8 @@ class GenericCsvParser {
                 unknownAccount = false,
                 mappedCategory = get(categoryIdx).ifBlank { null },
                 mappedSubcategory = get(subcategoryIdx).ifBlank { null },
+                counterpartyName = get(counterpartyNameIdx).ifBlank { null },
+                counterpartyIban = get(counterpartyIbanIdx).ifBlank { null },
             )
         }
     }
@@ -85,6 +89,8 @@ class GenericCsvParser {
         val subcategoryIdx = idx(mapping.subcategoryColumn)
         val ibanIdx = idx(mapping.accountIbanColumn)
         val currencyIdx = idx(mapping.currencyColumn)
+        val counterpartyNameIdx = idx(mapping.counterpartyNameColumn)
+        val counterpartyIbanIdx = idx(mapping.counterpartyIbanColumn)
 
         val transactions = mutableListOf<Transaction>()
         val accountNames = mutableMapOf<String, String>()
@@ -126,6 +132,8 @@ class GenericCsvParser {
                     currency = currency,
                     accountIban = iban,
                     purpose = get(purposeIdx).ifBlank { null },
+                    counterpartyName = get(counterpartyNameIdx).ifBlank { null },
+                    counterpartyIban = get(counterpartyIbanIdx).ifBlank { null },
                 ),
             )
         }

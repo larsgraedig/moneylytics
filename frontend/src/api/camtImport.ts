@@ -23,6 +23,8 @@ export interface CamtTransactionImport {
   subcategory: string
   accountIban: string
   purpose: string | null
+  counterpartyName: string | null
+  counterpartyIban: string | null
 }
 
 export interface CamtImportRequest {
