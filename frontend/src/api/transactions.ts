@@ -149,6 +149,9 @@ export async function updateTransactionComment(
 }
 
 export interface LinkedGroupItem {
+  groupKey: number
+  name: string | null
+  comment: string | null
   transactions: TransactionItem[]
 }
 
@@ -160,6 +163,15 @@ export async function fetchLinkedGroups(): Promise<LinkedGroupsResponse> {
   const res = await fetchWithUser('/transactions/linked')
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
   return res.json() as Promise<LinkedGroupsResponse>
+}
+
+export async function updateLinkedGroupMeta(groupKey: number, name: string | null, comment: string | null): Promise<void> {
+  const res = await fetchWithUser(`/transactions/linked/${groupKey}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, comment }),
+  })
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
 }
 
 export async function updateTransactionAccountingDate(

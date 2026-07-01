@@ -378,7 +378,9 @@
     "count": "{{count}} group(s)",
     "group": "Group",
     "balanced": "balanced",
-    "empty": "No linked transactions found."
+    "empty": "No linked transactions found.",
+    "namePlaceholder": "Add a name…",
+    "commentPlaceholder": "Add a comment…"
   },
   "settings": {
     "title": "Settings",

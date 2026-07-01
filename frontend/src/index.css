@@ -3619,3 +3619,72 @@ body {
   font-size: 11px;
   color: var(--text-muted);
 }
+
+.ltx-group-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.ltx-group-comment {
+  padding: 6px 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.ltx-inline-edit {
+  cursor: text;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 500;
+  border-radius: 3px;
+  padding: 1px 4px;
+  margin: -1px -4px;
+  transition: background 0.1s;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 300px;
+}
+
+.ltx-inline-edit:hover { background: var(--border); }
+
+.ltx-inline-edit--empty {
+  color: var(--text-muted);
+  font-weight: 400;
+  font-style: italic;
+}
+
+.ltx-group-comment .ltx-inline-edit {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--text-muted);
+  white-space: normal;
+  max-width: 100%;
+}
+
+.ltx-group-comment .ltx-inline-edit--empty { font-style: italic; }
+
+.ltx-inline-input {
+  background: var(--bg);
+  border: 1px solid var(--accent);
+  border-radius: 3px;
+  color: var(--text);
+  font-size: 13px;
+  font-family: inherit;
+  padding: 2px 6px;
+  outline: none;
+  width: 260px;
+}
+
+.ltx-group-comment .ltx-inline-input {
+  width: 100%;
+  font-size: 12px;
+  resize: none;
+}
+
+.ltx-saving {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-family: var(--mono);
+}

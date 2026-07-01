@@ -378,7 +378,9 @@
     "count": "{{count}} Gruppe(n)",
     "group": "Gruppe",
     "balanced": "ausgeglichen",
-    "empty": "Keine verknüpften Transaktionen vorhanden."
+    "empty": "Keine verknüpften Transaktionen vorhanden.",
+    "namePlaceholder": "Name vergeben…",
+    "commentPlaceholder": "Kommentar hinzufügen…"
   },
   "settings": {
     "title": "Einstellungen",
