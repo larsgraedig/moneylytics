@@ -299,6 +299,8 @@
       "importCount": "import {{count}}",
       "excluded": "excluded",
       "alreadyImported": "already imported",
+      "willEnrich": "fields will be filled",
+      "enrich": "Fill fields",
       "back": "← back",
       "unknownAccountLabel": "⚠ Unknown account",
       "columns": {
@@ -330,6 +332,7 @@
       "previouslyIgnored": "ignored before",
       "willIgnore": "will ignore",
       "importing": "importing",
+      "enriching": "filling fields",
       "excluded": "excluded",
       "unknownAccount": "unknown account"
     },
@@ -360,6 +363,8 @@
     "skip": "skip",
     "undo": "undo",
     "alreadyImported": "already imported",
+    "willEnrich": "fields will be filled",
+    "enrich": "Fill fields",
     "unknownAccount": "⚠ Unknown account",
     "noCategory": "no category",
     "success": {

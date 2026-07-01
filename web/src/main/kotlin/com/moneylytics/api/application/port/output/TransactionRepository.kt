@@ -56,4 +56,12 @@ interface TransactionRepository {
         ids: Set<Long>,
         userId: Long,
     ): List<Transaction>
+
+    fun enrichByFingerprint(
+        fingerprint: String,
+        userId: Long,
+        purpose: String?,
+        counterpartyName: String?,
+        counterpartyIban: String?,
+    )
 }

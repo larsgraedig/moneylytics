@@ -21,7 +21,7 @@ const COMMON_DATE_FORMATS = [
   'dd.MM.yy',
 ]
 
-type RowDecision = { action: 'import'; category: string; subcategory: string } | { action: 'skip' }
+type RowDecision = { action: 'import'; category: string; subcategory: string } | { action: 'skip' } | { action: 'enrich' }
 
 type Phase =
   | { step: 'upload' }
@@ -334,9 +334,18 @@ export default function CsvImportPage() {
         return { ...r, category: d.category, subcategory: d.subcategory }
       })
 
+    const toEnrich = rows
+      .filter(r => r.status === 'DUPLICATE' && decisions[r.rowIndex]?.action === 'enrich')
+      .map(r => ({
+        fingerprint: r.fingerprint,
+        purpose: r.purpose || null,
+        counterpartyName: r.counterpartyName || null,
+        counterpartyIban: r.counterpartyIban || null,
+      }))
+
     setPhase({ step: 'importing-rows', rows, detection, mapping, file })
     try {
-      const count = await importGenericRows(toImport)
+      const count = await importGenericRows(toImport, toEnrich)
       setPhase({ step: 'success', count })
     } catch (e) {
       setPhase({ step: 'error', message: e instanceof Error ? e.message : 'Import failed' })
@@ -388,11 +397,12 @@ export default function CsvImportPage() {
 
     const duplicateCount = rows.filter(r => r.status === 'DUPLICATE').length
     const unknownAccountCount = rows.filter(r => r.status !== 'DUPLICATE' && r.unknownAccount).length
+    const enrichCount = rows.filter(r => r.status === 'DUPLICATE' && decisions[r.rowIndex]?.action === 'enrich').length
     const readyCount = rows.filter(r => {
       if (r.status === 'DUPLICATE' || r.unknownAccount) return false
       const d = decisions[r.rowIndex]
       return d?.action === 'import'
-    }).length
+    }).length + enrichCount
     const skippedCount = rows.filter(r => r.status !== 'DUPLICATE' && !r.unknownAccount && decisions[r.rowIndex]?.action === 'skip').length
 
     const EUR = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' })
@@ -452,7 +462,11 @@ export default function CsvImportPage() {
                       </td>
                       <td className="ri-cell-purpose" title={row.purpose ?? ''}>{row.purpose || '—'}</td>
                       {isExcluded ? (
-                        <td colSpan={2} className="ri-cell-muted">{isDuplicate ? t('csvImport.categorizing.alreadyImported') : t('csvImport.categorizing.excluded')}</td>
+                        <td colSpan={2} className="ri-cell-muted">
+                          {isDuplicate
+                            ? (d?.action === 'enrich' ? t('csvImport.categorizing.willEnrich') : t('csvImport.categorizing.alreadyImported'))
+                            : t('csvImport.categorizing.excluded')}
+                        </td>
                       ) : isImporting ? (
                         <>
                           <td>
@@ -481,7 +495,13 @@ export default function CsvImportPage() {
                         <td colSpan={2} className="ri-cell-muted">—</td>
                       )}
                       <td className="ri-cell-action">
-                        {!isExcluded && (isImporting ? (
+                        {isDuplicate ? (
+                          d?.action === 'enrich' ? (
+                            <button className="ri-action-btn ri-action-btn--ignore" onClick={() => setDecision(row.rowIndex, { action: 'skip' })}>{t('common.skip')}</button>
+                          ) : (
+                            <button className="ri-action-btn ri-action-btn--import" onClick={() => setDecision(row.rowIndex, { action: 'enrich' })}>{t('csvImport.categorizing.enrich')}</button>
+                          )
+                        ) : !isExcluded && (isImporting ? (
                           <button className="ri-action-btn ri-action-btn--ignore" onClick={() => setDecision(row.rowIndex, { action: 'skip' })}>{t('common.skip')}</button>
                         ) : (
                           <button className="ri-action-btn ri-action-btn--import" onClick={() => setDecision(row.rowIndex, { action: 'import', category: '', subcategory: '' })}>{t('common.undo')}</button>

@@ -299,6 +299,8 @@
       "importCount": "{{count}} importieren",
       "excluded": "Ausgeschlossen",
       "alreadyImported": "Bereits importiert",
+      "willEnrich": "Felder werden ergänzt",
+      "enrich": "Ergänzen",
       "back": "← Zurück",
       "unknownAccountLabel": "⚠ Unbekanntes Konto",
       "columns": {
@@ -330,6 +332,7 @@
       "previouslyIgnored": "Früher ignoriert",
       "willIgnore": "Wird ignoriert",
       "importing": "Wird importiert",
+      "enriching": "Wird ergänzt",
       "excluded": "Ausgeschlossen",
       "unknownAccount": "Unbekanntes Konto"
     },
@@ -360,6 +363,8 @@
     "skip": "Überspringen",
     "undo": "Rückgängig",
     "alreadyImported": "Bereits importiert",
+    "willEnrich": "Felder werden ergänzt",
+    "enrich": "Ergänzen",
     "unknownAccount": "⚠ Unbekanntes Konto",
     "noCategory": "Keine Kategorie",
     "success": {

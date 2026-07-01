@@ -1,5 +1,6 @@
 package com.moneylytics.api.application.service
 
+import com.moneylytics.api.application.port.input.EnrichTransactionUseCase
 import com.moneylytics.api.application.port.input.GetTransactionsQuery
 import com.moneylytics.api.application.port.input.GetTransactionsUseCase
 import com.moneylytics.api.application.port.input.UpdateTransactionAccountingDateUseCase
@@ -16,7 +17,8 @@ class TransactionQueryService(
 ) : GetTransactionsUseCase,
     UpdateTransactionCategoryUseCase,
     UpdateTransactionCommentUseCase,
-    UpdateTransactionAccountingDateUseCase {
+    UpdateTransactionAccountingDateUseCase,
+    EnrichTransactionUseCase {
     override fun getTransactions(query: GetTransactionsQuery): List<Transaction> {
         val transactions =
             if (query.onlyNegative) {
@@ -48,4 +50,12 @@ class TransactionQueryService(
         userId: Long,
         accountingDate: LocalDate,
     ): Transaction? = transactionRepository.updateAccountingDate(id, userId, accountingDate)
+
+    override fun enrichByFingerprint(
+        fingerprint: String,
+        userId: Long,
+        purpose: String?,
+        counterpartyName: String?,
+        counterpartyIban: String?,
+    ) = transactionRepository.enrichByFingerprint(fingerprint, userId, purpose, counterpartyName, counterpartyIban)
 }

@@ -144,6 +144,21 @@ class TransactionPersistenceAdapter(
         return enrichWithOffsetLinks(jpaRepository.findByIdsAndUserId(ids, userId))
     }
 
+    @Transactional
+    override fun enrichByFingerprint(
+        fingerprint: String,
+        userId: Long,
+        purpose: String?,
+        counterpartyName: String?,
+        counterpartyIban: String?,
+    ) {
+        val entity = jpaRepository.findByFingerprintAndUserId(fingerprint, userId) ?: return
+        if (entity.purpose == null && !purpose.isNullOrBlank()) entity.purpose = purpose
+        if (entity.counterpartyName == null && !counterpartyName.isNullOrBlank()) entity.counterpartyName = counterpartyName
+        if (entity.counterpartyIban == null && !counterpartyIban.isNullOrBlank()) entity.counterpartyIban = counterpartyIban
+        jpaRepository.save(entity)
+    }
+
     private fun enrichWithOffsetLinks(entities: List<TransactionEntity>): List<Transaction> {
         val ids = entities.mapNotNull { it.id }
         if (ids.isEmpty()) return emptyList()

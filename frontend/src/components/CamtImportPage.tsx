@@ -19,6 +19,7 @@ type PageState =
 type RowDecision =
   | { action: 'import'; category: string; subcategory: string }
   | { action: 'ignore' }
+  | { action: 'enrich' }
 
 function formatAmount(amount: number | null, raw: string): string {
   if (amount == null) return raw
@@ -134,6 +135,15 @@ export default function CamtImportPage() {
       .filter(r => r.status === 'NEW' && decisions[r.rowNumber]?.action === 'ignore')
       .map(r => r.fingerprint!)
 
+    const toEnrich = rows
+      .filter(r => r.status === 'DUPLICATE' && decisions[r.rowNumber]?.action === 'enrich')
+      .map(r => ({
+        fingerprint: r.fingerprint!,
+        purpose: r.purpose || null,
+        counterpartyName: r.counterparty || null,
+        counterpartyIban: r.counterpartyIban || null,
+      }))
+
     const skippedCount = rows
       .filter(r => r.status === 'NEW' || r.status === 'PREVIOUSLY_IGNORED')
       .filter(r => { const d = decisions[r.rowNumber]; return d?.action === 'import' && (!d.category.trim() || !d.subcategory.trim()) })
@@ -141,7 +151,7 @@ export default function CamtImportPage() {
 
     setImporting(true)
     try {
-      const result = await importCamt({ accountNames, toImport, toIgnore })
+      const result = await importCamt({ accountNames, toImport, toIgnore, toEnrich })
       setState({ phase: 'imported', importedCount: result.importedCount, ignoredCount: toIgnore.length, skippedCount })
     } catch (e) {
       setState({ phase: 'error', message: e instanceof Error ? e.message : 'Import failed' })
@@ -164,7 +174,8 @@ export default function CamtImportPage() {
 
   const canImport = (rows: RawPreviewRow[]) => {
     const readyToImport = toImportRows(rows).filter(r => decisions[r.rowNumber]?.action === 'import')
-    return readyToImport.length > 0 || toIgnoreRows(rows).length > 0
+    const toEnrich = rows.filter(r => r.status === 'DUPLICATE' && decisions[r.rowNumber]?.action === 'enrich')
+    return readyToImport.length > 0 || toIgnoreRows(rows).length > 0 || toEnrich.length > 0
   }
 
   // ── result screen ──────────────────────────────────────────────────────────
@@ -354,7 +365,11 @@ export default function CamtImportPage() {
 function StatusBadge({ row, decision }: { row: RawPreviewRow; decision: RowDecision | undefined }) {
   const { t } = useTranslation()
   if (row.status === 'INVALID') return <span className="ri-badge ri-badge--invalid">{t('camtImport.status.invalid')}</span>
-  if (row.status === 'DUPLICATE') return <span className="ri-badge ri-badge--duplicate">{t('camtImport.status.duplicate')}</span>
+  if (row.status === 'DUPLICATE') {
+    return decision?.action === 'enrich'
+      ? <span className="ri-badge ri-badge--new">{t('camtImport.status.enriching')}</span>
+      : <span className="ri-badge ri-badge--duplicate">{t('camtImport.status.duplicate')}</span>
+  }
   if (row.status === 'PREVIOUSLY_IGNORED') {
     return decision?.action === 'import'
       ? <span className="ri-badge ri-badge--new">{t('camtImport.status.importing')}</span>
@@ -394,7 +409,9 @@ function CategoryCells({
   }
 
   if (row.status === 'DUPLICATE') {
-    return <td colSpan={2} className="ri-cell-muted">{tCat('camtImport.alreadyImported')}</td>
+    return <td colSpan={2} className="ri-cell-muted">
+      {decision?.action === 'enrich' ? tCat('camtImport.willEnrich') : tCat('camtImport.alreadyImported')}
+    </td>
   }
 
   if (decision?.action === 'ignore') {
@@ -436,7 +453,19 @@ function ActionToggle({
   onDecide: (d: RowDecision) => void
 }) {
   const { t } = useTranslation()
-  if (row.unknownAccount || row.status === 'INVALID' || row.status === 'DUPLICATE') return null
+  if (row.unknownAccount || row.status === 'INVALID') return null
+
+  if (row.status === 'DUPLICATE') {
+    return decision?.action === 'enrich' ? (
+      <button className="ri-action-btn ri-action-btn--ignore" onClick={() => onDecide({ action: 'ignore' })}>
+        {t('camtImport.skip')}
+      </button>
+    ) : (
+      <button className="ri-action-btn ri-action-btn--import" onClick={() => onDecide({ action: 'enrich' })}>
+        {t('camtImport.enrich')}
+      </button>
+    )
+  }
 
   if (row.status === 'PREVIOUSLY_IGNORED') {
     return decision?.action === 'import' ? (

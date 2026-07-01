@@ -38,10 +38,18 @@ data class CamtAccountInfo(
     val suggestedName: String,
 )
 
+data class TransactionEnrichRequest(
+    val fingerprint: String,
+    val purpose: String?,
+    val counterpartyName: String?,
+    val counterpartyIban: String?,
+)
+
 data class CamtImportRequest(
     val accountNames: Map<String, String>,
     val toImport: List<CamtTransactionImport>,
     val toIgnore: List<String>,
+    val toEnrich: List<TransactionEnrichRequest> = emptyList(),
 )
 
 data class CamtTransactionImport(

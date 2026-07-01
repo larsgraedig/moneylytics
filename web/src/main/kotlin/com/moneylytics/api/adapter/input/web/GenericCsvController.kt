@@ -2,6 +2,7 @@ package com.moneylytics.api.adapter.input.web
 
 import com.moneylytics.api.adapter.output.persistence.CsvProfilePersistenceAdapter
 import com.moneylytics.api.application.port.input.CheckDuplicatesUseCase
+import com.moneylytics.api.application.port.input.EnrichTransactionUseCase
 import com.moneylytics.api.application.port.input.GetAccountsUseCase
 import com.moneylytics.api.application.port.input.ImportTransactionsCommand
 import com.moneylytics.api.application.port.input.ImportTransactionsUseCase
@@ -26,12 +27,18 @@ import java.time.LocalDate
 
 @RestController
 @RequestMapping("/transactions/csv")
+data class GenericCsvImportRequest(
+    val toImport: List<GenericRowToImport>,
+    val toEnrich: List<TransactionEnrichRequest> = emptyList(),
+)
+
 class GenericCsvController(
     private val detector: GenericCsvDetector,
     private val parser: GenericCsvParser,
     private val importTransactionsUseCase: ImportTransactionsUseCase,
     private val checkDuplicatesUseCase: CheckDuplicatesUseCase,
     private val getAccountsUseCase: GetAccountsUseCase,
+    private val enrichTransactionUseCase: EnrichTransactionUseCase,
     private val resolveUserUseCase: ResolveUserUseCase,
     private val csvProfileAdapter: CsvProfilePersistenceAdapter,
 ) {
@@ -112,7 +119,7 @@ class GenericCsvController(
 
     @PostMapping("/import-rows")
     suspend fun importRows(
-        @RequestBody rows: List<GenericRowToImport>,
+        @RequestBody request: GenericCsvImportRequest,
         @AuthenticationPrincipal principal: UserDetails,
     ): ResponseEntity<ImportSuccessResponse> {
         val userId = withContext(Dispatchers.IO) { resolveUserUseCase.resolveUser(principal.username) }
@@ -120,6 +127,7 @@ class GenericCsvController(
             withContext(Dispatchers.IO) { getAccountsUseCase.getAccounts(userId) }
                 .map { it.iban }
                 .toSet()
+        val rows = request.toImport
         val safeRows = if (knownIbans.isEmpty()) rows else rows.filter { it.accountIban in knownIbans }
         val transactions =
             safeRows.map { row ->
@@ -146,6 +154,9 @@ class GenericCsvController(
                     userId = userId,
                 ),
             )
+        request.toEnrich.forEach { e ->
+            enrichTransactionUseCase.enrichByFingerprint(e.fingerprint, userId, e.purpose, e.counterpartyName, e.counterpartyIban)
+        }
         return ResponseEntity.ok(ImportSuccessResponse(importedCount = count))
     }
 

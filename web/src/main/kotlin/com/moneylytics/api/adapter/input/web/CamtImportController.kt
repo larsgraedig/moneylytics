@@ -1,6 +1,7 @@
 package com.moneylytics.api.adapter.input.web
 
 import com.moneylytics.api.application.port.input.CheckDuplicatesUseCase
+import com.moneylytics.api.application.port.input.EnrichTransactionUseCase
 import com.moneylytics.api.application.port.input.FindIgnoredFingerprintsUseCase
 import com.moneylytics.api.application.port.input.GetAccountsUseCase
 import com.moneylytics.api.application.port.input.ImportTransactionsCommand
@@ -36,6 +37,7 @@ class CamtImportController(
     private val updateIgnoredTransactionsUseCase: UpdateIgnoredTransactionsUseCase,
     private val importTransactionsUseCase: ImportTransactionsUseCase,
     private val saveCategoriesUseCase: SaveCategoriesUseCase,
+    private val enrichTransactionUseCase: EnrichTransactionUseCase,
     private val resolveUserUseCase: ResolveUserUseCase,
 ) {
     @PostMapping("/camt/preview", consumes = [MediaType.MULTIPART_FORM_DATA_VALUE])
@@ -168,6 +170,10 @@ class CamtImportController(
                     userId = userId,
                 ),
             )
+
+        safeRequest.toEnrich.forEach { e ->
+            enrichTransactionUseCase.enrichByFingerprint(e.fingerprint, userId, e.purpose, e.counterpartyName, e.counterpartyIban)
+        }
 
         return ResponseEntity.ok(ImportSuccessResponse(importedCount = importedCount))
     }

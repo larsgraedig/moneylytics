@@ -27,10 +27,18 @@ export interface CamtTransactionImport {
   counterpartyIban: string | null
 }
 
+export interface TransactionEnrichRequest {
+  fingerprint: string
+  purpose: string | null
+  counterpartyName: string | null
+  counterpartyIban: string | null
+}
+
 export interface CamtImportRequest {
   accountNames: Record<string, string>
   toImport: CamtTransactionImport[]
   toIgnore: string[]
+  toEnrich: TransactionEnrichRequest[]
 }
 
 export interface CamtImportResponse {

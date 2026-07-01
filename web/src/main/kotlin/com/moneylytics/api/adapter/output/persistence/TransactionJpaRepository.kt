@@ -52,4 +52,10 @@ interface TransactionJpaRepository : JpaRepository<TransactionEntity, Long> {
         @Param("ids") ids: Collection<Long>,
         @Param("userId") userId: Long,
     ): List<TransactionEntity>
+
+    @Query("SELECT t FROM TransactionEntity t WHERE t.fingerprint = :fingerprint AND t.user.id = :userId")
+    fun findByFingerprintAndUserId(
+        @Param("fingerprint") fingerprint: String,
+        @Param("userId") userId: Long,
+    ): TransactionEntity?
 }
