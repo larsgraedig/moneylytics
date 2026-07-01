@@ -41,8 +41,10 @@
     "amount": "amount",
     "currency": "currency",
     "category": "category",
+    "group": "group",
     "subcategory": "subcategory",
     "purpose": "purpose",
+    "allGroups": "All groups",
     "total": "total",
     "account": "account",
     "import": "Import",
@@ -132,6 +134,7 @@
       "bookingDate": "booking date",
       "account": "account",
       "category": "category",
+      "group": "group",
       "subcategory": "subcategory",
       "amount": "amount",
       "effectiveAmount": "effective amount",
@@ -277,6 +280,7 @@
       "amountEnglish": "English (1,234.56)",
       "purpose": "Purpose",
       "category": "Category",
+      "categoryGroup": "Group",
       "subcategory": "Subcategory",
       "accountIban": "Account (IBAN)",
       "fixedIban": "Fixed IBAN value",
@@ -299,6 +303,8 @@
       "importCount": "import {{count}}",
       "excluded": "excluded",
       "alreadyImported": "already imported",
+      "willEnrich": "fields will be filled",
+      "enrich": "Fill fields",
       "back": "← back",
       "unknownAccountLabel": "⚠ Unknown account",
       "columns": {
@@ -308,6 +314,7 @@
         "account": "account",
         "purpose": "purpose",
         "category": "category",
+        "group": "group",
         "subcategory": "subcategory"
       }
     },
@@ -330,6 +337,7 @@
       "previouslyIgnored": "ignored before",
       "willIgnore": "will ignore",
       "importing": "importing",
+      "enriching": "filling fields",
       "excluded": "excluded",
       "unknownAccount": "unknown account"
     },
@@ -360,6 +368,8 @@
     "skip": "skip",
     "undo": "undo",
     "alreadyImported": "already imported",
+    "willEnrich": "fields will be filled",
+    "enrich": "Fill fields",
     "unknownAccount": "⚠ Unknown account",
     "noCategory": "no category",
     "success": {

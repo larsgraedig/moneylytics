@@ -8,6 +8,7 @@ export interface CsvColumnSuggestions {
   accountIban: string | null
   category: string | null
   subcategory: string | null
+  categoryGroup: string | null
   counterpartyName: string | null
   counterpartyIban: string | null
 }
@@ -32,6 +33,7 @@ export interface CsvMapping {
   purposeColumn: string | null
   categoryColumn: string | null
   subcategoryColumn: string | null
+  categoryGroupColumn: string | null
   accountIbanColumn: string | null
   currencyColumn: string | null
   fixedAccountIban: string | null
@@ -54,6 +56,7 @@ export interface GenericCsvPreviewRow {
   unknownAccount: boolean
   mappedCategory: string | null
   mappedSubcategory: string | null
+  mappedCategoryGroup: string | null
   counterpartyName: string | null
   counterpartyIban: string | null
 }
@@ -66,6 +69,7 @@ export interface GenericRowToImport {
   purpose: string | null
   category: string
   subcategory: string
+  categoryGroup: string | null
   counterpartyName: string | null
   counterpartyIban: string | null
 }
@@ -87,11 +91,11 @@ export async function previewGenericCsv(file: File, mapping: CsvMapping): Promis
   return res.json() as Promise<GenericCsvPreviewRow[]>
 }
 
-export async function importGenericRows(rows: GenericRowToImport[]): Promise<number> {
+export async function importGenericRows(toImport: GenericRowToImport[], toEnrich: import('./camtImport').TransactionEnrichRequest[] = []): Promise<number> {
   const res = await fetch('/transactions/csv/import-rows', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(rows),
+    body: JSON.stringify({ toImport, toEnrich }),
   })
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
   const data = await res.json() as { importedCount: number }

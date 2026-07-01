@@ -27,9 +27,21 @@ class CategoryController(
                     .getCategories(userId)
                     .groupBy { it.name }
                     .map { (name, cats) ->
+                        val withGroup = cats.filter { it.group != null }
+                        val withoutGroup = cats.filter { it.group == null }
+                        val groups =
+                            withGroup
+                                .groupBy { it.group!! }
+                                .map { (groupName, groupCats) ->
+                                    CategorySubGroupResponse(
+                                        name = groupName,
+                                        subcategories = groupCats.map { it.subcategory }.sorted(),
+                                    )
+                                }.sortedBy { it.name }
                         CategoryGroupResponse(
                             name = name,
-                            subcategories = cats.map { it.subcategory }.sorted(),
+                            groups = groups,
+                            subcategories = withoutGroup.map { it.subcategory }.sorted(),
                         )
                     }.sortedBy { it.name }
             }

@@ -19,6 +19,8 @@ class TransactionEntity(
     var category: String?,
     @Column(nullable = true)
     var subcategory: String?,
+    @Column(nullable = true, name = "category_group")
+    var categoryGroup: String? = null,
     @Column(nullable = false)
     val bookingDate: LocalDate,
     @Column(nullable = false)

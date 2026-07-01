@@ -1,5 +1,6 @@
 package com.moneylytics.api.application.service
 
+import com.moneylytics.api.application.port.input.EnrichTransactionUseCase
 import com.moneylytics.api.application.port.input.GetTransactionsQuery
 import com.moneylytics.api.application.port.input.GetTransactionsUseCase
 import com.moneylytics.api.application.port.input.UpdateTransactionAccountingDateUseCase
@@ -16,7 +17,8 @@ class TransactionQueryService(
 ) : GetTransactionsUseCase,
     UpdateTransactionCategoryUseCase,
     UpdateTransactionCommentUseCase,
-    UpdateTransactionAccountingDateUseCase {
+    UpdateTransactionAccountingDateUseCase,
+    EnrichTransactionUseCase {
     override fun getTransactions(query: GetTransactionsQuery): List<Transaction> {
         val transactions =
             if (query.onlyNegative) {
@@ -28,6 +30,7 @@ class TransactionQueryService(
             .let { list -> if (query.uncategorized) list.filter { it.category == null } else list }
             .let { list -> query.category?.let { cat -> list.filter { it.category == cat } } ?: list }
             .let { list -> query.subcategory?.let { sub -> list.filter { it.subcategory == sub } } ?: list }
+            .let { list -> query.categoryGroup?.let { grp -> list.filter { it.categoryGroup == grp } } ?: list }
     }
 
     override fun updateCategory(
@@ -35,7 +38,8 @@ class TransactionQueryService(
         userId: Long,
         category: String,
         subcategory: String,
-    ): Transaction? = transactionRepository.updateCategory(id, userId, category, subcategory)
+        categoryGroup: String?,
+    ): Transaction? = transactionRepository.updateCategory(id, userId, category, subcategory, categoryGroup)
 
     override fun updateComment(
         id: Long,
@@ -48,4 +52,12 @@ class TransactionQueryService(
         userId: Long,
         accountingDate: LocalDate,
     ): Transaction? = transactionRepository.updateAccountingDate(id, userId, accountingDate)
+
+    override fun enrichByFingerprint(
+        fingerprint: String,
+        userId: Long,
+        purpose: String?,
+        counterpartyName: String?,
+        counterpartyIban: String?,
+    ) = transactionRepository.enrichByFingerprint(fingerprint, userId, purpose, counterpartyName, counterpartyIban, null)
 }

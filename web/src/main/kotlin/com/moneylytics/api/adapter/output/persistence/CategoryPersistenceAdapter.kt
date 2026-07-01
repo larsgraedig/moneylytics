@@ -12,7 +12,7 @@ class CategoryPersistenceAdapter(
 ) : CategoryRepository {
     @Transactional(readOnly = true)
     override fun findAll(userId: Long): List<Category> =
-        jpaRepository.findAllByUserId(userId).map { Category(name = it.name, subcategory = it.subcategory) }
+        jpaRepository.findAllByUserId(userId).map { Category(name = it.name, subcategory = it.subcategory, group = it.categoryGroup) }
 
     @Transactional
     override fun saveAllIfAbsent(
@@ -22,13 +22,13 @@ class CategoryPersistenceAdapter(
         val existing =
             jpaRepository
                 .findAllByUserId(userId)
-                .map { it.name to it.subcategory }
+                .map { Triple(it.name, it.categoryGroup, it.subcategory) }
                 .toHashSet()
         val user = userJpaRepository.getReferenceById(userId)
         val toSave =
             categories
-                .filter { (it.name to it.subcategory) !in existing }
-                .map { CategoryEntity(name = it.name, subcategory = it.subcategory, user = user) }
+                .filter { Triple(it.name, it.group, it.subcategory) !in existing }
+                .map { CategoryEntity(name = it.name, subcategory = it.subcategory, user = user, categoryGroup = it.group) }
         jpaRepository.saveAll(toSave)
     }
 }

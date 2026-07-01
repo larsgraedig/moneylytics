@@ -9,13 +9,9 @@ import jakarta.persistence.Id
 import jakarta.persistence.JoinColumn
 import jakarta.persistence.ManyToOne
 import jakarta.persistence.Table
-import jakarta.persistence.UniqueConstraint
 
 @Entity
-@Table(
-    name = "categories",
-    uniqueConstraints = [UniqueConstraint(columnNames = ["name", "subcategory", "user_id"])],
-)
+@Table(name = "categories")
 class CategoryEntity(
     @Column(nullable = false)
     val name: String,
@@ -24,6 +20,8 @@ class CategoryEntity(
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "user_id", nullable = false)
     val user: UserEntity,
+    @Column(nullable = true, name = "category_group")
+    val categoryGroup: String? = null,
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     var id: Long? = null,

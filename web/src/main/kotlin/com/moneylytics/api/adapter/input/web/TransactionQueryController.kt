@@ -1,11 +1,13 @@
 package com.moneylytics.api.adapter.input.web
 
+import com.moneylytics.api.application.port.input.GetCategoriesUseCase
 import com.moneylytics.api.application.port.input.GetTransactionsQuery
 import com.moneylytics.api.application.port.input.GetTransactionsUseCase
 import com.moneylytics.api.application.port.input.ResolveUserUseCase
 import com.moneylytics.api.application.port.input.UpdateTransactionAccountingDateUseCase
 import com.moneylytics.api.application.port.input.UpdateTransactionCategoryUseCase
 import com.moneylytics.api.application.port.input.UpdateTransactionCommentUseCase
+import com.moneylytics.api.domain.Category
 import com.moneylytics.api.domain.Transaction
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -29,6 +31,7 @@ import java.time.temporal.IsoFields
 data class UpdateCategoryRequest(
     val category: String,
     val subcategory: String,
+    val categoryGroup: String? = null,
 )
 
 data class UpdateCommentRequest(
@@ -44,6 +47,7 @@ data class UpdateAccountingDateRequest(
 @RequestMapping("/transactions")
 class TransactionQueryController(
     private val getTransactionsUseCase: GetTransactionsUseCase,
+    private val getCategoriesUseCase: GetCategoriesUseCase,
     private val resolveUserUseCase: ResolveUserUseCase,
     private val updateTransactionCategoryUseCase: UpdateTransactionCategoryUseCase,
     private val updateTransactionCommentUseCase: UpdateTransactionCommentUseCase,
@@ -56,15 +60,23 @@ class TransactionQueryController(
         @RequestParam(required = false) iban: String? = null,
         @AuthenticationPrincipal principal: UserDetails,
     ): SankeyResponse {
-        val transactions =
+        val (transactions, groupLookup) =
             withContext(Dispatchers.IO) {
                 val userId = resolveUserUseCase.resolveUser(principal.username)
-                getTransactionsUseCase.getTransactions(
+                val txns = getTransactionsUseCase.getTransactions(
                     GetTransactionsQuery(from, to, userId, onlyNegative = true, accountIban = iban),
                 )
+                val lookup = buildGroupLookup(getCategoriesUseCase.getCategories(userId))
+                txns to lookup
             }
-        return transactions.toSankeyResponse()
+        return transactions.toSankeyResponse(groupLookup)
     }
+
+    // Builds a lookup from (category, subcategory) → group, derived from the categories table.
+    private fun buildGroupLookup(categories: List<Category>): Map<Pair<String?, String?>, String> =
+        categories
+            .filter { it.group != null }
+            .associate { (it.name to it.subcategory) to it.group!! }
 
     @GetMapping("/list")
     suspend fun listTransactions(
@@ -72,6 +84,7 @@ class TransactionQueryController(
         @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) to: LocalDate,
         @RequestParam(required = false) category: String? = null,
         @RequestParam(required = false) subcategory: String? = null,
+        @RequestParam(required = false) categoryGroup: String? = null,
         @RequestParam(required = false) iban: String? = null,
         @RequestParam(required = false) onlyNegative: Boolean = true,
         @RequestParam(required = false) uncategorized: Boolean = false,
@@ -89,6 +102,7 @@ class TransactionQueryController(
                         accountIban = iban,
                         category = category,
                         subcategory = subcategory,
+                        categoryGroup = categoryGroup,
                         uncategorized = uncategorized,
                     ),
                 )
@@ -110,7 +124,7 @@ class TransactionQueryController(
     ): ResponseEntity<TransactionItem> =
         withContext(Dispatchers.IO) {
             val userId = resolveUserUseCase.resolveUser(principal.username)
-            val updated = updateTransactionCategoryUseCase.updateCategory(id, userId, request.category, request.subcategory)
+            val updated = updateTransactionCategoryUseCase.updateCategory(id, userId, request.category, request.subcategory, request.categoryGroup)
             if (updated != null) ResponseEntity.ok(updated.toItem()) else ResponseEntity.notFound().build()
         }
 
@@ -153,11 +167,25 @@ class TransactionQueryController(
 
         val groups =
             effectiveSeries.map { spec ->
-                val colonIdx = spec.indexOf(':')
-                val category = if (colonIdx < 0) spec else spec.substring(0, colonIdx)
-                val selectedSub = if (colonIdx < 0) null else spec.substring(colonIdx + 1)
+                val parts = spec.split(":")
+                val category = parts[0]
+                val selectedGroup: String?
+                val selectedSub: String?
+                when (parts.size) {
+                    3 -> {
+                        selectedGroup = parts[1].ifEmpty { null }
+                        selectedSub = parts[2].ifEmpty { null }
+                    }
+                    2 -> {
+                        selectedGroup = null
+                        selectedSub = parts[1].ifEmpty { null }
+                    }
+                    else -> {
+                        selectedGroup = null
+                        selectedSub = null
+                    }
+                }
 
-                // One query for the whole category; subcategory breakdown comes from in-memory grouping.
                 val allTransactions =
                     withContext(Dispatchers.IO) {
                         getTransactionsUseCase.getTransactions(
@@ -167,6 +195,7 @@ class TransactionQueryController(
                                 userId = userId,
                                 accountIban = iban,
                                 category = category,
+                                categoryGroup = selectedGroup,
                                 onlyNegative = true,
                             ),
                         )
@@ -177,25 +206,42 @@ class TransactionQueryController(
                     return buckets.map { bucket -> byBucket[bucket]?.sumOf { it.effectiveAmount().abs() } ?: BigDecimal.ZERO }
                 }
 
+                val mainLabel = if (selectedGroup != null) selectedGroup else category
+                val hasSubSelection = selectedSub != null
+
                 val mainEntry =
                     TrendSeriesEntry(
-                        label = category,
+                        label = mainLabel,
                         data = bucketSums(allTransactions),
-                        role = if (selectedSub != null) SeriesRole.MAIN_CONTEXT else SeriesRole.MAIN_SELECTED,
+                        role = if (hasSubSelection) SeriesRole.MAIN_CONTEXT else SeriesRole.MAIN_SELECTED,
                     )
 
                 val subEntries =
-                    allTransactions
-                        .groupBy { it.subcategory }
-                        .entries
-                        .sortedBy { it.key }
-                        .map { (subName, txns) ->
-                            TrendSeriesEntry(
-                                label = subName,
-                                data = bucketSums(txns),
-                                role = if (subName == selectedSub) SeriesRole.SUB_SELECTED else SeriesRole.SUB_CONTEXT,
-                            )
-                        }
+                    if (selectedGroup != null) {
+                        allTransactions
+                            .groupBy { it.subcategory }
+                            .entries
+                            .sortedBy { it.key }
+                            .map { (subName, txns) ->
+                                TrendSeriesEntry(
+                                    label = subName,
+                                    data = bucketSums(txns),
+                                    role = if (subName == selectedSub) SeriesRole.SUB_SELECTED else SeriesRole.SUB_CONTEXT,
+                                )
+                            }
+                    } else {
+                        allTransactions
+                            .groupBy { it.subcategory }
+                            .entries
+                            .sortedBy { it.key }
+                            .map { (subName, txns) ->
+                                TrendSeriesEntry(
+                                    label = subName,
+                                    data = bucketSums(txns),
+                                    role = if (subName == selectedSub) SeriesRole.SUB_SELECTED else SeriesRole.SUB_CONTEXT,
+                                )
+                            }
+                    }
 
                 TrendSeriesGroup(main = mainEntry, subs = subEntries)
             }
@@ -273,32 +319,55 @@ class TransactionQueryController(
         return "${date.year}-H$half"
     }
 
-    private fun List<Transaction>.toSankeyResponse(): SankeyResponse {
-        // Keys are prefixed so that:
-        //   - a name appearing as both a category and subcategory gets distinct indices
-        //   - subcategories with the same name under different categories each get their
-        //     own right-side node, keeping links for different categories from crossing
+    private fun List<Transaction>.toSankeyResponse(
+        groupLookup: Map<Pair<String?, String?>, String> = emptyMap(),
+    ): SankeyResponse {
         val nodeIndex = linkedMapOf<String, Int>()
-
         fun indexFor(key: String) = nodeIndex.getOrPut(key) { nodeIndex.size }
 
+        data class TxKey(val category: String?, val group: String?, val subcategory: String?)
         val aggregated =
-            groupBy { it.category to it.subcategory }
+            groupBy {
+                val resolvedGroup = it.categoryGroup
+                    ?: groupLookup[it.category to it.subcategory]
+                TxKey(it.category, resolvedGroup, it.subcategory)
+            }
                 .mapValues { (_, txns) -> txns.sumOf { it.effectiveAmount().abs() } }
 
-        // Register categories before subcategories so they appear on the left.
-        aggregated.keys.forEach { (category, _) -> indexFor("cat:$category") }
-        aggregated.keys.forEach { (category, subcategory) -> indexFor("sub:$category:$subcategory") }
+        // Node registration order: categories (left), groups (middle), subcategories (right)
+        aggregated.keys.forEach { k -> indexFor("cat:${k.category ?: ""}") }
+        aggregated.keys.filter { it.group != null }.forEach { k -> indexFor("grp:${k.category ?: ""}:${k.group}") }
+        aggregated.keys.forEach { k ->
+            if (k.group != null) indexFor("sub:${k.category ?: ""}:${k.group}:${k.subcategory ?: ""}")
+            else indexFor("sub:${k.category ?: ""}::${k.subcategory ?: ""}")
+        }
 
-        val links =
-            aggregated.map { (key, amount) ->
-                val (category, subcategory) = key
-                SankeyLink(
-                    source = nodeIndex.getValue("cat:$category"),
-                    target = nodeIndex.getValue("sub:$category:$subcategory"),
-                    value = amount,
-                )
+        val catGrpAmounts = mutableMapOf<Pair<String?, String?>, BigDecimal>()
+        val grpSubAmounts = mutableMapOf<Triple<String?, String?, String?>, BigDecimal>()
+        val catSubAmounts = mutableMapOf<Pair<String?, String?>, BigDecimal>()
+
+        aggregated.forEach { (key, amount) ->
+            if (key.group != null) {
+                catGrpAmounts.merge(key.category to key.group, amount, BigDecimal::add)
+                grpSubAmounts.merge(Triple(key.category, key.group, key.subcategory), amount, BigDecimal::add)
+            } else {
+                catSubAmounts.merge(key.category to key.subcategory, amount, BigDecimal::add)
             }
+        }
+
+        val links = mutableListOf<SankeyLink>()
+        catGrpAmounts.forEach { (catGrp, amt) ->
+            val (cat, grp) = catGrp
+            links.add(SankeyLink(source = nodeIndex.getValue("cat:${cat ?: ""}"), target = nodeIndex.getValue("grp:${cat ?: ""}:$grp"), value = amt))
+        }
+        grpSubAmounts.forEach { (triple, amt) ->
+            val (cat, grp, sub) = triple
+            links.add(SankeyLink(source = nodeIndex.getValue("grp:${cat ?: ""}:$grp"), target = nodeIndex.getValue("sub:${cat ?: ""}:$grp:${sub ?: ""}"), value = amt))
+        }
+        catSubAmounts.forEach { (catSub, amt) ->
+            val (cat, sub) = catSub
+            links.add(SankeyLink(source = nodeIndex.getValue("cat:${cat ?: ""}"), target = nodeIndex.getValue("sub:${cat ?: ""}::${sub ?: ""}"), value = amt))
+        }
 
         val totals = mutableMapOf<Int, BigDecimal>()
         links.forEach { link ->
@@ -307,15 +376,13 @@ class TransactionQueryController(
         }
 
         val nodes =
-            nodeIndex.entries
-                .sortedBy { it.value }
-                .map { (key, idx) ->
-                    SankeyNode(
-                        name = key.substringAfterLast(':'),
-                        value = totals.getOrDefault(idx, BigDecimal.ZERO),
-                        nodeKey = key,
-                    )
-                }
+            nodeIndex.entries.sortedBy { it.value }.map { (key, idx) ->
+                SankeyNode(
+                    name = key.substringAfterLast(':'),
+                    value = totals.getOrDefault(idx, BigDecimal.ZERO),
+                    nodeKey = key,
+                )
+            }
 
         return SankeyResponse(nodes = nodes, links = links)
     }

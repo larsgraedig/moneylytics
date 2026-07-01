@@ -21,7 +21,7 @@ const COMMON_DATE_FORMATS = [
   'dd.MM.yy',
 ]
 
-type RowDecision = { action: 'import'; category: string; subcategory: string } | { action: 'skip' }
+type RowDecision = { action: 'import'; category: string; group: string; subcategory: string } | { action: 'skip' } | { action: 'enrich' }
 
 type Phase =
   | { step: 'upload' }
@@ -45,6 +45,7 @@ function buildInitialMapping(d: CsvDetectionResult): CsvMapping {
     purposeColumn: d.suggestions.purpose ?? null,
     categoryColumn: d.suggestions.category ?? null,
     subcategoryColumn: d.suggestions.subcategory ?? null,
+    categoryGroupColumn: d.suggestions.categoryGroup ?? null,
     accountIbanColumn: d.suggestions.accountIban ?? null,
     currencyColumn: d.suggestions.currency ?? null,
     fixedAccountIban: null,
@@ -199,6 +200,7 @@ function MappingView({
           <div className="gcv-section-title" style={{ marginTop: 16 }}>{t('csvImport.mapping.optionalFields')}</div>
           <MappingRow label={t('csvImport.mapping.purpose')} headers={headers} value={mapping.purposeColumn} onChange={v => set('purposeColumn', v)} />
           <MappingRow label={t('csvImport.mapping.category')} headers={headers} value={mapping.categoryColumn} onChange={v => set('categoryColumn', v)} />
+          <MappingRow label={t('csvImport.mapping.categoryGroup')} headers={headers} value={mapping.categoryGroupColumn} onChange={v => set('categoryGroupColumn', v)} />
           <MappingRow label={t('csvImport.mapping.subcategory')} headers={headers} value={mapping.subcategoryColumn} onChange={v => set('subcategoryColumn', v)} />
           <MappingRow label={t('csvImport.mapping.accountIban')} headers={headers} value={mapping.accountIbanColumn} onChange={v => set('accountIbanColumn', v)} />
           {!mapping.accountIbanColumn && (
@@ -308,7 +310,7 @@ export default function CsvImportPage() {
         rows.forEach(r => {
           initialDecisions[r.rowIndex] = r.status === 'DUPLICATE'
             ? { action: 'skip' }
-            : { action: 'import', category: r.mappedCategory ?? '', subcategory: r.mappedSubcategory ?? '' }
+            : { action: 'import', category: r.mappedCategory ?? '', group: r.mappedCategoryGroup ?? '', subcategory: r.mappedSubcategory ?? '' }
         })
         setDecisions(initialDecisions)
         setPhase({ step: 'categorizing', rows, detection, mapping, file })
@@ -330,13 +332,22 @@ export default function CsvImportPage() {
         return d?.action === 'import'
       })
       .map(r => {
-        const d = decisions[r.rowIndex] as { action: 'import'; category: string; subcategory: string }
-        return { ...r, category: d.category, subcategory: d.subcategory }
+        const d = decisions[r.rowIndex] as { action: 'import'; category: string; group: string; subcategory: string }
+        return { ...r, category: d.category, categoryGroup: d.group || null, subcategory: d.subcategory }
       })
+
+    const toEnrich = rows
+      .filter(r => r.status === 'DUPLICATE' && decisions[r.rowIndex]?.action === 'enrich')
+      .map(r => ({
+        fingerprint: r.fingerprint,
+        purpose: r.purpose || null,
+        counterpartyName: r.counterpartyName || null,
+        counterpartyIban: r.counterpartyIban || null,
+      }))
 
     setPhase({ step: 'importing-rows', rows, detection, mapping, file })
     try {
-      const count = await importGenericRows(toImport)
+      const count = await importGenericRows(toImport, toEnrich)
       setPhase({ step: 'success', count })
     } catch (e) {
       setPhase({ step: 'error', message: e instanceof Error ? e.message : 'Import failed' })
@@ -379,20 +390,21 @@ export default function CsvImportPage() {
 
     const setDecision = (rowIndex: number, d: RowDecision) =>
       setDecisions(prev => ({ ...prev, [rowIndex]: d }))
-    const setCategoryField = (rowIndex: number, field: 'category' | 'subcategory', value: string) =>
+    const setCategoryField = (rowIndex: number, field: 'category' | 'group' | 'subcategory', value: string) =>
       setDecisions(prev => {
         const cur = prev[rowIndex]
         if (cur?.action !== 'import') return prev
-        return { ...prev, [rowIndex]: { ...cur, [field]: value, ...(field === 'category' ? { subcategory: '' } : {}) } }
+        return { ...prev, [rowIndex]: { ...cur, [field]: value, ...(field === 'category' ? { group: '', subcategory: '' } : {}) } }
       })
 
     const duplicateCount = rows.filter(r => r.status === 'DUPLICATE').length
     const unknownAccountCount = rows.filter(r => r.status !== 'DUPLICATE' && r.unknownAccount).length
+    const enrichCount = rows.filter(r => r.status === 'DUPLICATE' && decisions[r.rowIndex]?.action === 'enrich').length
     const readyCount = rows.filter(r => {
       if (r.status === 'DUPLICATE' || r.unknownAccount) return false
       const d = decisions[r.rowIndex]
       return d?.action === 'import'
-    }).length
+    }).length + enrichCount
     const skippedCount = rows.filter(r => r.status !== 'DUPLICATE' && !r.unknownAccount && decisions[r.rowIndex]?.action === 'skip').length
 
     const EUR = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' })
@@ -425,6 +437,7 @@ export default function CsvImportPage() {
                   <th>{t('csvImport.categorizing.columns.account')}</th>
                   <th>{t('csvImport.categorizing.columns.purpose')}</th>
                   <th>{t('csvImport.categorizing.columns.category')}</th>
+                  <th>{t('csvImport.categorizing.columns.group')}</th>
                   <th>{t('csvImport.categorizing.columns.subcategory')}</th>
                   <th></th>
                 </tr>
@@ -437,6 +450,7 @@ export default function CsvImportPage() {
                   const d = decisions[row.rowIndex]
                   const isImporting = !isExcluded && d?.action === 'import'
                   const catVal = isImporting ? d.category : ''
+                  const grpVal = isImporting ? d.group : ''
                   const subVal = isImporting ? d.subcategory : ''
                   const subcatOptions = subcategoriesFor(catVal)
                   const rowClass = isExcluded
@@ -452,7 +466,11 @@ export default function CsvImportPage() {
                       </td>
                       <td className="ri-cell-purpose" title={row.purpose ?? ''}>{row.purpose || '—'}</td>
                       {isExcluded ? (
-                        <td colSpan={2} className="ri-cell-muted">{isDuplicate ? t('csvImport.categorizing.alreadyImported') : t('csvImport.categorizing.excluded')}</td>
+                        <td colSpan={3} className="ri-cell-muted">
+                          {isDuplicate
+                            ? (d?.action === 'enrich' ? t('csvImport.categorizing.willEnrich') : t('csvImport.categorizing.alreadyImported'))
+                            : t('csvImport.categorizing.excluded')}
+                        </td>
                       ) : isImporting ? (
                         <>
                           <td>
@@ -462,6 +480,14 @@ export default function CsvImportPage() {
                               placeholder={t('common.category')}
                               value={catVal}
                               onChange={e => setCategoryField(row.rowIndex, 'category', e.target.value)}
+                            />
+                          </td>
+                          <td>
+                            <input
+                              className="ri-cat-input"
+                              placeholder={t('common.group')}
+                              value={grpVal}
+                              onChange={e => setCategoryField(row.rowIndex, 'group', e.target.value)}
                             />
                           </td>
                           <td>
@@ -478,13 +504,19 @@ export default function CsvImportPage() {
                           </td>
                         </>
                       ) : (
-                        <td colSpan={2} className="ri-cell-muted">—</td>
+                        <td colSpan={3} className="ri-cell-muted">—</td>
                       )}
                       <td className="ri-cell-action">
-                        {!isExcluded && (isImporting ? (
+                        {isDuplicate ? (
+                          d?.action === 'enrich' ? (
+                            <button className="ri-action-btn ri-action-btn--ignore" onClick={() => setDecision(row.rowIndex, { action: 'skip' })}>{t('common.skip')}</button>
+                          ) : (
+                            <button className="ri-action-btn ri-action-btn--import" onClick={() => setDecision(row.rowIndex, { action: 'enrich' })}>{t('csvImport.categorizing.enrich')}</button>
+                          )
+                        ) : !isExcluded && (isImporting ? (
                           <button className="ri-action-btn ri-action-btn--ignore" onClick={() => setDecision(row.rowIndex, { action: 'skip' })}>{t('common.skip')}</button>
                         ) : (
-                          <button className="ri-action-btn ri-action-btn--import" onClick={() => setDecision(row.rowIndex, { action: 'import', category: '', subcategory: '' })}>{t('common.undo')}</button>
+                          <button className="ri-action-btn ri-action-btn--import" onClick={() => setDecision(row.rowIndex, { action: 'import', category: '', group: '', subcategory: '' })}>{t('common.undo')}</button>
                         ))}
                       </td>
                     </tr>

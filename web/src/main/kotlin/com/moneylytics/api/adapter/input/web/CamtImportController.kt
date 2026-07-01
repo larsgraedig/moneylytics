@@ -1,6 +1,7 @@
 package com.moneylytics.api.adapter.input.web
 
 import com.moneylytics.api.application.port.input.CheckDuplicatesUseCase
+import com.moneylytics.api.application.port.input.EnrichTransactionUseCase
 import com.moneylytics.api.application.port.input.FindIgnoredFingerprintsUseCase
 import com.moneylytics.api.application.port.input.GetAccountsUseCase
 import com.moneylytics.api.application.port.input.ImportTransactionsCommand
@@ -36,6 +37,7 @@ class CamtImportController(
     private val updateIgnoredTransactionsUseCase: UpdateIgnoredTransactionsUseCase,
     private val importTransactionsUseCase: ImportTransactionsUseCase,
     private val saveCategoriesUseCase: SaveCategoriesUseCase,
+    private val enrichTransactionUseCase: EnrichTransactionUseCase,
     private val resolveUserUseCase: ResolveUserUseCase,
 ) {
     @PostMapping("/camt/preview", consumes = [MediaType.MULTIPART_FORM_DATA_VALUE])
@@ -139,7 +141,7 @@ class CamtImportController(
 
         val categories =
             safeRequest.toImport
-                .map { Category(name = it.category, subcategory = it.subcategory) }
+                .map { Category(name = it.category, subcategory = it.subcategory, group = it.categoryGroup) }
                 .distinct()
         saveCategoriesUseCase.saveCategories(categories, userId)
 
@@ -148,6 +150,7 @@ class CamtImportController(
                 Transaction(
                     category = row.category,
                     subcategory = row.subcategory,
+                    categoryGroup = row.categoryGroup,
                     bookingDate = LocalDate.parse(row.bookingDate),
                     valueDate = LocalDate.parse(row.valueDate),
                     accountingDate = LocalDate.parse(row.bookingDate),
@@ -168,6 +171,10 @@ class CamtImportController(
                     userId = userId,
                 ),
             )
+
+        safeRequest.toEnrich.forEach { e ->
+            enrichTransactionUseCase.enrichByFingerprint(e.fingerprint, userId, e.purpose, e.counterpartyName, e.counterpartyIban)
+        }
 
         return ResponseEntity.ok(ImportSuccessResponse(importedCount = importedCount))
     }

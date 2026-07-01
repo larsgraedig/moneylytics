@@ -26,6 +26,7 @@ data class CsvColumnSuggestions(
     val accountIban: String?,
     val category: String?,
     val subcategory: String?,
+    val categoryGroup: String? = null,
     val counterpartyName: String? = null,
     val counterpartyIban: String? = null,
 )
@@ -43,6 +44,7 @@ data class GenericCsvMapping(
     val currencyColumn: String?,
     val fixedAccountIban: String?,
     val fixedCurrency: String,
+    val categoryGroupColumn: String? = null,
     val counterpartyNameColumn: String? = null,
     val counterpartyIbanColumn: String? = null,
 )
@@ -59,6 +61,7 @@ data class GenericCsvPreviewRow(
     val unknownAccount: Boolean,
     val mappedCategory: String?,
     val mappedSubcategory: String?,
+    val mappedCategoryGroup: String? = null,
     val counterpartyName: String? = null,
     val counterpartyIban: String? = null,
 )
@@ -71,6 +74,7 @@ data class GenericRowToImport(
     val purpose: String?,
     val category: String,
     val subcategory: String,
+    val categoryGroup: String? = null,
     val counterpartyName: String? = null,
     val counterpartyIban: String? = null,
 )

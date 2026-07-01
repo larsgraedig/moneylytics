@@ -26,8 +26,14 @@ export interface RawPreviewRow {
   counterpartyIban: string | null
 }
 
+export interface CategorySubGroup {
+  name: string
+  subcategories: string[]
+}
+
 export interface CategoryGroup {
   name: string
+  groups: CategorySubGroup[]
   subcategories: string[]
 }
 

@@ -43,6 +43,7 @@ export interface TransactionItem {
   accountIban: string
   category: string
   subcategory: string
+  categoryGroup: string | null
   amount: number
   effectiveAmount: number
   currency: string
@@ -89,11 +90,13 @@ export async function fetchAllTransactions(
   category?: string,
   subcategory?: string,
   uncategorized?: boolean,
+  categoryGroup?: string,
 ): Promise<TransactionListResponse> {
   const params = new URLSearchParams({ from, to, onlyNegative: 'false' })
   if (iban) params.set('iban', iban)
   if (category) params.set('category', category)
   if (subcategory) params.set('subcategory', subcategory)
+  if (categoryGroup) params.set('categoryGroup', categoryGroup)
   if (uncategorized) params.set('uncategorized', 'true')
   const res = await fetchWithUser(`/transactions/list?${params}`)
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
@@ -104,11 +107,12 @@ export async function updateTransactionCategory(
   id: number,
   category: string,
   subcategory: string,
+  categoryGroup?: string | null,
 ): Promise<TransactionItem> {
   const res = await fetchWithUser(`/transactions/${id}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ category, subcategory }),
+    body: JSON.stringify({ category, subcategory, categoryGroup: categoryGroup ?? null }),
   })
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
   return res.json() as Promise<TransactionItem>

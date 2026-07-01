@@ -17,8 +17,9 @@ type PageState =
   | { phase: 'imported'; importedCount: number; ignoredCount: number; skippedCount: number }
 
 type RowDecision =
-  | { action: 'import'; category: string; subcategory: string }
+  | { action: 'import'; category: string; group: string; subcategory: string }
   | { action: 'ignore' }
+  | { action: 'enrich' }
 
 function formatAmount(amount: number | null, raw: string): string {
   if (amount == null) return raw
@@ -36,7 +37,7 @@ function initDecisions(rows: RawPreviewRow[]): Record<number, RowDecision> {
   for (const row of rows) {
     if (row.unknownAccount) continue   // excluded – no decision
     if (row.status === 'NEW') {
-      out[row.rowNumber] = { action: 'import', category: '', subcategory: '' }
+      out[row.rowNumber] = { action: 'import', category: '', group: '', subcategory: '' }
     } else if (row.status === 'PREVIOUSLY_IGNORED') {
       out[row.rowNumber] = { action: 'ignore' }
     }
@@ -91,7 +92,7 @@ export default function CamtImportPage() {
     setDecisions(prev => ({ ...prev, [rowNumber]: decision }))
   }
 
-  const setCategoryField = (rowNumber: number, field: 'category' | 'subcategory', value: string) => {
+  const setCategoryField = (rowNumber: number, field: 'category' | 'group' | 'subcategory', value: string) => {
     setDecisions(prev => {
       const cur = prev[rowNumber]
       if (cur?.action !== 'import') return prev
@@ -100,7 +101,7 @@ export default function CamtImportPage() {
         [rowNumber]: {
           ...cur,
           [field]: value,
-          ...(field === 'category' ? { subcategory: '' } : {}),
+          ...(field === 'category' ? { group: '', subcategory: '' } : {}),
         },
       }
     })
@@ -127,6 +128,7 @@ export default function CamtImportPage() {
           purpose: r.purpose || null,
           counterpartyName: r.counterparty ?? null,
           counterpartyIban: r.counterpartyIban ?? null,
+          categoryGroup: d.group || null,
         }]
       })
 
@@ -134,14 +136,23 @@ export default function CamtImportPage() {
       .filter(r => r.status === 'NEW' && decisions[r.rowNumber]?.action === 'ignore')
       .map(r => r.fingerprint!)
 
+    const toEnrich = rows
+      .filter(r => r.status === 'DUPLICATE' && decisions[r.rowNumber]?.action === 'enrich')
+      .map(r => ({
+        fingerprint: r.fingerprint!,
+        purpose: r.purpose || null,
+        counterpartyName: r.counterparty || null,
+        counterpartyIban: r.counterpartyIban || null,
+      }))
+
     const skippedCount = rows
       .filter(r => r.status === 'NEW' || r.status === 'PREVIOUSLY_IGNORED')
-      .filter(r => { const d = decisions[r.rowNumber]; return d?.action === 'import' && (!d.category.trim() || !d.subcategory.trim()) })
+      .filter(r => { const d = decisions[r.rowNumber]; return d?.action === 'import' && (!d.category.trim()) })
       .length
 
     setImporting(true)
     try {
-      const result = await importCamt({ accountNames, toImport, toIgnore })
+      const result = await importCamt({ accountNames, toImport, toIgnore, toEnrich })
       setState({ phase: 'imported', importedCount: result.importedCount, ignoredCount: toIgnore.length, skippedCount })
     } catch (e) {
       setState({ phase: 'error', message: e instanceof Error ? e.message : 'Import failed' })
@@ -164,7 +175,8 @@ export default function CamtImportPage() {
 
   const canImport = (rows: RawPreviewRow[]) => {
     const readyToImport = toImportRows(rows).filter(r => decisions[r.rowNumber]?.action === 'import')
-    return readyToImport.length > 0 || toIgnoreRows(rows).length > 0
+    const toEnrich = rows.filter(r => r.status === 'DUPLICATE' && decisions[r.rowNumber]?.action === 'enrich')
+    return readyToImport.length > 0 || toIgnoreRows(rows).length > 0 || toEnrich.length > 0
   }
 
   // ── result screen ──────────────────────────────────────────────────────────
@@ -279,6 +291,7 @@ export default function CamtImportPage() {
                 <th>{t('camtImport.columns.purpose')}</th>
                 <th>{t('camtImport.columns.amount')}</th>
                 <th>{t('camtImport.columns.category')}</th>
+                <th>{t('common.group')}</th>
                 <th>{t('camtImport.columns.subcategory')}</th>
                 <th></th>
               </tr>
@@ -288,6 +301,7 @@ export default function CamtImportPage() {
                 const d = decisions[row.rowNumber]
                 const isImporting = d?.action === 'import'
                 const catVal = isImporting ? d.category : ''
+                const grpVal = isImporting ? d.group : ''
                 const subVal = isImporting ? d.subcategory : ''
                 const subcatOptions = subcategoriesFor(catVal)
 
@@ -325,9 +339,11 @@ export default function CamtImportPage() {
                       row={row}
                       decision={d}
                       catVal={catVal}
+                      grpVal={grpVal}
                       subVal={subVal}
                       subcatOptions={subcatOptions}
                       onCategoryChange={v => setCategoryField(row.rowNumber, 'category', v)}
+                      onGroupChange={v => setCategoryField(row.rowNumber, 'group', v)}
                       onSubcategoryChange={v => setCategoryField(row.rowNumber, 'subcategory', v)}
                     />
 
@@ -354,7 +370,11 @@ export default function CamtImportPage() {
 function StatusBadge({ row, decision }: { row: RawPreviewRow; decision: RowDecision | undefined }) {
   const { t } = useTranslation()
   if (row.status === 'INVALID') return <span className="ri-badge ri-badge--invalid">{t('camtImport.status.invalid')}</span>
-  if (row.status === 'DUPLICATE') return <span className="ri-badge ri-badge--duplicate">{t('camtImport.status.duplicate')}</span>
+  if (row.status === 'DUPLICATE') {
+    return decision?.action === 'enrich'
+      ? <span className="ri-badge ri-badge--new">{t('camtImport.status.enriching')}</span>
+      : <span className="ri-badge ri-badge--duplicate">{t('camtImport.status.duplicate')}</span>
+  }
   if (row.status === 'PREVIOUSLY_IGNORED') {
     return decision?.action === 'import'
       ? <span className="ri-badge ri-badge--new">{t('camtImport.status.importing')}</span>
@@ -366,24 +386,26 @@ function StatusBadge({ row, decision }: { row: RawPreviewRow; decision: RowDecis
 }
 
 function CategoryCells({
-  row, decision, catVal, subVal, subcatOptions,
-  onCategoryChange, onSubcategoryChange,
+  row, decision, catVal, grpVal, subVal, subcatOptions,
+  onCategoryChange, onGroupChange, onSubcategoryChange,
 }: {
   row: RawPreviewRow
   decision: RowDecision | undefined
   catVal: string
+  grpVal: string
   subVal: string
   subcatOptions: string[]
   onCategoryChange: (v: string) => void
+  onGroupChange: (v: string) => void
   onSubcategoryChange: (v: string) => void
 }) {
   const { t: tCat } = useTranslation()
   if (row.unknownAccount) {
-    return <td colSpan={2} className="ri-cell-muted">{tCat('camtImport.status.excluded')}</td>
+    return <td colSpan={3} className="ri-cell-muted">{tCat('camtImport.status.excluded')}</td>
   }
   if (row.status === 'INVALID') {
     return (
-      <td colSpan={2} className="ri-cell-errors">
+      <td colSpan={3} className="ri-cell-errors">
         {row.errors.map((err, i) => (
           <span key={i} className="ri-error-tag" title={err.message}>
             {err.column}: <em>{err.value || '∅'}</em>
@@ -394,11 +416,13 @@ function CategoryCells({
   }
 
   if (row.status === 'DUPLICATE') {
-    return <td colSpan={2} className="ri-cell-muted">{tCat('camtImport.alreadyImported')}</td>
+    return <td colSpan={3} className="ri-cell-muted">
+      {decision?.action === 'enrich' ? tCat('camtImport.willEnrich') : tCat('camtImport.alreadyImported')}
+    </td>
   }
 
   if (decision?.action === 'ignore') {
-    return <td colSpan={2} className="ri-cell-muted">—</td>
+    return <td colSpan={3} className="ri-cell-muted">—</td>
   }
 
   return (
@@ -410,6 +434,14 @@ function CategoryCells({
           placeholder={tCat('camtImport.columns.category')}
           value={catVal}
           onChange={e => onCategoryChange(e.target.value)}
+        />
+      </td>
+      <td>
+        <input
+          className="ri-cat-input"
+          placeholder={tCat('common.group')}
+          value={grpVal}
+          onChange={e => onGroupChange(e.target.value)}
         />
       </td>
       <td>
@@ -436,7 +468,19 @@ function ActionToggle({
   onDecide: (d: RowDecision) => void
 }) {
   const { t } = useTranslation()
-  if (row.unknownAccount || row.status === 'INVALID' || row.status === 'DUPLICATE') return null
+  if (row.unknownAccount || row.status === 'INVALID') return null
+
+  if (row.status === 'DUPLICATE') {
+    return decision?.action === 'enrich' ? (
+      <button className="ri-action-btn ri-action-btn--ignore" onClick={() => onDecide({ action: 'ignore' })}>
+        {t('camtImport.skip')}
+      </button>
+    ) : (
+      <button className="ri-action-btn ri-action-btn--import" onClick={() => onDecide({ action: 'enrich' })}>
+        {t('camtImport.enrich')}
+      </button>
+    )
+  }
 
   if (row.status === 'PREVIOUSLY_IGNORED') {
     return decision?.action === 'import' ? (
@@ -449,7 +493,7 @@ function ActionToggle({
     ) : (
       <button
         className="ri-action-btn ri-action-btn--import"
-        onClick={() => onDecide({ action: 'import', category: '', subcategory: '' })}
+        onClick={() => onDecide({ action: 'import', category: '', group: '', subcategory: '' })}
       >
         {t('camtImport.importAnyway')}
       </button>
@@ -459,7 +503,7 @@ function ActionToggle({
   return decision?.action === 'ignore' ? (
     <button
       className="ri-action-btn ri-action-btn--import"
-      onClick={() => onDecide({ action: 'import', category: '', subcategory: '' })}
+      onClick={() => onDecide({ action: 'import', category: '', group: '', subcategory: '' })}
     >
       {t('camtImport.undo')}
     </button>

@@ -41,8 +41,10 @@
     "amount": "Betrag",
     "currency": "Währung",
     "category": "Kategorie",
+    "group": "Gruppe",
     "subcategory": "Unterkategorie",
     "purpose": "Verwendungszweck",
+    "allGroups": "Alle Gruppen",
     "total": "Gesamt",
     "account": "Konto",
     "import": "Importieren",
@@ -132,6 +134,7 @@
       "bookingDate": "Buchungsdatum",
       "account": "Konto",
       "category": "Kategorie",
+      "group": "Gruppe",
       "subcategory": "Unterkategorie",
       "amount": "Betrag",
       "effectiveAmount": "Effektiver Betrag",
@@ -277,6 +280,7 @@
       "amountEnglish": "Englisch (1,234.56)",
       "purpose": "Verwendungszweck",
       "category": "Kategorie",
+      "categoryGroup": "Gruppe",
       "subcategory": "Unterkategorie",
       "accountIban": "Konto (IBAN)",
       "fixedIban": "Fester IBAN-Wert",
@@ -299,6 +303,8 @@
       "importCount": "{{count}} importieren",
       "excluded": "Ausgeschlossen",
       "alreadyImported": "Bereits importiert",
+      "willEnrich": "Felder werden ergänzt",
+      "enrich": "Ergänzen",
       "back": "← Zurück",
       "unknownAccountLabel": "⚠ Unbekanntes Konto",
       "columns": {
@@ -308,6 +314,7 @@
         "account": "Konto",
         "purpose": "Verwendungszweck",
         "category": "Kategorie",
+        "group": "Gruppe",
         "subcategory": "Unterkategorie"
       }
     },
@@ -330,6 +337,7 @@
       "previouslyIgnored": "Früher ignoriert",
       "willIgnore": "Wird ignoriert",
       "importing": "Wird importiert",
+      "enriching": "Wird ergänzt",
       "excluded": "Ausgeschlossen",
       "unknownAccount": "Unbekanntes Konto"
     },
@@ -360,6 +368,8 @@
     "skip": "Überspringen",
     "undo": "Rückgängig",
     "alreadyImported": "Bereits importiert",
+    "willEnrich": "Felder werden ergänzt",
+    "enrich": "Ergänzen",
     "unknownAccount": "⚠ Unbekanntes Konto",
     "noCategory": "Keine Kategorie",
     "success": {
