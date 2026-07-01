@@ -10,6 +10,7 @@
     "breakdown": "Breakdown",
     "cashflow": "Cashflow",
     "kontoauszug": "Kontoauszug",
+    "verknuepfungen": "Verknüpfungen",
     "konten": "Konten",
     "budgets": "Budgets",
     "limits": "Limits",
@@ -371,6 +372,13 @@
     "parsing": "Dateien werden verarbeitet…",
     "noRows": "Die Dateien enthalten keine Zeilen.",
     "noFiles": "Keine Dateien angegeben."
+  },
+  "linked": {
+    "title": "Verknüpfte Transaktionen",
+    "count": "{{count}} Gruppe(n)",
+    "group": "Gruppe",
+    "balanced": "ausgeglichen",
+    "empty": "Keine verknüpften Transaktionen vorhanden."
   },
   "settings": {
     "title": "Einstellungen",

@@ -148,6 +148,20 @@ export async function updateTransactionComment(
   return res.json() as Promise<TransactionItem>
 }
 
+export interface LinkedGroupItem {
+  transactions: TransactionItem[]
+}
+
+export interface LinkedGroupsResponse {
+  groups: LinkedGroupItem[]
+}
+
+export async function fetchLinkedGroups(): Promise<LinkedGroupsResponse> {
+  const res = await fetchWithUser('/transactions/linked')
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  return res.json() as Promise<LinkedGroupsResponse>
+}
+
 export async function updateTransactionAccountingDate(
   id: number,
   accountingDate: string,

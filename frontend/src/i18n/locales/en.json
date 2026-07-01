@@ -10,6 +10,7 @@
     "breakdown": "Breakdown",
     "cashflow": "Cashflow",
     "kontoauszug": "Transactions",
+    "verknuepfungen": "Linked",
     "konten": "Accounts",
     "budgets": "Budgets",
     "limits": "Limits",
@@ -371,6 +372,13 @@
     "parsing": "parsing files…",
     "noRows": "The files contain no rows.",
     "noFiles": "No files provided."
+  },
+  "linked": {
+    "title": "Linked transactions",
+    "count": "{{count}} group(s)",
+    "group": "Group",
+    "balanced": "balanced",
+    "empty": "No linked transactions found."
   },
   "settings": {
     "title": "Settings",

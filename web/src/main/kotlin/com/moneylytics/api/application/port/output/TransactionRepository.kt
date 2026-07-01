@@ -51,4 +51,9 @@ interface TransactionRepository {
         userId: Long,
         comment: String?,
     ): Transaction?
+
+    fun findByIdsAndUserId(
+        ids: Set<Long>,
+        userId: Long,
+    ): List<Transaction>
 }

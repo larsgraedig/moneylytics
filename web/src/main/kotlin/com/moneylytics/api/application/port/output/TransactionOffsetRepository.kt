@@ -14,6 +14,8 @@ interface TransactionOffsetRepository {
         transactionAId: Long,
         transactionBId: Long,
     ): Boolean
+
+    fun findIdPairsForUser(userId: Long): List<Pair<Long, Long>>
 }
 
 data class CreateOffsetLinkCommand(

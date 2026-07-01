@@ -1,5 +1,6 @@
 package com.moneylytics.api.adapter.input.web
 
+import com.moneylytics.api.application.port.input.GetLinkedTransactionsUseCase
 import com.moneylytics.api.application.port.input.LinkTransactionsCommand
 import com.moneylytics.api.application.port.input.ManageTransactionOffsetUseCase
 import com.moneylytics.api.application.port.input.ResolveUserUseCase
@@ -10,6 +11,7 @@ import org.springframework.http.ResponseEntity
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.security.core.userdetails.UserDetails
 import org.springframework.web.bind.annotation.DeleteMapping
+import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
@@ -29,12 +31,37 @@ data class OffsetLinkResponse(
     val partialAmount: BigDecimal?,
 )
 
+data class LinkedGroupResponse(
+    val groups: List<LinkedGroupItem>,
+)
+
+data class LinkedGroupItem(
+    val transactions: List<TransactionItem>,
+)
+
 @RestController
 @RequestMapping("/transactions")
 class TransactionOffsetController(
     private val manageTransactionOffsetUseCase: ManageTransactionOffsetUseCase,
+    private val getLinkedTransactionsUseCase: GetLinkedTransactionsUseCase,
     private val resolveUserUseCase: ResolveUserUseCase,
 ) {
+    @GetMapping("/linked")
+    suspend fun getLinkedTransactions(
+        @AuthenticationPrincipal principal: UserDetails,
+    ): LinkedGroupResponse =
+        withContext(Dispatchers.IO) {
+            val userId = resolveUserUseCase.resolveUser(principal.username)
+            val groups = getLinkedTransactionsUseCase.getLinkedGroups(userId)
+            LinkedGroupResponse(
+                groups = groups.map { group ->
+                    LinkedGroupItem(
+                        transactions = group.transactions.map { it.toItem() },
+                    )
+                },
+            )
+        }
+
     @PostMapping("/{id}/offsets")
     suspend fun linkTransaction(
         @PathVariable id: Long,

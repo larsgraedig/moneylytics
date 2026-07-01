@@ -138,32 +138,6 @@ class TransactionQueryController(
             if (updated != null) ResponseEntity.ok(updated.toItem()) else ResponseEntity.notFound().build()
         }
 
-    private fun Transaction.toItem() =
-        TransactionItem(
-            id = requireNotNull(id),
-            bookingDate = bookingDate.toString(),
-            accountingDate = accountingDate.toString(),
-            accountIban = accountIban,
-            category = category,
-            subcategory = subcategory,
-            amount = amount,
-            effectiveAmount = effectiveAmount(),
-            currency = currency,
-            offsetLinks =
-                offsetLinks.map { link ->
-                    OffsetLinkItem(
-                        id = link.id,
-                        linkedTransactionId = link.linkedTransactionId,
-                        linkedTransactionAmount = link.linkedTransactionAmount,
-                        partialAmount = link.partialAmount,
-                    )
-                },
-            comment = comment,
-            purpose = purpose,
-            counterpartyName = counterpartyName,
-            counterpartyIban = counterpartyIban,
-        )
-
     @GetMapping("/trends")
     suspend fun getTrends(
         @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) from: LocalDate,
