@@ -44,4 +44,8 @@ class TransactionOffsetPersistenceAdapter(
         transactionAId: Long,
         transactionBId: Long,
     ): Boolean = offsetJpaRepository.existsByNormalizedPair(transactionAId, transactionBId)
+
+    @Transactional(readOnly = true)
+    override fun findIdPairsForUser(userId: Long): List<Pair<Long, Long>> =
+        offsetJpaRepository.findAllByUserId(userId).map { it.transactionA.id!! to it.transactionB.id!! }
 }

@@ -1,8 +1,10 @@
 package com.moneylytics.api.adapter.input.web
 
+import com.moneylytics.api.application.port.input.GetLinkedTransactionsUseCase
 import com.moneylytics.api.application.port.input.LinkTransactionsCommand
 import com.moneylytics.api.application.port.input.ManageTransactionOffsetUseCase
 import com.moneylytics.api.application.port.input.ResolveUserUseCase
+import com.moneylytics.api.application.port.input.UpdateOffsetGroupMetaUseCase
 import com.moneylytics.api.application.port.output.OffsetLinkResult
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -10,6 +12,8 @@ import org.springframework.http.ResponseEntity
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.security.core.userdetails.UserDetails
 import org.springframework.web.bind.annotation.DeleteMapping
+import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PatchMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
@@ -29,12 +33,60 @@ data class OffsetLinkResponse(
     val partialAmount: BigDecimal?,
 )
 
+data class LinkedGroupResponse(
+    val groups: List<LinkedGroupItem>,
+)
+
+data class LinkedGroupItem(
+    val groupKey: Long,
+    val name: String?,
+    val comment: String?,
+    val transactions: List<TransactionItem>,
+)
+
+data class UpdateGroupMetaRequest(
+    val name: String?,
+    val comment: String?,
+)
+
 @RestController
 @RequestMapping("/transactions")
 class TransactionOffsetController(
     private val manageTransactionOffsetUseCase: ManageTransactionOffsetUseCase,
+    private val getLinkedTransactionsUseCase: GetLinkedTransactionsUseCase,
+    private val updateOffsetGroupMetaUseCase: UpdateOffsetGroupMetaUseCase,
     private val resolveUserUseCase: ResolveUserUseCase,
 ) {
+    @GetMapping("/linked")
+    suspend fun getLinkedTransactions(
+        @AuthenticationPrincipal principal: UserDetails,
+    ): LinkedGroupResponse =
+        withContext(Dispatchers.IO) {
+            val userId = resolveUserUseCase.resolveUser(principal.username)
+            LinkedGroupResponse(
+                groups = getLinkedTransactionsUseCase.getLinkedGroups(userId).map { group ->
+                    LinkedGroupItem(
+                        groupKey = group.groupKey,
+                        name = group.name,
+                        comment = group.comment,
+                        transactions = group.transactions.map { it.toItem() },
+                    )
+                },
+            )
+        }
+
+    @PatchMapping("/linked/{groupKey}")
+    suspend fun updateGroupMeta(
+        @PathVariable groupKey: Long,
+        @RequestBody request: UpdateGroupMetaRequest,
+        @AuthenticationPrincipal principal: UserDetails,
+    ): ResponseEntity<Void> =
+        withContext(Dispatchers.IO) {
+            val userId = resolveUserUseCase.resolveUser(principal.username)
+            updateOffsetGroupMetaUseCase.updateGroupMeta(userId, groupKey, request.name, request.comment)
+            ResponseEntity.noContent().build()
+        }
+
     @PostMapping("/{id}/offsets")
     suspend fun linkTransaction(
         @PathVariable id: Long,

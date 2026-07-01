@@ -135,6 +135,15 @@ class TransactionPersistenceAdapter(
         return enrichWithOffsetLinks(listOf(jpaRepository.save(entity))).first()
     }
 
+    @Transactional(readOnly = true)
+    override fun findByIdsAndUserId(
+        ids: Set<Long>,
+        userId: Long,
+    ): List<Transaction> {
+        if (ids.isEmpty()) return emptyList()
+        return enrichWithOffsetLinks(jpaRepository.findByIdsAndUserId(ids, userId))
+    }
+
     private fun enrichWithOffsetLinks(entities: List<TransactionEntity>): List<Transaction> {
         val ids = entities.mapNotNull { it.id }
         if (ids.isEmpty()) return emptyList()

@@ -1,5 +1,6 @@
 package com.moneylytics.api.adapter.input.web
 
+import com.moneylytics.api.domain.Transaction
 import java.math.BigDecimal
 
 data class TransactionListResponse(
@@ -30,3 +31,28 @@ data class OffsetLinkItem(
     val linkedTransactionAmount: BigDecimal,
     val partialAmount: BigDecimal?,
 )
+
+fun Transaction.toItem() =
+    TransactionItem(
+        id = requireNotNull(id),
+        bookingDate = bookingDate.toString(),
+        accountingDate = accountingDate.toString(),
+        accountIban = accountIban,
+        category = category,
+        subcategory = subcategory,
+        amount = amount,
+        effectiveAmount = effectiveAmount(),
+        currency = currency,
+        offsetLinks = offsetLinks.map { link ->
+            OffsetLinkItem(
+                id = link.id,
+                linkedTransactionId = link.linkedTransactionId,
+                linkedTransactionAmount = link.linkedTransactionAmount,
+                partialAmount = link.partialAmount,
+            )
+        },
+        comment = comment,
+        purpose = purpose,
+        counterpartyName = counterpartyName,
+        counterpartyIban = counterpartyIban,
+    )

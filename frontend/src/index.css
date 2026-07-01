@@ -3492,3 +3492,199 @@ body {
   flex-shrink: 0;
   margin: 0 4px;
 }
+
+/* ── Linked Transactions Page ─────────────────────────────────────────── */
+.ltx-page {
+  padding: 24px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.ltx-header {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.ltx-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.ltx-count {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-family: var(--mono);
+}
+
+.ltx-status {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.ltx-status--error { color: var(--error); }
+
+.ltx-group {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.ltx-group-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+}
+
+.ltx-group-label {
+  font-size: 11px;
+  font-family: var(--mono);
+  color: var(--text-muted);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.ltx-group-net {
+  font-size: 12px;
+  font-family: var(--mono);
+  font-weight: 600;
+}
+
+.ltx-group-net--zero { color: #4ade80; }
+.ltx-group-net--pos  { color: #4ade80; }
+.ltx-group-net--neg  { color: var(--error); }
+
+.ltx-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.ltx-table th {
+  padding: 7px 14px;
+  text-align: left;
+  color: var(--text-muted);
+  font-weight: 500;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+.ltx-table td {
+  padding: 8px 14px;
+  color: var(--text);
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+
+.ltx-row:last-child td { border-bottom: none; }
+
+.ltx-col-amount {
+  text-align: right;
+  font-family: var(--mono);
+  white-space: nowrap;
+}
+
+.ltx-amount--pos     { color: #4ade80; }
+.ltx-amount--neg     { color: var(--error); }
+.ltx-amount--reduced { color: var(--accent); }
+
+.ltx-cell-counterparty {
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: default;
+}
+
+.ltx-cell-purpose {
+  max-width: 220px;
+}
+
+.ltx-purpose-text {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ltx-cat {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.ltx-group-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.ltx-group-comment {
+  padding: 6px 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.ltx-inline-edit {
+  cursor: text;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 500;
+  border-radius: 3px;
+  padding: 1px 4px;
+  margin: -1px -4px;
+  transition: background 0.1s;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 300px;
+}
+
+.ltx-inline-edit:hover { background: var(--border); }
+
+.ltx-inline-edit--empty {
+  color: var(--text-muted);
+  font-weight: 400;
+  font-style: italic;
+}
+
+.ltx-group-comment .ltx-inline-edit {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--text-muted);
+  white-space: normal;
+  max-width: 100%;
+}
+
+.ltx-group-comment .ltx-inline-edit--empty { font-style: italic; }
+
+.ltx-inline-input {
+  background: var(--bg);
+  border: 1px solid var(--accent);
+  border-radius: 3px;
+  color: var(--text);
+  font-size: 13px;
+  font-family: inherit;
+  padding: 2px 6px;
+  outline: none;
+  width: 260px;
+}
+
+.ltx-group-comment .ltx-inline-input {
+  width: 100%;
+  font-size: 12px;
+  resize: none;
+}
+
+.ltx-saving {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-family: var(--mono);
+}

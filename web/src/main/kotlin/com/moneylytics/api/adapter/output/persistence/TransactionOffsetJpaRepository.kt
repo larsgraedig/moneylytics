@@ -42,4 +42,16 @@ interface TransactionOffsetJpaRepository : JpaRepository<TransactionOffsetEntity
         @Param("aId") aId: Long,
         @Param("bId") bId: Long,
     ): Boolean
+
+    @Query(
+        """
+        SELECT o FROM TransactionOffsetEntity o
+        JOIN FETCH o.transactionA
+        JOIN FETCH o.transactionB
+        WHERE o.transactionA.user.id = :userId
+        """,
+    )
+    fun findAllByUserId(
+        @Param("userId") userId: Long,
+    ): List<TransactionOffsetEntity>
 }
