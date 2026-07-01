@@ -6,6 +6,7 @@ import java.time.LocalDate
 data class Transaction(
     val category: String?,
     val subcategory: String?,
+    val categoryGroup: String? = null,
     val bookingDate: LocalDate,
     val valueDate: LocalDate,
     val accountingDate: LocalDate,

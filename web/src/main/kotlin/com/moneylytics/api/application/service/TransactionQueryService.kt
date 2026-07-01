@@ -30,6 +30,7 @@ class TransactionQueryService(
             .let { list -> if (query.uncategorized) list.filter { it.category == null } else list }
             .let { list -> query.category?.let { cat -> list.filter { it.category == cat } } ?: list }
             .let { list -> query.subcategory?.let { sub -> list.filter { it.subcategory == sub } } ?: list }
+            .let { list -> query.categoryGroup?.let { grp -> list.filter { it.categoryGroup == grp } } ?: list }
     }
 
     override fun updateCategory(
@@ -37,7 +38,8 @@ class TransactionQueryService(
         userId: Long,
         category: String,
         subcategory: String,
-    ): Transaction? = transactionRepository.updateCategory(id, userId, category, subcategory)
+        categoryGroup: String?,
+    ): Transaction? = transactionRepository.updateCategory(id, userId, category, subcategory, categoryGroup)
 
     override fun updateComment(
         id: Long,
@@ -57,5 +59,5 @@ class TransactionQueryService(
         purpose: String?,
         counterpartyName: String?,
         counterpartyIban: String?,
-    ) = transactionRepository.enrichByFingerprint(fingerprint, userId, purpose, counterpartyName, counterpartyIban)
+    ) = transactionRepository.enrichByFingerprint(fingerprint, userId, purpose, counterpartyName, counterpartyIban, null)
 }

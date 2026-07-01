@@ -117,10 +117,12 @@ class TransactionPersistenceAdapter(
         userId: Long,
         category: String,
         subcategory: String,
+        categoryGroup: String?,
     ): Transaction? {
         val entity = jpaRepository.findByIdAndUserId(id, userId) ?: return null
         entity.category = category.takeIf { it.isNotBlank() }
         entity.subcategory = subcategory.takeIf { it.isNotBlank() }
+        entity.categoryGroup = categoryGroup?.takeIf { it.isNotBlank() }
         return enrichWithOffsetLinks(listOf(jpaRepository.save(entity))).first()
     }
 
@@ -151,11 +153,13 @@ class TransactionPersistenceAdapter(
         purpose: String?,
         counterpartyName: String?,
         counterpartyIban: String?,
+        categoryGroup: String?,
     ) {
         val entity = jpaRepository.findByFingerprintAndUserId(fingerprint, userId) ?: return
         if (entity.purpose == null && !purpose.isNullOrBlank()) entity.purpose = purpose
         if (entity.counterpartyName == null && !counterpartyName.isNullOrBlank()) entity.counterpartyName = counterpartyName
         if (entity.counterpartyIban == null && !counterpartyIban.isNullOrBlank()) entity.counterpartyIban = counterpartyIban
+        if (entity.categoryGroup == null && !categoryGroup.isNullOrBlank()) entity.categoryGroup = categoryGroup
         jpaRepository.save(entity)
     }
 
@@ -191,6 +195,7 @@ class TransactionPersistenceAdapter(
         Transaction(
             category = category,
             subcategory = subcategory,
+            categoryGroup = categoryGroup,
             bookingDate = bookingDate,
             valueDate = valueDate,
             accountingDate = accountingDate,
@@ -217,6 +222,7 @@ class TransactionPersistenceAdapter(
         return TransactionEntity(
             category = category?.takeIf { it.isNotBlank() },
             subcategory = subcategory?.takeIf { it.isNotBlank() },
+            categoryGroup = categoryGroup?.takeIf { it.isNotBlank() },
             bookingDate = bookingDate,
             valueDate = valueDate,
             accountingDate = accountingDate,

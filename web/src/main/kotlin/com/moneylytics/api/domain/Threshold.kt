@@ -8,6 +8,7 @@ data class Threshold(
     val id: Long,
     val category: String,
     val subcategory: String?,
+    val categoryGroup: String? = null,
     val period: ThresholdPeriod,
     val notice: BigDecimal?,
     val warning: BigDecimal?,

@@ -64,6 +64,7 @@ data class CamtTransactionImport(
     val purpose: String?,
     val counterpartyName: String? = null,
     val counterpartyIban: String? = null,
+    val categoryGroup: String? = null,
 )
 
 data class CategoriesResponse(
@@ -71,6 +72,12 @@ data class CategoriesResponse(
 )
 
 data class CategoryGroupResponse(
+    val name: String,
+    val groups: List<CategorySubGroupResponse>,
+    val subcategories: List<String>,
+)
+
+data class CategorySubGroupResponse(
     val name: String,
     val subcategories: List<String>,
 )

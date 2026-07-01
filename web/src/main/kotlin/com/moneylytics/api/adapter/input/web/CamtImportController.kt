@@ -141,7 +141,7 @@ class CamtImportController(
 
         val categories =
             safeRequest.toImport
-                .map { Category(name = it.category, subcategory = it.subcategory) }
+                .map { Category(name = it.category, subcategory = it.subcategory, group = it.categoryGroup) }
                 .distinct()
         saveCategoriesUseCase.saveCategories(categories, userId)
 
@@ -150,6 +150,7 @@ class CamtImportController(
                 Transaction(
                     category = row.category,
                     subcategory = row.subcategory,
+                    categoryGroup = row.categoryGroup,
                     bookingDate = LocalDate.parse(row.bookingDate),
                     valueDate = LocalDate.parse(row.valueDate),
                     accountingDate = LocalDate.parse(row.bookingDate),

@@ -8,5 +8,6 @@ interface UpdateTransactionCategoryUseCase {
         userId: Long,
         category: String,
         subcategory: String,
+        categoryGroup: String? = null,
     ): Transaction?
 }

@@ -26,6 +26,7 @@ class GenericCsvParser {
         val purposeIdx = idx(mapping.purposeColumn)
         val categoryIdx = idx(mapping.categoryColumn)
         val subcategoryIdx = idx(mapping.subcategoryColumn)
+        val categoryGroupIdx = idx(mapping.categoryGroupColumn)
         val ibanIdx = idx(mapping.accountIbanColumn)
         val currencyIdx = idx(mapping.currencyColumn)
         val counterpartyNameIdx = idx(mapping.counterpartyNameColumn)
@@ -63,6 +64,7 @@ class GenericCsvParser {
                 unknownAccount = false,
                 mappedCategory = get(categoryIdx).ifBlank { null },
                 mappedSubcategory = get(subcategoryIdx).ifBlank { null },
+                mappedCategoryGroup = get(categoryGroupIdx).ifBlank { null },
                 counterpartyName = get(counterpartyNameIdx).ifBlank { null },
                 counterpartyIban = get(counterpartyIbanIdx).ifBlank { null },
             )
@@ -87,6 +89,7 @@ class GenericCsvParser {
         val purposeIdx = idx(mapping.purposeColumn)
         val categoryIdx = idx(mapping.categoryColumn)
         val subcategoryIdx = idx(mapping.subcategoryColumn)
+        val categoryGroupIdx = idx(mapping.categoryGroupColumn)
         val ibanIdx = idx(mapping.accountIbanColumn)
         val currencyIdx = idx(mapping.currencyColumn)
         val counterpartyNameIdx = idx(mapping.counterpartyNameColumn)
@@ -125,6 +128,7 @@ class GenericCsvParser {
                 Transaction(
                     category = get(categoryIdx).ifBlank { "Sonstiges" },
                     subcategory = get(subcategoryIdx).ifBlank { "Sonstiges" },
+                    categoryGroup = get(categoryGroupIdx).ifBlank { null },
                     bookingDate = date,
                     valueDate = date,
                     accountingDate = date,

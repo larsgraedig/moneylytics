@@ -44,6 +44,7 @@ interface TransactionRepository {
         userId: Long,
         category: String,
         subcategory: String,
+        categoryGroup: String? = null,
     ): Transaction?
 
     fun updateComment(
@@ -63,5 +64,6 @@ interface TransactionRepository {
         purpose: String?,
         counterpartyName: String?,
         counterpartyIban: String?,
+        categoryGroup: String? = null,
     )
 }

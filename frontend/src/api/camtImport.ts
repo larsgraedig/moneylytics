@@ -1,7 +1,7 @@
 import { fetchWithUser } from './client'
-import type { RawPreviewRow, CategoryGroup, CategoriesResponse } from './rawImport'
+import type { RawPreviewRow, CategoryGroup, CategorySubGroup, CategoriesResponse } from './rawImport'
 
-export type { RawPreviewRow, CategoryGroup }
+export type { RawPreviewRow, CategoryGroup, CategorySubGroup }
 
 export interface CamtAccountInfo {
   iban: string
@@ -25,6 +25,7 @@ export interface CamtTransactionImport {
   purpose: string | null
   counterpartyName: string | null
   counterpartyIban: string | null
+  categoryGroup: string | null
 }
 
 export interface TransactionEnrichRequest {
