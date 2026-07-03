@@ -390,7 +390,8 @@
     "balanced": "ausgeglichen",
     "empty": "Keine verknüpften Transaktionen vorhanden.",
     "namePlaceholder": "Name vergeben…",
-    "commentPlaceholder": "Kommentar hinzufügen…"
+    "commentPlaceholder": "Kommentar hinzufügen…",
+    "partial": "partiell"
   },
   "settings": {
     "title": "Einstellungen",

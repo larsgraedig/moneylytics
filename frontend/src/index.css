@@ -3584,7 +3584,39 @@ body {
   vertical-align: middle;
 }
 
-.ltx-row:last-child td { border-bottom: none; }
+.ltx-table tbody tr:last-child td { border-bottom: none; }
+
+.ltx-offset-row td {
+  padding: 3px 14px;
+  font-size: 11px;
+  color: var(--text-muted);
+  background: color-mix(in srgb, var(--surface) 94%, var(--accent) 6%);
+}
+
+.ltx-offset-date {
+  white-space: nowrap;
+  font-family: var(--mono);
+  opacity: 0.7;
+}
+
+.ltx-offset-counterparty {
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding-left: 10px !important;
+}
+
+.ltx-offset-partial {
+  display: inline-block;
+  font-size: 10px;
+  color: var(--accent);
+  border: 1px solid var(--accent);
+  border-radius: 3px;
+  padding: 0 4px;
+  line-height: 1.5;
+  opacity: 0.8;
+}
 
 .ltx-col-amount {
   text-align: right;

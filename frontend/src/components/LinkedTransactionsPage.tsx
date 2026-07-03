@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { Fragment, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { fetchLinkedGroups, updateLinkedGroupMeta, type LinkedGroupItem, type TransactionItem } from '../api/transactions'
 
@@ -81,6 +81,7 @@ function GroupCard({
   const { t } = useTranslation()
   const [saving, setSaving] = useState(false)
   const netSum = group.transactions.reduce((sum, tx) => sum + effectiveAmount(tx), 0)
+  const txById = Object.fromEntries(group.transactions.map(tx => [tx.id, tx]))
   const isBalanced = Math.abs(netSum) < 0.005
 
   function save(name: string | null, comment: string | null) {
@@ -129,24 +130,50 @@ function GroupCard({
             const eff = effectiveAmount(tx)
             const reduced = Math.abs(eff) < Math.abs(tx.amount) - 0.005
             return (
-              <tr key={tx.id} className="ltx-row">
-                <td>{formatDate(tx.accountingDate)}</td>
-                <td className="ltx-cell-counterparty" title={tx.counterpartyIban ?? undefined}>
-                  {tx.counterpartyName ?? ''}
-                </td>
-                <td className="ltx-cell-purpose" title={tx.purpose ?? undefined}>
-                  <span className="ltx-purpose-text">{tx.purpose ?? ''}</span>
-                </td>
-                <td>
-                  {tx.category && <span className="ltx-cat">{tx.category}{tx.subcategory ? ` / ${tx.subcategory}` : ''}</span>}
-                </td>
-                <td className={`ltx-col-amount ${tx.amount >= 0 ? 'ltx-amount--pos' : 'ltx-amount--neg'}`}>
-                  {EUR.format(tx.amount)}
-                </td>
-                <td className={`ltx-col-amount ${reduced ? 'ltx-amount--reduced' : eff >= 0 ? 'ltx-amount--pos' : 'ltx-amount--neg'}`}>
-                  {EUR.format(eff)}
-                </td>
-              </tr>
+              <Fragment key={tx.id}>
+                <tr className="ltx-row">
+                  <td>{formatDate(tx.accountingDate)}</td>
+                  <td className="ltx-cell-counterparty" title={tx.counterpartyIban ?? undefined}>
+                    {tx.counterpartyName ?? ''}
+                  </td>
+                  <td className="ltx-cell-purpose" title={tx.purpose ?? undefined}>
+                    <span className="ltx-purpose-text">{tx.purpose ?? ''}</span>
+                  </td>
+                  <td>
+                    {tx.category && <span className="ltx-cat">{tx.category}{tx.subcategory ? ` / ${tx.subcategory}` : ''}</span>}
+                  </td>
+                  <td className={`ltx-col-amount ${tx.amount >= 0 ? 'ltx-amount--pos' : 'ltx-amount--neg'}`}>
+                    {EUR.format(tx.amount)}
+                  </td>
+                  <td className={`ltx-col-amount ${reduced ? 'ltx-amount--reduced' : eff >= 0 ? 'ltx-amount--pos' : 'ltx-amount--neg'}`}>
+                    {EUR.format(eff)}
+                  </td>
+                </tr>
+                {tx.offsetLinks.map(link => {
+                  const linkedTx = txById[link.linkedTransactionId]
+                  const offsetAmt = link.partialAmount !== null ? link.partialAmount : Math.abs(link.linkedTransactionAmount)
+                  const contrib = link.linkedTransactionAmount >= 0 ? offsetAmt : -offsetAmt
+                  const contribStr = (contrib >= 0 ? '+' : '') + EUR.format(contrib)
+                  return (
+                    <tr key={`offset-${link.id}`} className="ltx-offset-row">
+                      <td className="ltx-offset-date">{linkedTx ? formatDate(linkedTx.accountingDate) : ''}</td>
+                      <td className="ltx-offset-counterparty">
+                        ↳ {linkedTx?.counterpartyName ?? `#${link.linkedTransactionId}`}
+                      </td>
+                      <td />
+                      <td>
+                        {link.partialAmount !== null && (
+                          <span className="ltx-offset-partial">{t('linked.partial')}</span>
+                        )}
+                      </td>
+                      <td className={`ltx-col-amount ${contrib >= 0 ? 'ltx-amount--pos' : 'ltx-amount--neg'}`}>
+                        {contribStr}
+                      </td>
+                      <td />
+                    </tr>
+                  )
+                })}
+              </Fragment>
             )
           })}
         </tbody>

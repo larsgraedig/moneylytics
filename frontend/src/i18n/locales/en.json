@@ -390,7 +390,8 @@
     "balanced": "balanced",
     "empty": "No linked transactions found.",
     "namePlaceholder": "Add a name…",
-    "commentPlaceholder": "Add a comment…"
+    "commentPlaceholder": "Add a comment…",
+    "partial": "partial"
   },
   "settings": {
     "title": "Settings",
