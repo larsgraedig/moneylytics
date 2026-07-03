@@ -158,7 +158,9 @@ function GroupCard({
                     <tr key={`offset-${link.id}`} className="ltx-offset-row">
                       <td className="ltx-offset-date">{linkedTx ? formatDate(linkedTx.accountingDate) : ''}</td>
                       <td className="ltx-offset-counterparty">
-                        ↳ {linkedTx?.counterpartyName ?? `#${link.linkedTransactionId}`}
+                        ↳ {linkedTx
+                          ? (linkedTx.counterpartyName ?? linkedTx.purpose ?? t('linked.transaction'))
+                          : t('linked.transaction')}
                       </td>
                       <td />
                       <td>

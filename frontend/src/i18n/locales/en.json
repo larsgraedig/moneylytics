@@ -391,7 +391,8 @@
     "empty": "No linked transactions found.",
     "namePlaceholder": "Add a name…",
     "commentPlaceholder": "Add a comment…",
-    "partial": "partial"
+    "partial": "partial",
+    "transaction": "Transaction"
   },
   "settings": {
     "title": "Settings",
