@@ -49,9 +49,10 @@ class UserPersistenceAdapter(
 
     private fun UserEntity.toDomain() = User(id = id!!, externalId = externalId, passwordHash = passwordHash)
 
-    private fun UserEntity.toSettings() = UserSettings(
-        defaultAccountIban = defaultAccount?.iban,
-        language = language,
-        transactionsColumnOrder = transactionsColumnOrder?.split(",")?.filter { it.isNotBlank() }?.takeIf { it.isNotEmpty() },
-    )
+    private fun UserEntity.toSettings() =
+        UserSettings(
+            defaultAccountIban = defaultAccount?.iban,
+            language = language,
+            transactionsColumnOrder = transactionsColumnOrder?.split(",")?.filter { it.isNotBlank() }?.takeIf { it.isNotEmpty() },
+        )
 }

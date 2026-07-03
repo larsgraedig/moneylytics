@@ -10,6 +10,13 @@ interface ManageTransactionOffsetUseCase {
         linkId: Long,
         userId: Long,
     ): Boolean
+
+    fun updateGroupMeta(
+        groupId: Long,
+        userId: Long,
+        name: String?,
+        comment: String?,
+    )
 }
 
 data class LinkTransactionsCommand(

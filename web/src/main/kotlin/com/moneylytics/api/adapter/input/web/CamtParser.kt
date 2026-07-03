@@ -126,24 +126,32 @@ class CamtParser {
         if (rltdPties == null) return "" to null
         return when (cdtDbt) {
             "DBIT" -> {
-                val name = rltdPties.firstChildEl("Cdtr")?.partyName()
-                    ?: rltdPties.firstChildEl("Dbtr")?.partyName() ?: ""
-                val iban = rltdPties.firstChildEl("CdtrAcct")?.ibanText()
-                    ?: rltdPties.firstChildEl("DbtrAcct")?.ibanText()
+                val name =
+                    rltdPties.firstChildEl("Cdtr")?.partyName()
+                        ?: rltdPties.firstChildEl("Dbtr")?.partyName() ?: ""
+                val iban =
+                    rltdPties.firstChildEl("CdtrAcct")?.ibanText()
+                        ?: rltdPties.firstChildEl("DbtrAcct")?.ibanText()
                 name to iban
             }
             else -> {
-                val name = rltdPties.firstChildEl("Dbtr")?.partyName()
-                    ?: rltdPties.firstChildEl("Cdtr")?.partyName() ?: ""
-                val iban = rltdPties.firstChildEl("DbtrAcct")?.ibanText()
-                    ?: rltdPties.firstChildEl("CdtrAcct")?.ibanText()
+                val name =
+                    rltdPties.firstChildEl("Dbtr")?.partyName()
+                        ?: rltdPties.firstChildEl("Cdtr")?.partyName() ?: ""
+                val iban =
+                    rltdPties.firstChildEl("DbtrAcct")?.ibanText()
+                        ?: rltdPties.firstChildEl("CdtrAcct")?.ibanText()
                 name to iban
             }
         }
     }
 
     private fun Element.ibanText(): String? =
-        firstChildEl("Id")?.firstChildEl("IBAN")?.textContent?.trim()?.takeIf { it.isNotBlank() }
+        firstChildEl("Id")
+            ?.firstChildEl("IBAN")
+            ?.textContent
+            ?.trim()
+            ?.takeIf { it.isNotBlank() }
 
     private fun Element.partyName(): String? {
         val direct = firstChildEl("Nm")?.textContent?.trim()

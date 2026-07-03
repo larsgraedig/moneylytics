@@ -8,20 +8,27 @@ interface TransactionOffsetRepository {
     fun delete(
         linkId: Long,
         userId: Long,
-    ): Boolean
+    ): DeletedOffsetLink?
 
     fun existsByPair(
         transactionAId: Long,
         transactionBId: Long,
     ): Boolean
 
-    fun findIdPairsForUser(userId: Long): List<Pair<Long, Long>>
+    fun findLinksForGroup(groupId: Long): List<Pair<Long, Long>>
+
+    fun updateLinksGroupId(
+        fromGroupId: Long,
+        toGroupId: Long,
+        memberIds: Set<Long>,
+    )
 }
 
 data class CreateOffsetLinkCommand(
     val transactionAId: Long,
     val transactionBId: Long,
     val partialAmount: BigDecimal?,
+    val groupId: Long,
 )
 
 data class OffsetLinkResult(
@@ -29,4 +36,9 @@ data class OffsetLinkResult(
     val transactionAId: Long,
     val transactionBId: Long,
     val partialAmount: BigDecimal?,
+    val groupId: Long,
+)
+
+data class DeletedOffsetLink(
+    val groupId: Long?,
 )

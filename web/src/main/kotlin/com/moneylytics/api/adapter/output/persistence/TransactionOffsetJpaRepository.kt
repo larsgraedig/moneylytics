@@ -1,6 +1,7 @@
 package com.moneylytics.api.adapter.output.persistence
 
 import org.springframework.data.jpa.repository.JpaRepository
+import org.springframework.data.jpa.repository.Modifying
 import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.query.Param
 
@@ -48,10 +49,25 @@ interface TransactionOffsetJpaRepository : JpaRepository<TransactionOffsetEntity
         SELECT o FROM TransactionOffsetEntity o
         JOIN FETCH o.transactionA
         JOIN FETCH o.transactionB
-        WHERE o.transactionA.user.id = :userId
+        WHERE o.groupId = :groupId
         """,
     )
-    fun findAllByUserId(
-        @Param("userId") userId: Long,
+    fun findByGroupId(
+        @Param("groupId") groupId: Long,
     ): List<TransactionOffsetEntity>
+
+    @Modifying
+    @Query(
+        """
+        UPDATE TransactionOffsetEntity o SET o.groupId = :toGroupId
+        WHERE o.groupId = :fromGroupId
+        AND o.transactionA.id IN :ids
+        AND o.transactionB.id IN :ids
+        """,
+    )
+    fun updateGroupId(
+        @Param("fromGroupId") fromGroupId: Long,
+        @Param("toGroupId") toGroupId: Long,
+        @Param("ids") ids: Collection<Long>,
+    )
 }

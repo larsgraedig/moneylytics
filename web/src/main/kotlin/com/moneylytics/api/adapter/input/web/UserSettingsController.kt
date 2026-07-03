@@ -36,12 +36,13 @@ class UserSettingsController(
     ): UserSettingsResponse =
         withContext(Dispatchers.IO) {
             val userId = resolveUserUseCase.resolveUser(principal.username)
-            updateUserSettingsUseCase.updateSettings(
-                userId = userId,
-                defaultAccountIban = request.defaultAccountIban,
-                language = request.language,
-                transactionsColumnOrder = request.transactionsColumnOrder,
-            ).toResponse()
+            updateUserSettingsUseCase
+                .updateSettings(
+                    userId = userId,
+                    defaultAccountIban = request.defaultAccountIban,
+                    language = request.language,
+                    transactionsColumnOrder = request.transactionsColumnOrder,
+                ).toResponse()
         }
 
     private fun com.moneylytics.api.domain.UserSettings.toResponse() =

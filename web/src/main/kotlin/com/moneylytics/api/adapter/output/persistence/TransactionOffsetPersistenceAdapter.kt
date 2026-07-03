@@ -1,6 +1,7 @@
 package com.moneylytics.api.adapter.output.persistence
 
 import com.moneylytics.api.application.port.output.CreateOffsetLinkCommand
+import com.moneylytics.api.application.port.output.DeletedOffsetLink
 import com.moneylytics.api.application.port.output.OffsetLinkResult
 import com.moneylytics.api.application.port.output.TransactionOffsetRepository
 import org.springframework.stereotype.Component
@@ -19,6 +20,7 @@ class TransactionOffsetPersistenceAdapter(
                     transactionA = transactionJpaRepository.getReferenceById(command.transactionAId),
                     transactionB = transactionJpaRepository.getReferenceById(command.transactionBId),
                     amount = command.partialAmount,
+                    groupId = command.groupId,
                 ),
             )
         return OffsetLinkResult(
@@ -26,6 +28,7 @@ class TransactionOffsetPersistenceAdapter(
             transactionAId = command.transactionAId,
             transactionBId = command.transactionBId,
             partialAmount = command.partialAmount,
+            groupId = command.groupId,
         )
     }
 
@@ -33,10 +36,11 @@ class TransactionOffsetPersistenceAdapter(
     override fun delete(
         linkId: Long,
         userId: Long,
-    ): Boolean {
-        val link = offsetJpaRepository.findByIdAndUserId(linkId, userId) ?: return false
+    ): DeletedOffsetLink? {
+        val link = offsetJpaRepository.findByIdAndUserId(linkId, userId) ?: return null
+        val groupId = link.groupId
         offsetJpaRepository.delete(link)
-        return true
+        return DeletedOffsetLink(groupId)
     }
 
     @Transactional(readOnly = true)
@@ -46,6 +50,16 @@ class TransactionOffsetPersistenceAdapter(
     ): Boolean = offsetJpaRepository.existsByNormalizedPair(transactionAId, transactionBId)
 
     @Transactional(readOnly = true)
-    override fun findIdPairsForUser(userId: Long): List<Pair<Long, Long>> =
-        offsetJpaRepository.findAllByUserId(userId).map { it.transactionA.id!! to it.transactionB.id!! }
+    override fun findLinksForGroup(groupId: Long): List<Pair<Long, Long>> =
+        offsetJpaRepository.findByGroupId(groupId).map { it.transactionA.id!! to it.transactionB.id!! }
+
+    @Transactional
+    override fun updateLinksGroupId(
+        fromGroupId: Long,
+        toGroupId: Long,
+        memberIds: Set<Long>,
+    ) {
+        if (memberIds.isEmpty()) return
+        offsetJpaRepository.updateGroupId(fromGroupId, toGroupId, memberIds)
+    }
 }

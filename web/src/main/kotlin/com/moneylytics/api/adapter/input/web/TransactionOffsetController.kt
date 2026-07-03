@@ -4,7 +4,6 @@ import com.moneylytics.api.application.port.input.GetLinkedTransactionsUseCase
 import com.moneylytics.api.application.port.input.LinkTransactionsCommand
 import com.moneylytics.api.application.port.input.ManageTransactionOffsetUseCase
 import com.moneylytics.api.application.port.input.ResolveUserUseCase
-import com.moneylytics.api.application.port.input.UpdateOffsetGroupMetaUseCase
 import com.moneylytics.api.application.port.output.OffsetLinkResult
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -31,6 +30,7 @@ data class OffsetLinkResponse(
     val transactionAId: Long,
     val transactionBId: Long,
     val partialAmount: BigDecimal?,
+    val groupId: Long,
 )
 
 data class LinkedGroupResponse(
@@ -38,7 +38,7 @@ data class LinkedGroupResponse(
 )
 
 data class LinkedGroupItem(
-    val groupKey: Long,
+    val groupId: Long,
     val name: String?,
     val comment: String?,
     val transactions: List<TransactionItem>,
@@ -54,7 +54,6 @@ data class UpdateGroupMetaRequest(
 class TransactionOffsetController(
     private val manageTransactionOffsetUseCase: ManageTransactionOffsetUseCase,
     private val getLinkedTransactionsUseCase: GetLinkedTransactionsUseCase,
-    private val updateOffsetGroupMetaUseCase: UpdateOffsetGroupMetaUseCase,
     private val resolveUserUseCase: ResolveUserUseCase,
 ) {
     @GetMapping("/linked")
@@ -64,26 +63,27 @@ class TransactionOffsetController(
         withContext(Dispatchers.IO) {
             val userId = resolveUserUseCase.resolveUser(principal.username)
             LinkedGroupResponse(
-                groups = getLinkedTransactionsUseCase.getLinkedGroups(userId).map { group ->
-                    LinkedGroupItem(
-                        groupKey = group.groupKey,
-                        name = group.name,
-                        comment = group.comment,
-                        transactions = group.transactions.map { it.toItem() },
-                    )
-                },
+                groups =
+                    getLinkedTransactionsUseCase.getLinkedGroups(userId).map { group ->
+                        LinkedGroupItem(
+                            groupId = group.groupId,
+                            name = group.name,
+                            comment = group.comment,
+                            transactions = group.transactions.map { it.toItem() },
+                        )
+                    },
             )
         }
 
-    @PatchMapping("/linked/{groupKey}")
+    @PatchMapping("/linked/{groupId}")
     suspend fun updateGroupMeta(
-        @PathVariable groupKey: Long,
+        @PathVariable groupId: Long,
         @RequestBody request: UpdateGroupMetaRequest,
         @AuthenticationPrincipal principal: UserDetails,
     ): ResponseEntity<Void> =
         withContext(Dispatchers.IO) {
             val userId = resolveUserUseCase.resolveUser(principal.username)
-            updateOffsetGroupMetaUseCase.updateGroupMeta(userId, groupKey, request.name, request.comment)
+            manageTransactionOffsetUseCase.updateGroupMeta(groupId, userId, request.name, request.comment)
             ResponseEntity.noContent().build()
         }
 
@@ -132,5 +132,6 @@ class TransactionOffsetController(
             transactionAId = transactionAId,
             transactionBId = transactionBId,
             partialAmount = partialAmount,
+            groupId = groupId,
         )
 }

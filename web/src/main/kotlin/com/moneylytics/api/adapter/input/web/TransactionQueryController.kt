@@ -63,9 +63,10 @@ class TransactionQueryController(
         val (transactions, groupLookup) =
             withContext(Dispatchers.IO) {
                 val userId = resolveUserUseCase.resolveUser(principal.username)
-                val txns = getTransactionsUseCase.getTransactions(
-                    GetTransactionsQuery(from, to, userId, onlyNegative = true, accountIban = iban),
-                )
+                val txns =
+                    getTransactionsUseCase.getTransactions(
+                        GetTransactionsQuery(from, to, userId, onlyNegative = true, accountIban = iban),
+                    )
                 val lookup = buildGroupLookup(getCategoriesUseCase.getCategories(userId))
                 txns to lookup
             }
@@ -124,7 +125,14 @@ class TransactionQueryController(
     ): ResponseEntity<TransactionItem> =
         withContext(Dispatchers.IO) {
             val userId = resolveUserUseCase.resolveUser(principal.username)
-            val updated = updateTransactionCategoryUseCase.updateCategory(id, userId, request.category, request.subcategory, request.categoryGroup)
+            val updated =
+                updateTransactionCategoryUseCase.updateCategory(
+                    id,
+                    userId,
+                    request.category,
+                    request.subcategory,
+                    request.categoryGroup,
+                )
             if (updated != null) ResponseEntity.ok(updated.toItem()) else ResponseEntity.notFound().build()
         }
 
@@ -319,27 +327,33 @@ class TransactionQueryController(
         return "${date.year}-H$half"
     }
 
-    private fun List<Transaction>.toSankeyResponse(
-        groupLookup: Map<Pair<String?, String?>, String> = emptyMap(),
-    ): SankeyResponse {
+    private fun List<Transaction>.toSankeyResponse(groupLookup: Map<Pair<String?, String?>, String> = emptyMap()): SankeyResponse {
         val nodeIndex = linkedMapOf<String, Int>()
+
         fun indexFor(key: String) = nodeIndex.getOrPut(key) { nodeIndex.size }
 
-        data class TxKey(val category: String?, val group: String?, val subcategory: String?)
+        data class TxKey(
+            val category: String?,
+            val group: String?,
+            val subcategory: String?,
+        )
         val aggregated =
             groupBy {
-                val resolvedGroup = it.categoryGroup
-                    ?: groupLookup[it.category to it.subcategory]
+                val resolvedGroup =
+                    it.categoryGroup
+                        ?: groupLookup[it.category to it.subcategory]
                 TxKey(it.category, resolvedGroup, it.subcategory)
-            }
-                .mapValues { (_, txns) -> txns.sumOf { it.effectiveAmount().abs() } }
+            }.mapValues { (_, txns) -> txns.sumOf { it.effectiveAmount().abs() } }
 
         // Node registration order: categories (left), groups (middle), subcategories (right)
         aggregated.keys.forEach { k -> indexFor("cat:${k.category ?: ""}") }
         aggregated.keys.filter { it.group != null }.forEach { k -> indexFor("grp:${k.category ?: ""}:${k.group}") }
         aggregated.keys.forEach { k ->
-            if (k.group != null) indexFor("sub:${k.category ?: ""}:${k.group}:${k.subcategory ?: ""}")
-            else indexFor("sub:${k.category ?: ""}::${k.subcategory ?: ""}")
+            if (k.group != null) {
+                indexFor("sub:${k.category ?: ""}:${k.group}:${k.subcategory ?: ""}")
+            } else {
+                indexFor("sub:${k.category ?: ""}::${k.subcategory ?: ""}")
+            }
         }
 
         val catGrpAmounts = mutableMapOf<Pair<String?, String?>, BigDecimal>()
@@ -358,15 +372,33 @@ class TransactionQueryController(
         val links = mutableListOf<SankeyLink>()
         catGrpAmounts.forEach { (catGrp, amt) ->
             val (cat, grp) = catGrp
-            links.add(SankeyLink(source = nodeIndex.getValue("cat:${cat ?: ""}"), target = nodeIndex.getValue("grp:${cat ?: ""}:$grp"), value = amt))
+            links.add(
+                SankeyLink(
+                    source = nodeIndex.getValue("cat:${cat ?: ""}"),
+                    target = nodeIndex.getValue("grp:${cat ?: ""}:$grp"),
+                    value = amt,
+                ),
+            )
         }
         grpSubAmounts.forEach { (triple, amt) ->
             val (cat, grp, sub) = triple
-            links.add(SankeyLink(source = nodeIndex.getValue("grp:${cat ?: ""}:$grp"), target = nodeIndex.getValue("sub:${cat ?: ""}:$grp:${sub ?: ""}"), value = amt))
+            links.add(
+                SankeyLink(
+                    source = nodeIndex.getValue("grp:${cat ?: ""}:$grp"),
+                    target = nodeIndex.getValue("sub:${cat ?: ""}:$grp:${sub ?: ""}"),
+                    value = amt,
+                ),
+            )
         }
         catSubAmounts.forEach { (catSub, amt) ->
             val (cat, sub) = catSub
-            links.add(SankeyLink(source = nodeIndex.getValue("cat:${cat ?: ""}"), target = nodeIndex.getValue("sub:${cat ?: ""}::${sub ?: ""}"), value = amt))
+            links.add(
+                SankeyLink(
+                    source = nodeIndex.getValue("cat:${cat ?: ""}"),
+                    target = nodeIndex.getValue("sub:${cat ?: ""}::${sub ?: ""}"),
+                    value = amt,
+                ),
+            )
         }
 
         val totals = mutableMapOf<Int, BigDecimal>()

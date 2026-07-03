@@ -45,14 +45,15 @@ fun Transaction.toItem() =
         amount = amount,
         effectiveAmount = effectiveAmount(),
         currency = currency,
-        offsetLinks = offsetLinks.map { link ->
-            OffsetLinkItem(
-                id = link.id,
-                linkedTransactionId = link.linkedTransactionId,
-                linkedTransactionAmount = link.linkedTransactionAmount,
-                partialAmount = link.partialAmount,
-            )
-        },
+        offsetLinks =
+            offsetLinks.map { link ->
+                OffsetLinkItem(
+                    id = link.id,
+                    linkedTransactionId = link.linkedTransactionId,
+                    linkedTransactionAmount = link.linkedTransactionAmount,
+                    partialAmount = link.partialAmount,
+                )
+            },
         comment = comment,
         purpose = purpose,
         counterpartyName = counterpartyName,

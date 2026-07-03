@@ -30,6 +30,8 @@ class TransactionOffsetEntity(
     val transactionB: TransactionEntity,
     @Column(precision = 19, scale = 4)
     val amount: BigDecimal? = null,
+    @Column(name = "group_id")
+    val groupId: Long? = null,
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     val id: Long? = null,

@@ -76,7 +76,7 @@ function GroupCard({
   onMetaChange,
 }: {
   group: LinkedGroupItem
-  onMetaChange: (groupKey: number, name: string | null, comment: string | null) => void
+  onMetaChange: (groupId: number, name: string | null, comment: string | null) => void
 }) {
   const { t } = useTranslation()
   const [saving, setSaving] = useState(false)
@@ -85,8 +85,8 @@ function GroupCard({
 
   function save(name: string | null, comment: string | null) {
     setSaving(true)
-    updateLinkedGroupMeta(group.groupKey, name, comment)
-      .then(() => { onMetaChange(group.groupKey, name, comment); setSaving(false) })
+    updateLinkedGroupMeta(group.groupId, name, comment)
+      .then(() => { onMetaChange(group.groupId, name, comment); setSaving(false) })
       .catch(() => setSaving(false))
   }
 
@@ -167,8 +167,8 @@ export default function LinkedTransactionsPage() {
       .catch(e => { setError(e instanceof Error ? e.message : t('common.requestFailed')); setLoading(false) })
   }, [t])
 
-  function handleMetaChange(groupKey: number, name: string | null, comment: string | null) {
-    setGroups(prev => prev.map(g => g.groupKey === groupKey ? { ...g, name, comment } : g))
+  function handleMetaChange(groupId: number, name: string | null, comment: string | null) {
+    setGroups(prev => prev.map(g => g.groupId === groupId ? { ...g, name, comment } : g))
   }
 
   if (loading) return <div className="ltx-page"><span className="ltx-status">{t('common.loading')}</span></div>
@@ -182,7 +182,7 @@ export default function LinkedTransactionsPage() {
       </div>
       {groups.length === 0
         ? <p className="ltx-status">{t('linked.empty')}</p>
-        : groups.map(g => <GroupCard key={g.groupKey} group={g} onMetaChange={handleMetaChange} />)
+        : groups.map(g => <GroupCard key={g.groupId} group={g} onMetaChange={handleMetaChange} />)
       }
     </div>
   )
