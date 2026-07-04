@@ -9,6 +9,7 @@ data class TransactionOffsetLink(
     val amountA: BigDecimal?,
     val amountB: BigDecimal?,
     val myCommitted: BigDecimal,
+    val groupId: Long?,
 ) {
     val contribution: BigDecimal get() = -myCommitted
 }

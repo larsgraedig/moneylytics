@@ -96,7 +96,12 @@ class TransactionOffsetService(
         return groups
             .mapNotNull { group ->
                 val memberIds = groupMemberIds[group.id] ?: return@mapNotNull null
-                val transactions = memberIds.mapNotNull { txById[it] }.sortedBy { it.accountingDate }
+                val transactions =
+                    memberIds.mapNotNull { txById[it] }
+                        .map { tx ->
+                            tx.copy(offsetLinks = tx.offsetLinks.filter { it.groupId == group.id })
+                        }
+                        .sortedBy { it.accountingDate }
                 if (transactions.isEmpty()) return@mapNotNull null
                 LinkedTransactionGroup(
                     groupId = group.id,

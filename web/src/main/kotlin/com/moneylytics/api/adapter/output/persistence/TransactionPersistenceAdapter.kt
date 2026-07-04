@@ -209,6 +209,7 @@ class TransactionPersistenceAdapter(
             amountA = amountA,
             amountB = amountB,
             myCommitted = myCommitted,
+            groupId = groupId,
         )
     }
 
