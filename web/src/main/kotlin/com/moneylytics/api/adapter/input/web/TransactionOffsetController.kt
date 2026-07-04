@@ -25,6 +25,8 @@ data class LinkTransactionRequest(
     val otherTransactionId: Long,
     val myAmount: BigDecimal? = null,
     val otherAmount: BigDecimal? = null,
+    val targetGroupId: Long? = null,
+    val forceNewGroup: Boolean = false,
 )
 
 data class OffsetLinkResponse(
@@ -119,6 +121,8 @@ class TransactionOffsetController(
                             myAmount = request.myAmount,
                             otherAmount = request.otherAmount,
                             userId = userId,
+                            targetGroupId = request.targetGroupId,
+                            forceNewGroup = request.forceNewGroup,
                         ),
                     )
                 }.getOrElse { e ->

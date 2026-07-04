@@ -1,6 +1,7 @@
 package com.moneylytics.api.adapter.input.web
 
 import com.moneylytics.api.domain.Transaction
+import com.moneylytics.api.domain.TransactionGroupSummary
 import java.math.BigDecimal
 
 data class TransactionListResponse(
@@ -20,10 +21,16 @@ data class TransactionItem(
     val effectiveAmount: BigDecimal,
     val currency: String,
     val offsetLinks: List<OffsetLinkItem>,
+    val groups: List<GroupSummaryDto>,
     val comment: String?,
     val purpose: String?,
     val counterpartyName: String?,
     val counterpartyIban: String?,
+)
+
+data class GroupSummaryDto(
+    val id: Long,
+    val name: String?,
 )
 
 data class OffsetLinkItem(
@@ -58,6 +65,7 @@ fun Transaction.toItem() =
                     committedAmount = link.myCommitted,
                 )
             },
+        groups = groups.map { GroupSummaryDto(it.id, it.name) },
         comment = comment,
         purpose = purpose,
         counterpartyName = counterpartyName,

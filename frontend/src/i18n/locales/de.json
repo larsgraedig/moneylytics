@@ -147,6 +147,8 @@
     "addComment": "Kommentar hinzufügen…",
     "partialAmount": "Teilbetrag (optional)",
     "allocationExceeded": "Maximaler Restbetrag: {{amount}}",
+    "selectGroup": "Zur welcher Gruppe hinzufügen?",
+    "newGroup": "Neue Gruppe erstellen",
     "linkToTransaction": "Mit Transaktion verknüpfen",
     "removeLink": "Verknüpfung aufheben",
     "jumpToLinked": "Zur verknüpften Transaktion",

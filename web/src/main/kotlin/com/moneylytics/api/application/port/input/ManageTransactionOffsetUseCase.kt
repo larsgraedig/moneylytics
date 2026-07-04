@@ -25,4 +25,6 @@ data class LinkTransactionsCommand(
     val myAmount: BigDecimal?,
     val otherAmount: BigDecimal?,
     val userId: Long,
+    val targetGroupId: Long? = null,
+    val forceNewGroup: Boolean = false,
 )

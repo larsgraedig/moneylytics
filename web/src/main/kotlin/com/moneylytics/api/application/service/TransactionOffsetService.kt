@@ -54,7 +54,13 @@ class TransactionOffsetService(
         // validateAllocation(txA, amountA)
         // validateAllocation(txB, amountB)
 
-        val groupId = resolveGroupForLink(command.transactionId, command.otherTransactionId, command.userId)
+        val groupId = resolveGroupForLink(
+            txAId = aId,
+            txBId = bId,
+            userId = command.userId,
+            targetGroupId = command.targetGroupId,
+            forceNewGroup = command.forceNewGroup,
+        )
         if (amountA == null && amountB == null) {
             return OffsetLinkResult(
                 id = null,
@@ -144,10 +150,22 @@ class TransactionOffsetService(
         txAId: Long,
         txBId: Long,
         userId: Long,
+        targetGroupId: Long?,
+        forceNewGroup: Boolean,
     ): Long {
+        if (targetGroupId != null) {
+            groupRepository.addMember(targetGroupId, txAId)
+            groupRepository.addMember(targetGroupId, txBId)
+            return targetGroupId
+        }
+        if (forceNewGroup) {
+            val newGroup = groupRepository.create(userId)
+            groupRepository.addMember(newGroup.id, txAId)
+            groupRepository.addMember(newGroup.id, txBId)
+            return newGroup.id
+        }
         val groupA = groupRepository.findGroupIdsForTransaction(txAId).firstOrNull()
         val groupB = groupRepository.findGroupIdsForTransaction(txBId).firstOrNull()
-
         return when {
             groupA != null -> {
                 groupRepository.addMember(groupA, txBId)

@@ -11,6 +11,7 @@ function formatDate(iso: string): string {
 
 function effectiveAmount(tx: TransactionItem): number {
   if (tx.offsetLinks.length === 0) return tx.amount
+  if (tx.offsetLinks.some(link => link.committedAmount === tx.amount)) return tx.amount
   return tx.offsetLinks.reduce((acc, link) => acc + link.committedAmount, 0)
 }
 

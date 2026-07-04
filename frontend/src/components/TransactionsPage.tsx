@@ -12,6 +12,7 @@ import {
   updateTransactionComment,
   type Account,
   type AllocationError,
+  type GroupSummary,
   type OffsetLinkItem,
   type TransactionItem,
 } from '../api/transactions'
@@ -68,6 +69,7 @@ type PageState =
 type LinkingState =
   | { phase: 'selecting'; sourceIndex: number }
   | { phase: 'confirming'; sourceIndex: number; targetIndex: number; myAmount: string; otherAmount: string }
+  | { phase: 'group-select'; sourceIndex: number; targetIndex: number; myAmount: string; otherAmount: string; availableGroups: GroupSummary[] }
   | null
 
 export default function TransactionsPage({
@@ -318,16 +320,49 @@ export default function TransactionsPage({
     return myAmount !== null ? myAmount : txAmount
   }
 
+  function collectAvailableGroups(sourceIndex: number, targetIndex: number): GroupSummary[] {
+    const seen = new Set<number>()
+    const groups: GroupSummary[] = []
+    for (const g of [...rows[sourceIndex].original.groups, ...rows[targetIndex].original.groups]) {
+      if (!seen.has(g.id)) { seen.add(g.id); groups.push(g) }
+    }
+    return groups
+  }
+
   async function confirmLink() {
     if (!linkingState || linkingState.phase !== 'confirming') return
     const { sourceIndex, targetIndex, myAmount, otherAmount } = linkingState
+    const availableGroups = collectAvailableGroups(sourceIndex, targetIndex)
+    if (availableGroups.length > 0) {
+      setLinkingState({ phase: 'group-select', sourceIndex, targetIndex, myAmount, otherAmount, availableGroups })
+      return
+    }
+    await doCreateLink(sourceIndex, targetIndex, myAmount, otherAmount)
+  }
+
+  async function confirmLinkWithGroup(targetGroupId?: number) {
+    if (!linkingState || linkingState.phase !== 'group-select') return
+    const { sourceIndex, targetIndex, myAmount, otherAmount } = linkingState
+    await doCreateLink(sourceIndex, targetIndex, myAmount, otherAmount, targetGroupId, targetGroupId === undefined)
+  }
+
+  async function doCreateLink(
+    sourceIndex: number,
+    targetIndex: number,
+    myAmount: string,
+    otherAmount: string,
+    targetGroupId?: number,
+    forceNewGroup?: boolean,
+  ) {
     const sourceRow = rows[sourceIndex]
     const targetRow = rows[targetIndex]
     const parsedMy = myAmount !== '' ? parseFloat(myAmount) : undefined
     const parsedOther = otherAmount !== '' ? parseFloat(otherAmount) : undefined
     setLinkError(null)
     try {
-      const result = await linkTransactions(sourceRow.original.id, targetRow.original.id, parsedMy, parsedOther)
+      const result = await linkTransactions(
+        sourceRow.original.id, targetRow.original.id, parsedMy, parsedOther, targetGroupId, forceNewGroup,
+      )
       const sourceIsA = sourceRow.original.id < targetRow.original.id
       const sourceCommitted = resolveCommitted(
         sourceIsA ? result.amountA : result.amountB,
@@ -587,6 +622,7 @@ export default function TransactionsPage({
     const src = linkingState?.sourceIndex
     const isSource = src === i
     const isConfirmTarget = linkingState?.phase === 'confirming' && linkingState.targetIndex === i
+    const isGroupSelect = linkingState?.phase === 'group-select' && linkingState.targetIndex === i
     const isLinking = linkingState !== null
 
     if (isSource) {
@@ -670,6 +706,34 @@ export default function TransactionsPage({
                 </div>
               )
           )}
+        </div>
+      )
+    }
+
+    if (isGroupSelect) {
+      const gs = linkingState as { phase: 'group-select'; availableGroups: GroupSummary[] }
+      return (
+        <div className="txnv-linking-confirm">
+          <span className="txnv-group-select-label">{t('transactions.selectGroup')}</span>
+          <div className="txnv-group-select-options">
+            {gs.availableGroups.map(g => (
+              <button
+                key={g.id}
+                className="txnv-group-option-btn"
+                onClick={() => confirmLinkWithGroup(g.id)}
+              >
+                {g.name ?? `#${g.id}`}
+              </button>
+            ))}
+            <button className="txnv-group-option-btn txnv-group-option-btn--new" onClick={() => confirmLinkWithGroup(undefined)}>
+              {t('transactions.newGroup')}
+            </button>
+          </div>
+          <button className="txnv-link-back-btn" onClick={() => {
+            if (linkingState?.phase === 'group-select') {
+              setLinkingState({ phase: 'confirming', sourceIndex: linkingState.sourceIndex, targetIndex: linkingState.targetIndex, myAmount: linkingState.myAmount, otherAmount: linkingState.otherAmount })
+            }
+          }}>←</button>
         </div>
       )
     }

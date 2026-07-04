@@ -29,6 +29,11 @@ export async function fetchAccounts(): Promise<Account[]> {
   return data.accounts
 }
 
+export interface GroupSummary {
+  id: number
+  name: string | null
+}
+
 export interface OffsetLinkItem {
   id: number
   linkedTransactionId: number
@@ -62,6 +67,7 @@ export interface TransactionItem {
   effectiveAmount: number
   currency: string
   offsetLinks: OffsetLinkItem[]
+  groups: GroupSummary[]
   comment: string | null
   purpose: string | null
   counterpartyName: string | null
@@ -75,6 +81,7 @@ export interface TransactionListResponse {
 
 export function computeEffectiveAmount(amount: number, offsetLinks: OffsetLinkItem[]): number {
   if (offsetLinks.length === 0) return amount
+  if (offsetLinks.some(link => link.committedAmount === amount)) return amount
   return offsetLinks.reduce((acc, link) => acc + link.committedAmount, 0)
 }
 
@@ -142,11 +149,19 @@ export async function linkTransactions(
   otherTransactionId: number,
   myAmount?: number,
   otherAmount?: number,
+  targetGroupId?: number,
+  forceNewGroup?: boolean,
 ): Promise<OffsetLinkResult> {
   const res = await fetchWithUser(`/transactions/${transactionId}/offsets`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ otherTransactionId, myAmount: myAmount ?? null, otherAmount: otherAmount ?? null }),
+    body: JSON.stringify({
+      otherTransactionId,
+      myAmount: myAmount ?? null,
+      otherAmount: otherAmount ?? null,
+      targetGroupId: targetGroupId ?? null,
+      forceNewGroup: forceNewGroup ?? false,
+    }),
   })
   if (res.status === 422) {
     const data = await res.json() as AllocationError

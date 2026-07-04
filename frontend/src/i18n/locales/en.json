@@ -147,6 +147,8 @@
     "addComment": "add comment…",
     "partialAmount": "partial amt (optional)",
     "allocationExceeded": "Max remaining: {{amount}}",
+    "selectGroup": "Add to which group?",
+    "newGroup": "Create new group",
     "linkToTransaction": "link to another transaction",
     "removeLink": "remove link",
     "jumpToLinked": "jump to linked transaction",
