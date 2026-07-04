@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { updateLinkedGroupMeta, updateOffsetLinkComment, type LinkedGroupItem, type TransactionItem } from '../api/transactions'
+import { removeTransactionFromGroup, updateLinkedGroupMeta, updateOffsetLinkComment, type LinkedGroupItem, type TransactionItem } from '../api/transactions'
 
 const EUR = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' })
 
@@ -73,10 +73,12 @@ export function GroupCard({
   group,
   onMetaChange,
   onOffsetCommentChange,
+  onRemoveTransaction,
 }: {
   group: LinkedGroupItem
   onMetaChange: (groupId: number, name: string | null, comment: string | null) => void
   onOffsetCommentChange: (groupId: number, txId: number, linkId: number, comment: string | null) => void
+  onRemoveTransaction: (txId: number) => void
 }) {
   const { t } = useTranslation()
   const [saving, setSaving] = useState(false)
@@ -94,6 +96,12 @@ export function GroupCard({
   function saveOffsetComment(txId: number, linkId: number, comment: string | null) {
     updateOffsetLinkComment(linkId, comment)
       .then(() => onOffsetCommentChange(group.groupId, txId, linkId, comment))
+      .catch(() => {})
+  }
+
+  function removeTransaction(txId: number) {
+    removeTransactionFromGroup(txId, group.groupId)
+      .then(() => onRemoveTransaction(txId))
       .catch(() => {})
   }
 
@@ -130,6 +138,7 @@ export function GroupCard({
             <th>{t('transactions.columns.category')}</th>
             <th className="ltx-col-amount">{t('transactions.columns.amount')}</th>
             <th className="ltx-col-amount">{t('transactions.columns.effectiveAmount')}</th>
+            <th className="ltx-col-remove" />
           </tr>
         </thead>
         <tbody>
@@ -154,6 +163,15 @@ export function GroupCard({
                   </td>
                   <td className={`ltx-col-amount ${reduced ? 'ltx-amount--reduced' : eff >= 0 ? 'ltx-amount--pos' : 'ltx-amount--neg'}`}>
                     {EUR.format(eff)}
+                  </td>
+                  <td className="ltx-col-remove">
+                    <button
+                      className="ltx-remove-btn"
+                      onClick={() => removeTransaction(tx.id)}
+                      title={t('linked.removeTransaction')}
+                    >
+                      ×
+                    </button>
                   </td>
                 </tr>
                 {tx.offsetLinks.filter(link => link.committedAmount !== tx.amount).map(link => {
@@ -185,6 +203,7 @@ export function GroupCard({
                       <td className={`ltx-col-amount ${isPositive ? 'ltx-amount--pos' : 'ltx-amount--neg'}`}>
                         {EUR.format(link.committedAmount)}
                       </td>
+                      <td />
                       <td />
                     </tr>
                   )

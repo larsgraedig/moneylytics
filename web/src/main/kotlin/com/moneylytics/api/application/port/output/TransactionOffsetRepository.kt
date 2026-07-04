@@ -28,6 +28,12 @@ interface TransactionOffsetRepository {
         userId: Long,
         comment: String?,
     )
+
+    fun deleteByTxAndGroupId(
+        txId: Long,
+        groupId: Long,
+        userId: Long,
+    )
 }
 
 data class CreateOffsetLinkCommand(

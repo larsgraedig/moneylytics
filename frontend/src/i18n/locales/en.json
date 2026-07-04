@@ -147,6 +147,8 @@
     "addComment": "add comment…",
     "partialAmount": "partial amt (optional)",
     "allocationExceeded": "Max remaining: {{amount}}",
+    "allocationTitle": "Amount exceeded",
+    "allocationRemaining": "Remaining",
     "selectGroup": "Add to which group?",
     "newGroup": "Create new group",
     "linkToTransaction": "link to another transaction",
@@ -399,7 +401,8 @@
     "commentPlaceholder": "Add a comment…",
     "partial": "partial",
     "transaction": "Transaction",
-    "offsetCommentPlaceholder": "Note…"
+    "offsetCommentPlaceholder": "Note…",
+    "removeTransaction": "Remove transaction from group"
   },
   "settings": {
     "title": "Settings",

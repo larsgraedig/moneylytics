@@ -19,6 +19,17 @@ export default function LinkedTransactionsPage() {
     setGroups(prev => prev.map(g => g.groupId === groupId ? { ...g, name, comment } : g))
   }
 
+  function handleRemoveTransaction(groupId: number, txId: number) {
+    setGroups(prev => prev
+      .map(g => {
+        if (g.groupId !== groupId) return g
+        const remaining = g.transactions.filter(tx => tx.id !== txId)
+        return remaining.length >= 2 ? { ...g, transactions: remaining } : null
+      })
+      .filter((g): g is LinkedGroupItem => g !== null),
+    )
+  }
+
   function handleOffsetCommentChange(groupId: number, txId: number, linkId: number, comment: string | null) {
     setGroups(prev => prev.map(g => {
       if (g.groupId !== groupId) return g
@@ -52,6 +63,7 @@ export default function LinkedTransactionsPage() {
             group={g}
             onMetaChange={handleMetaChange}
             onOffsetCommentChange={handleOffsetCommentChange}
+            onRemoveTransaction={txId => handleRemoveTransaction(g.groupId, txId)}
           />
         ))
       }

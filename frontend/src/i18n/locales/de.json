@@ -147,6 +147,8 @@
     "addComment": "Kommentar hinzufügen…",
     "partialAmount": "Teilbetrag (optional)",
     "allocationExceeded": "Maximaler Restbetrag: {{amount}}",
+    "allocationTitle": "Betrag überschritten",
+    "allocationRemaining": "Noch verfügbar",
     "selectGroup": "Zur welcher Gruppe hinzufügen?",
     "newGroup": "Neue Gruppe erstellen",
     "linkToTransaction": "Mit Transaktion verknüpfen",
@@ -399,7 +401,8 @@
     "commentPlaceholder": "Kommentar hinzufügen…",
     "partial": "partiell",
     "transaction": "Transaktion",
-    "offsetCommentPlaceholder": "Notiz…"
+    "offsetCommentPlaceholder": "Notiz…",
+    "removeTransaction": "Transaktion aus Gruppe entfernen"
   },
   "settings": {
     "title": "Einstellungen",

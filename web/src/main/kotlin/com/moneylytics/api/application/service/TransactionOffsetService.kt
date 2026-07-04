@@ -53,9 +53,8 @@ class TransactionOffsetService(
         val amountA = rawAmountA?.let { normalizeSign(it, txA.amount) }
         val amountB = rawAmountB?.let { normalizeSign(it, txB.amount) }
 
-        // TODO: re-enable after testing
-        // validateAllocation(txA, amountA)
-        // validateAllocation(txB, amountB)
+        validateAllocation(txA, amountA)
+        validateAllocation(txB, amountB)
 
         val groupId =
             resolveGroupForLink(
@@ -153,6 +152,15 @@ class TransactionOffsetService(
         comment: String?,
     ) {
         offsetRepository.updateComment(linkId, userId, comment)
+    }
+
+    override fun removeTransactionFromGroup(
+        txId: Long,
+        groupId: Long,
+        userId: Long,
+    ) {
+        offsetRepository.deleteByTxAndGroupId(txId, groupId, userId)
+        cleanupGroup(groupId, userId)
     }
 
     private fun normalizeSign(

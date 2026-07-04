@@ -73,4 +73,14 @@ class TransactionOffsetPersistenceAdapter(
     ) {
         offsetJpaRepository.updateComment(linkId, userId, comment)
     }
+
+    @Transactional
+    override fun deleteByTxAndGroupId(
+        txId: Long,
+        groupId: Long,
+        userId: Long,
+    ) {
+        val links = offsetJpaRepository.findByTxAndGroupId(txId, groupId, userId)
+        offsetJpaRepository.deleteAll(links)
+    }
 }

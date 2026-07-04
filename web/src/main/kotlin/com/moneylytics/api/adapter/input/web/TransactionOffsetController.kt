@@ -182,6 +182,18 @@ class TransactionOffsetController(
             ResponseEntity.noContent().build()
         }
 
+    @DeleteMapping("/{txId}/groups/{groupId}")
+    suspend fun removeTransactionFromGroup(
+        @PathVariable txId: Long,
+        @PathVariable groupId: Long,
+        @AuthenticationPrincipal principal: UserDetails,
+    ): ResponseEntity<Void> =
+        withContext(Dispatchers.IO) {
+            val userId = resolveUserUseCase.resolveUser(principal.username)
+            manageTransactionOffsetUseCase.removeTransactionFromGroup(txId, groupId, userId)
+            ResponseEntity.noContent().build()
+        }
+
     @DeleteMapping("/offsets/{linkId}")
     suspend fun unlinkTransaction(
         @PathVariable linkId: Long,

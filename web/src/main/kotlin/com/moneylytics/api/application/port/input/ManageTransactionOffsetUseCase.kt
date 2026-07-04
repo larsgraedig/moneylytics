@@ -23,6 +23,12 @@ interface ManageTransactionOffsetUseCase {
         userId: Long,
         comment: String?,
     )
+
+    fun removeTransactionFromGroup(
+        txId: Long,
+        groupId: Long,
+        userId: Long,
+    )
 }
 
 data class LinkTransactionsCommand(

@@ -693,6 +693,14 @@ export default function TransactionsPage({
                   group={group}
                   onMetaChange={handleMetaChange}
                   onOffsetCommentChange={handleOffsetCommentChange}
+                  onRemoveTransaction={txId => {
+                    const remaining = group.transactions.filter(tx => tx.id !== txId)
+                    if (remaining.length >= 2) {
+                      setGroupModal(prev => prev ? { ...prev, group: { ...group, transactions: remaining } } : null)
+                    } else {
+                      setGroupModal(null)
+                    }
+                  }}
                 />
               )
             }
@@ -779,18 +787,36 @@ export default function TransactionsPage({
                 {linkError && (
                   typeof linkError === 'string'
                     ? <span className="txnv-link-error">{linkError}</span>
-                    : (
-                      <div className="txnv-alloc-error">
-                        <span className="txnv-alloc-error-msg">
-                          {t('transactions.allocationExceeded', { amount: EUR.format(linkError.maxRemainingAmount) })}
-                        </span>
-                        <ul className="txnv-alloc-error-links">
-                          {linkError.existingLinks.map(l => (
-                            <li key={l.linkId}>#{l.linkedTransactionId} — {EUR.format(l.committedAmount)}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    )
+                    : (() => {
+                      const txLookup = new Map(rows.map(r => [r.original.id, r.original]))
+                      const overTx = txLookup.get(linkError.transactionId)
+                      const alreadyCommitted = linkError.existingLinks.reduce((s, l) => s + Math.abs(l.committedAmount), 0)
+                      const totalAbs = alreadyCommitted + linkError.maxRemainingAmount
+                      return (
+                        <div className="txnv-alloc-breakdown">
+                          <div className="txnv-alloc-breakdown-header">
+                            ⚠ {t('transactions.allocationTitle')}
+                          </div>
+                          <div className="txnv-alloc-breakdown-row txnv-alloc-breakdown-row--total">
+                            <span>{overTx?.counterpartyName ?? `#${linkError.transactionId}`}</span>
+                            <span>{EUR.format(totalAbs)}</span>
+                          </div>
+                          {linkError.existingLinks.map(l => {
+                            const linkedTx = txLookup.get(l.linkedTransactionId)
+                            return (
+                              <div key={l.linkId} className="txnv-alloc-breakdown-row txnv-alloc-breakdown-row--link">
+                                <span>↳ {linkedTx?.counterpartyName ?? `#${l.linkedTransactionId}`}</span>
+                                <span>{EUR.format(Math.abs(l.committedAmount))}</span>
+                              </div>
+                            )
+                          })}
+                          <div className="txnv-alloc-breakdown-row txnv-alloc-breakdown-row--remaining">
+                            <span>{t('transactions.allocationRemaining')}</span>
+                            <span>{EUR.format(linkError.maxRemainingAmount)}</span>
+                          </div>
+                        </div>
+                      )
+                    })()
                 )}
                 <div className="txnv-lm-footer">
                   <button className="txnv-link-confirm-btn" onClick={confirmLink}>{t('transactions.link')}</button>

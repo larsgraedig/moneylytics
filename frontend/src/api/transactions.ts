@@ -237,6 +237,11 @@ export async function unlinkTransaction(linkId: number): Promise<void> {
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
 }
 
+export async function removeTransactionFromGroup(txId: number, groupId: number): Promise<void> {
+  const res = await fetchWithUser(`/transactions/${txId}/groups/${groupId}`, { method: 'DELETE' })
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+}
+
 export async function updateOffsetLinkComment(linkId: number, comment: string | null): Promise<void> {
   const res = await fetchWithUser(`/transactions/offsets/${linkId}/comment`, {
     method: 'PATCH',
