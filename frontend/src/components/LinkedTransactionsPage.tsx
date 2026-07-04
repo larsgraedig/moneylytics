@@ -147,7 +147,7 @@ function GroupCard({
                     {EUR.format(eff)}
                   </td>
                 </tr>
-                {tx.offsetLinks.map(link => {
+                {tx.offsetLinks.filter(link => link.committedAmount !== tx.amount).map(link => {
                   const linkedTx = txById[link.linkedTransactionId]
                   const offsetAmt = Math.abs(link.committedAmount)
                   const isCredit = link.committedAmount <= 0
