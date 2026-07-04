@@ -10,11 +10,8 @@ function formatDate(iso: string): string {
 }
 
 function effectiveAmount(tx: TransactionItem): number {
-  return tx.offsetLinks.reduce((acc, link) => {
-    const offset = link.partialAmount !== null ? link.partialAmount : Math.abs(link.linkedTransactionAmount)
-    const contrib = link.linkedTransactionAmount >= 0 ? offset : -offset
-    return acc + contrib
-  }, tx.amount)
+  if (tx.offsetLinks.length === 0) return tx.amount
+  return tx.offsetLinks.reduce((acc, link) => acc + link.committedAmount, 0)
 }
 
 function InlineEdit({
@@ -151,25 +148,27 @@ function GroupCard({
                 </tr>
                 {tx.offsetLinks.map(link => {
                   const linkedTx = txById[link.linkedTransactionId]
-                  const offsetAmt = link.partialAmount !== null ? link.partialAmount : Math.abs(link.linkedTransactionAmount)
-                  const contrib = link.linkedTransactionAmount >= 0 ? offsetAmt : -offsetAmt
-                  const contribStr = (contrib >= 0 ? '+' : '') + EUR.format(contrib)
+                  const offsetAmt = Math.abs(link.committedAmount)
+                  const isCredit = link.committedAmount <= 0
                   return (
                     <tr key={`offset-${link.id}`} className="ltx-offset-row">
                       <td className="ltx-offset-date">{linkedTx ? formatDate(linkedTx.accountingDate) : ''}</td>
                       <td className="ltx-offset-counterparty">
-                        ↳ {linkedTx
+                        <span className={isCredit ? 'ltx-offset-arrow ltx-offset-arrow--in' : 'ltx-offset-arrow ltx-offset-arrow--out'}>
+                          {isCredit ? '↑' : '↓'}
+                        </span>
+                        {linkedTx
                           ? (linkedTx.counterpartyName ?? linkedTx.purpose ?? t('linked.transaction'))
                           : t('linked.transaction')}
                       </td>
                       <td />
                       <td>
-                        {link.partialAmount !== null && (
+                        {(link.amountA !== null || link.amountB !== null) && (
                           <span className="ltx-offset-partial">{t('linked.partial')}</span>
                         )}
                       </td>
-                      <td className={`ltx-col-amount ${contrib >= 0 ? 'ltx-amount--pos' : 'ltx-amount--neg'}`}>
-                        {contribStr}
+                      <td className={`ltx-col-amount ${isCredit ? 'ltx-amount--pos' : 'ltx-amount--neg'}`}>
+                        {(isCredit ? '+' : '−') + EUR.format(offsetAmt)}
                       </td>
                       <td />
                     </tr>

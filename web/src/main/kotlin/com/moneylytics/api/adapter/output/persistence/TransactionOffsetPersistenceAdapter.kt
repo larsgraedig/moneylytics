@@ -19,7 +19,8 @@ class TransactionOffsetPersistenceAdapter(
                 TransactionOffsetEntity(
                     transactionA = transactionJpaRepository.getReferenceById(command.transactionAId),
                     transactionB = transactionJpaRepository.getReferenceById(command.transactionBId),
-                    amount = command.partialAmount,
+                    amountA = command.amountA,
+                    amountB = command.amountB,
                     groupId = command.groupId,
                 ),
             )
@@ -27,7 +28,8 @@ class TransactionOffsetPersistenceAdapter(
             id = requireNotNull(saved.id),
             transactionAId = command.transactionAId,
             transactionBId = command.transactionBId,
-            partialAmount = command.partialAmount,
+            amountA = command.amountA,
+            amountB = command.amountB,
             groupId = command.groupId,
         )
     }

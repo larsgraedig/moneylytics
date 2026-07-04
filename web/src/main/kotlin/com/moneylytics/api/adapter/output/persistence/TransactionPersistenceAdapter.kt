@@ -182,12 +182,17 @@ class TransactionPersistenceAdapter(
     }
 
     private fun TransactionOffsetEntity.toDomainLinkFor(requestingTxId: Long): TransactionOffsetLink {
-        val linked = if (transactionA.id == requestingTxId) transactionB else transactionA
+        val isOnASide = transactionA.id == requestingTxId
+        val linked = if (isOnASide) transactionB else transactionA
+        val requesting = if (isOnASide) transactionA else transactionB
+        val myCommitted = if (isOnASide) amountA ?: requesting.amount else amountB ?: requesting.amount
         return TransactionOffsetLink(
             id = requireNotNull(id),
             linkedTransactionId = requireNotNull(linked.id),
             linkedTransactionAmount = linked.amount,
-            partialAmount = amount,
+            amountA = amountA,
+            amountB = amountB,
+            myCommitted = myCommitted,
         )
     }
 

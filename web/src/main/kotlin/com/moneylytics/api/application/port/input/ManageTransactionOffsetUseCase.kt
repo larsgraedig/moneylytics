@@ -22,6 +22,7 @@ interface ManageTransactionOffsetUseCase {
 data class LinkTransactionsCommand(
     val transactionId: Long,
     val otherTransactionId: Long,
-    val partialAmount: BigDecimal?,
+    val myAmount: BigDecimal?,
+    val otherAmount: BigDecimal?,
     val userId: Long,
 )

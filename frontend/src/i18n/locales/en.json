@@ -145,7 +145,8 @@
       "counterpartyName": "Counterparty"
     },
     "addComment": "add comment…",
-    "partialAmount": "partial amt",
+    "partialAmount": "partial amt (optional)",
+    "allocationExceeded": "Max remaining: {{amount}}",
     "linkToTransaction": "link to another transaction",
     "removeLink": "remove link",
     "jumpToLinked": "jump to linked transaction",

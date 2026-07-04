@@ -1,5 +1,6 @@
 package com.moneylytics.api.adapter.input.web
 
+import com.moneylytics.api.application.port.input.AllocationExceededException
 import com.moneylytics.api.application.port.input.GetLinkedTransactionsUseCase
 import com.moneylytics.api.application.port.input.LinkTransactionsCommand
 import com.moneylytics.api.application.port.input.ManageTransactionOffsetUseCase
@@ -22,15 +23,29 @@ import java.math.BigDecimal
 
 data class LinkTransactionRequest(
     val otherTransactionId: Long,
-    val partialAmount: BigDecimal? = null,
+    val myAmount: BigDecimal? = null,
+    val otherAmount: BigDecimal? = null,
 )
 
 data class OffsetLinkResponse(
-    val id: Long,
+    val id: Long?,
     val transactionAId: Long,
     val transactionBId: Long,
-    val partialAmount: BigDecimal?,
+    val amountA: BigDecimal?,
+    val amountB: BigDecimal?,
     val groupId: Long,
+)
+
+data class AllocationErrorResponse(
+    val transactionId: Long,
+    val maxRemainingAmount: BigDecimal,
+    val existingLinks: List<ExistingLinkDto>,
+)
+
+data class ExistingLinkDto(
+    val linkId: Long,
+    val linkedTransactionId: Long,
+    val committedAmount: BigDecimal,
 )
 
 data class LinkedGroupResponse(
@@ -92,7 +107,7 @@ class TransactionOffsetController(
         @PathVariable id: Long,
         @RequestBody request: LinkTransactionRequest,
         @AuthenticationPrincipal principal: UserDetails,
-    ): ResponseEntity<OffsetLinkResponse> =
+    ): ResponseEntity<*> =
         withContext(Dispatchers.IO) {
             val userId = resolveUserUseCase.resolveUser(principal.username)
             val result =
@@ -101,14 +116,26 @@ class TransactionOffsetController(
                         LinkTransactionsCommand(
                             transactionId = id,
                             otherTransactionId = request.otherTransactionId,
-                            partialAmount = request.partialAmount,
+                            myAmount = request.myAmount,
+                            otherAmount = request.otherAmount,
                             userId = userId,
                         ),
                     )
                 }.getOrElse { e ->
                     return@withContext when (e) {
-                        is IllegalArgumentException -> ResponseEntity.notFound().build()
-                        is IllegalStateException -> ResponseEntity.badRequest().build()
+                        is IllegalArgumentException -> ResponseEntity.notFound().build<Any>()
+                        is IllegalStateException -> ResponseEntity.badRequest().build<Any>()
+                        is AllocationExceededException ->
+                            ResponseEntity.status(422).body(
+                                AllocationErrorResponse(
+                                    transactionId = e.transactionId,
+                                    maxRemainingAmount = e.maxRemaining,
+                                    existingLinks =
+                                        e.existingLinks.map {
+                                            ExistingLinkDto(it.linkId, it.linkedTransactionId, it.committedAmount)
+                                        },
+                                ),
+                            )
                         else -> throw e
                     }
                 }
@@ -131,7 +158,8 @@ class TransactionOffsetController(
             id = id,
             transactionAId = transactionAId,
             transactionBId = transactionBId,
-            partialAmount = partialAmount,
+            amountA = amountA,
+            amountB = amountB,
             groupId = groupId,
         )
 }

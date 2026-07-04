@@ -20,5 +20,6 @@ data class Transaction(
     val counterpartyName: String? = null,
     val counterpartyIban: String? = null,
 ) {
-    fun effectiveAmount(): BigDecimal = amount + offsetLinks.sumOf { it.contribution }
+    fun effectiveAmount(): BigDecimal =
+        if (offsetLinks.isEmpty()) amount else offsetLinks.sumOf { it.myCommitted }
 }

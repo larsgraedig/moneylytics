@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { fetchCategories, type CategoryGroup } from '../api/rawImport'
 import {
+  AllocationExceededError,
   computeEffectiveAmount,
   fetchAllTransactions,
   linkTransactions,
@@ -10,6 +11,7 @@ import {
   updateTransactionCategory,
   updateTransactionComment,
   type Account,
+  type AllocationError,
   type OffsetLinkItem,
   type TransactionItem,
 } from '../api/transactions'
@@ -65,7 +67,7 @@ type PageState =
 
 type LinkingState =
   | { phase: 'selecting'; sourceIndex: number }
-  | { phase: 'confirming'; sourceIndex: number; targetIndex: number; partialAmount: string }
+  | { phase: 'confirming'; sourceIndex: number; targetIndex: number; myAmount: string; otherAmount: string }
   | null
 
 export default function TransactionsPage({
@@ -89,7 +91,7 @@ export default function TransactionsPage({
   const [categories, setCategories] = useState<CategoryGroup[]>([])
   const [budgets, setBudgets] = useState<Budget[]>([])
   const [linkingState, setLinkingState] = useState<LinkingState>(null)
-  const [linkError, setLinkError] = useState<string | null>(null)
+  const [linkError, setLinkError] = useState<string | AllocationError | null>(null)
   const [highlightedId, setHighlightedId] = useState<number | null>(null)
   const [filterCategory, setFilterCategory] = useState('')
   const [filterCategoryGroup, setFilterCategoryGroup] = useState('')
@@ -312,52 +314,76 @@ export default function TransactionsPage({
     }
   }
 
+  function resolveCommitted(myAmount: number | null, txAmount: number): number {
+    return myAmount !== null ? myAmount : txAmount
+  }
+
   async function confirmLink() {
     if (!linkingState || linkingState.phase !== 'confirming') return
-    const { sourceIndex, targetIndex, partialAmount } = linkingState
+    const { sourceIndex, targetIndex, myAmount, otherAmount } = linkingState
     const sourceRow = rows[sourceIndex]
     const targetRow = rows[targetIndex]
-    const parsed = partialAmount !== '' ? parseFloat(partialAmount) : undefined
+    const parsedMy = myAmount !== '' ? parseFloat(myAmount) : undefined
+    const parsedOther = otherAmount !== '' ? parseFloat(otherAmount) : undefined
     setLinkError(null)
     try {
-      const result = await linkTransactions(sourceRow.original.id, targetRow.original.id, parsed)
+      const result = await linkTransactions(sourceRow.original.id, targetRow.original.id, parsedMy, parsedOther)
+      const sourceIsA = sourceRow.original.id < targetRow.original.id
+      const sourceCommitted = resolveCommitted(
+        sourceIsA ? result.amountA : result.amountB,
+        sourceRow.original.amount,
+      )
+      const targetCommitted = resolveCommitted(
+        sourceIsA ? result.amountB : result.amountA,
+        targetRow.original.amount,
+      )
       setRows(prev => {
         const next = [...prev]
-        const newForSource: OffsetLinkItem = {
-          id: result.id,
-          linkedTransactionId: targetRow.original.id,
-          linkedTransactionAmount: targetRow.original.amount,
-          partialAmount: result.partialAmount,
-        }
-        const newForTarget: OffsetLinkItem = {
-          id: result.id,
-          linkedTransactionId: sourceRow.original.id,
-          linkedTransactionAmount: sourceRow.original.amount,
-          partialAmount: result.partialAmount,
-        }
-        const srcLinks = [...next[sourceIndex].original.offsetLinks, newForSource]
-        const tgtLinks = [...next[targetIndex].original.offsetLinks, newForTarget]
-        next[sourceIndex] = {
-          ...next[sourceIndex],
-          original: {
-            ...next[sourceIndex].original,
-            offsetLinks: srcLinks,
-            effectiveAmount: computeEffectiveAmount(next[sourceIndex].original.amount, srcLinks),
-          },
-        }
-        next[targetIndex] = {
-          ...next[targetIndex],
-          original: {
-            ...next[targetIndex].original,
-            offsetLinks: tgtLinks,
-            effectiveAmount: computeEffectiveAmount(next[targetIndex].original.amount, tgtLinks),
-          },
+        if (result.id !== null) {
+          const newForSource: OffsetLinkItem = {
+            id: result.id,
+            linkedTransactionId: targetRow.original.id,
+            linkedTransactionAmount: targetRow.original.amount,
+            amountA: result.amountA,
+            amountB: result.amountB,
+            committedAmount: sourceCommitted,
+          }
+          const newForTarget: OffsetLinkItem = {
+            id: result.id,
+            linkedTransactionId: sourceRow.original.id,
+            linkedTransactionAmount: sourceRow.original.amount,
+            amountA: result.amountA,
+            amountB: result.amountB,
+            committedAmount: targetCommitted,
+          }
+          const srcLinks = [...next[sourceIndex].original.offsetLinks, newForSource]
+          const tgtLinks = [...next[targetIndex].original.offsetLinks, newForTarget]
+          next[sourceIndex] = {
+            ...next[sourceIndex],
+            original: {
+              ...next[sourceIndex].original,
+              offsetLinks: srcLinks,
+              effectiveAmount: computeEffectiveAmount(next[sourceIndex].original.amount, srcLinks),
+            },
+          }
+          next[targetIndex] = {
+            ...next[targetIndex],
+            original: {
+              ...next[targetIndex].original,
+              offsetLinks: tgtLinks,
+              effectiveAmount: computeEffectiveAmount(next[targetIndex].original.amount, tgtLinks),
+            },
+          }
         }
         return next
       })
       setLinkingState(null)
     } catch (e) {
-      setLinkError(e instanceof Error ? e.message : 'link failed')
+      if (e instanceof AllocationExceededError) {
+        setLinkError(e.data)
+      } else {
+        setLinkError(e instanceof Error ? e.message : 'link failed')
+      }
     }
   }
 
@@ -575,30 +601,75 @@ export default function TransactionsPage({
     }
 
     if (isConfirmTarget) {
+      const confirming = linkingState as { phase: 'confirming'; sourceIndex: number; targetIndex: number; myAmount: string; otherAmount: string }
+      const sourceRow = rows[confirming.sourceIndex]
+      const targetRow = rows[i]
       return (
         <div className="txnv-linking-confirm">
-          <input
-            className="txnv-partial-input"
-            type="number"
-            step="0.01"
-            min="0"
-            placeholder={t('transactions.partialAmount')}
-            value={(linkingState as { partialAmount: string }).partialAmount}
-            onChange={e =>
-              setLinkingState(prev =>
-                prev?.phase === 'confirming' ? { ...prev, partialAmount: e.target.value } : prev,
+          <div className="txnv-partial-row">
+            <label className="txnv-partial-label">
+              {sourceRow.original.counterpartyName ?? EUR.format(sourceRow.original.amount)}
+            </label>
+            <input
+              className="txnv-partial-input"
+              type="number"
+              step="0.01"
+              min="0"
+              placeholder={t('transactions.partialAmount')}
+              value={confirming.myAmount}
+              onChange={e =>
+                setLinkingState(prev =>
+                  prev?.phase === 'confirming' ? { ...prev, myAmount: e.target.value } : prev,
+                )
+              }
+              autoFocus
+            />
+          </div>
+          <div className="txnv-partial-row">
+            <label className="txnv-partial-label">
+              {targetRow.original.counterpartyName ?? EUR.format(targetRow.original.amount)}
+            </label>
+            <input
+              className="txnv-partial-input"
+              type="number"
+              step="0.01"
+              min="0"
+              placeholder={t('transactions.partialAmount')}
+              value={confirming.otherAmount}
+              onChange={e =>
+                setLinkingState(prev =>
+                  prev?.phase === 'confirming' ? { ...prev, otherAmount: e.target.value } : prev,
+                )
+              }
+            />
+          </div>
+          <div className="txnv-linking-actions">
+            <button className="txnv-link-confirm-btn" onClick={confirmLink}>{t('transactions.link')}</button>
+            <button
+              className="txnv-link-back-btn"
+              onClick={() => src !== undefined && setLinkingState({ phase: 'selecting', sourceIndex: src })}
+            >
+              ←
+            </button>
+          </div>
+          {linkError && (
+            typeof linkError === 'string'
+              ? <span className="txnv-link-error">{linkError}</span>
+              : (
+                <div className="txnv-alloc-error">
+                  <span className="txnv-alloc-error-msg">
+                    {t('transactions.allocationExceeded', { amount: EUR.format(linkError.maxRemainingAmount) })}
+                  </span>
+                  <ul className="txnv-alloc-error-links">
+                    {linkError.existingLinks.map(l => (
+                      <li key={l.linkId}>
+                        #{l.linkedTransactionId} — {EUR.format(l.committedAmount)}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               )
-            }
-            autoFocus
-          />
-          <button className="txnv-link-confirm-btn" onClick={confirmLink}>{t('transactions.link')}</button>
-          <button
-            className="txnv-link-back-btn"
-            onClick={() => src !== undefined && setLinkingState({ phase: 'selecting', sourceIndex: src })}
-          >
-            ←
-          </button>
-          {linkError && <span className="txnv-link-error">{linkError}</span>}
+          )}
         </div>
       )
     }
@@ -609,7 +680,7 @@ export default function TransactionsPage({
           className="txnv-connect-btn"
           onClick={() =>
             src !== undefined &&
-            setLinkingState({ phase: 'confirming', sourceIndex: src, targetIndex: i, partialAmount: '' })
+            setLinkingState({ phase: 'confirming', sourceIndex: src, targetIndex: i, myAmount: '', otherAmount: '' })
           }
         >
           {t('transactions.linkHere')}
@@ -623,9 +694,7 @@ export default function TransactionsPage({
           const colorIdx = linkColorMap.get(link.id)
           const chipColor = colorIdx !== undefined ? LINK_COLORS[colorIdx] : undefined
           const linkedVisible = idToIndex.has(link.linkedTransactionId)
-          const amtFormatted = link.partialAmount !== null
-            ? EUR.format(link.partialAmount)
-            : EUR.format(Math.abs(link.linkedTransactionAmount))
+          const amtFormatted = EUR.format(Math.abs(link.committedAmount))
           return (
             <span
               key={link.id}

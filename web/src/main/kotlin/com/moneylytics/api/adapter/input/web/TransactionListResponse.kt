@@ -30,7 +30,9 @@ data class OffsetLinkItem(
     val id: Long,
     val linkedTransactionId: Long,
     val linkedTransactionAmount: BigDecimal,
-    val partialAmount: BigDecimal?,
+    val amountA: BigDecimal?,
+    val amountB: BigDecimal?,
+    val committedAmount: BigDecimal,
 )
 
 fun Transaction.toItem() =
@@ -51,7 +53,9 @@ fun Transaction.toItem() =
                     id = link.id,
                     linkedTransactionId = link.linkedTransactionId,
                     linkedTransactionAmount = link.linkedTransactionAmount,
-                    partialAmount = link.partialAmount,
+                    amountA = link.amountA,
+                    amountB = link.amountB,
+                    committedAmount = link.myCommitted,
                 )
             },
         comment = comment,

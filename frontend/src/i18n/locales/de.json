@@ -145,7 +145,8 @@
       "counterpartyName": "Zahlungsbeteiligte"
     },
     "addComment": "Kommentar hinzufügen…",
-    "partialAmount": "Teilbetrag",
+    "partialAmount": "Teilbetrag (optional)",
+    "allocationExceeded": "Maximaler Restbetrag: {{amount}}",
     "linkToTransaction": "Mit Transaktion verknüpfen",
     "removeLink": "Verknüpfung aufheben",
     "jumpToLinked": "Zur verknüpften Transaktion",

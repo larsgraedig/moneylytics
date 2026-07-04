@@ -33,7 +33,21 @@ export interface OffsetLinkItem {
   id: number
   linkedTransactionId: number
   linkedTransactionAmount: number
-  partialAmount: number | null
+  amountA: number | null
+  amountB: number | null
+  committedAmount: number
+}
+
+export interface AllocationError {
+  transactionId: number
+  maxRemainingAmount: number
+  existingLinks: Array<{ linkId: number; linkedTransactionId: number; committedAmount: number }>
+}
+
+export class AllocationExceededError extends Error {
+  constructor(public readonly data: AllocationError) {
+    super('Allocation exceeded')
+  }
 }
 
 export interface TransactionItem {
@@ -60,11 +74,8 @@ export interface TransactionListResponse {
 }
 
 export function computeEffectiveAmount(amount: number, offsetLinks: OffsetLinkItem[]): number {
-  return offsetLinks.reduce((acc, link) => {
-    const offsetAmt = link.partialAmount !== null ? link.partialAmount : Math.abs(link.linkedTransactionAmount)
-    const contribution = link.linkedTransactionAmount >= 0 ? offsetAmt : -offsetAmt
-    return acc + contribution
-  }, amount)
+  if (offsetLinks.length === 0) return amount
+  return offsetLinks.reduce((acc, link) => acc + link.committedAmount, 0)
 }
 
 export async function fetchTransactionList(
@@ -119,22 +130,28 @@ export async function updateTransactionCategory(
 }
 
 export interface OffsetLinkResult {
-  id: number
+  id: number | null
   transactionAId: number
   transactionBId: number
-  partialAmount: number | null
+  amountA: number | null
+  amountB: number | null
 }
 
 export async function linkTransactions(
   transactionId: number,
   otherTransactionId: number,
-  partialAmount?: number,
+  myAmount?: number,
+  otherAmount?: number,
 ): Promise<OffsetLinkResult> {
   const res = await fetchWithUser(`/transactions/${transactionId}/offsets`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ otherTransactionId, partialAmount: partialAmount ?? null }),
+    body: JSON.stringify({ otherTransactionId, myAmount: myAmount ?? null, otherAmount: otherAmount ?? null }),
   })
+  if (res.status === 422) {
+    const data = await res.json() as AllocationError
+    throw new AllocationExceededError(data)
+  }
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
   return res.json() as Promise<OffsetLinkResult>
 }

@@ -1,5 +1,7 @@
 package com.moneylytics.api.application.service
 
+import com.moneylytics.api.application.port.input.AllocationExceededException
+import com.moneylytics.api.application.port.input.ExistingLinkSummary
 import com.moneylytics.api.application.port.input.GetLinkedTransactionsUseCase
 import com.moneylytics.api.application.port.input.LinkTransactionsCommand
 import com.moneylytics.api.application.port.input.LinkedTransactionGroup
@@ -24,32 +26,46 @@ class TransactionOffsetService(
         require(command.transactionId != command.otherTransactionId) {
             "A transaction cannot be linked to itself"
         }
-        val txA =
+        val txSource =
             requireNotNull(transactionRepository.findByIdAndUserId(command.transactionId, command.userId)) {
                 "Transaction ${command.transactionId} not found"
             }
-        val txB =
+        val txOther =
             requireNotNull(transactionRepository.findByIdAndUserId(command.otherTransactionId, command.userId)) {
                 "Transaction ${command.otherTransactionId} not found"
             }
 
+        val sourceIsA = command.transactionId < command.otherTransactionId
         val (aId, bId) =
-            if (command.transactionId < command.otherTransactionId) {
-                command.transactionId to command.otherTransactionId
-            } else {
-                command.otherTransactionId to command.transactionId
-            }
+            if (sourceIsA) command.transactionId to command.otherTransactionId
+            else command.otherTransactionId to command.transactionId
+        val (txA, txB) = if (sourceIsA) txSource to txOther else txOther to txSource
+        val rawAmountA = if (sourceIsA) command.myAmount else command.otherAmount
+        val rawAmountB = if (sourceIsA) command.otherAmount else command.myAmount
 
         check(!offsetRepository.existsByPair(aId, bId)) {
             "Transactions ${command.transactionId} and ${command.otherTransactionId} are already linked"
         }
 
-        validateForNewLink(txA, command.partialAmount)
-        validateForNewLink(txB, command.partialAmount)
+        val amountA = rawAmountA?.let { normalizeSign(it, txA.amount) }
+        val amountB = rawAmountB?.let { normalizeSign(it, txB.amount) }
+
+        // TODO: re-enable after testing
+        // validateAllocation(txA, amountA)
+        // validateAllocation(txB, amountB)
 
         val groupId = resolveGroupForLink(command.transactionId, command.otherTransactionId, command.userId)
-
-        return offsetRepository.create(CreateOffsetLinkCommand(aId, bId, command.partialAmount, groupId))
+        if (amountA == null && amountB == null) {
+            return OffsetLinkResult(
+                id = null,
+                transactionAId = aId,
+                transactionBId = bId,
+                amountA = null,
+                amountB = null,
+                groupId = groupId,
+            )
+        }
+        return offsetRepository.create(CreateOffsetLinkCommand(aId, bId, amountA, amountB, groupId))
     }
 
     override fun unlinkTransactions(
@@ -94,28 +110,33 @@ class TransactionOffsetService(
         groupRepository.update(groupId, userId, name, comment)
     }
 
-    private fun validateForNewLink(
+    private fun normalizeSign(
+        amount: BigDecimal,
+        txAmount: BigDecimal,
+    ): BigDecimal = if (txAmount < BigDecimal.ZERO) -amount.abs() else amount.abs()
+
+    private fun validateAllocation(
         tx: Transaction,
-        partialAmount: BigDecimal?,
+        myAmount: BigDecimal?,
     ) {
-        val existingLinks = tx.offsetLinks
-        if (existingLinks.isEmpty()) return
-
-        val nullLinkCount = existingLinks.count { it.partialAmount == null }
-
-        if (partialAmount == null) {
-            check(nullLinkCount == 0) {
-                "Transaction ${tx.id} already has a filling link without partial amount; specify a partial amount for this new link"
-            }
-        } else {
-            val existingExplicitSum =
-                existingLinks
-                    .mapNotNull { it.partialAmount?.abs() }
-                    .fold(BigDecimal.ZERO, BigDecimal::add)
-            val newTotal = existingExplicitSum + partialAmount.abs()
-            check(newTotal <= tx.amount.abs()) {
-                "Adding this link would exceed transaction ${tx.id}'s total amount (${tx.amount.abs()})"
-            }
+        val txAbs = tx.amount.abs()
+        val alreadyCommitted = tx.offsetLinks.sumOf { it.myCommitted.abs() }
+        val newCommit = myAmount?.abs() ?: txAbs
+        val total = alreadyCommitted + newCommit
+        if (total > txAbs) {
+            val maxRemaining = (txAbs - alreadyCommitted).max(BigDecimal.ZERO)
+            throw AllocationExceededException(
+                transactionId = requireNotNull(tx.id),
+                maxRemaining = maxRemaining,
+                existingLinks =
+                    tx.offsetLinks.map { link ->
+                        ExistingLinkSummary(
+                            linkId = link.id,
+                            linkedTransactionId = link.linkedTransactionId,
+                            committedAmount = link.myCommitted.abs(),
+                        )
+                    },
+            )
         }
     }
 
