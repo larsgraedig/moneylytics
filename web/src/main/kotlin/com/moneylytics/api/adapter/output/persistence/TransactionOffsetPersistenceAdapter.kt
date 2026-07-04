@@ -64,4 +64,13 @@ class TransactionOffsetPersistenceAdapter(
         if (memberIds.isEmpty()) return
         offsetJpaRepository.updateGroupId(fromGroupId, toGroupId, memberIds)
     }
+
+    @Transactional
+    override fun updateComment(
+        linkId: Long,
+        userId: Long,
+        comment: String?,
+    ) {
+        offsetJpaRepository.updateComment(linkId, userId, comment)
+    }
 }

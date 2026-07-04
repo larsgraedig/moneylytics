@@ -17,6 +17,12 @@ interface ManageTransactionOffsetUseCase {
         name: String?,
         comment: String?,
     )
+
+    fun updateOffsetComment(
+        linkId: Long,
+        userId: Long,
+        comment: String?,
+    )
 }
 
 data class LinkTransactionsCommand(

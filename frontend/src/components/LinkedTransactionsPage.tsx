@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { fetchLinkedGroups, updateLinkedGroupMeta, type LinkedGroupItem, type TransactionItem } from '../api/transactions'
+import { fetchLinkedGroups, updateLinkedGroupMeta, updateOffsetLinkComment, type LinkedGroupItem, type TransactionItem } from '../api/transactions'
 
 const EUR = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' })
 
@@ -72,9 +72,11 @@ function InlineEdit({
 function GroupCard({
   group,
   onMetaChange,
+  onOffsetCommentChange,
 }: {
   group: LinkedGroupItem
   onMetaChange: (groupId: number, name: string | null, comment: string | null) => void
+  onOffsetCommentChange: (groupId: number, txId: number, linkId: number, comment: string | null) => void
 }) {
   const { t } = useTranslation()
   const [saving, setSaving] = useState(false)
@@ -87,6 +89,12 @@ function GroupCard({
     updateLinkedGroupMeta(group.groupId, name, comment)
       .then(() => { onMetaChange(group.groupId, name, comment); setSaving(false) })
       .catch(() => setSaving(false))
+  }
+
+  function saveOffsetComment(txId: number, linkId: number, comment: string | null) {
+    updateOffsetLinkComment(linkId, comment)
+      .then(() => onOffsetCommentChange(group.groupId, txId, linkId, comment))
+      .catch(() => {})
   }
 
   return (
@@ -149,27 +157,32 @@ function GroupCard({
                 </tr>
                 {tx.offsetLinks.filter(link => link.committedAmount !== tx.amount).map(link => {
                   const linkedTx = txById[link.linkedTransactionId]
-                  const offsetAmt = Math.abs(link.committedAmount)
-                  const isCredit = link.committedAmount <= 0
+                  const isPositive = link.committedAmount >= 0
                   return (
                     <tr key={`offset-${link.id}`} className="ltx-offset-row">
                       <td className="ltx-offset-date">{linkedTx ? formatDate(linkedTx.accountingDate) : ''}</td>
                       <td className="ltx-offset-counterparty">
-                        <span className={isCredit ? 'ltx-offset-arrow ltx-offset-arrow--in' : 'ltx-offset-arrow ltx-offset-arrow--out'}>
-                          {isCredit ? '↑' : '↓'}
+                        <span className={isPositive ? 'ltx-offset-arrow ltx-offset-arrow--in' : 'ltx-offset-arrow ltx-offset-arrow--out'}>
+                          {isPositive ? '↑' : '↓'}
                         </span>
                         {linkedTx
                           ? (linkedTx.counterpartyName ?? linkedTx.purpose ?? t('linked.transaction'))
                           : t('linked.transaction')}
                       </td>
-                      <td />
+                      <td className="ltx-cell-purpose">
+                        <InlineEdit
+                          value={link.comment}
+                          placeholder={t('linked.offsetCommentPlaceholder')}
+                          onSave={comment => saveOffsetComment(tx.id, link.id, comment)}
+                        />
+                      </td>
                       <td>
                         {(link.amountA !== null || link.amountB !== null) && (
                           <span className="ltx-offset-partial">{t('linked.partial')}</span>
                         )}
                       </td>
-                      <td className={`ltx-col-amount ${isCredit ? 'ltx-amount--pos' : 'ltx-amount--neg'}`}>
-                        {(isCredit ? '+' : '−') + EUR.format(offsetAmt)}
+                      <td className={`ltx-col-amount ${isPositive ? 'ltx-amount--pos' : 'ltx-amount--neg'}`}>
+                        {EUR.format(link.committedAmount)}
                       </td>
                       <td />
                     </tr>
@@ -200,6 +213,22 @@ export default function LinkedTransactionsPage() {
     setGroups(prev => prev.map(g => g.groupId === groupId ? { ...g, name, comment } : g))
   }
 
+  function handleOffsetCommentChange(groupId: number, txId: number, linkId: number, comment: string | null) {
+    setGroups(prev => prev.map(g => {
+      if (g.groupId !== groupId) return g
+      return {
+        ...g,
+        transactions: g.transactions.map(tx => {
+          if (tx.id !== txId) return tx
+          return {
+            ...tx,
+            offsetLinks: tx.offsetLinks.map(link => link.id === linkId ? { ...link, comment } : link),
+          }
+        }),
+      }
+    }))
+  }
+
   if (loading) return <div className="ltx-page"><span className="ltx-status">{t('common.loading')}</span></div>
   if (error) return <div className="ltx-page"><span className="ltx-status ltx-status--error">{error}</span></div>
 
@@ -211,7 +240,7 @@ export default function LinkedTransactionsPage() {
       </div>
       {groups.length === 0
         ? <p className="ltx-status">{t('linked.empty')}</p>
-        : groups.map(g => <GroupCard key={g.groupId} group={g} onMetaChange={handleMetaChange} />)
+        : groups.map(g => <GroupCard key={g.groupId} group={g} onMetaChange={handleMetaChange} onOffsetCommentChange={handleOffsetCommentChange} />)
       }
     </div>
   )

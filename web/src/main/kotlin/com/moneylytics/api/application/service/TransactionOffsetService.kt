@@ -37,8 +37,11 @@ class TransactionOffsetService(
 
         val sourceIsA = command.transactionId < command.otherTransactionId
         val (aId, bId) =
-            if (sourceIsA) command.transactionId to command.otherTransactionId
-            else command.otherTransactionId to command.transactionId
+            if (sourceIsA) {
+                command.transactionId to command.otherTransactionId
+            } else {
+                command.otherTransactionId to command.transactionId
+            }
         val (txA, txB) = if (sourceIsA) txSource to txOther else txOther to txSource
         val rawAmountA = if (sourceIsA) command.myAmount else command.otherAmount
         val rawAmountB = if (sourceIsA) command.otherAmount else command.myAmount
@@ -54,13 +57,14 @@ class TransactionOffsetService(
         // validateAllocation(txA, amountA)
         // validateAllocation(txB, amountB)
 
-        val groupId = resolveGroupForLink(
-            txAId = aId,
-            txBId = bId,
-            userId = command.userId,
-            targetGroupId = command.targetGroupId,
-            forceNewGroup = command.forceNewGroup,
-        )
+        val groupId =
+            resolveGroupForLink(
+                txAId = aId,
+                txBId = bId,
+                userId = command.userId,
+                targetGroupId = command.targetGroupId,
+                forceNewGroup = command.forceNewGroup,
+            )
         if (amountA == null && amountB == null) {
             return OffsetLinkResult(
                 id = null,
@@ -97,11 +101,11 @@ class TransactionOffsetService(
             .mapNotNull { group ->
                 val memberIds = groupMemberIds[group.id] ?: return@mapNotNull null
                 val transactions =
-                    memberIds.mapNotNull { txById[it] }
+                    memberIds
+                        .mapNotNull { txById[it] }
                         .map { tx ->
                             tx.copy(offsetLinks = tx.offsetLinks.filter { it.groupId == group.id })
-                        }
-                        .sortedBy { it.accountingDate }
+                        }.sortedBy { it.accountingDate }
                 if (transactions.isEmpty()) return@mapNotNull null
                 LinkedTransactionGroup(
                     groupId = group.id,
@@ -119,6 +123,14 @@ class TransactionOffsetService(
         comment: String?,
     ) {
         groupRepository.update(groupId, userId, name, comment)
+    }
+
+    override fun updateOffsetComment(
+        linkId: Long,
+        userId: Long,
+        comment: String?,
+    ) {
+        offsetRepository.updateComment(linkId, userId, comment)
     }
 
     private fun normalizeSign(

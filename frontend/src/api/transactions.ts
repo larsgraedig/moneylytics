@@ -41,6 +41,7 @@ export interface OffsetLinkItem {
   amountA: number | null
   amountB: number | null
   committedAmount: number
+  comment: string | null
 }
 
 export interface AllocationError {
@@ -225,6 +226,15 @@ export async function updateTransactionAccountingDate(
 
 export async function unlinkTransaction(linkId: number): Promise<void> {
   const res = await fetchWithUser(`/transactions/offsets/${linkId}`, { method: 'DELETE' })
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+}
+
+export async function updateOffsetLinkComment(linkId: number, comment: string | null): Promise<void> {
+  const res = await fetchWithUser(`/transactions/offsets/${linkId}/comment`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ comment }),
+  })
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
 }
 

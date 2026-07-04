@@ -162,6 +162,9 @@
     "linkHere": "link here",
     "link": "link",
     "bulkSelected": "{{count}} selected",
+    "linkModal": {
+      "title": "Create link"
+    },
     "bookingDateTitle": "original booking date",
     "panel": {
       "close": "Close",
@@ -395,7 +398,8 @@
     "namePlaceholder": "Add a name…",
     "commentPlaceholder": "Add a comment…",
     "partial": "partial",
-    "transaction": "Transaction"
+    "transaction": "Transaction",
+    "offsetCommentPlaceholder": "Note…"
   },
   "settings": {
     "title": "Settings",

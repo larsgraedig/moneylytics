@@ -66,6 +66,10 @@ data class UpdateGroupMetaRequest(
     val comment: String?,
 )
 
+data class UpdateOffsetCommentRequest(
+    val comment: String?,
+)
+
 @RestController
 @RequestMapping("/transactions")
 class TransactionOffsetController(
@@ -144,6 +148,18 @@ class TransactionOffsetController(
                     }
                 }
             ResponseEntity.ok(result.toResponse())
+        }
+
+    @PatchMapping("/offsets/{linkId}/comment")
+    suspend fun updateOffsetComment(
+        @PathVariable linkId: Long,
+        @RequestBody request: UpdateOffsetCommentRequest,
+        @AuthenticationPrincipal principal: UserDetails,
+    ): ResponseEntity<Void> =
+        withContext(Dispatchers.IO) {
+            val userId = resolveUserUseCase.resolveUser(principal.username)
+            manageTransactionOffsetUseCase.updateOffsetComment(linkId, userId, request.comment)
+            ResponseEntity.noContent().build()
         }
 
     @DeleteMapping("/offsets/{linkId}")

@@ -162,6 +162,9 @@
     "linkHere": "hier verknüpfen",
     "link": "verknüpfen",
     "bulkSelected": "{{count}} ausgewählt",
+    "linkModal": {
+      "title": "Verknüpfung erstellen"
+    },
     "bookingDateTitle": "reales Buchungsdatum",
     "panel": {
       "close": "Schließen",
@@ -395,7 +398,8 @@
     "namePlaceholder": "Name vergeben…",
     "commentPlaceholder": "Kommentar hinzufügen…",
     "partial": "partiell",
-    "transaction": "Transaktion"
+    "transaction": "Transaktion",
+    "offsetCommentPlaceholder": "Notiz…"
   },
   "settings": {
     "title": "Einstellungen",

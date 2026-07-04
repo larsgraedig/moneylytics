@@ -70,4 +70,18 @@ interface TransactionOffsetJpaRepository : JpaRepository<TransactionOffsetEntity
         @Param("toGroupId") toGroupId: Long,
         @Param("ids") ids: Collection<Long>,
     )
+
+    @Modifying
+    @Query(
+        """
+        UPDATE TransactionOffsetEntity o SET o.comment = :comment
+        WHERE o.id = :id
+        AND (o.transactionA.user.id = :userId OR o.transactionB.user.id = :userId)
+        """,
+    )
+    fun updateComment(
+        @Param("id") id: Long,
+        @Param("userId") userId: Long,
+        @Param("comment") comment: String?,
+    )
 }

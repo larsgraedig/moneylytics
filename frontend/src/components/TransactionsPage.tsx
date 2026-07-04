@@ -382,6 +382,7 @@ export default function TransactionsPage({
             amountA: result.amountA,
             amountB: result.amountB,
             committedAmount: sourceCommitted,
+            comment: null,
           }
           const newForTarget: OffsetLinkItem = {
             id: result.id,
@@ -390,6 +391,7 @@ export default function TransactionsPage({
             amountA: result.amountA,
             amountB: result.amountB,
             committedAmount: targetCommitted,
+            comment: null,
           }
           const srcLinks = [...next[sourceIndex].original.offsetLinks, newForSource]
           const tgtLinks = [...next[targetIndex].original.offsetLinks, newForTarget]
@@ -621,9 +623,7 @@ export default function TransactionsPage({
   function renderOffsetCell(row: RowState, i: number) {
     const src = linkingState?.sourceIndex
     const isSource = src === i
-    const isConfirmTarget = linkingState?.phase === 'confirming' && linkingState.targetIndex === i
-    const isGroupSelect = linkingState?.phase === 'group-select' && linkingState.targetIndex === i
-    const isLinking = linkingState !== null
+    const isSelecting = linkingState?.phase === 'selecting'
 
     if (isSource) {
       return (
@@ -636,109 +636,7 @@ export default function TransactionsPage({
       )
     }
 
-    if (isConfirmTarget) {
-      const confirming = linkingState as { phase: 'confirming'; sourceIndex: number; targetIndex: number; myAmount: string; otherAmount: string }
-      const sourceRow = rows[confirming.sourceIndex]
-      const targetRow = rows[i]
-      return (
-        <div className="txnv-linking-confirm">
-          <div className="txnv-partial-row">
-            <label className="txnv-partial-label">
-              {sourceRow.original.counterpartyName ?? EUR.format(sourceRow.original.amount)}
-            </label>
-            <input
-              className="txnv-partial-input"
-              type="number"
-              step="0.01"
-              min="0"
-              placeholder={t('transactions.partialAmount')}
-              value={confirming.myAmount}
-              onChange={e =>
-                setLinkingState(prev =>
-                  prev?.phase === 'confirming' ? { ...prev, myAmount: e.target.value } : prev,
-                )
-              }
-              autoFocus
-            />
-          </div>
-          <div className="txnv-partial-row">
-            <label className="txnv-partial-label">
-              {targetRow.original.counterpartyName ?? EUR.format(targetRow.original.amount)}
-            </label>
-            <input
-              className="txnv-partial-input"
-              type="number"
-              step="0.01"
-              min="0"
-              placeholder={t('transactions.partialAmount')}
-              value={confirming.otherAmount}
-              onChange={e =>
-                setLinkingState(prev =>
-                  prev?.phase === 'confirming' ? { ...prev, otherAmount: e.target.value } : prev,
-                )
-              }
-            />
-          </div>
-          <div className="txnv-linking-actions">
-            <button className="txnv-link-confirm-btn" onClick={confirmLink}>{t('transactions.link')}</button>
-            <button
-              className="txnv-link-back-btn"
-              onClick={() => src !== undefined && setLinkingState({ phase: 'selecting', sourceIndex: src })}
-            >
-              ←
-            </button>
-          </div>
-          {linkError && (
-            typeof linkError === 'string'
-              ? <span className="txnv-link-error">{linkError}</span>
-              : (
-                <div className="txnv-alloc-error">
-                  <span className="txnv-alloc-error-msg">
-                    {t('transactions.allocationExceeded', { amount: EUR.format(linkError.maxRemainingAmount) })}
-                  </span>
-                  <ul className="txnv-alloc-error-links">
-                    {linkError.existingLinks.map(l => (
-                      <li key={l.linkId}>
-                        #{l.linkedTransactionId} — {EUR.format(l.committedAmount)}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )
-          )}
-        </div>
-      )
-    }
-
-    if (isGroupSelect) {
-      const gs = linkingState as { phase: 'group-select'; availableGroups: GroupSummary[] }
-      return (
-        <div className="txnv-linking-confirm">
-          <span className="txnv-group-select-label">{t('transactions.selectGroup')}</span>
-          <div className="txnv-group-select-options">
-            {gs.availableGroups.map(g => (
-              <button
-                key={g.id}
-                className="txnv-group-option-btn"
-                onClick={() => confirmLinkWithGroup(g.id)}
-              >
-                {g.name ?? `#${g.id}`}
-              </button>
-            ))}
-            <button className="txnv-group-option-btn txnv-group-option-btn--new" onClick={() => confirmLinkWithGroup(undefined)}>
-              {t('transactions.newGroup')}
-            </button>
-          </div>
-          <button className="txnv-link-back-btn" onClick={() => {
-            if (linkingState?.phase === 'group-select') {
-              setLinkingState({ phase: 'confirming', sourceIndex: linkingState.sourceIndex, targetIndex: linkingState.targetIndex, myAmount: linkingState.myAmount, otherAmount: linkingState.otherAmount })
-            }
-          }}>←</button>
-        </div>
-      )
-    }
-
-    if (isLinking) {
+    if (isSelecting) {
       return (
         <button
           className="txnv-connect-btn"
@@ -789,6 +687,134 @@ export default function TransactionsPage({
         >
           link
         </button>
+      </div>
+    )
+  }
+
+  function renderLinkModal() {
+    if (linkingState?.phase !== 'confirming' && linkingState?.phase !== 'group-select') return null
+
+    const sourceRow = rows[linkingState.sourceIndex]
+    const targetRow = rows[linkingState.targetIndex]
+
+    function txCard(tx: TransactionItem) {
+      return (
+        <div className="txnv-lm-tx-card">
+          <span className="txnv-lm-tx-date">{formatDate(tx.accountingDate)}</span>
+          <span className="txnv-lm-tx-name">{tx.counterpartyName ?? tx.purpose ?? '—'}</span>
+          <span className={`txnv-lm-tx-amount ${tx.amount >= 0 ? 'positive' : 'negative'}`}>
+            {EUR.format(tx.amount)}
+          </span>
+        </div>
+      )
+    }
+
+    const cancel = () => { setLinkingState(null); setLinkError(null) }
+
+    return (
+      <div className="txnv-lm-backdrop" onClick={cancel}>
+        <div className="txnv-lm-modal" onClick={e => e.stopPropagation()}>
+          <div className="txnv-lm-header">
+            <span className="txnv-lm-title">{t('transactions.linkModal.title')}</span>
+            <button className="txnv-lm-close" onClick={cancel}>×</button>
+          </div>
+
+          <div className="txnv-lm-body">
+            {txCard(sourceRow.original)}
+            <div className="txnv-lm-divider">⇅</div>
+            {txCard(targetRow.original)}
+
+            {linkingState.phase === 'confirming' && (
+              <>
+                <div className="txnv-lm-amounts">
+                  <div className="txnv-lm-amount-row">
+                    <label className="txnv-lm-amount-label">
+                      {sourceRow.original.counterpartyName ?? EUR.format(sourceRow.original.amount)}
+                    </label>
+                    <input
+                      className="txnv-partial-input"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      placeholder={t('transactions.partialAmount')}
+                      value={linkingState.myAmount}
+                      autoFocus
+                      onChange={e =>
+                        setLinkingState(prev =>
+                          prev?.phase === 'confirming' ? { ...prev, myAmount: e.target.value } : prev,
+                        )
+                      }
+                    />
+                  </div>
+                  <div className="txnv-lm-amount-row">
+                    <label className="txnv-lm-amount-label">
+                      {targetRow.original.counterpartyName ?? EUR.format(targetRow.original.amount)}
+                    </label>
+                    <input
+                      className="txnv-partial-input"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      placeholder={t('transactions.partialAmount')}
+                      value={linkingState.otherAmount}
+                      onChange={e =>
+                        setLinkingState(prev =>
+                          prev?.phase === 'confirming' ? { ...prev, otherAmount: e.target.value } : prev,
+                        )
+                      }
+                    />
+                  </div>
+                </div>
+                {linkError && (
+                  typeof linkError === 'string'
+                    ? <span className="txnv-link-error">{linkError}</span>
+                    : (
+                      <div className="txnv-alloc-error">
+                        <span className="txnv-alloc-error-msg">
+                          {t('transactions.allocationExceeded', { amount: EUR.format(linkError.maxRemainingAmount) })}
+                        </span>
+                        <ul className="txnv-alloc-error-links">
+                          {linkError.existingLinks.map(l => (
+                            <li key={l.linkId}>#{l.linkedTransactionId} — {EUR.format(l.committedAmount)}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )
+                )}
+                <div className="txnv-lm-footer">
+                  <button className="txnv-link-confirm-btn" onClick={confirmLink}>{t('transactions.link')}</button>
+                  <button className="txnv-link-cancel-btn" onClick={cancel}>{t('common.cancel')}</button>
+                </div>
+              </>
+            )}
+
+            {linkingState.phase === 'group-select' && (
+              <>
+                <div className="txnv-lm-group-section">
+                  <span className="txnv-group-select-label">{t('transactions.selectGroup')}</span>
+                  <div className="txnv-group-select-options">
+                    {linkingState.availableGroups.map(g => (
+                      <button key={g.id} className="txnv-group-option-btn" onClick={() => confirmLinkWithGroup(g.id)}>
+                        {g.name ?? `#${g.id}`}
+                      </button>
+                    ))}
+                    <button className="txnv-group-option-btn txnv-group-option-btn--new" onClick={() => confirmLinkWithGroup(undefined)}>
+                      {t('transactions.newGroup')}
+                    </button>
+                  </div>
+                </div>
+                <div className="txnv-lm-footer">
+                  <button className="txnv-link-back-btn" onClick={() => {
+                    if (linkingState.phase === 'group-select') {
+                      setLinkingState({ phase: 'confirming', sourceIndex: linkingState.sourceIndex, targetIndex: linkingState.targetIndex, myAmount: linkingState.myAmount, otherAmount: linkingState.otherAmount })
+                    }
+                  }}>← {t('common.back')}</button>
+                  <button className="txnv-link-cancel-btn" onClick={cancel}>{t('common.cancel')}</button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
       </div>
     )
   }
@@ -1216,6 +1242,8 @@ export default function TransactionsPage({
           </table>
         )}
       </div>
+
+      {renderLinkModal()}
 
       {selectedCount > 0 && (
         <div className="txnv-bulk-bar">

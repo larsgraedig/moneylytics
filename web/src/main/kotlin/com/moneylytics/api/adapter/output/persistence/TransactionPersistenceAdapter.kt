@@ -178,9 +178,12 @@ class TransactionPersistenceAdapter(
         if (ids.isEmpty()) return emptyMap()
         val members = groupMemberJpaRepository.findByTransactionIds(ids)
         if (members.isEmpty()) return emptyMap()
-        val groupsById = groupJpaRepository.findAllById(members.map { it.groupId }.toSet())
-            .associateBy { requireNotNull(it.id) }
-        return members.groupBy { it.transactionId }
+        val groupsById =
+            groupJpaRepository
+                .findAllById(members.map { it.groupId }.toSet())
+                .associateBy { requireNotNull(it.id) }
+        return members
+            .groupBy { it.transactionId }
             .mapValues { (_, mems) ->
                 mems.mapNotNull { m -> groupsById[m.groupId]?.let { TransactionGroupSummary(requireNotNull(it.id), it.name) } }
             }
@@ -210,6 +213,7 @@ class TransactionPersistenceAdapter(
             amountB = amountB,
             myCommitted = myCommitted,
             groupId = groupId,
+            comment = comment,
         )
     }
 
@@ -217,23 +221,23 @@ class TransactionPersistenceAdapter(
         offsetLinks: List<TransactionOffsetLink> = emptyList(),
         groups: List<TransactionGroupSummary> = emptyList(),
     ) = Transaction(
-            category = category,
-            subcategory = subcategory,
-            categoryGroup = categoryGroup,
-            bookingDate = bookingDate,
-            valueDate = valueDate,
-            accountingDate = accountingDate,
-            amount = amount,
-            currency = currency,
-            accountIban = account.iban,
-            id = id,
-            offsetLinks = offsetLinks,
-            groups = groups,
-            comment = comment,
-            purpose = purpose,
-            counterpartyName = counterpartyName,
-            counterpartyIban = counterpartyIban,
-        )
+        category = category,
+        subcategory = subcategory,
+        categoryGroup = categoryGroup,
+        bookingDate = bookingDate,
+        valueDate = valueDate,
+        accountingDate = accountingDate,
+        amount = amount,
+        currency = currency,
+        accountIban = account.iban,
+        id = id,
+        offsetLinks = offsetLinks,
+        groups = groups,
+        comment = comment,
+        purpose = purpose,
+        counterpartyName = counterpartyName,
+        counterpartyIban = counterpartyIban,
+    )
 
     private fun Transaction.toEntity(
         fingerprint: String,

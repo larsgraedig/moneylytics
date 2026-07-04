@@ -22,6 +22,12 @@ interface TransactionOffsetRepository {
         toGroupId: Long,
         memberIds: Set<Long>,
     )
+
+    fun updateComment(
+        linkId: Long,
+        userId: Long,
+        comment: String?,
+    )
 }
 
 data class CreateOffsetLinkCommand(
