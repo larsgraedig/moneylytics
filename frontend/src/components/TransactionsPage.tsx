@@ -5,17 +5,19 @@ import {
   AllocationExceededError,
   computeEffectiveAmount,
   fetchAllTransactions,
+  fetchLinkedGroup,
   linkTransactions,
-  unlinkTransaction,
   updateTransactionAccountingDate,
   updateTransactionCategory,
   updateTransactionComment,
   type Account,
   type AllocationError,
   type GroupSummary,
+  type LinkedGroupItem,
   type OffsetLinkItem,
   type TransactionItem,
 } from '../api/transactions'
+import { GroupCard } from './GroupCard'
 import {
   assignTransaction as assignToBudget,
   fetchBudgets,
@@ -94,7 +96,8 @@ export default function TransactionsPage({
   const [budgets, setBudgets] = useState<Budget[]>([])
   const [linkingState, setLinkingState] = useState<LinkingState>(null)
   const [linkError, setLinkError] = useState<string | AllocationError | null>(null)
-  const [highlightedId, setHighlightedId] = useState<number | null>(null)
+  const [groupModal, setGroupModal] = useState<{ groupId: number; group: LinkedGroupItem | null } | null>(null)
+  const [highlightedId] = useState<number | null>(null)
   const [filterCategory, setFilterCategory] = useState('')
   const [filterCategoryGroup, setFilterCategoryGroup] = useState('')
   const [filterSubcategory, setFilterSubcategory] = useState('')
@@ -383,6 +386,7 @@ export default function TransactionsPage({
             amountB: result.amountB,
             committedAmount: sourceCommitted,
             comment: null,
+            groupId: result.groupId,
           }
           const newForTarget: OffsetLinkItem = {
             id: result.id,
@@ -392,6 +396,7 @@ export default function TransactionsPage({
             amountB: result.amountB,
             committedAmount: targetCommitted,
             comment: null,
+            groupId: result.groupId,
           }
           const srcLinks = [...next[sourceIndex].original.offsetLinks, newForSource]
           const tgtLinks = [...next[targetIndex].original.offsetLinks, newForTarget]
@@ -424,27 +429,6 @@ export default function TransactionsPage({
     }
   }
 
-  async function removeLink(linkId: number) {
-    try {
-      await unlinkTransaction(linkId)
-      setRows(prev =>
-        prev.map(row => {
-          if (!row.original.offsetLinks.some(l => l.id === linkId)) return row
-          const newLinks = row.original.offsetLinks.filter(l => l.id !== linkId)
-          return {
-            ...row,
-            original: {
-              ...row.original,
-              offsetLinks: newLinks,
-              effectiveAmount: computeEffectiveAmount(row.original.amount, newLinks),
-            },
-          }
-        }),
-      )
-    } catch {
-      // silent — the chip stays if the request fails
-    }
-  }
 
   async function confirmBudgetAssign(rowIndex: number) {
     const row = rows[rowIndex]
@@ -504,12 +488,6 @@ export default function TransactionsPage({
     } catch {
       // silent
     }
-  }
-
-  function scrollToLinked(txId: number) {
-    setHighlightedId(txId)
-    setTimeout(() => setHighlightedId(null), 1500)
-    document.querySelector(`[data-txid="${txId}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
   }
 
   const selectedCount = rows.filter(r => r.selected).length
@@ -578,29 +556,20 @@ export default function TransactionsPage({
     return [...seen]
   }, [rows])
 
-  const idToIndex = useMemo(() => {
-    const map = new Map<number, number>()
-    rows.forEach((row, i) => map.set(row.original.id, i))
-    return map
-  }, [rows])
-
-  // link id → color index, only for links where both ends are currently loaded
-  const linkColorMap = useMemo(() => {
+  const groupColorMap = useMemo(() => {
     const map = new Map<number, number>()
     let colorIdx = 0
     const seen = new Set<number>()
     for (const row of rows) {
-      for (const link of row.original.offsetLinks) {
-        if (seen.has(link.id)) continue
-        seen.add(link.id)
-        if (idToIndex.has(link.linkedTransactionId)) {
-          map.set(link.id, colorIdx % LINK_COLORS.length)
-          colorIdx++
-        }
+      for (const group of row.original.groups) {
+        if (seen.has(group.id)) continue
+        seen.add(group.id)
+        map.set(group.id, colorIdx % LINK_COLORS.length)
+        colorIdx++
       }
     }
     return map
-  }, [rows, idToIndex])
+  }, [rows])
 
   function rowClassName(row: RowState, i: number): string {
     const classes: string[] = []
@@ -652,31 +621,22 @@ export default function TransactionsPage({
 
     return (
       <div className="txnv-links-normal">
-        {row.original.offsetLinks.map(link => {
-          const colorIdx = linkColorMap.get(link.id)
+        {row.original.groups.map(group => {
+          const colorIdx = groupColorMap.get(group.id)
           const chipColor = colorIdx !== undefined ? LINK_COLORS[colorIdx] : undefined
-          const linkedVisible = idToIndex.has(link.linkedTransactionId)
-          const amtFormatted = EUR.format(Math.abs(link.committedAmount))
+          const chipLabel = group.name ?? `#${group.id}`
           return (
             <span
-              key={link.id}
-              className="txnv-link-chip"
+              key={group.id}
+              className="txnv-link-chip txnv-group-chip"
               style={chipColor ? { borderColor: chipColor } : undefined}
+              onClick={() => {
+                setGroupModal({ groupId: group.id, group: null })
+                fetchLinkedGroup(group.id).then(g => setGroupModal({ groupId: group.id, group: g }))
+              }}
+              title={`#${group.id}`}
             >
-              <span
-                className={`txnv-link-chip-amount ${link.linkedTransactionAmount >= 0 ? 'positive' : 'negative'}${linkedVisible ? ' txnv-link-chip-nav' : ''}`}
-                onClick={linkedVisible ? () => scrollToLinked(link.linkedTransactionId) : undefined}
-                title={linkedVisible ? t('transactions.jumpToLinked') : undefined}
-              >
-                {amtFormatted}
-              </span>
-              <button
-                className="txnv-link-chip-remove"
-                onClick={() => removeLink(link.id)}
-                title={t('transactions.removeLink')}
-              >
-                ×
-              </button>
+              {chipLabel}
             </span>
           )
         })}
@@ -687,6 +647,57 @@ export default function TransactionsPage({
         >
           link
         </button>
+      </div>
+    )
+  }
+
+  function renderGroupModal() {
+    if (!groupModal) return null
+    const { group } = groupModal
+    const close = () => setGroupModal(null)
+
+    function handleMetaChange(_groupId: number, name: string | null, comment: string | null) {
+      setGroupModal(prev => prev && prev.group ? { ...prev, group: { ...prev.group, name, comment } } : prev)
+    }
+
+    function handleOffsetCommentChange(_groupId: number, txId: number, linkId: number, comment: string | null) {
+      setGroupModal(prev => {
+        if (!prev?.group) return prev
+        return {
+          ...prev,
+          group: {
+            ...prev.group,
+            transactions: prev.group.transactions.map(tx =>
+              tx.id !== txId ? tx : {
+                ...tx,
+                offsetLinks: tx.offsetLinks.map(l => l.id === linkId ? { ...l, comment } : l),
+              },
+            ),
+          },
+        }
+      })
+    }
+
+    return (
+      <div className="txnv-lm-backdrop" onClick={close}>
+        <div className="txnv-lm-modal txnv-lm-modal--group" onClick={e => e.stopPropagation()}>
+          <div className="txnv-lm-header">
+            <span className="txnv-lm-title">{t('linked.group')} #{groupModal.groupId}</span>
+            <button className="txnv-lm-close" onClick={close}>×</button>
+          </div>
+          <div className="txnv-lm-group-body">
+            {!group
+              ? <span className="txnv-lm-loading">{t('common.loading')}</span>
+              : (
+                <GroupCard
+                  group={group}
+                  onMetaChange={handleMetaChange}
+                  onOffsetCommentChange={handleOffsetCommentChange}
+                />
+              )
+            }
+          </div>
+        </div>
       </div>
     )
   }
@@ -1204,8 +1215,8 @@ export default function TransactionsPage({
             <tbody>
               {rows.map((row, i) => {
                 const rowLinkColor = (() => {
-                  for (const link of row.original.offsetLinks) {
-                    const idx = linkColorMap.get(link.id)
+                  for (const group of row.original.groups) {
+                    const idx = groupColorMap.get(group.id)
                     if (idx !== undefined) return LINK_COLORS[idx]
                   }
                   return null
@@ -1244,6 +1255,7 @@ export default function TransactionsPage({
       </div>
 
       {renderLinkModal()}
+      {renderGroupModal()}
 
       {selectedCount > 0 && (
         <div className="txnv-bulk-bar">

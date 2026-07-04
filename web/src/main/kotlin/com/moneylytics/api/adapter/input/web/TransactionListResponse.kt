@@ -40,6 +40,7 @@ data class OffsetLinkItem(
     val amountB: BigDecimal?,
     val committedAmount: BigDecimal,
     val comment: String?,
+    val groupId: Long?,
 )
 
 fun Transaction.toItem() =
@@ -64,6 +65,7 @@ fun Transaction.toItem() =
                     amountB = link.amountB,
                     committedAmount = link.myCommitted,
                     comment = link.comment,
+                    groupId = link.groupId,
                 )
             },
         groups = groups.map { GroupSummaryDto(it.id, it.name) },

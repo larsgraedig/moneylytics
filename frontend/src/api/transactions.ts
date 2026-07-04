@@ -42,6 +42,7 @@ export interface OffsetLinkItem {
   amountB: number | null
   committedAmount: number
   comment: string | null
+  groupId: number | null
 }
 
 export interface AllocationError {
@@ -143,6 +144,7 @@ export interface OffsetLinkResult {
   transactionBId: number
   amountA: number | null
   amountB: number | null
+  groupId: number
 }
 
 export async function linkTransactions(
@@ -200,6 +202,12 @@ export async function fetchLinkedGroups(): Promise<LinkedGroupsResponse> {
   const res = await fetchWithUser('/transactions/linked')
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
   return res.json() as Promise<LinkedGroupsResponse>
+}
+
+export async function fetchLinkedGroup(groupId: number): Promise<LinkedGroupItem> {
+  const res = await fetchWithUser(`/transactions/linked/${groupId}`)
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  return res.json() as Promise<LinkedGroupItem>
 }
 
 export async function updateLinkedGroupMeta(groupId: number, name: string | null, comment: string | null): Promise<void> {

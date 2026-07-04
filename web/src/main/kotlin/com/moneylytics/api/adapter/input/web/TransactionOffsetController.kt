@@ -96,6 +96,26 @@ class TransactionOffsetController(
             )
         }
 
+    @GetMapping("/linked/{groupId}")
+    suspend fun getLinkedGroup(
+        @PathVariable groupId: Long,
+        @AuthenticationPrincipal principal: UserDetails,
+    ): ResponseEntity<LinkedGroupItem> =
+        withContext(Dispatchers.IO) {
+            val userId = resolveUserUseCase.resolveUser(principal.username)
+            val group =
+                getLinkedTransactionsUseCase.getLinkedGroup(groupId, userId)
+                    ?: return@withContext ResponseEntity.notFound().build()
+            ResponseEntity.ok(
+                LinkedGroupItem(
+                    groupId = group.groupId,
+                    name = group.name,
+                    comment = group.comment,
+                    transactions = group.transactions.map { it.toItem() },
+                ),
+            )
+        }
+
     @PatchMapping("/linked/{groupId}")
     suspend fun updateGroupMeta(
         @PathVariable groupId: Long,

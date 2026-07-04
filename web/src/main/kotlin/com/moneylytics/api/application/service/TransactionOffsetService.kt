@@ -116,6 +116,28 @@ class TransactionOffsetService(
             }.sortedByDescending { it.transactions.first().accountingDate }
     }
 
+    override fun getLinkedGroup(
+        groupId: Long,
+        userId: Long,
+    ): LinkedTransactionGroup? {
+        val group = groupRepository.findById(groupId, userId) ?: return null
+        val memberIds = groupRepository.findMemberIds(groupId)
+        if (memberIds.isEmpty()) return null
+        val txById = transactionRepository.findByIdsAndUserId(memberIds.toSet(), userId).associateBy { it.id!! }
+        val transactions =
+            memberIds
+                .mapNotNull { txById[it] }
+                .map { tx -> tx.copy(offsetLinks = tx.offsetLinks.filter { it.groupId == groupId }) }
+                .sortedBy { it.accountingDate }
+        if (transactions.isEmpty()) return null
+        return LinkedTransactionGroup(
+            groupId = group.id,
+            name = group.name,
+            comment = group.comment,
+            transactions = transactions,
+        )
+    }
+
     override fun updateGroupMeta(
         groupId: Long,
         userId: Long,
