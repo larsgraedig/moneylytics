@@ -124,6 +124,7 @@ export default function AccountsPage() {
               <tr>
                 <th>{t('accounts.columns.iban')}</th>
                 <th>{t('accounts.columns.name')}</th>
+                <th>{t('accounts.columns.lastTransaction')}</th>
                 <th></th>
               </tr>
             </thead>
@@ -150,6 +151,7 @@ export default function AccountsPage() {
                         account.name
                       )}
                     </td>
+                    <td className="acc-cell-last-tx">{account.lastTransactionDate ?? '—'}</td>
                     <td className="acc-cell-actions">
                       {isEditing ? (
                         <>

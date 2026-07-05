@@ -1,7 +1,9 @@
 import { useState } from 'react'
+import { Link, useLocation } from 'react-router-dom'
 import { Trans, useTranslation } from 'react-i18next'
 import { ResponsiveBar } from '@nivo/bar'
-import { fetchAllTransactions, type TransactionItem } from '../api/transactions'
+import { fetchAllTransactions, fetchLinkedGroup, type LinkedGroupItem, type TransactionItem } from '../api/transactions'
+import { GroupCard } from './GroupCard'
 
 type Granularity = 'monthly' | 'yearly'
 type IncomeMode = 'all' | 'unnetted'
@@ -100,8 +102,9 @@ const NIVO_THEME = {
   tooltip: { container: { display: 'none' } },
 }
 
-export default function CashflowPage({ from, to, iban, onNavigateToGroup }: { from: string; to: string; iban?: string; onNavigateToGroup?: (groupId: number) => void }) {
+export default function CashflowPage({ from, to, iban }: { from: string; to: string; iban?: string }) {
   const { t } = useTranslation()
+  const location = useLocation()
   const [granularity, setGranularity] = useState<Granularity>('monthly')
   const [incomeMode, setIncomeMode] = useState<IncomeMode>('all')
   const [expenseMode, setExpenseMode] = useState<ExpenseMode>('all')
@@ -109,6 +112,7 @@ export default function CashflowPage({ from, to, iban, onNavigateToGroup }: { fr
   const [rawData, setRawData] = useState<RawBucket[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [drilldown, setDrilldown] = useState<DrilldownState | null>(null)
+  const [groupModal, setGroupModal] = useState<{ groupId: number; group: LinkedGroupItem | null } | null>(null)
 
   const data: CashflowBucket[] | null = rawData ? toDisplayBuckets(rawData, incomeMode, expenseMode) : null
 
@@ -320,9 +324,70 @@ export default function CashflowPage({ from, to, iban, onNavigateToGroup }: { fr
         <DrilldownModal
           state={drilldown}
           onClose={() => setDrilldown(null)}
-          onNavigateToGroup={onNavigateToGroup ? (groupId) => { setDrilldown(null); onNavigateToGroup(groupId) } : undefined}
+          onOpenGroup={groupId => {
+            setGroupModal({ groupId, group: null })
+            fetchLinkedGroup(groupId).then(g => setGroupModal({ groupId, group: g }))
+          }}
         />
       )}
+
+      {groupModal && (() => {
+        const { groupId, group } = groupModal
+        const close = () => setGroupModal(null)
+        const deepLinkSearch = new URLSearchParams(location.search)
+        deepLinkSearch.set('group', String(groupId))
+
+        return (
+          <div className="txnv-lm-backdrop" onClick={close}>
+            <div className="txnv-lm-modal txnv-lm-modal--group" onClick={e => e.stopPropagation()}>
+              <div className="txnv-lm-header">
+                <Link
+                  className="txnv-lm-title"
+                  to={{ pathname: '/verknuepfungen', search: deepLinkSearch.toString() }}
+                  onClick={close}
+                >
+                  {t('linked.group')} #{groupId} ↗
+                </Link>
+                <button className="txnv-lm-close" onClick={close}>×</button>
+              </div>
+              <div className="txnv-lm-group-body">
+                {!group
+                  ? <span className="txnv-lm-loading">{t('common.loading')}</span>
+                  : (
+                    <GroupCard
+                      group={group}
+                      onMetaChange={(_id, name, comment) => setGroupModal(prev => prev?.group ? { ...prev, group: { ...prev.group, name, comment } } : prev)}
+                      onOffsetCommentChange={(_gid, txId, linkId, comment) => setGroupModal(prev => {
+                        if (!prev?.group) return prev
+                        return {
+                          ...prev,
+                          group: {
+                            ...prev.group,
+                            transactions: prev.group.transactions.map(tx =>
+                              tx.id !== txId ? tx : {
+                                ...tx,
+                                offsetLinks: tx.offsetLinks.map(l => l.id === linkId ? { ...l, comment } : l),
+                              },
+                            ),
+                          },
+                        }
+                      })}
+                      onRemoveTransaction={txId => {
+                        const remaining = group.transactions.filter(tx => tx.id !== txId)
+                        if (remaining.length >= 2) {
+                          setGroupModal(prev => prev ? { ...prev, group: { ...group, transactions: remaining } } : null)
+                        } else {
+                          setGroupModal(null)
+                        }
+                      }}
+                    />
+                  )
+                }
+              </div>
+            </div>
+          </div>
+        )
+      })()}
     </div>
   )
 }
@@ -440,11 +505,11 @@ function NetLayer({ bars, yScale, innerWidth }: any) {
 function DrilldownModal({
   state,
   onClose,
-  onNavigateToGroup,
+  onOpenGroup,
 }: {
   state: DrilldownState
   onClose: () => void
-  onNavigateToGroup?: (groupId: number) => void
+  onOpenGroup: (groupId: number) => void
 }) {
   const { t } = useTranslation()
   const title = state.type === 'income' ? t('cashflow.income') : t('cashflow.expenses')
@@ -533,13 +598,13 @@ function DrilldownModal({
                                 : `(${EUR2.format(nettedAmount)} ${t('cashflow.netted')})`}
                             </span>
                           )}
-                          {nettedAmount > 0 && tx.groups.length > 0 && onNavigateToGroup && (
+                          {tx.groups.length > 0 && (
                             <div className="cf-group-chips">
                               {tx.groups.map(g => (
                                 <button
                                   key={g.id}
                                   className="cf-group-chip"
-                                  onClick={() => onNavigateToGroup(g.id)}
+                                  onClick={() => onOpenGroup(g.id)}
                                 >
                                   {g.name ?? `#${g.id}`}
                                 </button>

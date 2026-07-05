@@ -1,20 +1,19 @@
 import { useEffect, useRef, useState } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { fetchLinkedGroups, type LinkedGroupItem } from '../api/transactions'
 import { GroupCard } from './GroupCard'
 
-export default function LinkedTransactionsPage({
-  highlightGroupId,
-  onHighlightConsumed,
-}: {
-  highlightGroupId?: number | null
-  onHighlightConsumed?: () => void
-}) {
+export default function LinkedTransactionsPage() {
   const { t } = useTranslation()
+  const location = useLocation()
+  const navigate = useNavigate()
   const [groups, setGroups] = useState<LinkedGroupItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const scrolledRef = useRef(false)
+
+  const highlightGroupId = Number(new URLSearchParams(location.search).get('group')) || null
 
   useEffect(() => {
     fetchLinkedGroups()
@@ -31,10 +30,12 @@ export default function LinkedTransactionsPage({
     el.classList.add('ltx-group--highlight')
     const timer = setTimeout(() => {
       el.classList.remove('ltx-group--highlight')
-      onHighlightConsumed?.()
+      const p = new URLSearchParams(location.search)
+      p.delete('group')
+      navigate({ search: p.toString() }, { replace: true })
     }, 2000)
     return () => clearTimeout(timer)
-  }, [highlightGroupId, loading, groups, onHighlightConsumed])
+  }, [highlightGroupId, loading, groups])
 
   function handleMetaChange(groupId: number, name: string | null, comment: string | null) {
     setGroups(prev => prev.map(g => g.groupId === groupId ? { ...g, name, comment } : g))

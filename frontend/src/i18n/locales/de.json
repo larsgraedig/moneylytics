@@ -198,7 +198,8 @@
     "deleteConfirm": "Konto {{iban}} wirklich löschen? Bestehende Transaktionen bleiben erhalten.",
     "columns": {
       "iban": "IBAN",
-      "name": "Name"
+      "name": "Name",
+      "lastTransaction": "Letzte Buchung"
     }
   },
   "limits": {

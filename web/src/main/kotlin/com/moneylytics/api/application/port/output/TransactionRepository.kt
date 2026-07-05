@@ -66,4 +66,6 @@ interface TransactionRepository {
         counterpartyIban: String?,
         categoryGroup: String? = null,
     )
+
+    fun latestTransactionDatesByUserId(userId: Long): Map<String, LocalDate>
 }
