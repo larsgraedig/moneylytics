@@ -9,14 +9,21 @@ function formatDate(iso: string): string {
   return `${d}.${m}.${y}`
 }
 
-function effectiveAmount(tx: TransactionItem): number {
-  if (tx.offsetLinks.length === 0) return tx.amount
-  const totalOffset = tx.offsetLinks.reduce((acc, link) => {
+function committedOffset(tx: TransactionItem): number {
+  return tx.offsetLinks.reduce((acc, link) => {
+    // Same-sign links (e.g. expense↔expense) don't create real offsets
+    if ((tx.amount >= 0) === (link.linkedTransactionAmount >= 0)) return acc
     const offset = (link.amountA !== null && link.amountB !== null)
       ? Math.min(Math.abs(link.amountA), Math.abs(link.amountB))
       : Math.min(Math.abs(link.committedAmount), Math.abs(link.linkedTransactionAmount))
     return acc + offset
   }, 0)
+}
+
+function effectiveAmount(tx: TransactionItem): number {
+  if (tx.offsetLinks.length === 0) return tx.amount
+  const totalOffset = committedOffset(tx)
+  if (totalOffset === 0) return tx.amount
   if (tx.amount >= 0) return tx.amount - totalOffset
   // Expense: fully absorbed → 0, partially → show committed portion
   return totalOffset >= Math.abs(tx.amount) ? 0 : -totalOffset
@@ -89,7 +96,10 @@ export function GroupCard({
 }) {
   const { t } = useTranslation()
   const [saving, setSaving] = useState(false)
-  const netSum = group.transactions.reduce((sum, tx) => sum + (tx.amount >= 0 ? effectiveAmount(tx) : 0), 0)
+  const incomeEff = group.transactions.filter(tx => tx.amount >= 0).reduce((sum, tx) => sum + effectiveAmount(tx), 0)
+  const netSum = Math.abs(incomeEff) > 0.005
+    ? incomeEff
+    : group.transactions.filter(tx => tx.amount < 0).reduce((sum, tx) => sum + tx.amount + committedOffset(tx), 0)
   const txById = Object.fromEntries(group.transactions.map(tx => [tx.id, tx]))
   const isBalanced = Math.abs(netSum) < 0.005
 
