@@ -17,7 +17,9 @@ function effectiveAmount(tx: TransactionItem): number {
       : Math.min(Math.abs(link.committedAmount), Math.abs(link.linkedTransactionAmount))
     return acc + offset
   }, 0)
-  return tx.amount >= 0 ? tx.amount - totalOffset : tx.amount + totalOffset
+  if (tx.amount >= 0) return tx.amount - totalOffset
+  // Expense: fully absorbed → 0, partially → show committed portion
+  return totalOffset >= Math.abs(tx.amount) ? 0 : -totalOffset
 }
 
 function InlineEdit({
@@ -87,7 +89,7 @@ export function GroupCard({
 }) {
   const { t } = useTranslation()
   const [saving, setSaving] = useState(false)
-  const netSum = group.transactions.reduce((sum, tx) => sum + effectiveAmount(tx), 0)
+  const netSum = group.transactions.reduce((sum, tx) => sum + (tx.amount >= 0 ? effectiveAmount(tx) : 0), 0)
   const txById = Object.fromEntries(group.transactions.map(tx => [tx.id, tx]))
   const isBalanced = Math.abs(netSum) < 0.005
 

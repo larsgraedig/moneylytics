@@ -2661,6 +2661,7 @@ body {
   color: #4ade80;
   margin-top: 1px;
 }
+.txnv-effective-amount.negative { color: var(--error); }
 
 .txnv-cell-offsets {
   white-space: nowrap;

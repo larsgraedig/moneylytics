@@ -1027,7 +1027,7 @@ export default function TransactionsPage({
               {EUR.format(row.original.amount)}
             </span>
             {row.original.effectiveAmount !== row.original.amount && (
-              <span className="txnv-effective-amount">
+              <span className={`txnv-effective-amount${row.original.effectiveAmount < 0 ? ' negative' : ''}`}>
                 {EUR.format(row.original.effectiveAmount)}
               </span>
             )}
