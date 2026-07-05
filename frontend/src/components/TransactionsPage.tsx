@@ -1023,14 +1023,7 @@ export default function TransactionsPage({
       case 'amount':
         return (
           <td key={col} className={`txn-cell-amount txnv-col-amount${row.original.amount < 0 ? ' negative' : ' positive'}`}>
-            <span className={row.original.effectiveAmount !== row.original.amount ? 'txnv-amount-crossed' : ''}>
-              {EUR.format(row.original.amount)}
-            </span>
-            {row.original.effectiveAmount !== row.original.amount && (
-              <span className={`txnv-effective-amount${row.original.effectiveAmount < 0 ? ' negative' : ''}`}>
-                {EUR.format(row.original.effectiveAmount)}
-              </span>
-            )}
+            {EUR.format(row.original.amount)}
           </td>
         )
       case 'category':
