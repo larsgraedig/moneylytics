@@ -50,11 +50,11 @@ class TransactionOffsetService(
             "Transactions ${command.transactionId} and ${command.otherTransactionId} are already linked"
         }
 
-        val amountA = rawAmountA?.let { normalizeSign(it, txA.amount) }
-        val amountB = rawAmountB?.let { normalizeSign(it, txB.amount) }
+        val amountA = rawAmountA?.let { normalizeSign(it, txA.amount) } ?: txA.amount
+        val amountB = rawAmountB?.let { normalizeSign(it, txB.amount) } ?: txB.amount
 
-        validateAllocation(txA, amountA)
-        validateAllocation(txB, amountB)
+        validateAllocation(txA, amountA, txB.amount)
+        validateAllocation(txB, amountB, txA.amount)
 
         val groupId =
             resolveGroupForLink(
@@ -64,16 +64,6 @@ class TransactionOffsetService(
                 targetGroupId = command.targetGroupId,
                 forceNewGroup = command.forceNewGroup,
             )
-        if (amountA == null && amountB == null) {
-            return OffsetLinkResult(
-                id = null,
-                transactionAId = aId,
-                transactionBId = bId,
-                amountA = null,
-                amountB = null,
-                groupId = groupId,
-            )
-        }
         return offsetRepository.create(CreateOffsetLinkCommand(aId, bId, amountA, amountB, groupId))
     }
 
@@ -170,11 +160,12 @@ class TransactionOffsetService(
 
     private fun validateAllocation(
         tx: Transaction,
-        myAmount: BigDecimal?,
+        myAmount: BigDecimal,
+        otherTxAmount: BigDecimal,
     ) {
         val txAbs = tx.amount.abs()
-        val alreadyCommitted = tx.offsetLinks.sumOf { it.myCommitted.abs() }
-        val newCommit = myAmount?.abs() ?: txAbs
+        val alreadyCommitted = tx.offsetLinks.sumOf { minOf(it.myCommitted.abs(), it.linkedTransactionAmount.abs()) }
+        val newCommit = minOf(myAmount.abs(), otherTxAmount.abs())
         val total = alreadyCommitted + newCommit
         if (total > txAbs) {
             val maxRemaining = (txAbs - alreadyCommitted).max(BigDecimal.ZERO)
