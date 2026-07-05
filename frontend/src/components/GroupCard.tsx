@@ -11,7 +11,12 @@ function formatDate(iso: string): string {
 
 function effectiveAmount(tx: TransactionItem): number {
   if (tx.offsetLinks.length === 0) return tx.amount
-  const totalOffset = tx.offsetLinks.reduce((acc, link) => acc + Math.min(Math.abs(link.committedAmount), Math.abs(link.linkedTransactionAmount)), 0)
+  const totalOffset = tx.offsetLinks.reduce((acc, link) => {
+    const offset = (link.amountA !== null && link.amountB !== null)
+      ? Math.min(Math.abs(link.amountA), Math.abs(link.amountB))
+      : Math.min(Math.abs(link.committedAmount), Math.abs(link.linkedTransactionAmount))
+    return acc + offset
+  }, 0)
   return tx.amount >= 0 ? tx.amount - totalOffset : tx.amount + totalOffset
 }
 

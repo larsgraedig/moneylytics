@@ -164,7 +164,11 @@ class TransactionOffsetService(
         otherTxAmount: BigDecimal,
     ) {
         val txAbs = tx.amount.abs()
-        val alreadyCommitted = tx.offsetLinks.sumOf { minOf(it.myCommitted.abs(), it.linkedTransactionAmount.abs()) }
+        val alreadyCommitted = tx.offsetLinks.sumOf { link ->
+            val a = link.amountA
+            val b = link.amountB
+            if (a != null && b != null) minOf(a.abs(), b.abs()) else minOf(link.myCommitted.abs(), link.linkedTransactionAmount.abs())
+        }
         val newCommit = minOf(myAmount.abs(), otherTxAmount.abs())
         val total = alreadyCommitted + newCommit
         if (total > txAbs) {
