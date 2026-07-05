@@ -2661,6 +2661,7 @@ body {
   color: #4ade80;
   margin-top: 1px;
 }
+.txnv-effective-amount.negative { color: var(--error); }
 
 .txnv-cell-offsets {
   white-space: nowrap;
@@ -2713,6 +2714,30 @@ body {
 }
 
 .txnv-link-chip-remove:hover { color: var(--error); }
+
+.txnv-group-chip {
+  cursor: pointer;
+  padding: 2px 8px;
+  color: var(--text);
+  transition: border-color 0.12s, background 0.12s;
+}
+
+.txnv-group-chip:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.txnv-lm-group-body {
+  overflow-y: auto;
+  flex: 1;
+}
+
+.txnv-lm-loading {
+  display: block;
+  padding: 24px;
+  color: var(--text-muted);
+  font-size: 12px;
+  text-align: center;
+}
 
 .txnv-add-link-btn {
   height: 20px;
@@ -2789,9 +2814,29 @@ body {
 /* confirming: amount input + buttons */
 .txnv-linking-confirm {
   display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.txnv-partial-row {
+  display: flex;
   align-items: center;
   gap: 4px;
-  flex-wrap: wrap;
+}
+
+.txnv-partial-label {
+  font-size: 10px;
+  font-family: var(--mono);
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100px;
+}
+
+.txnv-linking-actions {
+  display: flex;
+  gap: 4px;
 }
 
 .txnv-partial-input {
@@ -2845,6 +2890,229 @@ body {
   font-family: var(--mono);
   font-size: 10px;
   color: var(--error);
+}
+
+.txnv-alloc-breakdown {
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  border-radius: 5px;
+  overflow: hidden;
+  font-family: var(--mono);
+  font-size: 11px;
+}
+
+.txnv-alloc-breakdown-header {
+  background: rgba(239, 68, 68, 0.12);
+  color: var(--error);
+  padding: 5px 10px;
+  font-size: 10px;
+  letter-spacing: 0.03em;
+}
+
+.txnv-alloc-breakdown-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  padding: 4px 10px;
+}
+
+.txnv-alloc-breakdown-row--total {
+  border-top: 1px solid var(--border);
+  color: var(--text);
+  font-weight: 500;
+}
+
+.txnv-alloc-breakdown-row--link {
+  color: var(--text-muted);
+  padding-left: 18px;
+}
+
+.txnv-alloc-breakdown-row--remaining {
+  border-top: 1px solid var(--border);
+  color: #4ade80;
+  font-weight: 500;
+}
+
+.txnv-group-select-label {
+  font-size: 10px;
+  color: var(--text-muted);
+  font-family: var(--mono);
+}
+
+.txnv-group-select-options {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.txnv-group-option-btn {
+  height: 22px;
+  padding: 0 8px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 10px;
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.12s, background 0.12s;
+}
+
+.txnv-group-option-btn:hover { border-color: var(--accent); background: rgba(255,255,255,0.04); }
+
+.txnv-group-option-btn--new {
+  color: #4ade80;
+  border-color: rgba(74, 222, 128, 0.3);
+}
+
+.txnv-group-option-btn--new:hover { border-color: #4ade80; background: rgba(74, 222, 128, 0.06); }
+
+/* ── link modal ─────────────────────────────────── */
+.txnv-lm-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+}
+
+.txnv-lm-modal {
+  background: var(--bg-elevated, #1e1e2e);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  width: 480px;
+  max-width: 92vw;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  overflow: hidden;
+}
+
+.txnv-lm-modal.txnv-lm-modal--group {
+  width: 1100px;
+  max-width: 96vw;
+  max-height: 90vh;
+}
+
+.txnv-lm-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.txnv-lm-title {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+  letter-spacing: 0.02em;
+}
+
+.txnv-lm-close {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 2px;
+  transition: color 0.12s;
+}
+
+.txnv-lm-close:hover { color: var(--text); }
+
+.txnv-lm-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+}
+
+.txnv-lm-tx-card {
+  display: grid;
+  grid-template-columns: 76px 1fr auto;
+  align-items: center;
+  gap: 8px;
+  background: var(--bg-row, rgba(255,255,255,0.03));
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 9px 12px;
+}
+
+.txnv-lm-tx-date {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.txnv-lm-tx-name {
+  font-size: 12px;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.txnv-lm-tx-amount {
+  font-family: var(--mono);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.txnv-lm-tx-amount.positive { color: #4ade80; }
+.txnv-lm-tx-amount.negative { color: var(--text); }
+
+.txnv-lm-divider {
+  text-align: center;
+  color: var(--text-dim);
+  font-size: 14px;
+  line-height: 1;
+  margin: -4px 0;
+}
+
+.txnv-lm-amounts {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+}
+
+.txnv-lm-amount-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.txnv-lm-amount-label {
+  flex: 1;
+  font-size: 11px;
+  font-family: var(--mono);
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.txnv-lm-group-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+}
+
+.txnv-lm-footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
 }
 
 .txnv-col-check {
@@ -3607,6 +3875,17 @@ body {
   padding-left: 10px !important;
 }
 
+.ltx-offset-arrow {
+  display: inline-block;
+  width: 14px;
+  font-size: 10px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.ltx-offset-arrow--in  { color: #4ade80; }
+.ltx-offset-arrow--out { color: var(--error); }
+
 .ltx-offset-partial {
   display: inline-block;
   font-size: 10px;
@@ -3622,6 +3901,34 @@ body {
   text-align: right;
   font-family: var(--mono);
   white-space: nowrap;
+}
+
+.ltx-col-remove {
+  width: 24px;
+  padding: 0 4px !important;
+  text-align: center;
+}
+
+.ltx-remove-btn {
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  padding: 2px 4px;
+  border-radius: 3px;
+  opacity: 0;
+  transition: opacity 0.12s, color 0.12s;
+}
+
+.ltx-row:hover .ltx-remove-btn {
+  opacity: 1;
+}
+
+.ltx-remove-btn:hover {
+  color: var(--error);
+  opacity: 1;
 }
 
 .ltx-amount--pos     { color: #4ade80; }
@@ -3657,6 +3964,14 @@ body {
   align-items: center;
   gap: 8px;
   min-width: 0;
+}
+
+.ltx-group-id {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text-dim);
+  letter-spacing: 0.03em;
+  flex-shrink: 0;
 }
 
 .ltx-group-comment {
@@ -3719,4 +4034,186 @@ body {
   font-size: 11px;
   color: var(--text-muted);
   font-family: var(--mono);
+}
+
+/* ── Budget detail page ────────────────────────────────── */
+
+.bdg-cell-name--link { cursor: pointer; }
+.bdg-cell-name--link:hover { color: var(--accent); text-decoration: underline; }
+
+.bdt-page {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.bdt-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+.bdt-back-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 13px;
+  font-family: inherit;
+  padding: 4px 0;
+  white-space: nowrap;
+}
+.bdt-back-btn:hover { color: var(--text); }
+
+.bdt-title-block {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+.bdt-budget-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.bdt-budget-note {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.bdt-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+.bdt-meta-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  align-items: flex-end;
+}
+.bdt-meta-label {
+  font-size: 10px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.bdt-meta-value { font-size: 14px; font-weight: 500; }
+.bdt-meta-sep { color: var(--border-hi); font-size: 16px; }
+.bdt-meta-bar { margin-top: 4px; }
+
+.bdt-assign-btn { flex-shrink: 0; }
+
+.bdt-body {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  gap: 0;
+}
+
+.bdt-chart-section {
+  flex: 3;
+  display: flex;
+  flex-direction: column;
+  padding: 16px 20px;
+  border-right: 1px solid var(--border);
+  overflow: hidden;
+}
+
+.bdt-txns-section {
+  flex: 2;
+  display: flex;
+  flex-direction: column;
+  padding: 16px 0 0;
+  overflow: hidden;
+  min-width: 280px;
+}
+
+.bdt-section-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  margin-bottom: 12px;
+  display: block;
+  padding: 0 20px;
+}
+.bdt-chart-section .bdt-section-label { padding: 0; }
+
+.bdt-chart-wrap {
+  flex: 1;
+  min-height: 0;
+}
+
+.bdt-txns-scroll {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.bdt-txns-table { width: 100%; }
+.bdt-txns-table thead th { padding: 4px 12px; }
+.bdt-txns-table tbody td { padding: 6px 12px; }
+
+.bdt-cell-cat { max-width: 180px; }
+.bdt-cell-sub { color: var(--text-muted); font-size: 11px; }
+.bdt-cell-purpose {
+  display: block;
+  font-size: 11px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 160px;
+}
+
+.bdt-total-row {
+  padding: 0 12px;
+  flex-shrink: 0;
+}
+
+/* ── Cashflow drilldown group chips ───────────────────── */
+
+.cf-group-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+  justify-content: flex-end;
+}
+
+.cf-group-chip {
+  background: none;
+  border: 1px solid var(--border-hi);
+  border-radius: 4px;
+  color: var(--accent);
+  cursor: pointer;
+  font-family: var(--mono);
+  font-size: 11px;
+  padding: 1px 6px;
+  white-space: nowrap;
+}
+.cf-group-chip:hover { border-color: var(--accent); background: var(--accent-glow); }
+
+/* ── LinkedTransactionsPage highlight ─────────────────── */
+
+@keyframes ltx-highlight-pulse {
+  0%   { box-shadow: 0 0 0 2px var(--accent); }
+  70%  { box-shadow: 0 0 0 2px var(--accent-dim); }
+  100% { box-shadow: none; }
+}
+
+.ltx-group--highlight > .ltx-group {
+  animation: ltx-highlight-pulse 2s ease-out forwards;
 }

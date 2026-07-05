@@ -17,11 +17,26 @@ interface ManageTransactionOffsetUseCase {
         name: String?,
         comment: String?,
     )
+
+    fun updateOffsetComment(
+        linkId: Long,
+        userId: Long,
+        comment: String?,
+    )
+
+    fun removeTransactionFromGroup(
+        txId: Long,
+        groupId: Long,
+        userId: Long,
+    )
 }
 
 data class LinkTransactionsCommand(
     val transactionId: Long,
     val otherTransactionId: Long,
-    val partialAmount: BigDecimal?,
+    val myAmount: BigDecimal?,
+    val otherAmount: BigDecimal?,
     val userId: Long,
+    val targetGroupId: Long? = null,
+    val forceNewGroup: Boolean = false,
 )

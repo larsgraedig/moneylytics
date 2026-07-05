@@ -10,6 +10,7 @@ import {
   type Budget,
   type BudgetTransactionLink,
 } from '../api/budgets'
+import BudgetDetail from './BudgetDetail'
 import { fetchCategories, type CategoryGroup } from '../api/rawImport'
 import {
   fetchAccounts,
@@ -63,6 +64,7 @@ export default function BudgetsPage({ from, to, iban }: { from: string; to: stri
   const [saving, setSaving] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
   const [drilldownId, setDrilldownId] = useState<number | null>(null)
+  const [detailBudgetId, setDetailBudgetId] = useState<number | null>(null)
   const [assigningBudget, setAssigningBudget] = useState<Budget | null>(null)
 
   useEffect(() => {
@@ -74,6 +76,7 @@ export default function BudgetsPage({ from, to, iban }: { from: string; to: stri
   }, [])
 
   const drilldownBudget = budgets.find(b => b.id === drilldownId) ?? null
+  const detailBudget = budgets.find(b => b.id === detailBudgetId) ?? null
 
   function startCreate() {
     setCreatingNew(true)
@@ -126,6 +129,7 @@ export default function BudgetsPage({ from, to, iban }: { from: string; to: stri
       setBudgets(prev => prev.filter(b => b.id !== id))
       if (editingId === id) cancelForm()
       if (drilldownId === id) setDrilldownId(null)
+      if (detailBudgetId === id) setDetailBudgetId(null)
     } catch {
       setFormError(t('budgets.deleteFailed'))
     }
@@ -162,6 +166,17 @@ export default function BudgetsPage({ from, to, iban }: { from: string; to: stri
   }
 
   if (loading) return <div className="bdg-page"><p className="hint">{t('common.fetching')}</p></div>
+
+  if (detailBudget != null) {
+    return (
+      <BudgetDetail
+        budget={detailBudget}
+        onBack={() => setDetailBudgetId(null)}
+        onRemoveLink={linkId => handleRemoveLink(detailBudget.id, linkId)}
+        onAssign={() => setAssigningBudget(detailBudget)}
+      />
+    )
+  }
 
   return (
     <div className="bdg-page">
@@ -229,7 +244,10 @@ export default function BudgetsPage({ from, to, iban }: { from: string; to: stri
                     className={`bdg-row${isEditing ? ' bdg-row--editing' : ''}`}
                     onClick={() => !isEditing && setDrilldownId(budget.id)}
                   >
-                    <td className="bdg-cell-name">
+                    <td
+                      className="bdg-cell-name bdg-cell-name--link"
+                      onClick={e => { e.stopPropagation(); setDetailBudgetId(budget.id) }}
+                    >
                       {budget.name}
                       {budget.note && <span className="bdg-cell-note" title={budget.note}>  {budget.note}</span>}
                     </td>

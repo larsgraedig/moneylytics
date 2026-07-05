@@ -15,10 +15,24 @@ data class Transaction(
     val accountIban: String,
     val id: Long? = null,
     val offsetLinks: List<TransactionOffsetLink> = emptyList(),
+    val groups: List<TransactionGroupSummary> = emptyList(),
     val comment: String? = null,
     val purpose: String? = null,
     val counterpartyName: String? = null,
     val counterpartyIban: String? = null,
 ) {
-    fun effectiveAmount(): BigDecimal = amount + offsetLinks.sumOf { it.contribution }
+    fun effectiveAmount(): BigDecimal {
+        if (offsetLinks.isEmpty()) return amount
+        val totalOffset =
+            offsetLinks.sumOf { link ->
+                val a = link.amountA
+                val b = link.amountB
+                when {
+                    a == null && b == null -> BigDecimal.ZERO
+                    a != null && b != null -> minOf(a.abs(), b.abs())
+                    else -> minOf(link.myCommitted.abs(), link.linkedTransactionAmount.abs())
+                }
+            }
+        return if (amount >= BigDecimal.ZERO) amount - totalOffset else amount + totalOffset
+    }
 }

@@ -29,11 +29,32 @@ export async function fetchAccounts(): Promise<Account[]> {
   return data.accounts
 }
 
+export interface GroupSummary {
+  id: number
+  name: string | null
+}
+
 export interface OffsetLinkItem {
   id: number
   linkedTransactionId: number
   linkedTransactionAmount: number
-  partialAmount: number | null
+  amountA: number | null
+  amountB: number | null
+  committedAmount: number
+  comment: string | null
+  groupId: number | null
+}
+
+export interface AllocationError {
+  transactionId: number
+  maxRemainingAmount: number
+  existingLinks: Array<{ linkId: number; linkedTransactionId: number; committedAmount: number }>
+}
+
+export class AllocationExceededError extends Error {
+  constructor(public readonly data: AllocationError) {
+    super('Allocation exceeded')
+  }
 }
 
 export interface TransactionItem {
@@ -48,6 +69,7 @@ export interface TransactionItem {
   effectiveAmount: number
   currency: string
   offsetLinks: OffsetLinkItem[]
+  groups: GroupSummary[]
   comment: string | null
   purpose: string | null
   counterpartyName: string | null
@@ -60,11 +82,16 @@ export interface TransactionListResponse {
 }
 
 export function computeEffectiveAmount(amount: number, offsetLinks: OffsetLinkItem[]): number {
-  return offsetLinks.reduce((acc, link) => {
-    const offsetAmt = link.partialAmount !== null ? link.partialAmount : Math.abs(link.linkedTransactionAmount)
-    const contribution = link.linkedTransactionAmount >= 0 ? offsetAmt : -offsetAmt
-    return acc + contribution
-  }, amount)
+  if (offsetLinks.length === 0) return amount
+  const totalOffset = offsetLinks.reduce((acc, link) => {
+    const offset = (link.amountA !== null && link.amountB !== null)
+      ? Math.min(Math.abs(link.amountA), Math.abs(link.amountB))
+      : (link.amountA === null && link.amountB === null)
+        ? 0
+        : Math.min(Math.abs(link.committedAmount), Math.abs(link.linkedTransactionAmount))
+    return acc + offset
+  }, 0)
+  return amount >= 0 ? amount - totalOffset : amount + totalOffset
 }
 
 export async function fetchTransactionList(
@@ -119,22 +146,37 @@ export async function updateTransactionCategory(
 }
 
 export interface OffsetLinkResult {
-  id: number
+  id: number | null
   transactionAId: number
   transactionBId: number
-  partialAmount: number | null
+  amountA: number | null
+  amountB: number | null
+  groupId: number
 }
 
 export async function linkTransactions(
   transactionId: number,
   otherTransactionId: number,
-  partialAmount?: number,
+  myAmount?: number,
+  otherAmount?: number,
+  targetGroupId?: number,
+  forceNewGroup?: boolean,
 ): Promise<OffsetLinkResult> {
   const res = await fetchWithUser(`/transactions/${transactionId}/offsets`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ otherTransactionId, partialAmount: partialAmount ?? null }),
+    body: JSON.stringify({
+      otherTransactionId,
+      myAmount: myAmount ?? null,
+      otherAmount: otherAmount ?? null,
+      targetGroupId: targetGroupId ?? null,
+      forceNewGroup: forceNewGroup ?? false,
+    }),
   })
+  if (res.status === 422) {
+    const data = await res.json() as AllocationError
+    throw new AllocationExceededError(data)
+  }
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
   return res.json() as Promise<OffsetLinkResult>
 }
@@ -169,6 +211,12 @@ export async function fetchLinkedGroups(): Promise<LinkedGroupsResponse> {
   return res.json() as Promise<LinkedGroupsResponse>
 }
 
+export async function fetchLinkedGroup(groupId: number): Promise<LinkedGroupItem> {
+  const res = await fetchWithUser(`/transactions/linked/${groupId}`)
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  return res.json() as Promise<LinkedGroupItem>
+}
+
 export async function updateLinkedGroupMeta(groupId: number, name: string | null, comment: string | null): Promise<void> {
   const res = await fetchWithUser(`/transactions/linked/${groupId}`, {
     method: 'PATCH',
@@ -193,6 +241,20 @@ export async function updateTransactionAccountingDate(
 
 export async function unlinkTransaction(linkId: number): Promise<void> {
   const res = await fetchWithUser(`/transactions/offsets/${linkId}`, { method: 'DELETE' })
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+}
+
+export async function removeTransactionFromGroup(txId: number, groupId: number): Promise<void> {
+  const res = await fetchWithUser(`/transactions/${txId}/groups/${groupId}`, { method: 'DELETE' })
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+}
+
+export async function updateOffsetLinkComment(linkId: number, comment: string | null): Promise<void> {
+  const res = await fetchWithUser(`/transactions/offsets/${linkId}/comment`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ comment }),
+  })
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
 }
 

@@ -20,17 +20,27 @@ data class TransactionItem(
     val effectiveAmount: BigDecimal,
     val currency: String,
     val offsetLinks: List<OffsetLinkItem>,
+    val groups: List<GroupSummaryDto>,
     val comment: String?,
     val purpose: String?,
     val counterpartyName: String?,
     val counterpartyIban: String?,
 )
 
+data class GroupSummaryDto(
+    val id: Long,
+    val name: String?,
+)
+
 data class OffsetLinkItem(
     val id: Long,
     val linkedTransactionId: Long,
     val linkedTransactionAmount: BigDecimal,
-    val partialAmount: BigDecimal?,
+    val amountA: BigDecimal?,
+    val amountB: BigDecimal?,
+    val committedAmount: BigDecimal,
+    val comment: String?,
+    val groupId: Long?,
 )
 
 fun Transaction.toItem() =
@@ -51,9 +61,14 @@ fun Transaction.toItem() =
                     id = link.id,
                     linkedTransactionId = link.linkedTransactionId,
                     linkedTransactionAmount = link.linkedTransactionAmount,
-                    partialAmount = link.partialAmount,
+                    amountA = link.amountA,
+                    amountB = link.amountB,
+                    committedAmount = link.myCommitted,
+                    comment = link.comment,
+                    groupId = link.groupId,
                 )
             },
+        groups = groups.map { GroupSummaryDto(it.id, it.name) },
         comment = comment,
         purpose = purpose,
         counterpartyName = counterpartyName,

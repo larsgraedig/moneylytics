@@ -70,4 +70,34 @@ interface TransactionOffsetJpaRepository : JpaRepository<TransactionOffsetEntity
         @Param("toGroupId") toGroupId: Long,
         @Param("ids") ids: Collection<Long>,
     )
+
+    @Query(
+        """
+        SELECT o FROM TransactionOffsetEntity o
+        JOIN FETCH o.transactionA
+        JOIN FETCH o.transactionB
+        WHERE (o.transactionA.id = :txId OR o.transactionB.id = :txId)
+        AND o.groupId = :groupId
+        AND (o.transactionA.user.id = :userId OR o.transactionB.user.id = :userId)
+        """,
+    )
+    fun findByTxAndGroupId(
+        @Param("txId") txId: Long,
+        @Param("groupId") groupId: Long,
+        @Param("userId") userId: Long,
+    ): List<TransactionOffsetEntity>
+
+    @Modifying
+    @Query(
+        """
+        UPDATE TransactionOffsetEntity o SET o.comment = :comment
+        WHERE o.id = :id
+        AND (o.transactionA.user.id = :userId OR o.transactionB.user.id = :userId)
+        """,
+    )
+    fun updateComment(
+        @Param("id") id: Long,
+        @Param("userId") userId: Long,
+        @Param("comment") comment: String?,
+    )
 }

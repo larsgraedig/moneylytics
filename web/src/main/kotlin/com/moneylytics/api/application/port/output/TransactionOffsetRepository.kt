@@ -22,20 +22,34 @@ interface TransactionOffsetRepository {
         toGroupId: Long,
         memberIds: Set<Long>,
     )
+
+    fun updateComment(
+        linkId: Long,
+        userId: Long,
+        comment: String?,
+    )
+
+    fun deleteByTxAndGroupId(
+        txId: Long,
+        groupId: Long,
+        userId: Long,
+    )
 }
 
 data class CreateOffsetLinkCommand(
     val transactionAId: Long,
     val transactionBId: Long,
-    val partialAmount: BigDecimal?,
+    val amountA: BigDecimal?,
+    val amountB: BigDecimal?,
     val groupId: Long,
 )
 
 data class OffsetLinkResult(
-    val id: Long,
+    val id: Long?,
     val transactionAId: Long,
     val transactionBId: Long,
-    val partialAmount: BigDecimal?,
+    val amountA: BigDecimal?,
+    val amountB: BigDecimal?,
     val groupId: Long,
 )
 

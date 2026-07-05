@@ -28,10 +28,14 @@ class TransactionOffsetEntity(
     @JoinColumn(name = "transaction_b_id", nullable = false)
     @OnDelete(action = OnDeleteAction.CASCADE)
     val transactionB: TransactionEntity,
-    @Column(precision = 19, scale = 4)
-    val amount: BigDecimal? = null,
+    @Column(name = "amount_a", precision = 19, scale = 4)
+    val amountA: BigDecimal? = null,
+    @Column(name = "amount_b", precision = 19, scale = 4)
+    val amountB: BigDecimal? = null,
     @Column(name = "group_id")
     val groupId: Long? = null,
+    @Column(name = "comment", columnDefinition = "TEXT")
+    val comment: String? = null,
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     val id: Long? = null,

@@ -1,5 +1,6 @@
 package com.moneylytics.api.adapter.input.web
 
+import com.moneylytics.api.application.port.input.AllocationExceededException
 import com.moneylytics.api.application.port.input.GetLinkedTransactionsUseCase
 import com.moneylytics.api.application.port.input.LinkTransactionsCommand
 import com.moneylytics.api.application.port.input.ManageTransactionOffsetUseCase
@@ -22,15 +23,31 @@ import java.math.BigDecimal
 
 data class LinkTransactionRequest(
     val otherTransactionId: Long,
-    val partialAmount: BigDecimal? = null,
+    val myAmount: BigDecimal? = null,
+    val otherAmount: BigDecimal? = null,
+    val targetGroupId: Long? = null,
+    val forceNewGroup: Boolean = false,
 )
 
 data class OffsetLinkResponse(
-    val id: Long,
+    val id: Long?,
     val transactionAId: Long,
     val transactionBId: Long,
-    val partialAmount: BigDecimal?,
+    val amountA: BigDecimal?,
+    val amountB: BigDecimal?,
     val groupId: Long,
+)
+
+data class AllocationErrorResponse(
+    val transactionId: Long,
+    val maxRemainingAmount: BigDecimal,
+    val existingLinks: List<ExistingLinkDto>,
+)
+
+data class ExistingLinkDto(
+    val linkId: Long,
+    val linkedTransactionId: Long,
+    val committedAmount: BigDecimal,
 )
 
 data class LinkedGroupResponse(
@@ -46,6 +63,10 @@ data class LinkedGroupItem(
 
 data class UpdateGroupMetaRequest(
     val name: String?,
+    val comment: String?,
+)
+
+data class UpdateOffsetCommentRequest(
     val comment: String?,
 )
 
@@ -75,6 +96,26 @@ class TransactionOffsetController(
             )
         }
 
+    @GetMapping("/linked/{groupId}")
+    suspend fun getLinkedGroup(
+        @PathVariable groupId: Long,
+        @AuthenticationPrincipal principal: UserDetails,
+    ): ResponseEntity<LinkedGroupItem> =
+        withContext(Dispatchers.IO) {
+            val userId = resolveUserUseCase.resolveUser(principal.username)
+            val group =
+                getLinkedTransactionsUseCase.getLinkedGroup(groupId, userId)
+                    ?: return@withContext ResponseEntity.notFound().build()
+            ResponseEntity.ok(
+                LinkedGroupItem(
+                    groupId = group.groupId,
+                    name = group.name,
+                    comment = group.comment,
+                    transactions = group.transactions.map { it.toItem() },
+                ),
+            )
+        }
+
     @PatchMapping("/linked/{groupId}")
     suspend fun updateGroupMeta(
         @PathVariable groupId: Long,
@@ -92,7 +133,7 @@ class TransactionOffsetController(
         @PathVariable id: Long,
         @RequestBody request: LinkTransactionRequest,
         @AuthenticationPrincipal principal: UserDetails,
-    ): ResponseEntity<OffsetLinkResponse> =
+    ): ResponseEntity<*> =
         withContext(Dispatchers.IO) {
             val userId = resolveUserUseCase.resolveUser(principal.username)
             val result =
@@ -101,18 +142,56 @@ class TransactionOffsetController(
                         LinkTransactionsCommand(
                             transactionId = id,
                             otherTransactionId = request.otherTransactionId,
-                            partialAmount = request.partialAmount,
+                            myAmount = request.myAmount,
+                            otherAmount = request.otherAmount,
                             userId = userId,
+                            targetGroupId = request.targetGroupId,
+                            forceNewGroup = request.forceNewGroup,
                         ),
                     )
                 }.getOrElse { e ->
                     return@withContext when (e) {
-                        is IllegalArgumentException -> ResponseEntity.notFound().build()
-                        is IllegalStateException -> ResponseEntity.badRequest().build()
+                        is IllegalArgumentException -> ResponseEntity.notFound().build<Any>()
+                        is IllegalStateException -> ResponseEntity.badRequest().build<Any>()
+                        is AllocationExceededException ->
+                            ResponseEntity.status(422).body(
+                                AllocationErrorResponse(
+                                    transactionId = e.transactionId,
+                                    maxRemainingAmount = e.maxRemaining,
+                                    existingLinks =
+                                        e.existingLinks.map {
+                                            ExistingLinkDto(it.linkId, it.linkedTransactionId, it.committedAmount)
+                                        },
+                                ),
+                            )
                         else -> throw e
                     }
                 }
             ResponseEntity.ok(result.toResponse())
+        }
+
+    @PatchMapping("/offsets/{linkId}/comment")
+    suspend fun updateOffsetComment(
+        @PathVariable linkId: Long,
+        @RequestBody request: UpdateOffsetCommentRequest,
+        @AuthenticationPrincipal principal: UserDetails,
+    ): ResponseEntity<Void> =
+        withContext(Dispatchers.IO) {
+            val userId = resolveUserUseCase.resolveUser(principal.username)
+            manageTransactionOffsetUseCase.updateOffsetComment(linkId, userId, request.comment)
+            ResponseEntity.noContent().build()
+        }
+
+    @DeleteMapping("/{txId}/groups/{groupId}")
+    suspend fun removeTransactionFromGroup(
+        @PathVariable txId: Long,
+        @PathVariable groupId: Long,
+        @AuthenticationPrincipal principal: UserDetails,
+    ): ResponseEntity<Void> =
+        withContext(Dispatchers.IO) {
+            val userId = resolveUserUseCase.resolveUser(principal.username)
+            manageTransactionOffsetUseCase.removeTransactionFromGroup(txId, groupId, userId)
+            ResponseEntity.noContent().build()
         }
 
     @DeleteMapping("/offsets/{linkId}")
@@ -131,7 +210,8 @@ class TransactionOffsetController(
             id = id,
             transactionAId = transactionAId,
             transactionBId = transactionBId,
-            partialAmount = partialAmount,
+            amountA = amountA,
+            amountB = amountB,
             groupId = groupId,
         )
 }

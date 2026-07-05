@@ -19,7 +19,8 @@ class TransactionOffsetPersistenceAdapter(
                 TransactionOffsetEntity(
                     transactionA = transactionJpaRepository.getReferenceById(command.transactionAId),
                     transactionB = transactionJpaRepository.getReferenceById(command.transactionBId),
-                    amount = command.partialAmount,
+                    amountA = command.amountA,
+                    amountB = command.amountB,
                     groupId = command.groupId,
                 ),
             )
@@ -27,7 +28,8 @@ class TransactionOffsetPersistenceAdapter(
             id = requireNotNull(saved.id),
             transactionAId = command.transactionAId,
             transactionBId = command.transactionBId,
-            partialAmount = command.partialAmount,
+            amountA = command.amountA,
+            amountB = command.amountB,
             groupId = command.groupId,
         )
     }
@@ -61,5 +63,24 @@ class TransactionOffsetPersistenceAdapter(
     ) {
         if (memberIds.isEmpty()) return
         offsetJpaRepository.updateGroupId(fromGroupId, toGroupId, memberIds)
+    }
+
+    @Transactional
+    override fun updateComment(
+        linkId: Long,
+        userId: Long,
+        comment: String?,
+    ) {
+        offsetJpaRepository.updateComment(linkId, userId, comment)
+    }
+
+    @Transactional
+    override fun deleteByTxAndGroupId(
+        txId: Long,
+        groupId: Long,
+        userId: Long,
+    ) {
+        val links = offsetJpaRepository.findByTxAndGroupId(txId, groupId, userId)
+        offsetJpaRepository.deleteAll(links)
     }
 }

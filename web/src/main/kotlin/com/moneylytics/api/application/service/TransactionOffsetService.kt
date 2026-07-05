@@ -1,5 +1,7 @@
 package com.moneylytics.api.application.service
 
+import com.moneylytics.api.application.port.input.AllocationExceededException
+import com.moneylytics.api.application.port.input.ExistingLinkSummary
 import com.moneylytics.api.application.port.input.GetLinkedTransactionsUseCase
 import com.moneylytics.api.application.port.input.LinkTransactionsCommand
 import com.moneylytics.api.application.port.input.LinkedTransactionGroup
@@ -24,32 +26,58 @@ class TransactionOffsetService(
         require(command.transactionId != command.otherTransactionId) {
             "A transaction cannot be linked to itself"
         }
-        val txA =
+        val txSource =
             requireNotNull(transactionRepository.findByIdAndUserId(command.transactionId, command.userId)) {
                 "Transaction ${command.transactionId} not found"
             }
-        val txB =
+        val txOther =
             requireNotNull(transactionRepository.findByIdAndUserId(command.otherTransactionId, command.userId)) {
                 "Transaction ${command.otherTransactionId} not found"
             }
 
+        val sourceIsA = command.transactionId < command.otherTransactionId
         val (aId, bId) =
-            if (command.transactionId < command.otherTransactionId) {
+            if (sourceIsA) {
                 command.transactionId to command.otherTransactionId
             } else {
                 command.otherTransactionId to command.transactionId
             }
+        val (txA, txB) = if (sourceIsA) txSource to txOther else txOther to txSource
+        val rawAmountA = if (sourceIsA) command.myAmount else command.otherAmount
+        val rawAmountB = if (sourceIsA) command.otherAmount else command.myAmount
 
         check(!offsetRepository.existsByPair(aId, bId)) {
             "Transactions ${command.transactionId} and ${command.otherTransactionId} are already linked"
         }
 
-        validateForNewLink(txA, command.partialAmount)
-        validateForNewLink(txB, command.partialAmount)
+        val noOffset = command.myAmount == null && command.otherAmount == null
+        val amountA = if (noOffset) null else rawAmountA?.let { normalizeSign(it, txA.amount) } ?: txA.amount
+        val amountB = if (noOffset) null else rawAmountB?.let { normalizeSign(it, txB.amount) } ?: txB.amount
 
-        val groupId = resolveGroupForLink(command.transactionId, command.otherTransactionId, command.userId)
+        if (!noOffset) {
+            validateAllocation(txA, amountA!!, txB.amount)
+            validateAllocation(txB, amountB!!, txA.amount)
+        }
 
-        return offsetRepository.create(CreateOffsetLinkCommand(aId, bId, command.partialAmount, groupId))
+        val groupId =
+            resolveGroupForLink(
+                txAId = aId,
+                txBId = bId,
+                userId = command.userId,
+                targetGroupId = command.targetGroupId,
+                forceNewGroup = command.forceNewGroup,
+            )
+        if (noOffset) {
+            return OffsetLinkResult(
+                id = null,
+                transactionAId = aId,
+                transactionBId = bId,
+                amountA = null,
+                amountB = null,
+                groupId = groupId,
+            )
+        }
+        return offsetRepository.create(CreateOffsetLinkCommand(aId, bId, amountA, amountB, groupId))
     }
 
     override fun unlinkTransactions(
@@ -57,7 +85,7 @@ class TransactionOffsetService(
         userId: Long,
     ): Boolean {
         val deleted = offsetRepository.delete(linkId, userId) ?: return false
-        deleted.groupId?.let { cleanupGroup(it, userId) }
+        deleted.groupId?.let { cleanupGroup(it, userId, fromUnlink = true) }
         return true
     }
 
@@ -74,7 +102,12 @@ class TransactionOffsetService(
         return groups
             .mapNotNull { group ->
                 val memberIds = groupMemberIds[group.id] ?: return@mapNotNull null
-                val transactions = memberIds.mapNotNull { txById[it] }.sortedBy { it.accountingDate }
+                val transactions =
+                    memberIds
+                        .mapNotNull { txById[it] }
+                        .map { tx ->
+                            tx.copy(offsetLinks = tx.offsetLinks.filter { it.groupId == group.id })
+                        }.sortedBy { it.accountingDate }
                 if (transactions.isEmpty()) return@mapNotNull null
                 LinkedTransactionGroup(
                     groupId = group.id,
@@ -83,6 +116,28 @@ class TransactionOffsetService(
                     transactions = transactions,
                 )
             }.sortedByDescending { it.transactions.first().accountingDate }
+    }
+
+    override fun getLinkedGroup(
+        groupId: Long,
+        userId: Long,
+    ): LinkedTransactionGroup? {
+        val group = groupRepository.findById(groupId, userId) ?: return null
+        val memberIds = groupRepository.findMemberIds(groupId)
+        if (memberIds.isEmpty()) return null
+        val txById = transactionRepository.findByIdsAndUserId(memberIds.toSet(), userId).associateBy { it.id!! }
+        val transactions =
+            memberIds
+                .mapNotNull { txById[it] }
+                .map { tx -> tx.copy(offsetLinks = tx.offsetLinks.filter { it.groupId == groupId }) }
+                .sortedBy { it.accountingDate }
+        if (transactions.isEmpty()) return null
+        return LinkedTransactionGroup(
+            groupId = group.id,
+            name = group.name,
+            comment = group.comment,
+            transactions = transactions,
+        )
     }
 
     override fun updateGroupMeta(
@@ -94,28 +149,69 @@ class TransactionOffsetService(
         groupRepository.update(groupId, userId, name, comment)
     }
 
-    private fun validateForNewLink(
-        tx: Transaction,
-        partialAmount: BigDecimal?,
+    override fun updateOffsetComment(
+        linkId: Long,
+        userId: Long,
+        comment: String?,
     ) {
-        val existingLinks = tx.offsetLinks
-        if (existingLinks.isEmpty()) return
+        offsetRepository.updateComment(linkId, userId, comment)
+    }
 
-        val nullLinkCount = existingLinks.count { it.partialAmount == null }
+    override fun removeTransactionFromGroup(
+        txId: Long,
+        groupId: Long,
+        userId: Long,
+    ) {
+        offsetRepository.deleteByTxAndGroupId(txId, groupId, userId)
+        groupRepository.removeMember(groupId, txId)
+        cleanupGroup(groupId, userId)
+    }
 
-        if (partialAmount == null) {
-            check(nullLinkCount == 0) {
-                "Transaction ${tx.id} already has a filling link without partial amount; specify a partial amount for this new link"
+    private fun normalizeSign(
+        amount: BigDecimal,
+        txAmount: BigDecimal,
+    ): BigDecimal = if (txAmount < BigDecimal.ZERO) -amount.abs() else amount.abs()
+
+    private fun sameSign(
+        a: BigDecimal,
+        b: BigDecimal,
+    ) = (a >= BigDecimal.ZERO) == (b >= BigDecimal.ZERO)
+
+    private fun validateAllocation(
+        tx: Transaction,
+        myAmount: BigDecimal,
+        otherTxAmount: BigDecimal,
+    ) {
+        // Same-sign links (e.g. income↔income) don't create real offsets — skip validation
+        if (sameSign(tx.amount, otherTxAmount)) return
+        val txAbs = tx.amount.abs()
+        val alreadyCommitted =
+            tx.offsetLinks.sumOf { link ->
+                if (sameSign(tx.amount, link.linkedTransactionAmount)) return@sumOf BigDecimal.ZERO
+                val a = link.amountA
+                val b = link.amountB
+                when {
+                    a == null && b == null -> BigDecimal.ZERO
+                    a != null && b != null -> minOf(a.abs(), b.abs())
+                    else -> minOf(link.myCommitted.abs(), link.linkedTransactionAmount.abs())
+                }
             }
-        } else {
-            val existingExplicitSum =
-                existingLinks
-                    .mapNotNull { it.partialAmount?.abs() }
-                    .fold(BigDecimal.ZERO, BigDecimal::add)
-            val newTotal = existingExplicitSum + partialAmount.abs()
-            check(newTotal <= tx.amount.abs()) {
-                "Adding this link would exceed transaction ${tx.id}'s total amount (${tx.amount.abs()})"
-            }
+        val newCommit = minOf(myAmount.abs(), otherTxAmount.abs())
+        val total = alreadyCommitted + newCommit
+        if (total > txAbs) {
+            val maxRemaining = (txAbs - alreadyCommitted).max(BigDecimal.ZERO)
+            throw AllocationExceededException(
+                transactionId = requireNotNull(tx.id),
+                maxRemaining = maxRemaining,
+                existingLinks =
+                    tx.offsetLinks.map { link ->
+                        ExistingLinkSummary(
+                            linkId = link.id,
+                            linkedTransactionId = link.linkedTransactionId,
+                            committedAmount = link.myCommitted.abs(),
+                        )
+                    },
+            )
         }
     }
 
@@ -123,10 +219,22 @@ class TransactionOffsetService(
         txAId: Long,
         txBId: Long,
         userId: Long,
+        targetGroupId: Long?,
+        forceNewGroup: Boolean,
     ): Long {
+        if (targetGroupId != null) {
+            groupRepository.addMember(targetGroupId, txAId)
+            groupRepository.addMember(targetGroupId, txBId)
+            return targetGroupId
+        }
+        if (forceNewGroup) {
+            val newGroup = groupRepository.create(userId)
+            groupRepository.addMember(newGroup.id, txAId)
+            groupRepository.addMember(newGroup.id, txBId)
+            return newGroup.id
+        }
         val groupA = groupRepository.findGroupIdsForTransaction(txAId).firstOrNull()
         val groupB = groupRepository.findGroupIdsForTransaction(txBId).firstOrNull()
-
         return when {
             groupA != null -> {
                 groupRepository.addMember(groupA, txBId)
@@ -148,6 +256,7 @@ class TransactionOffsetService(
     private fun cleanupGroup(
         groupId: Long,
         userId: Long,
+        fromUnlink: Boolean = false,
     ) {
         val memberIds = groupRepository.findMemberIds(groupId)
         if (memberIds.isEmpty()) {
@@ -157,6 +266,7 @@ class TransactionOffsetService(
 
         val remainingLinks = offsetRepository.findLinksForGroup(groupId)
         if (remainingLinks.isEmpty()) {
+            if (!fromUnlink && memberIds.size >= 2) return
             memberIds.forEach { groupRepository.removeMember(groupId, it) }
             groupRepository.delete(groupId)
             return

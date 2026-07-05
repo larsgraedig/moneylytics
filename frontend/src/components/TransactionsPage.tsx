@@ -2,17 +2,22 @@ import { useEffect, useMemo, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { fetchCategories, type CategoryGroup } from '../api/rawImport'
 import {
+  AllocationExceededError,
   computeEffectiveAmount,
   fetchAllTransactions,
+  fetchLinkedGroup,
   linkTransactions,
-  unlinkTransaction,
   updateTransactionAccountingDate,
   updateTransactionCategory,
   updateTransactionComment,
   type Account,
+  type AllocationError,
+  type GroupSummary,
+  type LinkedGroupItem,
   type OffsetLinkItem,
   type TransactionItem,
 } from '../api/transactions'
+import { GroupCard } from './GroupCard'
 import {
   assignTransaction as assignToBudget,
   fetchBudgets,
@@ -65,7 +70,8 @@ type PageState =
 
 type LinkingState =
   | { phase: 'selecting'; sourceIndex: number }
-  | { phase: 'confirming'; sourceIndex: number; targetIndex: number; partialAmount: string }
+  | { phase: 'confirming'; sourceIndex: number; targetIndex: number; myAmount: string; otherAmount: string }
+  | { phase: 'group-select'; sourceIndex: number; targetIndex: number; myAmount: string; otherAmount: string; availableGroups: GroupSummary[] }
   | null
 
 export default function TransactionsPage({
@@ -89,8 +95,9 @@ export default function TransactionsPage({
   const [categories, setCategories] = useState<CategoryGroup[]>([])
   const [budgets, setBudgets] = useState<Budget[]>([])
   const [linkingState, setLinkingState] = useState<LinkingState>(null)
-  const [linkError, setLinkError] = useState<string | null>(null)
-  const [highlightedId, setHighlightedId] = useState<number | null>(null)
+  const [linkError, setLinkError] = useState<string | AllocationError | null>(null)
+  const [groupModal, setGroupModal] = useState<{ groupId: number; group: LinkedGroupItem | null } | null>(null)
+  const [highlightedId] = useState<number | null>(null)
   const [filterCategory, setFilterCategory] = useState('')
   const [filterCategoryGroup, setFilterCategoryGroup] = useState('')
   const [filterSubcategory, setFilterSubcategory] = useState('')
@@ -312,76 +319,116 @@ export default function TransactionsPage({
     }
   }
 
+  function resolveCommitted(myAmount: number | null, txAmount: number): number {
+    return myAmount !== null ? myAmount : txAmount
+  }
+
+  function collectAvailableGroups(sourceIndex: number, targetIndex: number): GroupSummary[] {
+    const seen = new Set<number>()
+    const groups: GroupSummary[] = []
+    for (const g of [...rows[sourceIndex].original.groups, ...rows[targetIndex].original.groups]) {
+      if (!seen.has(g.id)) { seen.add(g.id); groups.push(g) }
+    }
+    return groups
+  }
+
   async function confirmLink() {
     if (!linkingState || linkingState.phase !== 'confirming') return
-    const { sourceIndex, targetIndex, partialAmount } = linkingState
+    const { sourceIndex, targetIndex, myAmount, otherAmount } = linkingState
+    const availableGroups = collectAvailableGroups(sourceIndex, targetIndex)
+    if (availableGroups.length > 0) {
+      setLinkingState({ phase: 'group-select', sourceIndex, targetIndex, myAmount, otherAmount, availableGroups })
+      return
+    }
+    await doCreateLink(sourceIndex, targetIndex, myAmount, otherAmount)
+  }
+
+  async function confirmLinkWithGroup(targetGroupId?: number) {
+    if (!linkingState || linkingState.phase !== 'group-select') return
+    const { sourceIndex, targetIndex, myAmount, otherAmount } = linkingState
+    await doCreateLink(sourceIndex, targetIndex, myAmount, otherAmount, targetGroupId, targetGroupId === undefined)
+  }
+
+  async function doCreateLink(
+    sourceIndex: number,
+    targetIndex: number,
+    myAmount: string,
+    otherAmount: string,
+    targetGroupId?: number,
+    forceNewGroup?: boolean,
+  ) {
     const sourceRow = rows[sourceIndex]
     const targetRow = rows[targetIndex]
-    const parsed = partialAmount !== '' ? parseFloat(partialAmount) : undefined
+    const parsedMy = myAmount !== '' ? parseFloat(myAmount) : undefined
+    const parsedOther = otherAmount !== '' ? parseFloat(otherAmount) : undefined
     setLinkError(null)
     try {
-      const result = await linkTransactions(sourceRow.original.id, targetRow.original.id, parsed)
+      const result = await linkTransactions(
+        sourceRow.original.id, targetRow.original.id, parsedMy, parsedOther, targetGroupId, forceNewGroup,
+      )
+      const sourceIsA = sourceRow.original.id < targetRow.original.id
+      const sourceCommitted = resolveCommitted(
+        sourceIsA ? result.amountA : result.amountB,
+        sourceRow.original.amount,
+      )
+      const targetCommitted = resolveCommitted(
+        sourceIsA ? result.amountB : result.amountA,
+        targetRow.original.amount,
+      )
       setRows(prev => {
         const next = [...prev]
-        const newForSource: OffsetLinkItem = {
-          id: result.id,
-          linkedTransactionId: targetRow.original.id,
-          linkedTransactionAmount: targetRow.original.amount,
-          partialAmount: result.partialAmount,
-        }
-        const newForTarget: OffsetLinkItem = {
-          id: result.id,
-          linkedTransactionId: sourceRow.original.id,
-          linkedTransactionAmount: sourceRow.original.amount,
-          partialAmount: result.partialAmount,
-        }
-        const srcLinks = [...next[sourceIndex].original.offsetLinks, newForSource]
-        const tgtLinks = [...next[targetIndex].original.offsetLinks, newForTarget]
-        next[sourceIndex] = {
-          ...next[sourceIndex],
-          original: {
-            ...next[sourceIndex].original,
-            offsetLinks: srcLinks,
-            effectiveAmount: computeEffectiveAmount(next[sourceIndex].original.amount, srcLinks),
-          },
-        }
-        next[targetIndex] = {
-          ...next[targetIndex],
-          original: {
-            ...next[targetIndex].original,
-            offsetLinks: tgtLinks,
-            effectiveAmount: computeEffectiveAmount(next[targetIndex].original.amount, tgtLinks),
-          },
+        if (result.id !== null) {
+          const newForSource: OffsetLinkItem = {
+            id: result.id,
+            linkedTransactionId: targetRow.original.id,
+            linkedTransactionAmount: targetRow.original.amount,
+            amountA: result.amountA,
+            amountB: result.amountB,
+            committedAmount: sourceCommitted,
+            comment: null,
+            groupId: result.groupId,
+          }
+          const newForTarget: OffsetLinkItem = {
+            id: result.id,
+            linkedTransactionId: sourceRow.original.id,
+            linkedTransactionAmount: sourceRow.original.amount,
+            amountA: result.amountA,
+            amountB: result.amountB,
+            committedAmount: targetCommitted,
+            comment: null,
+            groupId: result.groupId,
+          }
+          const srcLinks = [...next[sourceIndex].original.offsetLinks, newForSource]
+          const tgtLinks = [...next[targetIndex].original.offsetLinks, newForTarget]
+          next[sourceIndex] = {
+            ...next[sourceIndex],
+            original: {
+              ...next[sourceIndex].original,
+              offsetLinks: srcLinks,
+              effectiveAmount: computeEffectiveAmount(next[sourceIndex].original.amount, srcLinks),
+            },
+          }
+          next[targetIndex] = {
+            ...next[targetIndex],
+            original: {
+              ...next[targetIndex].original,
+              offsetLinks: tgtLinks,
+              effectiveAmount: computeEffectiveAmount(next[targetIndex].original.amount, tgtLinks),
+            },
+          }
         }
         return next
       })
       setLinkingState(null)
     } catch (e) {
-      setLinkError(e instanceof Error ? e.message : 'link failed')
+      if (e instanceof AllocationExceededError) {
+        setLinkError(e.data)
+      } else {
+        setLinkError(e instanceof Error ? e.message : 'link failed')
+      }
     }
   }
 
-  async function removeLink(linkId: number) {
-    try {
-      await unlinkTransaction(linkId)
-      setRows(prev =>
-        prev.map(row => {
-          if (!row.original.offsetLinks.some(l => l.id === linkId)) return row
-          const newLinks = row.original.offsetLinks.filter(l => l.id !== linkId)
-          return {
-            ...row,
-            original: {
-              ...row.original,
-              offsetLinks: newLinks,
-              effectiveAmount: computeEffectiveAmount(row.original.amount, newLinks),
-            },
-          }
-        }),
-      )
-    } catch {
-      // silent — the chip stays if the request fails
-    }
-  }
 
   async function confirmBudgetAssign(rowIndex: number) {
     const row = rows[rowIndex]
@@ -441,12 +488,6 @@ export default function TransactionsPage({
     } catch {
       // silent
     }
-  }
-
-  function scrollToLinked(txId: number) {
-    setHighlightedId(txId)
-    setTimeout(() => setHighlightedId(null), 1500)
-    document.querySelector(`[data-txid="${txId}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
   }
 
   const selectedCount = rows.filter(r => r.selected).length
@@ -515,29 +556,20 @@ export default function TransactionsPage({
     return [...seen]
   }, [rows])
 
-  const idToIndex = useMemo(() => {
-    const map = new Map<number, number>()
-    rows.forEach((row, i) => map.set(row.original.id, i))
-    return map
-  }, [rows])
-
-  // link id → color index, only for links where both ends are currently loaded
-  const linkColorMap = useMemo(() => {
+  const groupColorMap = useMemo(() => {
     const map = new Map<number, number>()
     let colorIdx = 0
     const seen = new Set<number>()
     for (const row of rows) {
-      for (const link of row.original.offsetLinks) {
-        if (seen.has(link.id)) continue
-        seen.add(link.id)
-        if (idToIndex.has(link.linkedTransactionId)) {
-          map.set(link.id, colorIdx % LINK_COLORS.length)
-          colorIdx++
-        }
+      for (const group of row.original.groups) {
+        if (seen.has(group.id)) continue
+        seen.add(group.id)
+        map.set(group.id, colorIdx % LINK_COLORS.length)
+        colorIdx++
       }
     }
     return map
-  }, [rows, idToIndex])
+  }, [rows])
 
   function rowClassName(row: RowState, i: number): string {
     const classes: string[] = []
@@ -560,8 +592,7 @@ export default function TransactionsPage({
   function renderOffsetCell(row: RowState, i: number) {
     const src = linkingState?.sourceIndex
     const isSource = src === i
-    const isConfirmTarget = linkingState?.phase === 'confirming' && linkingState.targetIndex === i
-    const isLinking = linkingState !== null
+    const isSelecting = linkingState?.phase === 'selecting'
 
     if (isSource) {
       return (
@@ -574,42 +605,13 @@ export default function TransactionsPage({
       )
     }
 
-    if (isConfirmTarget) {
-      return (
-        <div className="txnv-linking-confirm">
-          <input
-            className="txnv-partial-input"
-            type="number"
-            step="0.01"
-            min="0"
-            placeholder={t('transactions.partialAmount')}
-            value={(linkingState as { partialAmount: string }).partialAmount}
-            onChange={e =>
-              setLinkingState(prev =>
-                prev?.phase === 'confirming' ? { ...prev, partialAmount: e.target.value } : prev,
-              )
-            }
-            autoFocus
-          />
-          <button className="txnv-link-confirm-btn" onClick={confirmLink}>{t('transactions.link')}</button>
-          <button
-            className="txnv-link-back-btn"
-            onClick={() => src !== undefined && setLinkingState({ phase: 'selecting', sourceIndex: src })}
-          >
-            ←
-          </button>
-          {linkError && <span className="txnv-link-error">{linkError}</span>}
-        </div>
-      )
-    }
-
-    if (isLinking) {
+    if (isSelecting) {
       return (
         <button
           className="txnv-connect-btn"
           onClick={() =>
             src !== undefined &&
-            setLinkingState({ phase: 'confirming', sourceIndex: src, targetIndex: i, partialAmount: '' })
+            setLinkingState({ phase: 'confirming', sourceIndex: src, targetIndex: i, myAmount: '', otherAmount: '' })
           }
         >
           {t('transactions.linkHere')}
@@ -619,33 +621,22 @@ export default function TransactionsPage({
 
     return (
       <div className="txnv-links-normal">
-        {row.original.offsetLinks.map(link => {
-          const colorIdx = linkColorMap.get(link.id)
+        {row.original.groups.map(group => {
+          const colorIdx = groupColorMap.get(group.id)
           const chipColor = colorIdx !== undefined ? LINK_COLORS[colorIdx] : undefined
-          const linkedVisible = idToIndex.has(link.linkedTransactionId)
-          const amtFormatted = link.partialAmount !== null
-            ? EUR.format(link.partialAmount)
-            : EUR.format(Math.abs(link.linkedTransactionAmount))
+          const chipLabel = group.name ?? `#${group.id}`
           return (
             <span
-              key={link.id}
-              className="txnv-link-chip"
+              key={group.id}
+              className="txnv-link-chip txnv-group-chip"
               style={chipColor ? { borderColor: chipColor } : undefined}
+              onClick={() => {
+                setGroupModal({ groupId: group.id, group: null })
+                fetchLinkedGroup(group.id).then(g => setGroupModal({ groupId: group.id, group: g }))
+              }}
+              title={`#${group.id}`}
             >
-              <span
-                className={`txnv-link-chip-amount ${link.linkedTransactionAmount >= 0 ? 'positive' : 'negative'}${linkedVisible ? ' txnv-link-chip-nav' : ''}`}
-                onClick={linkedVisible ? () => scrollToLinked(link.linkedTransactionId) : undefined}
-                title={linkedVisible ? t('transactions.jumpToLinked') : undefined}
-              >
-                {amtFormatted}
-              </span>
-              <button
-                className="txnv-link-chip-remove"
-                onClick={() => removeLink(link.id)}
-                title={t('transactions.removeLink')}
-              >
-                ×
-              </button>
+              {chipLabel}
             </span>
           )
         })}
@@ -656,6 +647,211 @@ export default function TransactionsPage({
         >
           link
         </button>
+      </div>
+    )
+  }
+
+  function renderGroupModal() {
+    if (!groupModal) return null
+    const { group } = groupModal
+    const close = () => setGroupModal(null)
+
+    function handleMetaChange(_groupId: number, name: string | null, comment: string | null) {
+      setGroupModal(prev => prev && prev.group ? { ...prev, group: { ...prev.group, name, comment } } : prev)
+    }
+
+    function handleOffsetCommentChange(_groupId: number, txId: number, linkId: number, comment: string | null) {
+      setGroupModal(prev => {
+        if (!prev?.group) return prev
+        return {
+          ...prev,
+          group: {
+            ...prev.group,
+            transactions: prev.group.transactions.map(tx =>
+              tx.id !== txId ? tx : {
+                ...tx,
+                offsetLinks: tx.offsetLinks.map(l => l.id === linkId ? { ...l, comment } : l),
+              },
+            ),
+          },
+        }
+      })
+    }
+
+    return (
+      <div className="txnv-lm-backdrop" onClick={close}>
+        <div className="txnv-lm-modal txnv-lm-modal--group" onClick={e => e.stopPropagation()}>
+          <div className="txnv-lm-header">
+            <span className="txnv-lm-title">{t('linked.group')} #{groupModal.groupId}</span>
+            <button className="txnv-lm-close" onClick={close}>×</button>
+          </div>
+          <div className="txnv-lm-group-body">
+            {!group
+              ? <span className="txnv-lm-loading">{t('common.loading')}</span>
+              : (
+                <GroupCard
+                  group={group}
+                  onMetaChange={handleMetaChange}
+                  onOffsetCommentChange={handleOffsetCommentChange}
+                  onRemoveTransaction={txId => {
+                    const remaining = group.transactions.filter(tx => tx.id !== txId)
+                    if (remaining.length >= 2) {
+                      setGroupModal(prev => prev ? { ...prev, group: { ...group, transactions: remaining } } : null)
+                    } else {
+                      setGroupModal(null)
+                    }
+                  }}
+                />
+              )
+            }
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  function renderLinkModal() {
+    if (linkingState?.phase !== 'confirming' && linkingState?.phase !== 'group-select') return null
+
+    const sourceRow = rows[linkingState.sourceIndex]
+    const targetRow = rows[linkingState.targetIndex]
+
+    function txCard(tx: TransactionItem) {
+      return (
+        <div className="txnv-lm-tx-card">
+          <span className="txnv-lm-tx-date">{formatDate(tx.accountingDate)}</span>
+          <span className="txnv-lm-tx-name">{tx.counterpartyName ?? tx.purpose ?? '—'}</span>
+          <span className={`txnv-lm-tx-amount ${tx.amount >= 0 ? 'positive' : 'negative'}`}>
+            {EUR.format(tx.amount)}
+          </span>
+        </div>
+      )
+    }
+
+    const cancel = () => { setLinkingState(null); setLinkError(null) }
+
+    return (
+      <div className="txnv-lm-backdrop" onClick={cancel}>
+        <div className="txnv-lm-modal" onClick={e => e.stopPropagation()}>
+          <div className="txnv-lm-header">
+            <span className="txnv-lm-title">{t('transactions.linkModal.title')}</span>
+            <button className="txnv-lm-close" onClick={cancel}>×</button>
+          </div>
+
+          <div className="txnv-lm-body">
+            {txCard(sourceRow.original)}
+            <div className="txnv-lm-divider">⇅</div>
+            {txCard(targetRow.original)}
+
+            {linkingState.phase === 'confirming' && (
+              <>
+                <div className="txnv-lm-amounts">
+                  <div className="txnv-lm-amount-row">
+                    <label className="txnv-lm-amount-label">
+                      {sourceRow.original.counterpartyName ?? EUR.format(sourceRow.original.amount)}
+                    </label>
+                    <input
+                      className="txnv-partial-input"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      placeholder={t('transactions.partialAmount')}
+                      value={linkingState.myAmount}
+                      autoFocus
+                      onChange={e =>
+                        setLinkingState(prev =>
+                          prev?.phase === 'confirming' ? { ...prev, myAmount: e.target.value } : prev,
+                        )
+                      }
+                    />
+                  </div>
+                  <div className="txnv-lm-amount-row">
+                    <label className="txnv-lm-amount-label">
+                      {targetRow.original.counterpartyName ?? EUR.format(targetRow.original.amount)}
+                    </label>
+                    <input
+                      className="txnv-partial-input"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      placeholder={t('transactions.partialAmount')}
+                      value={linkingState.otherAmount}
+                      onChange={e =>
+                        setLinkingState(prev =>
+                          prev?.phase === 'confirming' ? { ...prev, otherAmount: e.target.value } : prev,
+                        )
+                      }
+                    />
+                  </div>
+                </div>
+                {linkError && (
+                  typeof linkError === 'string'
+                    ? <span className="txnv-link-error">{linkError}</span>
+                    : (() => {
+                      const txLookup = new Map(rows.map(r => [r.original.id, r.original]))
+                      const overTx = txLookup.get(linkError.transactionId)
+                      const alreadyCommitted = linkError.existingLinks.reduce((s, l) => s + Math.abs(l.committedAmount), 0)
+                      const totalAbs = alreadyCommitted + linkError.maxRemainingAmount
+                      return (
+                        <div className="txnv-alloc-breakdown">
+                          <div className="txnv-alloc-breakdown-header">
+                            ⚠ {t('transactions.allocationTitle')}
+                          </div>
+                          <div className="txnv-alloc-breakdown-row txnv-alloc-breakdown-row--total">
+                            <span>{overTx?.counterpartyName ?? `#${linkError.transactionId}`}</span>
+                            <span>{EUR.format(totalAbs)}</span>
+                          </div>
+                          {linkError.existingLinks.map(l => {
+                            const linkedTx = txLookup.get(l.linkedTransactionId)
+                            return (
+                              <div key={l.linkId} className="txnv-alloc-breakdown-row txnv-alloc-breakdown-row--link">
+                                <span>↳ {linkedTx?.counterpartyName ?? `#${l.linkedTransactionId}`}</span>
+                                <span>{EUR.format(Math.abs(l.committedAmount))}</span>
+                              </div>
+                            )
+                          })}
+                          <div className="txnv-alloc-breakdown-row txnv-alloc-breakdown-row--remaining">
+                            <span>{t('transactions.allocationRemaining')}</span>
+                            <span>{EUR.format(linkError.maxRemainingAmount)}</span>
+                          </div>
+                        </div>
+                      )
+                    })()
+                )}
+                <div className="txnv-lm-footer">
+                  <button className="txnv-link-confirm-btn" onClick={confirmLink}>{t('transactions.link')}</button>
+                  <button className="txnv-link-cancel-btn" onClick={cancel}>{t('common.cancel')}</button>
+                </div>
+              </>
+            )}
+
+            {linkingState.phase === 'group-select' && (
+              <>
+                <div className="txnv-lm-group-section">
+                  <span className="txnv-group-select-label">{t('transactions.selectGroup')}</span>
+                  <div className="txnv-group-select-options">
+                    {linkingState.availableGroups.map(g => (
+                      <button key={g.id} className="txnv-group-option-btn" onClick={() => confirmLinkWithGroup(g.id)}>
+                        {g.name ?? `#${g.id}`}
+                      </button>
+                    ))}
+                    <button className="txnv-group-option-btn txnv-group-option-btn--new" onClick={() => confirmLinkWithGroup(undefined)}>
+                      {t('transactions.newGroup')}
+                    </button>
+                  </div>
+                </div>
+                <div className="txnv-lm-footer">
+                  <button className="txnv-link-back-btn" onClick={() => {
+                    if (linkingState.phase === 'group-select') {
+                      setLinkingState({ phase: 'confirming', sourceIndex: linkingState.sourceIndex, targetIndex: linkingState.targetIndex, myAmount: linkingState.myAmount, otherAmount: linkingState.otherAmount })
+                    }
+                  }}>← {t('common.back')}</button>
+                  <button className="txnv-link-cancel-btn" onClick={cancel}>{t('common.cancel')}</button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
       </div>
     )
   }
@@ -827,14 +1023,7 @@ export default function TransactionsPage({
       case 'amount':
         return (
           <td key={col} className={`txn-cell-amount txnv-col-amount${row.original.amount < 0 ? ' negative' : ' positive'}`}>
-            <span className={row.original.effectiveAmount !== row.original.amount ? 'txnv-amount-crossed' : ''}>
-              {EUR.format(row.original.amount)}
-            </span>
-            {row.original.effectiveAmount !== row.original.amount && (
-              <span className="txnv-effective-amount">
-                {EUR.format(row.original.effectiveAmount)}
-              </span>
-            )}
+            {EUR.format(row.original.amount)}
           </td>
         )
       case 'category':
@@ -1045,8 +1234,8 @@ export default function TransactionsPage({
             <tbody>
               {rows.map((row, i) => {
                 const rowLinkColor = (() => {
-                  for (const link of row.original.offsetLinks) {
-                    const idx = linkColorMap.get(link.id)
+                  for (const group of row.original.groups) {
+                    const idx = groupColorMap.get(group.id)
                     if (idx !== undefined) return LINK_COLORS[idx]
                   }
                   return null
@@ -1083,6 +1272,9 @@ export default function TransactionsPage({
           </table>
         )}
       </div>
+
+      {renderLinkModal()}
+      {renderGroupModal()}
 
       {selectedCount > 0 && (
         <div className="txnv-bulk-bar">

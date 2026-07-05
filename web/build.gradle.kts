@@ -35,6 +35,7 @@ dependencies {
     implementation(libs.commons.csv)
     implementation(libs.h2)
     runtimeOnly(libs.postgresql)
+    implementation(libs.spring.session.jdbc)
     implementation(libs.springdoc.openapi.webflux.ui)
     testImplementation(libs.spring.boot.starter.webflux.test)
     testImplementation(libs.kotlin.test.junit5)

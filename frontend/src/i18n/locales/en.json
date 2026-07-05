@@ -122,7 +122,12 @@
     "noTransactions": "No transactions in the selected period.",
     "tooltipIncome": "income",
     "tooltipExpenses": "expenses",
-    "tooltipNet": "net"
+    "tooltipNet": "net",
+    "incomeModeAll": "All income",
+    "incomeModeUnnetted": "Unnetted income only",
+    "expenseModeAll": "All expenses",
+    "expenseModeUnnetted": "Unnetted expenses only",
+    "netted": "netted"
   },
   "transactions": {
     "load": "load",
@@ -145,7 +150,12 @@
       "counterpartyName": "Counterparty"
     },
     "addComment": "add comment…",
-    "partialAmount": "partial amt",
+    "partialAmount": "partial amt (optional)",
+    "allocationExceeded": "Max remaining: {{amount}}",
+    "allocationTitle": "Amount exceeded",
+    "allocationRemaining": "Remaining",
+    "selectGroup": "Add to which group?",
+    "newGroup": "Create new group",
     "linkToTransaction": "link to another transaction",
     "removeLink": "remove link",
     "jumpToLinked": "jump to linked transaction",
@@ -159,6 +169,9 @@
     "linkHere": "link here",
     "link": "link",
     "bulkSelected": "{{count}} selected",
+    "linkModal": {
+      "title": "Create link"
+    },
     "bookingDateTitle": "original booking date",
     "panel": {
       "close": "Close",
@@ -257,6 +270,13 @@
       "transactionId": "Transaction",
       "amount": "Amount",
       "budget": "Budget"
+    },
+    "detail": {
+      "balance": "Balance",
+      "target": "Target",
+      "targetMarker": "Target: {{amount}}",
+      "cumulativeBalance": "Cumulative balance",
+      "transactions": "Transactions"
     }
   },
   "csvImport": {
@@ -392,7 +412,9 @@
     "namePlaceholder": "Add a name…",
     "commentPlaceholder": "Add a comment…",
     "partial": "partial",
-    "transaction": "Transaction"
+    "transaction": "Transaction",
+    "offsetCommentPlaceholder": "Note…",
+    "removeTransaction": "Remove transaction from group"
   },
   "settings": {
     "title": "Settings",

@@ -2,6 +2,7 @@ package com.moneylytics.api.adapter.output.persistence
 
 import com.moneylytics.api.application.port.output.TransactionRepository
 import com.moneylytics.api.domain.Transaction
+import com.moneylytics.api.domain.TransactionGroupSummary
 import com.moneylytics.api.domain.TransactionOffsetLink
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
@@ -15,6 +16,8 @@ class TransactionPersistenceAdapter(
     private val accountJpaRepository: AccountJpaRepository,
     private val userJpaRepository: UserJpaRepository,
     private val offsetJpaRepository: TransactionOffsetJpaRepository,
+    private val groupMemberJpaRepository: TransactionGroupMemberJpaRepository,
+    private val groupJpaRepository: TransactionGroupJpaRepository,
 ) : TransactionRepository {
     @Transactional
     override fun saveAll(
@@ -167,7 +170,23 @@ class TransactionPersistenceAdapter(
         val ids = entities.mapNotNull { it.id }
         if (ids.isEmpty()) return emptyList()
         val linksByTxId = buildLinkMap(offsetJpaRepository.findByTransactionIds(ids))
-        return entities.map { it.toDomain(linksByTxId[it.id] ?: emptyList()) }
+        val groupsByTxId = buildGroupMap(ids)
+        return entities.map { it.toDomain(linksByTxId[it.id] ?: emptyList(), groupsByTxId[it.id] ?: emptyList()) }
+    }
+
+    private fun buildGroupMap(ids: List<Long>): Map<Long, List<TransactionGroupSummary>> {
+        if (ids.isEmpty()) return emptyMap()
+        val members = groupMemberJpaRepository.findByTransactionIds(ids)
+        if (members.isEmpty()) return emptyMap()
+        val groupsById =
+            groupJpaRepository
+                .findAllById(members.map { it.groupId }.toSet())
+                .associateBy { requireNotNull(it.id) }
+        return members
+            .groupBy { it.transactionId }
+            .mapValues { (_, mems) ->
+                mems.mapNotNull { m -> groupsById[m.groupId]?.let { TransactionGroupSummary(requireNotNull(it.id), it.name) } }
+            }
     }
 
     private fun buildLinkMap(offsets: List<TransactionOffsetEntity>): Map<Long, List<TransactionOffsetLink>> {
@@ -182,33 +201,43 @@ class TransactionPersistenceAdapter(
     }
 
     private fun TransactionOffsetEntity.toDomainLinkFor(requestingTxId: Long): TransactionOffsetLink {
-        val linked = if (transactionA.id == requestingTxId) transactionB else transactionA
+        val isOnASide = transactionA.id == requestingTxId
+        val linked = if (isOnASide) transactionB else transactionA
+        val requesting = if (isOnASide) transactionA else transactionB
+        val myCommitted = if (isOnASide) amountA ?: requesting.amount else amountB ?: requesting.amount
         return TransactionOffsetLink(
             id = requireNotNull(id),
             linkedTransactionId = requireNotNull(linked.id),
             linkedTransactionAmount = linked.amount,
-            partialAmount = amount,
+            amountA = amountA,
+            amountB = amountB,
+            myCommitted = myCommitted,
+            groupId = groupId,
+            comment = comment,
         )
     }
 
-    private fun TransactionEntity.toDomain(offsetLinks: List<TransactionOffsetLink> = emptyList()) =
-        Transaction(
-            category = category,
-            subcategory = subcategory,
-            categoryGroup = categoryGroup,
-            bookingDate = bookingDate,
-            valueDate = valueDate,
-            accountingDate = accountingDate,
-            amount = amount,
-            currency = currency,
-            accountIban = account.iban,
-            id = id,
-            offsetLinks = offsetLinks,
-            comment = comment,
-            purpose = purpose,
-            counterpartyName = counterpartyName,
-            counterpartyIban = counterpartyIban,
-        )
+    private fun TransactionEntity.toDomain(
+        offsetLinks: List<TransactionOffsetLink> = emptyList(),
+        groups: List<TransactionGroupSummary> = emptyList(),
+    ) = Transaction(
+        category = category,
+        subcategory = subcategory,
+        categoryGroup = categoryGroup,
+        bookingDate = bookingDate,
+        valueDate = valueDate,
+        accountingDate = accountingDate,
+        amount = amount,
+        currency = currency,
+        accountIban = account.iban,
+        id = id,
+        offsetLinks = offsetLinks,
+        groups = groups,
+        comment = comment,
+        purpose = purpose,
+        counterpartyName = counterpartyName,
+        counterpartyIban = counterpartyIban,
+    )
 
     private fun Transaction.toEntity(
         fingerprint: String,

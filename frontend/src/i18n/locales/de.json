@@ -10,7 +10,7 @@
     "breakdown": "Breakdown",
     "cashflow": "Cashflow",
     "kontoauszug": "Kontoauszug",
-    "verknuepfungen": "Verknüpfungen",
+    "verknuepfungen": "Verrechnungen",
     "konten": "Konten",
     "budgets": "Budgets",
     "limits": "Limits",
@@ -122,7 +122,12 @@
     "noTransactions": "Keine Transaktionen im Zeitraum.",
     "tooltipIncome": "Einnahmen",
     "tooltipExpenses": "Ausgaben",
-    "tooltipNet": "Netto"
+    "tooltipNet": "Netto",
+    "incomeModeAll": "Alle Einkünfte",
+    "incomeModeUnnetted": "Nur unverrechnete Einkünfte",
+    "expenseModeAll": "Alle Ausgaben",
+    "expenseModeUnnetted": "Nur unverrechnete Ausgaben",
+    "netted": "verrechnet"
   },
   "transactions": {
     "load": "Laden",
@@ -145,7 +150,12 @@
       "counterpartyName": "Zahlungsbeteiligte"
     },
     "addComment": "Kommentar hinzufügen…",
-    "partialAmount": "Teilbetrag",
+    "partialAmount": "Teilbetrag (optional)",
+    "allocationExceeded": "Maximaler Restbetrag: {{amount}}",
+    "allocationTitle": "Betrag überschritten",
+    "allocationRemaining": "Noch verfügbar",
+    "selectGroup": "Zur welcher Gruppe hinzufügen?",
+    "newGroup": "Neue Gruppe erstellen",
     "linkToTransaction": "Mit Transaktion verknüpfen",
     "removeLink": "Verknüpfung aufheben",
     "jumpToLinked": "Zur verknüpften Transaktion",
@@ -159,6 +169,9 @@
     "linkHere": "hier verknüpfen",
     "link": "verknüpfen",
     "bulkSelected": "{{count}} ausgewählt",
+    "linkModal": {
+      "title": "Verknüpfung erstellen"
+    },
     "bookingDateTitle": "reales Buchungsdatum",
     "panel": {
       "close": "Schließen",
@@ -257,6 +270,13 @@
       "transactionId": "Transaktion",
       "amount": "Betrag",
       "budget": "Budget"
+    },
+    "detail": {
+      "balance": "Saldo",
+      "target": "Ziel",
+      "targetMarker": "Ziel: {{amount}}",
+      "cumulativeBalance": "Kumulierter Saldo",
+      "transactions": "Transaktionen"
     }
   },
   "csvImport": {
@@ -384,15 +404,17 @@
     "noFiles": "Keine Dateien angegeben."
   },
   "linked": {
-    "title": "Verknüpfte Transaktionen",
+    "title": "Verrechnungen",
     "count": "{{count}} Gruppe(n)",
     "group": "Gruppe",
     "balanced": "ausgeglichen",
-    "empty": "Keine verknüpften Transaktionen vorhanden.",
+    "empty": "Keine Verrechnungen vorhanden.",
     "namePlaceholder": "Name vergeben…",
     "commentPlaceholder": "Kommentar hinzufügen…",
     "partial": "partiell",
-    "transaction": "Transaktion"
+    "transaction": "Transaktion",
+    "offsetCommentPlaceholder": "Notiz…",
+    "removeTransaction": "Transaktion aus Gruppe entfernen"
   },
   "settings": {
     "title": "Einstellungen",

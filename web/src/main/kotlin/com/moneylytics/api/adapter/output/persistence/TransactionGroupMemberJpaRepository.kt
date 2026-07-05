@@ -5,6 +5,11 @@ import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.query.Param
 
 interface TransactionGroupMemberJpaRepository : JpaRepository<TransactionGroupMemberEntity, TransactionGroupMemberEntity.PK> {
+    @Query("SELECT m FROM TransactionGroupMemberEntity m WHERE m.transactionId IN :ids")
+    fun findByTransactionIds(
+        @Param("ids") ids: Collection<Long>,
+    ): List<TransactionGroupMemberEntity>
+
     @Query("SELECT m.groupId FROM TransactionGroupMemberEntity m WHERE m.transactionId = :txId")
     fun findGroupIdsByTransactionId(
         @Param("txId") txId: Long,

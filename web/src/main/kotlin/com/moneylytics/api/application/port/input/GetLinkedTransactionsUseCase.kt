@@ -9,6 +9,11 @@ data class LinkedTransactionGroup(
     val transactions: List<Transaction>,
 )
 
-fun interface GetLinkedTransactionsUseCase {
+interface GetLinkedTransactionsUseCase {
     fun getLinkedGroups(userId: Long): List<LinkedTransactionGroup>
+
+    fun getLinkedGroup(
+        groupId: Long,
+        userId: Long,
+    ): LinkedTransactionGroup?
 }
