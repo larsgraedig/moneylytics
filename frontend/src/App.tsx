@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react'
+import { useNavigate, useLocation } from 'react-router-dom'
 import type { LucideIcon } from 'lucide-react'
 import {
   Workflow, TrendingUp, PieChart, BarChart2,
   List, Landmark, Wallet, Gauge,
   FileSpreadsheet, FileCode, Link2,
 } from 'lucide-react'
-import { getPresetRange, PRESETS, type Preset } from './utils/datePresets'
+import { getPresetRange, detectPreset, PRESETS, type Preset } from './utils/datePresets'
 import SankeyChart from './components/SankeyChart'
 import CamtImportPage from './components/CamtImportPage'
 import CsvImportPage from './components/CsvImportPage'
@@ -33,6 +34,8 @@ const today = isoDate(new Date())
 const firstOfYear = isoDate(new Date(new Date().getFullYear(), 0, 1))
 
 type Tab = 'sankey' | 'trends' | 'breakdown' | 'cashflow' | 'kontoauszug' | 'verknuepfungen' | 'konten' | 'budgets' | 'limits' | 'csv' | 'camt'
+
+const VALID_TABS = new Set<string>(['sankey', 'trends', 'breakdown', 'cashflow', 'kontoauszug', 'verknuepfungen', 'konten', 'budgets', 'limits', 'csv', 'camt'])
 
 type ViewState =
   | { phase: 'idle' }
@@ -74,23 +77,41 @@ const NAV: NavSection[] = [
 export default function App() {
   const { username, isLoading, logout } = useAuth()
   const { t, i18n } = useTranslation()
-  const [tab, setTab] = useState<Tab>('sankey')
+  const navigate = useNavigate()
+  const location = useLocation()
+
+  const searchParams = new URLSearchParams(location.search)
+  const rawPath = location.pathname.slice(1)
+  const tab: Tab = (VALID_TABS.has(rawPath) ? rawPath : 'sankey') as Tab
+  const from = searchParams.get('from') ?? firstOfYear
+  const to = searchParams.get('to') ?? today
+  const selectedIban = searchParams.get('iban') ?? ''
+  const activePreset = detectPreset(from, to)
+
   const [highlightGroupId, setHighlightGroupId] = useState<number | null>(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(true)
-  const [from, setFrom] = useState(firstOfYear)
-  const [to, setTo] = useState(today)
-  const [activePreset, setActivePreset] = useState<Preset | ''>('')
   const [accounts, setAccounts] = useState<Account[]>([])
-  const [selectedIban, setSelectedIban] = useState<string>('')
   const [txColumnOrder, setTxColumnOrder] = useState<string[] | null>(null)
   const [view, setView] = useState<ViewState>({ phase: 'idle' })
   const [activeNode, setActiveNode] = useState<string | null>(null)
 
+  function updateSearch(updates: Record<string, string>) {
+    const p = new URLSearchParams(location.search)
+    Object.entries(updates).forEach(([k, v]) => {
+      if (v) p.set(k, v)
+      else p.delete(k)
+    })
+    navigate({ search: p.toString() }, { replace: true })
+  }
+
+  function navigateToTab(newTab: Tab) {
+    navigate({ pathname: `/${newTab}`, search: location.search })
+  }
+
   useEffect(() => {
     if (!username) return
     setAccounts([])
-    setSelectedIban('')
     setTxColumnOrder(null)
     setView({ phase: 'idle' })
     setActiveNode(null)
@@ -102,7 +123,11 @@ export default function App() {
       }
       const defaultIban = settings.defaultAccountIban ?? localStorage.getItem('defaultIban') ?? ''
       if (defaultIban && accs.some(a => a.iban === defaultIban)) {
-        setSelectedIban(defaultIban)
+        const current = new URLSearchParams(window.location.search)
+        if (!current.get('iban')) {
+          current.set('iban', defaultIban)
+          navigate({ search: current.toString() }, { replace: true })
+        }
       }
       setTxColumnOrder(settings.transactionsColumnOrder ?? null)
     }).catch(() => {
@@ -110,7 +135,11 @@ export default function App() {
         setAccounts(accs)
         const defaultIban = localStorage.getItem('defaultIban') ?? ''
         if (defaultIban && accs.some(a => a.iban === defaultIban)) {
-          setSelectedIban(defaultIban)
+          const current = new URLSearchParams(window.location.search)
+          if (!current.get('iban')) {
+            current.set('iban', defaultIban)
+            navigate({ search: current.toString() }, { replace: true })
+          }
         }
       }).catch(() => {})
     })
@@ -151,7 +180,7 @@ export default function App() {
                 <button
                   key={id}
                   className={`nav-item${tab === id ? ' active' : ''}`}
-                  onClick={() => setTab(id)}
+                  onClick={() => navigateToTab(id)}
                   title={t(labelKey)}
                 >
                   <span className="nav-item-icon"><Icon size={15} strokeWidth={1.6} /></span>
@@ -180,7 +209,7 @@ export default function App() {
             <select
               className="account-select"
               value={selectedIban}
-              onChange={e => setSelectedIban(e.target.value)}
+              onChange={e => updateSearch({ iban: e.target.value })}
             >
               <option value="">{t('common.allAccounts')}</option>
               {accounts.map(a => (
@@ -196,9 +225,7 @@ export default function App() {
               const p = e.target.value as Preset
               if (!p) return
               const range = getPresetRange(p)
-              setActivePreset(p)
-              setFrom(range.from)
-              setTo(range.to)
+              updateSearch({ from: range.from, to: range.to })
             }}
           >
             <option value="">{t('budgets.presets.placeholder')}</option>
@@ -210,12 +237,12 @@ export default function App() {
           <fieldset className="range-group">
             <label className="range-field">
               <span className="range-label">{t('common.from')}</span>
-              <input type="date" value={from} max={to} onChange={e => { setFrom(e.target.value); setActivePreset('') }} />
+              <input type="date" value={from} max={to} onChange={e => updateSearch({ from: e.target.value })} />
             </label>
             <div className="range-sep" />
             <label className="range-field">
               <span className="range-label">{t('common.to')}</span>
-              <input type="date" value={to} min={from} max={today} onChange={e => { setTo(e.target.value); setActivePreset('') }} />
+              <input type="date" value={to} min={from} max={today} onChange={e => updateSearch({ to: e.target.value })} />
             </label>
           </fieldset>
 
@@ -260,7 +287,7 @@ export default function App() {
             </>
           )}
 
-          {tab === 'cashflow' && <CashflowPage key={username} from={from} to={to} iban={iban} onNavigateToGroup={id => { setHighlightGroupId(id); setTab('verknuepfungen') }} />}
+          {tab === 'cashflow' && <CashflowPage key={username} from={from} to={to} iban={iban} onNavigateToGroup={id => { setHighlightGroupId(id); navigateToTab('verknuepfungen') }} />}
           {tab === 'trends' && <TrendsPage key={username} from={from} to={to} iban={iban} />}
           {tab === 'breakdown' && <PiePage key={username} from={from} to={to} iban={iban} />}
           {tab === 'kontoauszug' && <TransactionsPage key={username} from={from} to={to} iban={iban} accounts={accounts} columnOrder={txColumnOrder ?? undefined} onColumnOrderChange={order => setTxColumnOrder(order)} />}
