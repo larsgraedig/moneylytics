@@ -122,7 +122,10 @@
     "noTransactions": "No transactions in the selected period.",
     "tooltipIncome": "income",
     "tooltipExpenses": "expenses",
-    "tooltipNet": "net"
+    "tooltipNet": "net",
+    "incomeModeAll": "All income",
+    "incomeModeUnnetted": "Unnetted income only",
+    "netted": "netted"
   },
   "transactions": {
     "load": "load",

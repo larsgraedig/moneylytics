@@ -122,7 +122,10 @@
     "noTransactions": "Keine Transaktionen im Zeitraum.",
     "tooltipIncome": "Einnahmen",
     "tooltipExpenses": "Ausgaben",
-    "tooltipNet": "Netto"
+    "tooltipNet": "Netto",
+    "incomeModeAll": "Alle Einkünfte",
+    "incomeModeUnnetted": "Nur unverrechnete Einkünfte",
+    "netted": "verrechnet"
   },
   "transactions": {
     "load": "Laden",

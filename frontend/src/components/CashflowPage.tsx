@@ -4,16 +4,26 @@ import { ResponsiveBar } from '@nivo/bar'
 import { fetchAllTransactions, type TransactionItem } from '../api/transactions'
 
 type Granularity = 'monthly' | 'yearly'
+type IncomeMode = 'all' | 'unnetted'
 
 const EUR = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })
 const EUR2 = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' })
 
+
+interface RawBucket {
+  period: string
+  periodKey: string
+  incomeAll: number
+  incomeUnnetted: number
+  expenses: number
+}
 
 interface CashflowBucket {
   [key: string]: string | number
   period: string
   periodKey: string
   income: number
+  incomeOffset: number
   expenses: number
   net: number
 }
@@ -25,6 +35,7 @@ interface DrilldownState {
   to: string
   transactions: TransactionItem[] | null
   loading: boolean
+  incomeMode: IncomeMode
 }
 
 function bucketKey(date: string, gran: Granularity): string {
@@ -60,6 +71,21 @@ function periodRange(
   }
 }
 
+function toDisplayBuckets(raw: RawBucket[], mode: IncomeMode): CashflowBucket[] {
+  return raw.map(b => {
+    const income = mode === 'all' ? b.incomeAll : b.incomeUnnetted
+    const incomeOffset = mode === 'all' ? 0 : b.incomeAll - b.incomeUnnetted
+    return {
+      period: b.period,
+      periodKey: b.periodKey,
+      income,
+      incomeOffset,
+      expenses: b.expenses,
+      net: income - b.expenses,
+    }
+  })
+}
+
 const NIVO_THEME = {
   background: 'transparent',
   text: { fill: '#6b6b78', fontSize: 11, fontFamily: "ui-monospace, 'SF Mono', Consolas, monospace" },
@@ -70,40 +96,44 @@ const NIVO_THEME = {
 export default function CashflowPage({ from, to, iban }: { from: string; to: string; iban?: string }) {
   const { t } = useTranslation()
   const [granularity, setGranularity] = useState<Granularity>('monthly')
+  const [incomeMode, setIncomeMode] = useState<IncomeMode>('all')
   const [loading, setLoading] = useState(false)
-  const [data, setData] = useState<CashflowBucket[] | null>(null)
+  const [rawData, setRawData] = useState<RawBucket[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [drilldown, setDrilldown] = useState<DrilldownState | null>(null)
+
+  const data: CashflowBucket[] | null = rawData ? toDisplayBuckets(rawData, incomeMode) : null
 
   async function load() {
     setLoading(true)
     setError(null)
     try {
       const resp = await fetchAllTransactions(from, to, iban)
-      const map = new Map<string, { income: number; expenses: number }>()
+      const map = new Map<string, { incomeAll: number; incomeUnnetted: number; expenses: number }>()
 
       for (const tx of resp.transactions) {
         const key = bucketKey(tx.accountingDate, granularity)
-        if (!map.has(key)) map.set(key, { income: 0, expenses: 0 })
+        if (!map.has(key)) map.set(key, { incomeAll: 0, incomeUnnetted: 0, expenses: 0 })
         const entry = map.get(key)!
-        if (tx.effectiveAmount >= 0) {
-          entry.income += tx.effectiveAmount
+        if (tx.amount >= 0) {
+          entry.incomeAll += tx.amount
+          entry.incomeUnnetted += Math.max(0, tx.effectiveAmount)
         } else {
           entry.expenses += Math.abs(tx.effectiveAmount)
         }
       }
 
-      const buckets: CashflowBucket[] = [...map.entries()]
+      const buckets: RawBucket[] = [...map.entries()]
         .sort(([a], [b]) => a.localeCompare(b))
         .map(([key, v]) => ({
           period: bucketLabel(key, granularity),
           periodKey: key,
-          income: Math.round(v.income),
+          incomeAll: Math.round(v.incomeAll),
+          incomeUnnetted: Math.round(v.incomeUnnetted),
           expenses: Math.round(v.expenses),
-          net: Math.round(v.income - v.expenses),
         }))
 
-      setData(buckets)
+      setRawData(buckets)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'request failed')
     } finally {
@@ -113,11 +143,11 @@ export default function CashflowPage({ from, to, iban }: { from: string; to: str
 
   async function openDrilldown(periodKey: string, period: string, type: 'income' | 'expenses') {
     const range = periodRange(periodKey, granularity, from, to)
-    setDrilldown({ period, type, from: range.from, to: range.to, transactions: null, loading: true })
+    setDrilldown({ period, type, from: range.from, to: range.to, transactions: null, loading: true, incomeMode })
     try {
       const resp = await fetchAllTransactions(range.from, range.to, iban)
       const txs = resp.transactions
-        .filter(tx => type === 'income' ? tx.effectiveAmount >= 0 : tx.effectiveAmount < 0)
+        .filter(tx => type === 'income' ? tx.amount >= 0 : tx.effectiveAmount < 0)
         .sort((a, b) => b.accountingDate.localeCompare(a.accountingDate))
       setDrilldown(prev => prev ? { ...prev, transactions: txs, loading: false } : prev)
     } catch {
@@ -132,6 +162,11 @@ export default function CashflowPage({ from, to, iban }: { from: string; to: str
       )
     : null
 
+  const yMax = data
+    ? Math.max(0, ...data.map(d => Math.max(d.income + d.incomeOffset, d.expenses)))
+    : 0
+  const yMin = data ? Math.min(0, ...data.map(d => d.net)) : 0
+
   return (
     <div className="cf-page">
       <div className="cf-controls">
@@ -143,6 +178,17 @@ export default function CashflowPage({ from, to, iban }: { from: string; to: str
               onClick={() => setGranularity(g)}
             >
               {g === 'monthly' ? t('cashflow.monthly') : t('cashflow.yearly')}
+            </button>
+          ))}
+        </div>
+        <div className="cf-gran-toggle">
+          {(['all', 'unnetted'] as const).map(mode => (
+            <button
+              key={mode}
+              className={`cf-gran-btn${incomeMode === mode ? ' active' : ''}`}
+              onClick={() => setIncomeMode(mode)}
+            >
+              {mode === 'all' ? t('cashflow.incomeModeAll') : t('cashflow.incomeModeUnnetted')}
             </button>
           ))}
         </div>
@@ -188,7 +234,7 @@ export default function CashflowPage({ from, to, iban }: { from: string; to: str
             borderRadius={2}
             padding={0.25}
             innerPadding={3}
-            valueScale={{ type: 'linear', min: Math.min(0, ...data.map(d => d.net)), max: 'auto' }}
+            valueScale={{ type: 'linear', min: yMin, max: yMax }}
             margin={{ top: 24, right: 24, bottom: data.length > 20 ? 72 : 48, left: 88 }}
             axisBottom={{
               tickSize: 0,
@@ -204,7 +250,7 @@ export default function CashflowPage({ from, to, iban }: { from: string; to: str
             enableLabel={false}
             enableGridX={false}
             gridYValues={5}
-            layers={['grid', 'axes', 'bars', NetLayer, 'legends']}
+            layers={['grid', 'axes', 'bars', IncomeOffsetLayer, NetLayer, 'legends']}
             onClick={({ id, data: d }) => {
               if (id === 'income' || id === 'expenses') {
                 openDrilldown(d.periodKey, d.period, id)
@@ -218,6 +264,13 @@ export default function CashflowPage({ from, to, iban }: { from: string; to: str
                   <span>{t('cashflow.tooltipIncome')}</span>
                   <span className="cf-tooltip-amt">{EUR.format(d.income)}</span>
                 </div>
+                {incomeMode === 'unnetted' && d.incomeOffset > 0 && (
+                  <div className="cf-tooltip-row" style={{ color: '#6b6b78' }}>
+                    <span className="cf-dot" style={{ background: 'rgba(120,120,130,0.5)' }} />
+                    <span>{t('cashflow.netted')}</span>
+                    <span className="cf-tooltip-amt">{EUR.format(d.incomeOffset)}</span>
+                  </div>
+                )}
                 <div className="cf-tooltip-row">
                   <span className="cf-dot cf-dot--expenses" />
                   <span>{t('cashflow.tooltipExpenses')}</span>
@@ -239,6 +292,32 @@ export default function CashflowPage({ from, to, iban }: { from: string; to: str
         <DrilldownModal state={drilldown} onClose={() => setDrilldown(null)} />
       )}
     </div>
+  )
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function IncomeOffsetLayer({ bars, yScale }: any) {
+  if (!bars || bars.length === 0) return null
+  return (
+    <g>
+      {bars
+        .filter((bar: any) => bar.data.id === 'income' && (bar.data.data.incomeOffset as number) > 0)
+        .map((bar: any, i: number) => {
+          const offsetVal = bar.data.data.incomeOffset as number
+          const offsetHeight = yScale(0) - yScale(offsetVal)
+          return (
+            <rect
+              key={i}
+              x={bar.x}
+              y={bar.y - offsetHeight}
+              width={bar.width}
+              height={offsetHeight}
+              fill="rgba(120,120,130,0.35)"
+              rx={2}
+            />
+          )
+        })}
+    </g>
   )
 }
 
@@ -311,7 +390,12 @@ function DrilldownModal({
 }) {
   const { t } = useTranslation()
   const title = state.type === 'income' ? t('cashflow.income') : t('cashflow.expenses')
-  const total = state.transactions?.reduce((s, tx) => s + Math.abs(tx.effectiveAmount), 0) ?? 0
+
+  const transactions = state.transactions ?? []
+  const total = transactions.reduce((s, tx) => {
+    if (state.type === 'expenses') return s + Math.abs(tx.effectiveAmount)
+    return state.incomeMode === 'all' ? s + tx.amount : s + Math.max(0, tx.effectiveAmount)
+  }, 0)
 
   return (
     <div className="bgt-dd-backdrop" onClick={onClose}>
@@ -348,20 +432,34 @@ function DrilldownModal({
                   </tr>
                 </thead>
                 <tbody>
-                  {state.transactions.map(tx => (
-                    <tr key={tx.id}>
-                      <td className="bgt-dd-cell-date">{tx.accountingDate}</td>
-                      <td className="bgt-dd-cell-cat">
-                        {tx.category}{tx.subcategory ? ` / ${tx.subcategory}` : ''}
-                      </td>
-                      <td className="bgt-dd-cell-purpose" title={tx.purpose ?? undefined}>
-                        {tx.purpose ?? <span className="bgt-cell-muted">—</span>}
-                      </td>
-                      <td className="bgt-dd-cell-amount">
-                        {EUR2.format(Math.abs(tx.effectiveAmount))}
-                      </td>
-                    </tr>
-                  ))}
+                  {transactions.map(tx => {
+                    const showNettedStyle = state.type === 'income' && state.incomeMode === 'unnetted'
+                    const nettedAmount = showNettedStyle ? Math.max(0, tx.amount - tx.effectiveAmount) : 0
+                    const displayAmount = showNettedStyle ? Math.max(0, tx.effectiveAmount) : Math.abs(tx.effectiveAmount)
+                    const fullyNetted = showNettedStyle && tx.effectiveAmount <= 0
+
+                    return (
+                      <tr key={tx.id} style={fullyNetted ? { color: '#6b6b78' } : undefined}>
+                        <td className="bgt-dd-cell-date">{tx.accountingDate}</td>
+                        <td className="bgt-dd-cell-cat">
+                          {tx.category}{tx.subcategory ? ` / ${tx.subcategory}` : ''}
+                        </td>
+                        <td className="bgt-dd-cell-purpose" title={tx.purpose ?? undefined}>
+                          {tx.purpose ?? <span className="bgt-cell-muted">—</span>}
+                        </td>
+                        <td className="bgt-dd-cell-amount">
+                          {!fullyNetted && displayAmount > 0 && (
+                            <span>{EUR2.format(displayAmount)}</span>
+                          )}
+                          {nettedAmount > 0 && (
+                            <span style={{ color: '#6b6b78', marginLeft: fullyNetted ? 0 : '0.4em' }}>
+                              {fullyNetted ? EUR2.format(tx.amount) : `(${EUR2.format(nettedAmount)} ${t('cashflow.netted')})`}
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    )
+                  })}
                 </tbody>
               </table>
             </div>
