@@ -50,11 +50,14 @@ class TransactionOffsetService(
             "Transactions ${command.transactionId} and ${command.otherTransactionId} are already linked"
         }
 
-        val amountA = rawAmountA?.let { normalizeSign(it, txA.amount) } ?: txA.amount
-        val amountB = rawAmountB?.let { normalizeSign(it, txB.amount) } ?: txB.amount
+        val noOffset = command.myAmount == null && command.otherAmount == null
+        val amountA = if (noOffset) null else rawAmountA?.let { normalizeSign(it, txA.amount) } ?: txA.amount
+        val amountB = if (noOffset) null else rawAmountB?.let { normalizeSign(it, txB.amount) } ?: txB.amount
 
-        validateAllocation(txA, amountA, txB.amount)
-        validateAllocation(txB, amountB, txA.amount)
+        if (!noOffset) {
+            validateAllocation(txA, amountA!!, txB.amount)
+            validateAllocation(txB, amountB!!, txA.amount)
+        }
 
         val groupId =
             resolveGroupForLink(
@@ -64,6 +67,16 @@ class TransactionOffsetService(
                 targetGroupId = command.targetGroupId,
                 forceNewGroup = command.forceNewGroup,
             )
+        if (noOffset) {
+            return OffsetLinkResult(
+                id = null,
+                transactionAId = aId,
+                transactionBId = bId,
+                amountA = null,
+                amountB = null,
+                groupId = groupId,
+            )
+        }
         return offsetRepository.create(CreateOffsetLinkCommand(aId, bId, amountA, amountB, groupId))
     }
 
@@ -72,7 +85,7 @@ class TransactionOffsetService(
         userId: Long,
     ): Boolean {
         val deleted = offsetRepository.delete(linkId, userId) ?: return false
-        deleted.groupId?.let { cleanupGroup(it, userId) }
+        deleted.groupId?.let { cleanupGroup(it, userId, fromUnlink = true) }
         return true
     }
 
@@ -150,6 +163,7 @@ class TransactionOffsetService(
         userId: Long,
     ) {
         offsetRepository.deleteByTxAndGroupId(txId, groupId, userId)
+        groupRepository.removeMember(groupId, txId)
         cleanupGroup(groupId, userId)
     }
 
@@ -158,17 +172,30 @@ class TransactionOffsetService(
         txAmount: BigDecimal,
     ): BigDecimal = if (txAmount < BigDecimal.ZERO) -amount.abs() else amount.abs()
 
+    private fun sameSign(
+        a: BigDecimal,
+        b: BigDecimal,
+    ) = (a >= BigDecimal.ZERO) == (b >= BigDecimal.ZERO)
+
     private fun validateAllocation(
         tx: Transaction,
         myAmount: BigDecimal,
         otherTxAmount: BigDecimal,
     ) {
+        // Same-sign links (e.g. income↔income) don't create real offsets — skip validation
+        if (sameSign(tx.amount, otherTxAmount)) return
         val txAbs = tx.amount.abs()
-        val alreadyCommitted = tx.offsetLinks.sumOf { link ->
-            val a = link.amountA
-            val b = link.amountB
-            if (a != null && b != null) minOf(a.abs(), b.abs()) else minOf(link.myCommitted.abs(), link.linkedTransactionAmount.abs())
-        }
+        val alreadyCommitted =
+            tx.offsetLinks.sumOf { link ->
+                if (sameSign(tx.amount, link.linkedTransactionAmount)) return@sumOf BigDecimal.ZERO
+                val a = link.amountA
+                val b = link.amountB
+                when {
+                    a == null && b == null -> BigDecimal.ZERO
+                    a != null && b != null -> minOf(a.abs(), b.abs())
+                    else -> minOf(link.myCommitted.abs(), link.linkedTransactionAmount.abs())
+                }
+            }
         val newCommit = minOf(myAmount.abs(), otherTxAmount.abs())
         val total = alreadyCommitted + newCommit
         if (total > txAbs) {
@@ -229,6 +256,7 @@ class TransactionOffsetService(
     private fun cleanupGroup(
         groupId: Long,
         userId: Long,
+        fromUnlink: Boolean = false,
     ) {
         val memberIds = groupRepository.findMemberIds(groupId)
         if (memberIds.isEmpty()) {
@@ -238,6 +266,7 @@ class TransactionOffsetService(
 
         val remainingLinks = offsetRepository.findLinksForGroup(groupId)
         if (remainingLinks.isEmpty()) {
+            if (!fromUnlink && memberIds.size >= 2) return
             memberIds.forEach { groupRepository.removeMember(groupId, it) }
             groupRepository.delete(groupId)
             return

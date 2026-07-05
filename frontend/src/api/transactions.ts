@@ -86,7 +86,9 @@ export function computeEffectiveAmount(amount: number, offsetLinks: OffsetLinkIt
   const totalOffset = offsetLinks.reduce((acc, link) => {
     const offset = (link.amountA !== null && link.amountB !== null)
       ? Math.min(Math.abs(link.amountA), Math.abs(link.amountB))
-      : Math.min(Math.abs(link.committedAmount), Math.abs(link.linkedTransactionAmount))
+      : (link.amountA === null && link.amountB === null)
+        ? 0
+        : Math.min(Math.abs(link.committedAmount), Math.abs(link.linkedTransactionAmount))
     return acc + offset
   }, 0)
   return amount >= 0 ? amount - totalOffset : amount + totalOffset

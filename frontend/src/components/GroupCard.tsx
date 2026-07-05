@@ -15,7 +15,9 @@ function committedOffset(tx: TransactionItem): number {
     if ((tx.amount >= 0) === (link.linkedTransactionAmount >= 0)) return acc
     const offset = (link.amountA !== null && link.amountB !== null)
       ? Math.min(Math.abs(link.amountA), Math.abs(link.amountB))
-      : Math.min(Math.abs(link.committedAmount), Math.abs(link.linkedTransactionAmount))
+      : (link.amountA === null && link.amountB === null)
+        ? 0
+        : Math.min(Math.abs(link.committedAmount), Math.abs(link.linkedTransactionAmount))
     return acc + offset
   }, 0)
 }
@@ -101,7 +103,8 @@ export function GroupCard({
     ? incomeEff
     : group.transactions.filter(tx => tx.amount < 0).reduce((sum, tx) => sum + tx.amount + committedOffset(tx), 0)
   const txById = Object.fromEntries(group.transactions.map(tx => [tx.id, tx]))
-  const isBalanced = Math.abs(netSum) < 0.005
+  const rawSum = group.transactions.reduce((sum, tx) => sum + tx.amount, 0)
+  const isBalanced = Math.abs(rawSum) < 0.005
 
   function save(name: string | null, comment: string | null) {
     setSaving(true)
