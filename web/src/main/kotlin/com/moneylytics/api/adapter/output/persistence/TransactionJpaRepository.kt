@@ -58,4 +58,7 @@ interface TransactionJpaRepository : JpaRepository<TransactionEntity, Long> {
         @Param("fingerprint") fingerprint: String,
         @Param("userId") userId: Long,
     ): TransactionEntity?
+
+    @Query("SELECT t.account.iban, MAX(t.accountingDate) FROM TransactionEntity t WHERE t.user.id = :userId GROUP BY t.account.iban")
+    fun findLatestDatePerIban(@Param("userId") userId: Long): List<Array<out Any?>>
 }

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { Link, useLocation } from 'react-router-dom'
 import { Trans, useTranslation } from 'react-i18next'
 import { fetchCategories, type CategoryGroup } from '../api/rawImport'
 import {
@@ -90,6 +91,7 @@ export default function TransactionsPage({
   onColumnOrderChange?: (order: string[]) => void
 }) {
   const { t } = useTranslation()
+  const location = useLocation()
   const [rows, setRows] = useState<RowState[]>([])
   const [page, setPage] = useState<PageState>({ phase: 'idle' })
   const [categories, setCategories] = useState<CategoryGroup[]>([])
@@ -678,11 +680,20 @@ export default function TransactionsPage({
       })
     }
 
+    const deepLinkSearch = new URLSearchParams(location.search)
+    deepLinkSearch.set('group', String(groupModal.groupId))
+
     return (
       <div className="txnv-lm-backdrop" onClick={close}>
         <div className="txnv-lm-modal txnv-lm-modal--group" onClick={e => e.stopPropagation()}>
           <div className="txnv-lm-header">
-            <span className="txnv-lm-title">{t('linked.group')} #{groupModal.groupId}</span>
+            <Link
+              className="txnv-lm-title"
+              to={{ pathname: '/verknuepfungen', search: deepLinkSearch.toString() }}
+              onClick={close}
+            >
+              {t('linked.group')} #{groupModal.groupId} ↗
+            </Link>
             <button className="txnv-lm-close" onClick={close}>×</button>
           </div>
           <div className="txnv-lm-group-body">

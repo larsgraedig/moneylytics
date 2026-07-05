@@ -166,6 +166,11 @@ class TransactionPersistenceAdapter(
         jpaRepository.save(entity)
     }
 
+    @Transactional(readOnly = true)
+    override fun latestTransactionDatesByUserId(userId: Long): Map<String, LocalDate> =
+        jpaRepository.findLatestDatePerIban(userId)
+            .associate { row -> row[0] as String to row[1] as LocalDate }
+
     private fun enrichWithOffsetLinks(entities: List<TransactionEntity>): List<Transaction> {
         val ids = entities.mapNotNull { it.id }
         if (ids.isEmpty()) return emptyList()

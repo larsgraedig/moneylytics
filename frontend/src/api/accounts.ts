@@ -3,6 +3,7 @@ import { fetchWithUser } from './client'
 export interface Account {
   iban: string
   name: string
+  lastTransactionDate?: string
 }
 
 export async function fetchAccounts(): Promise<Account[]> {

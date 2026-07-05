@@ -35,7 +35,7 @@ class AccountController(
                 val userId = resolveUserUseCase.resolveUser(principal.username)
                 getAccountsUseCase.getAccounts(userId)
             }
-        return AccountsResponse(accounts.map { AccountResponse(iban = it.iban, name = it.name) })
+        return AccountsResponse(accounts.map { AccountResponse(iban = it.iban, name = it.name, lastTransactionDate = it.latestTransactionDate?.toString()) })
     }
 
     @PostMapping
@@ -86,6 +86,7 @@ data class AccountsResponse(
 data class AccountResponse(
     val iban: String,
     val name: String,
+    val lastTransactionDate: String? = null,
 )
 
 data class SaveAccountRequest(

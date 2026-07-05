@@ -18,6 +18,13 @@ function localIso(d: Date): string {
   return `${y}-${m}-${day}`
 }
 
+export function detectPreset(from: string, to: string): Preset | '' {
+  return PRESETS.find(p => {
+    const r = getPresetRange(p)
+    return r.from === from && r.to === to
+  }) ?? ''
+}
+
 export function getPresetRange(preset: Preset): { from: string; to: string } {
   const now = new Date()
   const y = now.getFullYear()

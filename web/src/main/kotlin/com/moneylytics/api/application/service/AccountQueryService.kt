@@ -4,6 +4,7 @@ import com.moneylytics.api.application.port.input.DeleteAccountUseCase
 import com.moneylytics.api.application.port.input.GetAccountsUseCase
 import com.moneylytics.api.application.port.input.SaveAccountUseCase
 import com.moneylytics.api.application.port.output.AccountRepository
+import com.moneylytics.api.application.port.output.TransactionRepository
 import com.moneylytics.api.domain.Account
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -11,10 +12,14 @@ import org.springframework.transaction.annotation.Transactional
 @Service
 class AccountQueryService(
     private val accountRepository: AccountRepository,
+    private val transactionRepository: TransactionRepository,
 ) : GetAccountsUseCase,
     SaveAccountUseCase,
     DeleteAccountUseCase {
-    override fun getAccounts(userId: Long): List<Account> = accountRepository.findAll(userId)
+    override fun getAccounts(userId: Long): List<Account> {
+        val latestDates = transactionRepository.latestTransactionDatesByUserId(userId)
+        return accountRepository.findAll(userId).map { it.copy(latestTransactionDate = latestDates[it.iban]) }
+    }
 
     @Transactional
     override fun saveAccount(

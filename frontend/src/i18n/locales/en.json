@@ -198,7 +198,8 @@
     "deleteConfirm": "Really delete account {{iban}}? Existing transactions will be kept.",
     "columns": {
       "iban": "IBAN",
-      "name": "Name"
+      "name": "Name",
+      "lastTransaction": "Last booking"
     }
   },
   "limits": {
