@@ -22,6 +22,7 @@ jackson-module-kotlin = { group = "com.fasterxml.jackson.module", name = "jackso
 commons-csv = { group = "org.apache.commons", name = "commons-csv", version.ref = "commons-csv" }
 h2 = { group = "com.h2database", name = "h2", version.ref = "h2" }
 postgresql = { group = "org.postgresql", name = "postgresql" }
+spring-session-jdbc = { group = "org.springframework.session", name = "spring-session-jdbc" }
 
 # Testing dependencies
 spring-boot-starter-webflux-test = { group = "org.springframework.boot", name = "spring-boot-starter-webflux-test" }

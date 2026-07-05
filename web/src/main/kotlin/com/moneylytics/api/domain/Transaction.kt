@@ -23,9 +23,7 @@ data class Transaction(
 ) {
     fun effectiveAmount(): BigDecimal {
         if (offsetLinks.isEmpty()) return amount
-        // If any link uses this side's full amount (null side → myCommitted == amount),
-        // return the original amount to avoid counting it multiple times.
-        if (offsetLinks.any { it.myCommitted.compareTo(amount) == 0 }) return amount
-        return offsetLinks.sumOf { it.myCommitted }
+        val totalOffset = offsetLinks.sumOf { minOf(it.myCommitted.abs(), it.linkedTransactionAmount.abs()) }
+        return if (amount >= BigDecimal.ZERO) amount - totalOffset else amount + totalOffset
     }
 }

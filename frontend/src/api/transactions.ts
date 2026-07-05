@@ -83,8 +83,8 @@ export interface TransactionListResponse {
 
 export function computeEffectiveAmount(amount: number, offsetLinks: OffsetLinkItem[]): number {
   if (offsetLinks.length === 0) return amount
-  if (offsetLinks.some(link => link.committedAmount === amount)) return amount
-  return offsetLinks.reduce((acc, link) => acc + link.committedAmount, 0)
+  const totalOffset = offsetLinks.reduce((acc, link) => acc + Math.min(Math.abs(link.committedAmount), Math.abs(link.linkedTransactionAmount)), 0)
+  return amount >= 0 ? amount - totalOffset : amount + totalOffset
 }
 
 export async function fetchTransactionList(
