@@ -75,6 +75,7 @@ export default function App() {
   const { username, isLoading, logout } = useAuth()
   const { t, i18n } = useTranslation()
   const [tab, setTab] = useState<Tab>('sankey')
+  const [highlightGroupId, setHighlightGroupId] = useState<number | null>(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [from, setFrom] = useState(firstOfYear)
@@ -259,11 +260,11 @@ export default function App() {
             </>
           )}
 
-          {tab === 'cashflow' && <CashflowPage key={username} from={from} to={to} iban={iban} />}
+          {tab === 'cashflow' && <CashflowPage key={username} from={from} to={to} iban={iban} onNavigateToGroup={id => { setHighlightGroupId(id); setTab('verknuepfungen') }} />}
           {tab === 'trends' && <TrendsPage key={username} from={from} to={to} iban={iban} />}
           {tab === 'breakdown' && <PiePage key={username} from={from} to={to} iban={iban} />}
           {tab === 'kontoauszug' && <TransactionsPage key={username} from={from} to={to} iban={iban} accounts={accounts} columnOrder={txColumnOrder ?? undefined} onColumnOrderChange={order => setTxColumnOrder(order)} />}
-          {tab === 'verknuepfungen' && <LinkedTransactionsPage key={username} />}
+          {tab === 'verknuepfungen' && <LinkedTransactionsPage key={username} highlightGroupId={highlightGroupId} onHighlightConsumed={() => setHighlightGroupId(null)} />}
           {tab === 'budgets' && <BudgetsPage key={username} from={from} to={to} iban={iban} />}
           {tab === 'limits' && <ThresholdsPage key={username} from={from} to={to} iban={iban} />}
           {tab === 'konten' && <AccountsPage key={username} />}

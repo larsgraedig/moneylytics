@@ -4035,3 +4035,185 @@ body {
   color: var(--text-muted);
   font-family: var(--mono);
 }
+
+/* ── Budget detail page ────────────────────────────────── */
+
+.bdg-cell-name--link { cursor: pointer; }
+.bdg-cell-name--link:hover { color: var(--accent); text-decoration: underline; }
+
+.bdt-page {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.bdt-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+.bdt-back-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 13px;
+  font-family: inherit;
+  padding: 4px 0;
+  white-space: nowrap;
+}
+.bdt-back-btn:hover { color: var(--text); }
+
+.bdt-title-block {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+.bdt-budget-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.bdt-budget-note {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.bdt-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+.bdt-meta-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  align-items: flex-end;
+}
+.bdt-meta-label {
+  font-size: 10px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.bdt-meta-value { font-size: 14px; font-weight: 500; }
+.bdt-meta-sep { color: var(--border-hi); font-size: 16px; }
+.bdt-meta-bar { margin-top: 4px; }
+
+.bdt-assign-btn { flex-shrink: 0; }
+
+.bdt-body {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  gap: 0;
+}
+
+.bdt-chart-section {
+  flex: 3;
+  display: flex;
+  flex-direction: column;
+  padding: 16px 20px;
+  border-right: 1px solid var(--border);
+  overflow: hidden;
+}
+
+.bdt-txns-section {
+  flex: 2;
+  display: flex;
+  flex-direction: column;
+  padding: 16px 0 0;
+  overflow: hidden;
+  min-width: 280px;
+}
+
+.bdt-section-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  margin-bottom: 12px;
+  display: block;
+  padding: 0 20px;
+}
+.bdt-chart-section .bdt-section-label { padding: 0; }
+
+.bdt-chart-wrap {
+  flex: 1;
+  min-height: 0;
+}
+
+.bdt-txns-scroll {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.bdt-txns-table { width: 100%; }
+.bdt-txns-table thead th { padding: 4px 12px; }
+.bdt-txns-table tbody td { padding: 6px 12px; }
+
+.bdt-cell-cat { max-width: 180px; }
+.bdt-cell-sub { color: var(--text-muted); font-size: 11px; }
+.bdt-cell-purpose {
+  display: block;
+  font-size: 11px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 160px;
+}
+
+.bdt-total-row {
+  padding: 0 12px;
+  flex-shrink: 0;
+}
+
+/* ── Cashflow drilldown group chips ───────────────────── */
+
+.cf-group-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+  justify-content: flex-end;
+}
+
+.cf-group-chip {
+  background: none;
+  border: 1px solid var(--border-hi);
+  border-radius: 4px;
+  color: var(--accent);
+  cursor: pointer;
+  font-family: var(--mono);
+  font-size: 11px;
+  padding: 1px 6px;
+  white-space: nowrap;
+}
+.cf-group-chip:hover { border-color: var(--accent); background: var(--accent-glow); }
+
+/* ── LinkedTransactionsPage highlight ─────────────────── */
+
+@keyframes ltx-highlight-pulse {
+  0%   { box-shadow: 0 0 0 2px var(--accent); }
+  70%  { box-shadow: 0 0 0 2px var(--accent-dim); }
+  100% { box-shadow: none; }
+}
+
+.ltx-group--highlight > .ltx-group {
+  animation: ltx-highlight-pulse 2s ease-out forwards;
+}

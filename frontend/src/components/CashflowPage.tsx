@@ -5,6 +5,7 @@ import { fetchAllTransactions, type TransactionItem } from '../api/transactions'
 
 type Granularity = 'monthly' | 'yearly'
 type IncomeMode = 'all' | 'unnetted'
+type ExpenseMode = 'all' | 'unnetted'
 
 const EUR = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })
 const EUR2 = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' })
@@ -15,7 +16,8 @@ interface RawBucket {
   periodKey: string
   incomeAll: number
   incomeUnnetted: number
-  expenses: number
+  expensesAll: number
+  expensesUnnetted: number
 }
 
 interface CashflowBucket {
@@ -25,6 +27,7 @@ interface CashflowBucket {
   income: number
   incomeOffset: number
   expenses: number
+  expensesOffset: number
   net: number
 }
 
@@ -36,6 +39,7 @@ interface DrilldownState {
   transactions: TransactionItem[] | null
   loading: boolean
   incomeMode: IncomeMode
+  expenseMode: ExpenseMode
 }
 
 function bucketKey(date: string, gran: Granularity): string {
@@ -71,17 +75,20 @@ function periodRange(
   }
 }
 
-function toDisplayBuckets(raw: RawBucket[], mode: IncomeMode): CashflowBucket[] {
+function toDisplayBuckets(raw: RawBucket[], incomeMode: IncomeMode, expenseMode: ExpenseMode): CashflowBucket[] {
   return raw.map(b => {
-    const income = mode === 'all' ? b.incomeAll : b.incomeUnnetted
-    const incomeOffset = mode === 'all' ? 0 : b.incomeAll - b.incomeUnnetted
+    const income = incomeMode === 'all' ? b.incomeAll : b.incomeUnnetted
+    const incomeOffset = incomeMode === 'all' ? 0 : b.incomeAll - b.incomeUnnetted
+    const expenses = expenseMode === 'all' ? b.expensesAll : b.expensesUnnetted
+    const expensesOffset = expenseMode === 'all' ? 0 : b.expensesAll - b.expensesUnnetted
     return {
       period: b.period,
       periodKey: b.periodKey,
       income,
       incomeOffset,
-      expenses: b.expenses,
-      net: income - b.expenses,
+      expenses,
+      expensesOffset,
+      net: income - expenses,
     }
   })
 }
@@ -93,33 +100,35 @@ const NIVO_THEME = {
   tooltip: { container: { display: 'none' } },
 }
 
-export default function CashflowPage({ from, to, iban }: { from: string; to: string; iban?: string }) {
+export default function CashflowPage({ from, to, iban, onNavigateToGroup }: { from: string; to: string; iban?: string; onNavigateToGroup?: (groupId: number) => void }) {
   const { t } = useTranslation()
   const [granularity, setGranularity] = useState<Granularity>('monthly')
   const [incomeMode, setIncomeMode] = useState<IncomeMode>('all')
+  const [expenseMode, setExpenseMode] = useState<ExpenseMode>('all')
   const [loading, setLoading] = useState(false)
   const [rawData, setRawData] = useState<RawBucket[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [drilldown, setDrilldown] = useState<DrilldownState | null>(null)
 
-  const data: CashflowBucket[] | null = rawData ? toDisplayBuckets(rawData, incomeMode) : null
+  const data: CashflowBucket[] | null = rawData ? toDisplayBuckets(rawData, incomeMode, expenseMode) : null
 
   async function load() {
     setLoading(true)
     setError(null)
     try {
       const resp = await fetchAllTransactions(from, to, iban)
-      const map = new Map<string, { incomeAll: number; incomeUnnetted: number; expenses: number }>()
+      const map = new Map<string, { incomeAll: number; incomeUnnetted: number; expensesAll: number; expensesUnnetted: number }>()
 
       for (const tx of resp.transactions) {
         const key = bucketKey(tx.accountingDate, granularity)
-        if (!map.has(key)) map.set(key, { incomeAll: 0, incomeUnnetted: 0, expenses: 0 })
+        if (!map.has(key)) map.set(key, { incomeAll: 0, incomeUnnetted: 0, expensesAll: 0, expensesUnnetted: 0 })
         const entry = map.get(key)!
         if (tx.amount >= 0) {
           entry.incomeAll += tx.amount
           entry.incomeUnnetted += Math.max(0, tx.effectiveAmount)
         } else {
-          entry.expenses += Math.abs(tx.effectiveAmount)
+          entry.expensesAll += Math.abs(tx.amount)
+          entry.expensesUnnetted += Math.abs(Math.min(0, tx.effectiveAmount))
         }
       }
 
@@ -130,7 +139,8 @@ export default function CashflowPage({ from, to, iban }: { from: string; to: str
           periodKey: key,
           incomeAll: Math.round(v.incomeAll),
           incomeUnnetted: Math.round(v.incomeUnnetted),
-          expenses: Math.round(v.expenses),
+          expensesAll: Math.round(v.expensesAll),
+          expensesUnnetted: Math.round(v.expensesUnnetted),
         }))
 
       setRawData(buckets)
@@ -143,11 +153,11 @@ export default function CashflowPage({ from, to, iban }: { from: string; to: str
 
   async function openDrilldown(periodKey: string, period: string, type: 'income' | 'expenses') {
     const range = periodRange(periodKey, granularity, from, to)
-    setDrilldown({ period, type, from: range.from, to: range.to, transactions: null, loading: true, incomeMode })
+    setDrilldown({ period, type, from: range.from, to: range.to, transactions: null, loading: true, incomeMode, expenseMode })
     try {
       const resp = await fetchAllTransactions(range.from, range.to, iban)
       const txs = resp.transactions
-        .filter(tx => type === 'income' ? tx.amount >= 0 : tx.effectiveAmount < 0)
+        .filter(tx => type === 'income' ? tx.amount >= 0 : tx.amount < 0)
         .sort((a, b) => b.accountingDate.localeCompare(a.accountingDate))
       setDrilldown(prev => prev ? { ...prev, transactions: txs, loading: false } : prev)
     } catch {
@@ -163,7 +173,7 @@ export default function CashflowPage({ from, to, iban }: { from: string; to: str
     : null
 
   const yMax = data
-    ? Math.max(0, ...data.map(d => Math.max(d.income + d.incomeOffset, d.expenses)))
+    ? Math.max(0, ...data.map(d => Math.max(d.income + d.incomeOffset, d.expenses + d.expensesOffset)))
     : 0
   const yMin = data ? Math.min(0, ...data.map(d => d.net)) : 0
 
@@ -189,6 +199,17 @@ export default function CashflowPage({ from, to, iban }: { from: string; to: str
               onClick={() => setIncomeMode(mode)}
             >
               {mode === 'all' ? t('cashflow.incomeModeAll') : t('cashflow.incomeModeUnnetted')}
+            </button>
+          ))}
+        </div>
+        <div className="cf-gran-toggle">
+          {(['all', 'unnetted'] as const).map(mode => (
+            <button
+              key={mode}
+              className={`cf-gran-btn${expenseMode === mode ? ' active' : ''}`}
+              onClick={() => setExpenseMode(mode)}
+            >
+              {mode === 'all' ? t('cashflow.expenseModeAll') : t('cashflow.expenseModeUnnetted')}
             </button>
           ))}
         </div>
@@ -250,7 +271,7 @@ export default function CashflowPage({ from, to, iban }: { from: string; to: str
             enableLabel={false}
             enableGridX={false}
             gridYValues={5}
-            layers={['grid', 'axes', 'bars', IncomeOffsetLayer, NetLayer, 'legends']}
+            layers={['grid', 'axes', 'bars', IncomeOffsetLayer, ExpenseOffsetLayer, NetLayer, 'legends']}
             onClick={({ id, data: d }) => {
               if (id === 'income' || id === 'expenses') {
                 openDrilldown(d.periodKey, d.period, id)
@@ -276,6 +297,13 @@ export default function CashflowPage({ from, to, iban }: { from: string; to: str
                   <span>{t('cashflow.tooltipExpenses')}</span>
                   <span className="cf-tooltip-amt">{EUR.format(d.expenses)}</span>
                 </div>
+                {expenseMode === 'unnetted' && d.expensesOffset > 0 && (
+                  <div className="cf-tooltip-row" style={{ color: '#6b6b78' }}>
+                    <span className="cf-dot" style={{ background: 'rgba(120,120,130,0.5)' }} />
+                    <span>{t('cashflow.netted')}</span>
+                    <span className="cf-tooltip-amt">{EUR.format(d.expensesOffset)}</span>
+                  </div>
+                )}
                 <div className={`cf-tooltip-row cf-tooltip-net${d.net >= 0 ? ' positive' : ' negative'}`}>
                   <span className="cf-dot cf-dot--net" style={{ background: d.net >= 0 ? '#4ade80' : '#f87171' }} />
                   <span>{t('cashflow.tooltipNet')}</span>
@@ -289,7 +317,11 @@ export default function CashflowPage({ from, to, iban }: { from: string; to: str
       </div>
 
       {drilldown && (
-        <DrilldownModal state={drilldown} onClose={() => setDrilldown(null)} />
+        <DrilldownModal
+          state={drilldown}
+          onClose={() => setDrilldown(null)}
+          onNavigateToGroup={onNavigateToGroup ? (groupId) => { setDrilldown(null); onNavigateToGroup(groupId) } : undefined}
+        />
       )}
     </div>
   )
@@ -303,8 +335,32 @@ function IncomeOffsetLayer({ bars, yScale }: any) {
       {bars
         .filter((bar: any) => bar.data.id === 'income' && (bar.data.data.incomeOffset as number) > 0)
         .map((bar: any, i: number) => {
-          const offsetVal = bar.data.data.incomeOffset as number
-          const offsetHeight = yScale(0) - yScale(offsetVal)
+          const offsetHeight = yScale(0) - yScale(bar.data.data.incomeOffset as number)
+          return (
+            <rect
+              key={i}
+              x={bar.x}
+              y={bar.y - offsetHeight}
+              width={bar.width}
+              height={offsetHeight}
+              fill="rgba(120,120,130,0.35)"
+              rx={2}
+            />
+          )
+        })}
+    </g>
+  )
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function ExpenseOffsetLayer({ bars, yScale }: any) {
+  if (!bars || bars.length === 0) return null
+  return (
+    <g>
+      {bars
+        .filter((bar: any) => bar.data.id === 'expenses' && (bar.data.data.expensesOffset as number) > 0)
+        .map((bar: any, i: number) => {
+          const offsetHeight = yScale(0) - yScale(bar.data.data.expensesOffset as number)
           return (
             <rect
               key={i}
@@ -384,17 +440,22 @@ function NetLayer({ bars, yScale, innerWidth }: any) {
 function DrilldownModal({
   state,
   onClose,
+  onNavigateToGroup,
 }: {
   state: DrilldownState
   onClose: () => void
+  onNavigateToGroup?: (groupId: number) => void
 }) {
   const { t } = useTranslation()
   const title = state.type === 'income' ? t('cashflow.income') : t('cashflow.expenses')
 
   const transactions = state.transactions ?? []
   const total = transactions.reduce((s, tx) => {
-    if (state.type === 'expenses') return s + Math.abs(tx.effectiveAmount)
-    return state.incomeMode === 'all' ? s + tx.amount : s + Math.max(0, tx.effectiveAmount)
+    if (state.type === 'income') {
+      return state.incomeMode === 'all' ? s + tx.amount : s + Math.max(0, tx.effectiveAmount)
+    } else {
+      return state.expenseMode === 'all' ? s + Math.abs(tx.amount) : s + Math.abs(Math.min(0, tx.effectiveAmount))
+    }
   }, 0)
 
   return (
@@ -433,10 +494,24 @@ function DrilldownModal({
                 </thead>
                 <tbody>
                   {transactions.map(tx => {
-                    const showNettedStyle = state.type === 'income' && state.incomeMode === 'unnetted'
-                    const nettedAmount = showNettedStyle ? Math.max(0, tx.amount - tx.effectiveAmount) : 0
-                    const displayAmount = showNettedStyle ? Math.max(0, tx.effectiveAmount) : Math.abs(tx.effectiveAmount)
-                    const fullyNetted = showNettedStyle && tx.effectiveAmount <= 0
+                    const isIncome = state.type === 'income'
+                    const showNetted = isIncome
+                      ? state.incomeMode === 'unnetted'
+                      : state.expenseMode === 'unnetted'
+
+                    let displayAmount: number
+                    let nettedAmount: number
+                    let fullyNetted: boolean
+
+                    if (isIncome) {
+                      fullyNetted = showNetted && tx.effectiveAmount <= 0
+                      displayAmount = showNetted ? Math.max(0, tx.effectiveAmount) : tx.amount
+                      nettedAmount = showNetted ? Math.max(0, tx.amount - tx.effectiveAmount) : 0
+                    } else {
+                      fullyNetted = showNetted && tx.effectiveAmount >= 0
+                      displayAmount = showNetted ? Math.abs(Math.min(0, tx.effectiveAmount)) : Math.abs(tx.amount)
+                      nettedAmount = showNetted ? Math.abs(tx.amount) - Math.abs(Math.min(0, tx.effectiveAmount)) : 0
+                    }
 
                     return (
                       <tr key={tx.id} style={fullyNetted ? { color: '#6b6b78' } : undefined}>
@@ -453,8 +528,23 @@ function DrilldownModal({
                           )}
                           {nettedAmount > 0 && (
                             <span style={{ color: '#6b6b78', marginLeft: fullyNetted ? 0 : '0.4em' }}>
-                              {fullyNetted ? EUR2.format(tx.amount) : `(${EUR2.format(nettedAmount)} ${t('cashflow.netted')})`}
+                              {fullyNetted
+                                ? EUR2.format(Math.abs(tx.amount))
+                                : `(${EUR2.format(nettedAmount)} ${t('cashflow.netted')})`}
                             </span>
+                          )}
+                          {nettedAmount > 0 && tx.groups.length > 0 && onNavigateToGroup && (
+                            <div className="cf-group-chips">
+                              {tx.groups.map(g => (
+                                <button
+                                  key={g.id}
+                                  className="cf-group-chip"
+                                  onClick={() => onNavigateToGroup(g.id)}
+                                >
+                                  {g.name ?? `#${g.id}`}
+                                </button>
+                              ))}
+                            </div>
                           )}
                         </td>
                       </tr>

@@ -1,19 +1,40 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { fetchLinkedGroups, type LinkedGroupItem } from '../api/transactions'
 import { GroupCard } from './GroupCard'
 
-export default function LinkedTransactionsPage() {
+export default function LinkedTransactionsPage({
+  highlightGroupId,
+  onHighlightConsumed,
+}: {
+  highlightGroupId?: number | null
+  onHighlightConsumed?: () => void
+}) {
   const { t } = useTranslation()
   const [groups, setGroups] = useState<LinkedGroupItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const scrolledRef = useRef(false)
 
   useEffect(() => {
     fetchLinkedGroups()
       .then(res => { setGroups(res.groups); setLoading(false) })
       .catch(e => { setError(e instanceof Error ? e.message : t('common.requestFailed')); setLoading(false) })
   }, [t])
+
+  useEffect(() => {
+    if (!highlightGroupId || loading || scrolledRef.current) return
+    const el = document.getElementById(`ltx-group-${highlightGroupId}`)
+    if (!el) return
+    scrolledRef.current = true
+    el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    el.classList.add('ltx-group--highlight')
+    const timer = setTimeout(() => {
+      el.classList.remove('ltx-group--highlight')
+      onHighlightConsumed?.()
+    }, 2000)
+    return () => clearTimeout(timer)
+  }, [highlightGroupId, loading, groups, onHighlightConsumed])
 
   function handleMetaChange(groupId: number, name: string | null, comment: string | null) {
     setGroups(prev => prev.map(g => g.groupId === groupId ? { ...g, name, comment } : g))
@@ -58,13 +79,14 @@ export default function LinkedTransactionsPage() {
       {groups.length === 0
         ? <p className="ltx-status">{t('linked.empty')}</p>
         : groups.map(g => (
-          <GroupCard
-            key={g.groupId}
-            group={g}
-            onMetaChange={handleMetaChange}
-            onOffsetCommentChange={handleOffsetCommentChange}
-            onRemoveTransaction={txId => handleRemoveTransaction(g.groupId, txId)}
-          />
+          <div key={g.groupId} id={`ltx-group-${g.groupId}`}>
+            <GroupCard
+              group={g}
+              onMetaChange={handleMetaChange}
+              onOffsetCommentChange={handleOffsetCommentChange}
+              onRemoveTransaction={txId => handleRemoveTransaction(g.groupId, txId)}
+            />
+          </div>
         ))
       }
     </div>

@@ -125,6 +125,8 @@
     "tooltipNet": "net",
     "incomeModeAll": "All income",
     "incomeModeUnnetted": "Unnetted income only",
+    "expenseModeAll": "All expenses",
+    "expenseModeUnnetted": "Unnetted expenses only",
     "netted": "netted"
   },
   "transactions": {
@@ -268,6 +270,13 @@
       "transactionId": "Transaction",
       "amount": "Amount",
       "budget": "Budget"
+    },
+    "detail": {
+      "balance": "Balance",
+      "target": "Target",
+      "targetMarker": "Target: {{amount}}",
+      "cumulativeBalance": "Cumulative balance",
+      "transactions": "Transactions"
     }
   },
   "csvImport": {
