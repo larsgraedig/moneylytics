@@ -104,6 +104,7 @@ export default function TransactionsPage({
   const [filterCategoryGroup, setFilterCategoryGroup] = useState('')
   const [filterSubcategory, setFilterSubcategory] = useState('')
   const [filterUncategorized, setFilterUncategorized] = useState(false)
+  const [filterType, setFilterType] = useState<'all' | 'income' | 'expenses'>('all')
   const [bulkCategory, setBulkCategory] = useState('')
   const [bulkCategoryGroup, setBulkCategoryGroup] = useState('')
   const [bulkSubcategory, setBulkSubcategory] = useState('')
@@ -551,6 +552,16 @@ export default function TransactionsPage({
 
   const sublistId = (category: string) =>
     `txnv-sub-${category.replace(/\s+/g, '-').toLowerCase()}`
+
+  const filteredRows = useMemo(() => {
+    return rows
+      .map((row, i) => ({ row, i }))
+      .filter(({ row }) => {
+        if (filterType === 'income') return row.original.amount > 0
+        if (filterType === 'expenses') return row.original.amount < 0
+        return true
+      })
+  }, [rows, filterType])
 
   const uniqueRowCategories = useMemo(() => {
     const seen = new Set<string>()
@@ -1190,8 +1201,19 @@ export default function TransactionsPage({
         >
           {t('transactions.filterUncategorized')}
         </button>
+        <div className="txnv-type-filter">
+          {(['all', 'income', 'expenses'] as const).map(type => (
+            <button
+              key={type}
+              className={`txnv-type-btn${filterType === type ? ' txnv-type-btn--active' : ''}`}
+              onClick={() => setFilterType(type)}
+            >
+              {t(`transactions.filter${type.charAt(0).toUpperCase() + type.slice(1)}`)}
+            </button>
+          ))}
+        </div>
         {page.phase === 'ready' && (
-          <span className="txnv-count">{t('transactions.count', { count: rows.length })}</span>
+          <span className="txnv-count">{t('transactions.count', { count: filteredRows.length })}{filterType !== 'all' && rows.length !== filteredRows.length ? ` / ${rows.length}` : ''}</span>
         )}
       </div>
 
@@ -1222,10 +1244,10 @@ export default function TransactionsPage({
         {page.phase === 'error' && (
           <p className="hint error">{(page as { phase: 'error'; message: string }).message}</p>
         )}
-        {page.phase === 'ready' && rows.length === 0 && (
+        {page.phase === 'ready' && filteredRows.length === 0 && (
           <p className="hint">{t('common.noTransactions')}</p>
         )}
-        {page.phase === 'ready' && rows.length > 0 && (
+        {page.phase === 'ready' && filteredRows.length > 0 && (
           <table className="txnv-table">
             <thead>
               <tr>
@@ -1243,7 +1265,7 @@ export default function TransactionsPage({
               </tr>
             </thead>
             <tbody>
-              {rows.map((row, i) => {
+              {filteredRows.map(({ row, i }) => {
                 const rowLinkColor = (() => {
                   for (const group of row.original.groups) {
                     const idx = groupColorMap.get(group.id)
