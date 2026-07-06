@@ -134,6 +134,9 @@
     "allCategories": "all categories",
     "allSubcategories": "all subcategories",
     "filterUncategorized": "no category",
+    "filterAll": "all",
+    "filterIncome": "income",
+    "filterExpenses": "expenses",
     "columns": {
       "date": "date",
       "bookingDate": "booking date",

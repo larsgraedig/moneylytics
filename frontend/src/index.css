@@ -2532,6 +2532,43 @@ body {
   letter-spacing: 0.04em;
 }
 
+.txnv-type-filter {
+  display: flex;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.txnv-type-btn {
+  height: 34px;
+  padding: 0 12px;
+  background: transparent;
+  border: none;
+  border-right: 1px solid var(--border);
+  color: var(--text-muted);
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+}
+
+.txnv-type-btn:last-child {
+  border-right: none;
+}
+
+.txnv-type-btn:hover:not(.txnv-type-btn--active) {
+  background: var(--accent-glow);
+  color: var(--accent);
+}
+
+.txnv-type-btn--active {
+  background: var(--accent-glow);
+  color: var(--accent);
+  border-color: var(--border);
+}
+
 .txnv-body {
   flex: 1;
   overflow-y: auto;

@@ -134,6 +134,9 @@
     "allCategories": "Alle Kategorien",
     "allSubcategories": "Alle Unterkategorien",
     "filterUncategorized": "Ohne Kategorie",
+    "filterAll": "Alle",
+    "filterIncome": "Einnahmen",
+    "filterExpenses": "Ausgaben",
     "columns": {
       "date": "Datum",
       "bookingDate": "Buchungsdatum",
