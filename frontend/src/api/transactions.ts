@@ -57,6 +57,11 @@ export class AllocationExceededError extends Error {
   }
 }
 
+export interface CollectionSummary {
+  id: number
+  name: string
+}
+
 export interface TransactionItem {
   id: number
   bookingDate: string
@@ -70,6 +75,7 @@ export interface TransactionItem {
   currency: string
   offsetLinks: OffsetLinkItem[]
   groups: GroupSummary[]
+  collections: CollectionSummary[]
   comment: string | null
   purpose: string | null
   counterpartyName: string | null

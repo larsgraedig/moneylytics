@@ -1,6 +1,7 @@
 package com.moneylytics.api.adapter.output.persistence
 
 import com.moneylytics.api.application.port.output.TransactionRepository
+import com.moneylytics.api.domain.CollectionSummary
 import com.moneylytics.api.domain.Transaction
 import com.moneylytics.api.domain.TransactionGroupSummary
 import com.moneylytics.api.domain.TransactionOffsetLink
@@ -18,6 +19,8 @@ class TransactionPersistenceAdapter(
     private val offsetJpaRepository: TransactionOffsetJpaRepository,
     private val groupMemberJpaRepository: TransactionGroupMemberJpaRepository,
     private val groupJpaRepository: TransactionGroupJpaRepository,
+    private val collectionTransactionJpaRepository: CollectionTransactionJpaRepository,
+    private val collectionJpaRepository: CollectionJpaRepository,
 ) : TransactionRepository {
     @Transactional
     override fun saveAll(
@@ -168,7 +171,8 @@ class TransactionPersistenceAdapter(
 
     @Transactional(readOnly = true)
     override fun latestTransactionDatesByUserId(userId: Long): Map<String, LocalDate> =
-        jpaRepository.findLatestDatePerIban(userId)
+        jpaRepository
+            .findLatestDatePerIban(userId)
             .associate { row -> row[0] as String to row[1] as LocalDate }
 
     private fun enrichWithOffsetLinks(entities: List<TransactionEntity>): List<Transaction> {
@@ -176,7 +180,29 @@ class TransactionPersistenceAdapter(
         if (ids.isEmpty()) return emptyList()
         val linksByTxId = buildLinkMap(offsetJpaRepository.findByTransactionIds(ids))
         val groupsByTxId = buildGroupMap(ids)
-        return entities.map { it.toDomain(linksByTxId[it.id] ?: emptyList(), groupsByTxId[it.id] ?: emptyList()) }
+        val collectionsByTxId = buildCollectionMap(ids)
+        return entities.map {
+            it.toDomain(
+                linksByTxId[it.id] ?: emptyList(),
+                groupsByTxId[it.id] ?: emptyList(),
+                collectionsByTxId[it.id] ?: emptyList(),
+            )
+        }
+    }
+
+    private fun buildCollectionMap(ids: List<Long>): Map<Long, List<CollectionSummary>> {
+        if (ids.isEmpty()) return emptyMap()
+        val members = collectionTransactionJpaRepository.findByTransactionIds(ids)
+        if (members.isEmpty()) return emptyMap()
+        val collectionsById =
+            collectionJpaRepository
+                .findAllById(members.map { it.collectionId }.toSet())
+                .associateBy { requireNotNull(it.id) }
+        return members
+            .groupBy { it.transactionId }
+            .mapValues { (_, mems) ->
+                mems.mapNotNull { m -> collectionsById[m.collectionId]?.let { CollectionSummary(requireNotNull(it.id), it.name) } }
+            }
     }
 
     private fun buildGroupMap(ids: List<Long>): Map<Long, List<TransactionGroupSummary>> {
@@ -225,6 +251,7 @@ class TransactionPersistenceAdapter(
     private fun TransactionEntity.toDomain(
         offsetLinks: List<TransactionOffsetLink> = emptyList(),
         groups: List<TransactionGroupSummary> = emptyList(),
+        collections: List<CollectionSummary> = emptyList(),
     ) = Transaction(
         category = category,
         subcategory = subcategory,
@@ -238,6 +265,7 @@ class TransactionPersistenceAdapter(
         id = id,
         offsetLinks = offsetLinks,
         groups = groups,
+        collections = collections,
         comment = comment,
         purpose = purpose,
         counterpartyName = counterpartyName,

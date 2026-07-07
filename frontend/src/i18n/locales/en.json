@@ -11,6 +11,7 @@
     "cashflow": "Cashflow",
     "kontoauszug": "Transactions",
     "verknuepfungen": "Linked",
+    "sammlungen": "Collections",
     "konten": "Accounts",
     "budgets": "Budgets",
     "limits": "Limits",
@@ -406,6 +407,29 @@
     "parsing": "parsing files…",
     "noRows": "The files contain no rows.",
     "noFiles": "No files provided."
+  },
+  "collections": {
+    "title": "Collections",
+    "count": "{{count}} collection(s)",
+    "empty": "No collections yet.",
+    "createCollection": "Create collection",
+    "namePlaceholder": "Name",
+    "notePlaceholder": "Note (optional)",
+    "nameRequired": "Name is required.",
+    "saveFailed": "Save failed.",
+    "deleteFailed": "Delete failed.",
+    "deleteConfirm": "Delete this collection? All transaction assignments will be removed.",
+    "noTransactions": "No transactions in this collection yet.",
+    "addTransaction": "Add transaction",
+    "removeTransaction": "Remove from collection",
+    "assignTitle": "Add transaction to «{{name}}»",
+    "assignFailed": "Failed to add.",
+    "namePlaceholderInline": "Add name…",
+    "commentPlaceholder": "Add note…",
+    "collection": "Collection",
+    "columns": {
+      "name": "Collections"
+    }
   },
   "linked": {
     "title": "Linked transactions",

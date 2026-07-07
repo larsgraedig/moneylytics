@@ -16,6 +16,7 @@ data class Transaction(
     val id: Long? = null,
     val offsetLinks: List<TransactionOffsetLink> = emptyList(),
     val groups: List<TransactionGroupSummary> = emptyList(),
+    val collections: List<CollectionSummary> = emptyList(),
     val comment: String? = null,
     val purpose: String? = null,
     val counterpartyName: String? = null,
