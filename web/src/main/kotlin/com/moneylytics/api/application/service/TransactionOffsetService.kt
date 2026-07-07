@@ -50,7 +50,7 @@ class TransactionOffsetService(
             "Transactions ${command.transactionId} and ${command.otherTransactionId} are already linked"
         }
 
-        val noOffset = command.myAmount == null && command.otherAmount == null
+        val noOffset = command.myAmount == null && command.otherAmount == null && sameSign(txA.amount, txB.amount)
         val amountA = if (noOffset) null else rawAmountA?.let { normalizeSign(it, txA.amount) } ?: txA.amount
         val amountB = if (noOffset) null else rawAmountB?.let { normalizeSign(it, txB.amount) } ?: txB.amount
 
