@@ -22,20 +22,35 @@ class CollectionService(
     ManageCollectionMembersUseCase {
     override fun getCollections(userId: Long): List<CollectionWithTransactions> =
         collectionRepository.findAllByUserId(userId).map { collection ->
-            val txIds = collectionRepository.findTransactionIdsByCollectionId(requireNotNull(collection.id), userId)
-            val transactions =
-                if (txIds.isEmpty()) {
-                    emptyList()
-                } else {
-                    transactionRepository.findByIdsAndUserId(txIds.toSet(), userId)
-                }
-            CollectionWithTransactions(
-                id = requireNotNull(collection.id),
-                name = collection.name,
-                note = collection.note,
-                transactions = transactions,
-            )
+            buildWithTransactions(collection, userId)
         }
+
+    override fun getCollection(
+        id: Long,
+        userId: Long,
+    ): CollectionWithTransactions? {
+        val collection = collectionRepository.findByIdAndUserId(id, userId) ?: return null
+        return buildWithTransactions(collection, userId)
+    }
+
+    private fun buildWithTransactions(
+        collection: com.moneylytics.api.domain.Collection,
+        userId: Long,
+    ): CollectionWithTransactions {
+        val txIds = collectionRepository.findTransactionIdsByCollectionId(requireNotNull(collection.id), userId)
+        val transactions =
+            if (txIds.isEmpty()) {
+                emptyList()
+            } else {
+                transactionRepository.findByIdsAndUserId(txIds.toSet(), userId)
+            }
+        return CollectionWithTransactions(
+            id = requireNotNull(collection.id),
+            name = collection.name,
+            note = collection.note,
+            transactions = transactions,
+        )
+    }
 
     override fun createCollection(
         collection: Collection,

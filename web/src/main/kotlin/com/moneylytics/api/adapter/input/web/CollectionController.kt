@@ -49,6 +49,26 @@ class CollectionController(
             )
         }
 
+    @GetMapping("/{id}")
+    suspend fun getCollection(
+        @PathVariable id: Long,
+        @AuthenticationPrincipal principal: UserDetails,
+    ): ResponseEntity<CollectionDto> =
+        withContext(Dispatchers.IO) {
+            val userId = resolveUserUseCase.resolveUser(principal.username)
+            val collection =
+                getCollectionsUseCase.getCollection(id, userId)
+                    ?: return@withContext ResponseEntity.notFound().build()
+            ResponseEntity.ok(
+                CollectionDto(
+                    id = collection.id,
+                    name = collection.name,
+                    note = collection.note,
+                    transactions = collection.transactions.map { it.toItem() },
+                ),
+            )
+        }
+
     @PostMapping
     suspend fun createCollection(
         @RequestBody request: CreateCollectionRequest,

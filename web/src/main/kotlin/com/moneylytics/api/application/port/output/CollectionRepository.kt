@@ -5,6 +5,11 @@ import com.moneylytics.api.domain.Collection
 interface CollectionRepository {
     fun findAllByUserId(userId: Long): List<Collection>
 
+    fun findByIdAndUserId(
+        id: Long,
+        userId: Long,
+    ): Collection?
+
     fun findTransactionIdsByCollectionId(
         collectionId: Long,
         userId: Long,

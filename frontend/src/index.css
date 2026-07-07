@@ -4242,6 +4242,8 @@ body {
   white-space: nowrap;
 }
 .cf-group-chip:hover { border-color: var(--accent); background: var(--accent-glow); }
+.cf-group-chip--collection { color: #22d3ee; }
+.cf-group-chip--collection:hover { border-color: #22d3ee; background: rgba(34, 211, 238, 0.10); }
 
 /* ── LinkedTransactionsPage highlight ─────────────────── */
 

@@ -11,4 +11,9 @@ data class CollectionWithTransactions(
 
 interface GetCollectionsUseCase {
     fun getCollections(userId: Long): List<CollectionWithTransactions>
+
+    fun getCollection(
+        id: Long,
+        userId: Long,
+    ): CollectionWithTransactions?
 }

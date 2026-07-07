@@ -3,7 +3,9 @@ import { Link, useLocation } from 'react-router-dom'
 import { Trans, useTranslation } from 'react-i18next'
 import { ResponsiveBar } from '@nivo/bar'
 import { fetchAllTransactions, fetchLinkedGroup, type LinkedGroupItem, type TransactionItem } from '../api/transactions'
+import { fetchCollection, type CollectionDto } from '../api/collections'
 import { GroupCard } from './GroupCard'
+import { CollectionCard } from './CollectionCard'
 
 type Granularity = 'monthly' | 'yearly'
 type IncomeMode = 'all' | 'unnetted'
@@ -113,6 +115,7 @@ export default function CashflowPage({ from, to, iban }: { from: string; to: str
   const [error, setError] = useState<string | null>(null)
   const [drilldown, setDrilldown] = useState<DrilldownState | null>(null)
   const [groupModal, setGroupModal] = useState<{ groupId: number; group: LinkedGroupItem | null } | null>(null)
+  const [collectionModal, setCollectionModal] = useState<{ collectionId: number; collection: CollectionDto | null } | null>(null)
 
   const data: CashflowBucket[] | null = rawData ? toDisplayBuckets(rawData, incomeMode, expenseMode) : null
 
@@ -328,6 +331,10 @@ export default function CashflowPage({ from, to, iban }: { from: string; to: str
             setGroupModal({ groupId, group: null })
             fetchLinkedGroup(groupId).then(g => setGroupModal({ groupId, group: g }))
           }}
+          onOpenCollection={collectionId => {
+            setCollectionModal({ collectionId, collection: null })
+            fetchCollection(collectionId).then(c => setCollectionModal({ collectionId, collection: c }))
+          }}
         />
       )}
 
@@ -380,6 +387,48 @@ export default function CashflowPage({ from, to, iban }: { from: string; to: str
                           setGroupModal(null)
                         }
                       }}
+                    />
+                  )
+                }
+              </div>
+            </div>
+          </div>
+        )
+      })()}
+
+      {collectionModal && (() => {
+        const { collectionId, collection } = collectionModal
+        const close = () => setCollectionModal(null)
+        const deepLinkSearch = new URLSearchParams(location.search)
+        deepLinkSearch.set('collection', String(collectionId))
+
+        return (
+          <div className="txnv-lm-backdrop" onClick={close}>
+            <div className="txnv-lm-modal txnv-lm-modal--group" onClick={e => e.stopPropagation()}>
+              <div className="txnv-lm-header">
+                <Link
+                  className="txnv-lm-title"
+                  to={{ pathname: '/sammlungen', search: deepLinkSearch.toString() }}
+                  onClick={close}
+                >
+                  {t('collections.collection')} #{collectionId} ↗
+                </Link>
+                <button className="txnv-lm-close" onClick={close}>×</button>
+              </div>
+              <div className="txnv-lm-group-body">
+                {!collection
+                  ? <span className="txnv-lm-loading">{t('common.loading')}</span>
+                  : (
+                    <CollectionCard
+                      collection={collection}
+                      onUpdate={(_id, name, note) => setCollectionModal(prev => prev?.collection ? { ...prev, collection: { ...prev.collection, name, note } } : prev)}
+                      onDelete={() => setCollectionModal(null)}
+                      onRemoveTransaction={(_, txId) => setCollectionModal(prev =>
+                        prev?.collection
+                          ? { ...prev, collection: { ...prev.collection, transactions: prev.collection.transactions.filter(tx => tx.id !== txId) } }
+                          : prev,
+                      )}
+                      onAddTransaction={() => {}}
                     />
                   )
                 }
@@ -506,10 +555,12 @@ function DrilldownModal({
   state,
   onClose,
   onOpenGroup,
+  onOpenCollection,
 }: {
   state: DrilldownState
   onClose: () => void
   onOpenGroup: (groupId: number) => void
+  onOpenCollection: (collectionId: number) => void
 }) {
   const { t } = useTranslation()
   const title = state.type === 'income' ? t('cashflow.income') : t('cashflow.expenses')
@@ -607,6 +658,19 @@ function DrilldownModal({
                                   onClick={() => onOpenGroup(g.id)}
                                 >
                                   {g.name ?? `#${g.id}`}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                          {tx.collections.length > 0 && (
+                            <div className="cf-group-chips">
+                              {tx.collections.map(c => (
+                                <button
+                                  key={c.id}
+                                  className="cf-group-chip cf-group-chip--collection"
+                                  onClick={() => onOpenCollection(c.id)}
+                                >
+                                  {c.name}
                                 </button>
                               ))}
                             </div>

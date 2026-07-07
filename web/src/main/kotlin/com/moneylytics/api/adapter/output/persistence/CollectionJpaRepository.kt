@@ -7,6 +7,11 @@ import org.springframework.data.jpa.repository.Query
 interface CollectionJpaRepository : JpaRepository<CollectionEntity, Long> {
     fun findByUserId(userId: Long): List<CollectionEntity>
 
+    fun findByIdAndUserId(
+        id: Long,
+        userId: Long,
+    ): CollectionEntity?
+
     @Modifying
     @Query("DELETE FROM CollectionEntity c WHERE c.id = :id AND c.user.id = :userId")
     fun deleteByIdAndUserId(
