@@ -12,7 +12,11 @@ import org.springframework.session.config.annotation.web.server.EnableSpringWebS
 import org.springframework.session.jdbc.JdbcIndexedSessionRepository
 import org.springframework.transaction.PlatformTransactionManager
 import org.springframework.transaction.support.TransactionTemplate
+import org.springframework.web.server.session.CookieWebSessionIdResolver
+import java.time.Duration
 import javax.sql.DataSource
+
+private val SESSION_DURATION: Duration = Duration.ofDays(7)
 
 @Configuration
 @EnableSpringWebSession
@@ -34,9 +38,17 @@ class SpringSessionConfig {
         JdbcIndexedSessionRepository(
             JdbcTemplate(dataSource),
             TransactionTemplate(transactionManager),
-        )
+        ).apply {
+            setDefaultMaxInactiveInterval(SESSION_DURATION)
+        }
 
     @Bean
     fun reactiveSessionRepository(jdbcRepo: JdbcIndexedSessionRepository): ReactiveSessionRepository<Session> =
         ReactiveJdbcSessionRepositoryAdapter(jdbcRepo)
+
+    @Bean
+    fun webSessionIdResolver(): CookieWebSessionIdResolver =
+        CookieWebSessionIdResolver().apply {
+            setCookieMaxAge(SESSION_DURATION)
+        }
 }
