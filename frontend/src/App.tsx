@@ -4,7 +4,7 @@ import type { LucideIcon } from 'lucide-react'
 import {
   Workflow, TrendingUp, PieChart, BarChart2,
   List, Landmark, Wallet, Gauge,
-  FileSpreadsheet, FileCode, Link2,
+  FileSpreadsheet, FileCode, Link2, FolderOpen,
 } from 'lucide-react'
 import { getPresetRange, detectPreset, PRESETS, type Preset } from './utils/datePresets'
 import SankeyChart from './components/SankeyChart'
@@ -19,6 +19,7 @@ import TransactionListPanel from './components/TransactionListPanel'
 import CashflowPage from './components/CashflowPage'
 import AccountsPage from './components/AccountsPage'
 import LinkedTransactionsPage from './components/LinkedTransactionsPage'
+import CollectionsPage from './components/CollectionsPage'
 import LoginPage from './components/LoginPage'
 import SettingsPanel from './components/SettingsPanel'
 import { fetchSankeyData, fetchAccounts, type SankeyResponse, type Account } from './api/transactions'
@@ -33,9 +34,9 @@ function isoDate(d: Date) {
 const today = isoDate(new Date())
 const firstOfYear = isoDate(new Date(new Date().getFullYear(), 0, 1))
 
-type Tab = 'sankey' | 'trends' | 'breakdown' | 'cashflow' | 'kontoauszug' | 'verknuepfungen' | 'konten' | 'budgets' | 'limits' | 'csv' | 'camt'
+type Tab = 'sankey' | 'trends' | 'breakdown' | 'cashflow' | 'kontoauszug' | 'verknuepfungen' | 'sammlungen' | 'konten' | 'budgets' | 'limits' | 'csv' | 'camt'
 
-const VALID_TABS = new Set<string>(['sankey', 'trends', 'breakdown', 'cashflow', 'kontoauszug', 'verknuepfungen', 'konten', 'budgets', 'limits', 'csv', 'camt'])
+const VALID_TABS = new Set<string>(['sankey', 'trends', 'breakdown', 'cashflow', 'kontoauszug', 'verknuepfungen', 'sammlungen', 'konten', 'budgets', 'limits', 'csv', 'camt'])
 
 type ViewState =
   | { phase: 'idle' }
@@ -60,6 +61,7 @@ const NAV: NavSection[] = [
     items: [
       ['kontoauszug', 'nav.kontoauszug', List],
       ['verknuepfungen', 'nav.verknuepfungen', Link2],
+      ['sammlungen', 'nav.sammlungen', FolderOpen],
       ['konten', 'nav.konten', Landmark],
       ['budgets', 'nav.budgets', Wallet],
       ['limits', 'nav.limits', Gauge],
@@ -291,6 +293,7 @@ export default function App() {
           {tab === 'breakdown' && <PiePage key={username} from={from} to={to} iban={iban} />}
           {tab === 'kontoauszug' && <TransactionsPage key={username} from={from} to={to} iban={iban} accounts={accounts} columnOrder={txColumnOrder ?? undefined} onColumnOrderChange={order => setTxColumnOrder(order)} />}
           {tab === 'verknuepfungen' && <LinkedTransactionsPage key={username} />}
+          {tab === 'sammlungen' && <CollectionsPage key={username} />}
           {tab === 'budgets' && <BudgetsPage key={username} from={from} to={to} iban={iban} />}
           {tab === 'limits' && <ThresholdsPage key={username} from={from} to={to} iban={iban} />}
           {tab === 'konten' && <AccountsPage key={username} />}

@@ -25,12 +25,19 @@ import {
   removeTransactionLink as removeBudgetLink,
   type Budget,
 } from '../api/budgets'
+import {
+  addTransactionToCollection,
+  createCollection,
+  fetchCollections,
+  removeTransactionFromCollection,
+} from '../api/collections'
+import type { CollectionSummary } from '../api/transactions'
 import { updateUserSettings } from '../api/settings'
 
 const LINK_COLORS = ['#f59e0b', '#10b981', '#60a5fa', '#f472b6', '#a78bfa', '#fb923c']
 const BUDGET_COLORS = ['#34d399', '#818cf8', '#fb7185', '#fbbf24', '#38bdf8', '#a3e635']
 
-const DEFAULT_COLUMN_ORDER = ['date', 'account', 'amount', 'category', 'group', 'subcategory', 'offsets', 'budget', 'counterparty', 'purpose', 'comment'] as const
+const DEFAULT_COLUMN_ORDER = ['date', 'account', 'amount', 'category', 'group', 'subcategory', 'offsets', 'budget', 'collection', 'counterparty', 'purpose', 'comment'] as const
 type ColumnKey = typeof DEFAULT_COLUMN_ORDER[number]
 
 function formatDate(iso: string): string {
@@ -61,6 +68,8 @@ interface RowState {
   error: string | null
   budgetAssignments: BudgetAssignment[]
   addingBudget: { budgetId: string; amount: string } | null
+  collections: CollectionSummary[]
+  addingCollection: { collectionId: string; newName: string } | null
 }
 
 type PageState =
@@ -96,6 +105,7 @@ export default function TransactionsPage({
   const [page, setPage] = useState<PageState>({ phase: 'idle' })
   const [categories, setCategories] = useState<CategoryGroup[]>([])
   const [budgets, setBudgets] = useState<Budget[]>([])
+  const [allCollections, setAllCollections] = useState<CollectionSummary[]>([])
   const [linkingState, setLinkingState] = useState<LinkingState>(null)
   const [linkError, setLinkError] = useState<string | AllocationError | null>(null)
   const [groupModal, setGroupModal] = useState<{ groupId: number; group: LinkedGroupItem | null } | null>(null)
@@ -115,6 +125,7 @@ export default function TransactionsPage({
   useEffect(() => {
     fetchCategories().then(r => setCategories(r.categories)).catch(() => {})
     fetchBudgets().then(setBudgets).catch(() => {})
+    fetchCollections().then(cols => setAllCollections(cols.map(c => ({ id: c.id, name: c.name })))).catch(() => {})
   }, [])
 
   const accountMap = useMemo(
@@ -204,6 +215,8 @@ export default function TransactionsPage({
           error: null,
           budgetAssignments: txBudgetMap.get(tx.id) ?? [],
           addingBudget: null,
+          collections: tx.collections ?? [],
+          addingCollection: null,
         })),
       )
       setPage({ phase: 'ready' })
@@ -971,6 +984,159 @@ export default function TransactionsPage({
     )
   }
 
+  async function addToCollection(rowIndex: number, collectionId: number, collectionName: string) {
+    const row = rows[rowIndex]
+    try {
+      await addTransactionToCollection(collectionId, row.original.id)
+      setRows(prev => {
+        const next = [...prev]
+        next[rowIndex] = {
+          ...next[rowIndex],
+          collections: [...next[rowIndex].collections, { id: collectionId, name: collectionName }],
+          addingCollection: null,
+        }
+        return next
+      })
+    } catch {
+      // silent — user can retry
+    }
+  }
+
+  async function createAndAddToCollection(rowIndex: number, name: string) {
+    if (!name.trim()) return
+    const row = rows[rowIndex]
+    try {
+      const created = await createCollection(name.trim(), null)
+      setAllCollections(prev => [...prev, { id: created.id, name: created.name }])
+      await addTransactionToCollection(created.id, row.original.id)
+      setRows(prev => {
+        const next = [...prev]
+        next[rowIndex] = {
+          ...next[rowIndex],
+          collections: [...next[rowIndex].collections, { id: created.id, name: created.name }],
+          addingCollection: null,
+        }
+        return next
+      })
+    } catch {
+      // silent — user can retry
+    }
+  }
+
+  async function removeFromCollection(rowIndex: number, collectionId: number) {
+    const row = rows[rowIndex]
+    try {
+      await removeTransactionFromCollection(collectionId, row.original.id)
+      setRows(prev => {
+        const next = [...prev]
+        next[rowIndex] = {
+          ...next[rowIndex],
+          collections: next[rowIndex].collections.filter(c => c.id !== collectionId),
+        }
+        return next
+      })
+    } catch {
+      // silent
+    }
+  }
+
+  function renderCollectionCell(row: RowState, i: number) {
+    const alreadyIn = new Set(row.collections.map(c => c.id))
+    const available = allCollections.filter(c => !alreadyIn.has(c.id))
+    const adding = row.addingCollection
+
+    return (
+      <div className="txnv-budget-cell">
+        {row.collections.map((c, ci) => (
+          <span
+            key={c.id}
+            className="txnv-budget-chip"
+            style={{ borderColor: BUDGET_COLORS[ci % BUDGET_COLORS.length] }}
+          >
+            <span className="txnv-budget-chip-name">{c.name}</span>
+            <button
+              className="txnv-link-chip-remove"
+              onClick={() => removeFromCollection(i, c.id)}
+              title={t('collections.removeTransaction')}
+            >
+              ×
+            </button>
+          </span>
+        ))}
+        {adding == null && (
+          <button
+            className="txnv-add-link-btn"
+            onClick={() => setRows(prev => {
+              const next = [...prev]
+              next[i] = { ...next[i], addingCollection: { collectionId: '', newName: '' } }
+              return next
+            })}
+            title={t('collections.addTransaction')}
+          >
+            {t('collections.collection')}
+          </button>
+        )}
+        {adding != null && (
+          <div className="txnv-budget-assign">
+            <select
+              className="txnv-budget-select"
+              value={adding.collectionId}
+              onChange={e => setRows(prev => {
+                const next = [...prev]
+                next[i] = { ...next[i], addingCollection: { ...next[i].addingCollection!, collectionId: e.target.value } }
+                return next
+              })}
+              autoFocus
+            >
+              <option value="">—</option>
+              {available.map(c => (
+                <option key={c.id} value={String(c.id)}>{c.name}</option>
+              ))}
+              <option value="__new__">+ {t('collections.createCollection')}</option>
+            </select>
+            {adding.collectionId === '__new__' && (
+              <input
+                className="txnv-partial-input"
+                type="text"
+                placeholder={t('collections.namePlaceholder')}
+                value={adding.newName}
+                onChange={e => setRows(prev => {
+                  const next = [...prev]
+                  next[i] = { ...next[i], addingCollection: { ...next[i].addingCollection!, newName: e.target.value } }
+                  return next
+                })}
+              />
+            )}
+            <button
+              className="txnv-link-confirm-btn"
+              disabled={!adding.collectionId || (adding.collectionId === '__new__' && !adding.newName.trim())}
+              onClick={() => {
+                if (adding.collectionId === '__new__') {
+                  createAndAddToCollection(i, adding.newName)
+                } else {
+                  const col = allCollections.find(c => c.id === Number(adding.collectionId))
+                  if (col) addToCollection(i, col.id, col.name)
+                }
+              }}
+            >
+              ✓
+            </button>
+            <button
+              className="txnv-link-back-btn"
+              onClick={() => setRows(prev => {
+                const next = [...prev]
+                next[i] = { ...next[i], addingCollection: null }
+                return next
+              })}
+            >
+              ×
+            </button>
+          </div>
+        )}
+      </div>
+    )
+  }
+
   function renderColumnHeader(col: ColumnKey) {
     const isDragging = dragCol === col
     const isDragOver = dragOverCol === col
@@ -990,6 +1156,7 @@ export default function TransactionsPage({
       case 'subcategory': label = t('transactions.columns.subcategory'); break
       case 'offsets': label = t('transactions.columns.offsets'); break
       case 'budget': label = t('budgets.columns.budget'); break
+      case 'collection': label = t('collections.columns.name'); break
       case 'counterparty': label = t('transactions.columns.counterpartyName'); break
       case 'purpose': label = t('transactions.columns.purpose'); break
       case 'comment': label = t('transactions.columns.comment'); break
@@ -1091,6 +1258,12 @@ export default function TransactionsPage({
         return (
           <td key={col} className="txnv-cell-budget">
             {renderBudgetCell(row, i)}
+          </td>
+        )
+      case 'collection':
+        return (
+          <td key={col} className="txnv-cell-budget">
+            {renderCollectionCell(row, i)}
           </td>
         )
       case 'counterparty':

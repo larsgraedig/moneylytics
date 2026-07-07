@@ -21,6 +21,7 @@ data class TransactionItem(
     val currency: String,
     val offsetLinks: List<OffsetLinkItem>,
     val groups: List<GroupSummaryDto>,
+    val collections: List<CollectionSummaryDto>,
     val comment: String?,
     val purpose: String?,
     val counterpartyName: String?,
@@ -30,6 +31,11 @@ data class TransactionItem(
 data class GroupSummaryDto(
     val id: Long,
     val name: String?,
+)
+
+data class CollectionSummaryDto(
+    val id: Long,
+    val name: String,
 )
 
 data class OffsetLinkItem(
@@ -69,6 +75,7 @@ fun Transaction.toItem() =
                 )
             },
         groups = groups.map { GroupSummaryDto(it.id, it.name) },
+        collections = collections.map { CollectionSummaryDto(it.id, it.name) },
         comment = comment,
         purpose = purpose,
         counterpartyName = counterpartyName,
