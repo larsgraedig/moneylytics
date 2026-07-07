@@ -15,6 +15,12 @@ export async function fetchCollections(): Promise<CollectionDto[]> {
   return data.collections
 }
 
+export async function fetchCollection(id: number): Promise<CollectionDto> {
+  const res = await fetchWithUser(`/collections/${id}`)
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  return res.json()
+}
+
 export async function createCollection(name: string, note: string | null): Promise<CollectionDto> {
   const res = await fetchWithUser('/collections', {
     method: 'POST',

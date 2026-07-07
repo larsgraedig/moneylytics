@@ -13,6 +13,11 @@ class CollectionPersistenceAdapter(
 ) : CollectionRepository {
     override fun findAllByUserId(userId: Long): List<Collection> = collectionJpaRepository.findByUserId(userId).map { it.toDomain() }
 
+    override fun findByIdAndUserId(
+        id: Long,
+        userId: Long,
+    ): Collection? = collectionJpaRepository.findByIdAndUserId(id, userId)?.toDomain()
+
     override fun findTransactionIdsByCollectionId(
         collectionId: Long,
         userId: Long,
