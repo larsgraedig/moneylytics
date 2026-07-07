@@ -393,6 +393,9 @@ export default function TransactionsPage({
       )
       setRows(prev => {
         const next = [...prev]
+        const newGroup = { id: result.groupId, name: null }
+        const addGroup = (groups: GroupSummary[]) =>
+          groups.some(g => g.id === result.groupId) ? groups : [...groups, newGroup]
         if (result.id !== null) {
           const newForSource: OffsetLinkItem = {
             id: result.id,
@@ -422,6 +425,7 @@ export default function TransactionsPage({
               ...next[sourceIndex].original,
               offsetLinks: srcLinks,
               effectiveAmount: computeEffectiveAmount(next[sourceIndex].original.amount, srcLinks),
+              groups: addGroup(next[sourceIndex].original.groups),
             },
           }
           next[targetIndex] = {
@@ -430,7 +434,17 @@ export default function TransactionsPage({
               ...next[targetIndex].original,
               offsetLinks: tgtLinks,
               effectiveAmount: computeEffectiveAmount(next[targetIndex].original.amount, tgtLinks),
+              groups: addGroup(next[targetIndex].original.groups),
             },
+          }
+        } else {
+          next[sourceIndex] = {
+            ...next[sourceIndex],
+            original: { ...next[sourceIndex].original, groups: addGroup(next[sourceIndex].original.groups) },
+          }
+          next[targetIndex] = {
+            ...next[targetIndex],
+            original: { ...next[targetIndex].original, groups: addGroup(next[targetIndex].original.groups) },
           }
         }
         return next
