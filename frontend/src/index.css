@@ -4394,6 +4394,12 @@ body {
 
 .br-runway-stat-val.positive { color: #4ade80; }
 
+.br-runway-solo {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
 .br-runway-bars {
   display: flex;
   flex-direction: column;
