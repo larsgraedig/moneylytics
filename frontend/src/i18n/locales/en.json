@@ -475,6 +475,8 @@
     "remaining": "Lasts {{days}} more days — until {{date}}",
     "exhausted": "Exhausted {{days}} days ago",
     "manualRemaining": "Manual: {{days}} more days — until {{date}}",
-    "manualExhausted": "Manual: exhausted {{days}} days ago"
+    "manualExhausted": "Manual: exhausted {{days}} days ago",
+    "rowRemaining": "{{days}} more days — until {{date}}",
+    "rowExhausted": "exhausted {{days}} days ago"
   }
 }

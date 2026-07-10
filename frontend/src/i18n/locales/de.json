@@ -475,6 +475,8 @@
     "remaining": "Reicht noch {{days}} Tage — bis {{date}}",
     "exhausted": "Seit {{days}} Tagen aufgebraucht",
     "manualRemaining": "Manuell: noch {{days}} Tage — bis {{date}}",
-    "manualExhausted": "Manuell: seit {{days}} Tagen aufgebraucht"
+    "manualExhausted": "Manuell: seit {{days}} Tagen aufgebraucht",
+    "rowRemaining": "noch {{days}} Tage — bis {{date}}",
+    "rowExhausted": "seit {{days}} Tagen aufgebraucht"
   }
 }

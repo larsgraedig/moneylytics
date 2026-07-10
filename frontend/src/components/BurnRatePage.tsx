@@ -109,10 +109,7 @@ export default function BurnRatePage({ from, to, iban }: { from: string; to: str
   const [points, setPoints] = useState<DayPoint[] | null>(null)
   const [rollingWindow, setRollingWindow] = useState<RollingWindow>(7)
 
-  const [runwayFrom, setRunwayFrom] = useState(from)
-  const [runwayTo, setRunwayTo] = useState(to)
   const [income, setIncome] = useState<number | null>(null)
-  const [loadingIncome, setLoadingIncome] = useState(false)
   const [manualBurnRate, setManualBurnRate] = useState('')
 
   async function load() {
@@ -122,22 +119,11 @@ export default function BurnRatePage({ from, to, iban }: { from: string; to: str
       const resp = await fetchAllTransactions(from, to, iban)
       setPoints(buildPoints(resp.transactions, from, to, rollingWindow))
       setIncome(resp.transactions.filter(tx => tx.amount > 0).reduce((s, tx) => s + tx.amount, 0))
-      setRunwayFrom(from)
-      setRunwayTo(to)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'request failed')
     } finally {
       setLoading(false)
     }
-  }
-
-  async function loadIncome() {
-    setLoadingIncome(true)
-    try {
-      const resp = await fetchAllTransactions(runwayFrom, runwayTo, iban)
-      setIncome(resp.transactions.filter(tx => tx.amount > 0).reduce((s, tx) => s + tx.amount, 0))
-    } catch { /* silent */ }
-    finally { setLoadingIncome(false) }
   }
 
   // Burn rate chart derived values
@@ -162,13 +148,13 @@ export default function BurnRatePage({ from, to, iban }: { from: string; to: str
   const manualRunwayDays = income !== null && !isNaN(parsedManual) && parsedManual > 0 ? income / parsedManual : null
   const maxRunwayDays = Math.max(calcRunwayDays ?? 0, manualRunwayDays ?? 0) || null
 
-  const elapsedDays = (Date.now() - new Date(runwayFrom + 'T12:00:00').getTime()) / 86_400_000
+  const elapsedDays = (Date.now() - new Date(from + 'T12:00:00').getTime()) / 86_400_000
   const calcBarPct = maxRunwayDays && calcRunwayDays ? (calcRunwayDays / maxRunwayDays) * 100 : 0
   const manualBarPct = maxRunwayDays && manualRunwayDays ? (manualRunwayDays / maxRunwayDays) * 100 : 0
   const todayPct = maxRunwayDays ? Math.min((elapsedDays / maxRunwayDays) * 100, 100) : 0
 
-  const calcEndIso = calcRunwayDays !== null ? addDays(runwayFrom, calcRunwayDays) : null
-  const manualEndIso = manualRunwayDays !== null ? addDays(runwayFrom, manualRunwayDays) : null
+  const calcEndIso = calcRunwayDays !== null ? addDays(from, calcRunwayDays) : null
+  const manualEndIso = manualRunwayDays !== null ? addDays(from, manualRunwayDays) : null
   const trackEndIso = calcRunwayDays !== null && (manualRunwayDays === null || calcRunwayDays >= manualRunwayDays)
     ? calcEndIso : manualEndIso
 
@@ -229,31 +215,17 @@ export default function BurnRatePage({ from, to, iban }: { from: string; to: str
             <div className="br-chart-label">{t('burnrate.runwayTitle')}</div>
 
             <div className="br-runway-controls">
-              <label className="range-field">
-                <span className="range-label">{t('common.from')}</span>
-                <input type="date" value={runwayFrom} max={runwayTo} onChange={e => setRunwayFrom(e.target.value)} />
-              </label>
-              <div className="range-sep" />
-              <label className="range-field">
-                <span className="range-label">{t('common.to')}</span>
-                <input type="date" value={runwayTo} min={runwayFrom} onChange={e => setRunwayTo(e.target.value)} />
-              </label>
-              <button className="load-btn" onClick={loadIncome} disabled={loadingIncome}>
-                {loadingIncome ? '…' : t('common.load')}
-              </button>
-              <div className="br-runway-rate-wrap">
-                <span className="range-label">{t('burnrate.burnRateOverride')}</span>
-                <input
-                  className="br-runway-rate-input"
-                  type="number"
-                  min="0"
-                  step="1"
-                  placeholder={avgPerDay > 0 ? String(Math.round(avgPerDay)) : '—'}
-                  value={manualBurnRate}
-                  onChange={e => setManualBurnRate(e.target.value)}
-                />
-                <span className="range-label">{t('burnrate.perDayUnit')}</span>
-              </div>
+              <span className="range-label">{t('burnrate.burnRateOverride')}</span>
+              <input
+                className="br-runway-rate-input"
+                type="number"
+                min="0"
+                step="1"
+                placeholder={avgPerDay > 0 ? String(Math.round(avgPerDay)) : '—'}
+                value={manualBurnRate}
+                onChange={e => setManualBurnRate(e.target.value)}
+              />
+              <span className="range-label">{t('burnrate.perDayUnit')}</span>
             </div>
 
             {income !== null && calcRunwayDays !== null && (
@@ -279,41 +251,59 @@ export default function BurnRatePage({ from, to, iban }: { from: string; to: str
                   )}
                 </div>
 
-                <div className="br-runway-track-wrap">
-                  <div className="br-runway-track">
-                    {manualRunwayDays !== null && (
-                      <div className="br-runway-fill br-runway-fill--manual" style={{ width: `${manualBarPct}%` }} />
-                    )}
-                    <div
-                      className={`br-runway-fill${isCalcExhausted ? ' br-runway-fill--exhausted' : ''}`}
-                      style={{ width: `${calcBarPct}%` }}
-                    />
-                    {elapsedDays > 0 && maxRunwayDays !== null && (
-                      <div className="br-runway-pin" style={{ left: `${todayPct}%` }}>
-                        <span className="br-runway-pin-label">{t('burnrate.today')}</span>
+                <div className="br-runway-bars">
+                  <div className="br-runway-bar-row">
+                    <span className="br-runway-bar-label">{t('burnrate.calcRate')}</span>
+                    <div className="br-runway-bar-col">
+                      <div className="br-runway-bar-track">
+                        <div
+                          className={`br-runway-bar-fill${isCalcExhausted ? ' br-runway-bar-fill--exhausted' : ''}`}
+                          style={{ width: `${calcBarPct}%` }}
+                        />
+                        {elapsedDays > 0 && maxRunwayDays !== null && (
+                          <div className="br-runway-bar-pin" style={{ left: `${todayPct}%` }} />
+                        )}
                       </div>
-                    )}
+                      <span className={`br-runway-bar-result${isCalcExhausted ? ' br-runway-bar-result--exhausted' : ''}`}>
+                        {isCalcExhausted
+                          ? t('burnrate.rowExhausted', { days: Math.abs(calcDaysRemaining!) })
+                          : t('burnrate.rowRemaining', { days: calcDaysRemaining, date: fullDate(calcEndIso!) })
+                        }
+                      </span>
+                    </div>
                   </div>
-                  <div className="br-runway-dates">
-                    <span>{fullDate(runwayFrom)}</span>
-                    {trackEndIso && <span>{fullDate(trackEndIso)}</span>}
-                  </div>
-                </div>
 
-                <div className={`br-runway-result${isCalcExhausted ? ' br-runway-result--exhausted' : ''}`}>
-                  {isCalcExhausted
-                    ? t('burnrate.exhausted', { days: Math.abs(calcDaysRemaining!) })
-                    : t('burnrate.remaining', { days: calcDaysRemaining, date: fullDate(calcEndIso!) })
-                  }
-                </div>
-                {manualRunwayDays !== null && manualDaysRemaining !== null && manualEndIso !== null && (
-                  <div className={`br-runway-result br-runway-result--manual${isManualExhausted ? ' br-runway-result--exhausted' : ''}`}>
-                    {isManualExhausted
-                      ? t('burnrate.manualExhausted', { days: Math.abs(manualDaysRemaining) })
-                      : t('burnrate.manualRemaining', { days: manualDaysRemaining, date: fullDate(manualEndIso) })
-                    }
+                  {manualRunwayDays !== null && manualDaysRemaining !== null && manualEndIso !== null && (
+                    <div className="br-runway-bar-row">
+                      <span className="br-runway-bar-label">{t('burnrate.manualRate')}</span>
+                      <div className="br-runway-bar-col">
+                        <div className="br-runway-bar-track">
+                          <div
+                            className={`br-runway-bar-fill br-runway-bar-fill--manual${isManualExhausted ? ' br-runway-bar-fill--exhausted' : ''}`}
+                            style={{ width: `${manualBarPct}%` }}
+                          />
+                          {elapsedDays > 0 && maxRunwayDays !== null && (
+                            <div className="br-runway-bar-pin" style={{ left: `${todayPct}%` }} />
+                          )}
+                        </div>
+                        <span className={`br-runway-bar-result${isManualExhausted ? ' br-runway-bar-result--exhausted' : ''}`}>
+                          {isManualExhausted
+                            ? t('burnrate.rowExhausted', { days: Math.abs(manualDaysRemaining) })
+                            : t('burnrate.rowRemaining', { days: manualDaysRemaining, date: fullDate(manualEndIso) })
+                          }
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="br-runway-bar-row">
+                    <div className="br-runway-bar-label-spacer" />
+                    <div className="br-runway-bar-dates">
+                      <span>{fullDate(from)}</span>
+                      {trackEndIso && <span>{fullDate(trackEndIso)}</span>}
+                    </div>
                   </div>
-                )}
+                </div>
               </>
             )}
           </div>
