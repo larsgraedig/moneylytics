@@ -236,8 +236,9 @@ export default function BudgetsPage({ from, to, iban }: { from: string; to: stri
             <tbody>
               {budgets.map(budget => {
                 const isEditing = editingId === budget.id
-                const hasTarget = budget.targetAmount != null && budget.targetAmount > 0
-                const pct = hasTarget ? Math.abs(budget.balance) / budget.targetAmount! : null
+                const hasTarget = budget.targetAmount != null && budget.targetAmount !== 0
+                const isNegativeTarget = hasTarget && budget.targetAmount! < 0
+                const pct = hasTarget ? Math.abs(budget.balance) / Math.abs(budget.targetAmount!) : null
                 return (
                   <tr
                     key={budget.id}
@@ -264,11 +265,11 @@ export default function BudgetsPage({ from, to, iban }: { from: string; to: stri
                         <div className="bdg-bar">
                           <div className="bdg-bar-track">
                             <div
-                              className={`bdg-bar-fill${pct >= 1 ? ' bdg-bar-fill--done' : ''}`}
+                              className={`bdg-bar-fill${isNegativeTarget ? (pct >= 1 ? ' bdg-bar-fill--negative-done' : ' bdg-bar-fill--negative') : pct >= 1 ? ' bdg-bar-fill--done' : ''}`}
                               style={{ width: `${Math.min(pct * 100, 100)}%` }}
                             />
                           </div>
-                          <span className={`bdg-bar-pct${pct >= 1 ? ' bdg-bar-pct--done' : ''}`}>
+                          <span className={`bdg-bar-pct${isNegativeTarget ? (pct >= 1 ? ' bdg-bar-pct--negative-done' : '') : pct >= 1 ? ' bdg-bar-pct--done' : ''}`}>
                             {Math.round(pct * 100)}%
                           </span>
                         </div>
