@@ -3491,9 +3491,12 @@ body {
 }
 
 .bdg-bar-fill--done { background: #4ade80; }
+.bdg-bar-fill--negative { background: #fb923c; }
+.bdg-bar-fill--negative-done { background: #f87171; }
 
 .bdg-bar-pct { font-size: 11px; color: var(--text-muted); font-family: var(--mono); min-width: 36px; }
 .bdg-bar-pct--done { color: #4ade80; }
+.bdg-bar-pct--negative-done { color: #f87171; }
 
 /* ── action buttons ── */
 
