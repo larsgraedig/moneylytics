@@ -1,7 +1,10 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { ResponsiveBar } from '@nivo/bar'
 import { ResponsiveLine } from '@nivo/line'
+import DatePicker from 'react-datepicker'
+import { de } from 'date-fns/locale'
+import 'react-datepicker/dist/react-datepicker.css'
 import { fetchAllTransactions, type TransactionItem } from '../api/transactions'
 
 type RollingWindow = 7 | 14 | 30
@@ -180,18 +183,21 @@ export default function BurnRatePage({ from, to, iban }: { from: string; to: str
 
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [rawTransactions, setRawTransactions] = useState<TransactionItem[] | null>(null)
   const [points, setPoints] = useState<DayPoint[] | null>(null)
   const [rollingWindow, setRollingWindow] = useState<RollingWindow>(7)
-
   const [income, setIncome] = useState<number | null>(null)
+  const [simulatedToday, setSimulatedToday] = useState('')
+
+  const realTodayIso = new Date().toISOString().slice(0, 10)
+  const effectiveToday = simulatedToday || realTodayIso
 
   async function load() {
     setLoading(true)
     setError(null)
     try {
       const resp = await fetchAllTransactions(from, to, iban)
-      setPoints(buildPoints(resp.transactions, from, to, rollingWindow))
-      setIncome(resp.transactions.filter(tx => tx.amount > 0).reduce((s, tx) => s + Math.max(0, tx.effectiveAmount), 0))
+      setRawTransactions(resp.transactions)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'request failed')
     } finally {
@@ -199,19 +205,25 @@ export default function BurnRatePage({ from, to, iban }: { from: string; to: str
     }
   }
 
+  useEffect(() => {
+    if (!rawTransactions) return
+    const filtered = rawTransactions.filter(tx => tx.accountingDate <= effectiveToday)
+    setPoints(buildPoints(filtered, from, to, rollingWindow))
+    setIncome(filtered.filter(tx => tx.amount > 0).reduce((s, tx) => s + Math.max(0, tx.effectiveAmount), 0))
+  }, [rawTransactions, effectiveToday, rollingWindow])
+
   // Burn rate chart derived values
   const totalExpenses = points ? points.reduce((s, p) => s + p.expenses, 0) : 0
-  const todayIso = new Date().toISOString().slice(0, 10)
-  const isCurrentPeriod = todayIso >= from && todayIso <= to
-  const effectiveTo = isCurrentPeriod ? todayIso : to
+  const isCurrentPeriod = effectiveToday >= from && effectiveToday <= to
+  const effectiveTo = isCurrentPeriod ? effectiveToday : to
   const effectiveDays = points ? Math.max(1, points.filter(p => p.date <= effectiveTo).length) : 1
   const avgPerDay = totalExpenses / effectiveDays
 
   // Projection values (only when today is within the period)
-  const todayPoint = isCurrentPeriod && points ? (points.find(p => p.date === todayIso) ?? null) : null
+  const todayPoint = isCurrentPeriod && points ? (points.find(p => p.date === effectiveToday) ?? null) : null
   const cumulativeAtToday = todayPoint?.cumulative ?? 0
-  const todayLabel = todayPoint?.label ?? shortDate(todayIso)
-  const futurePoints = isCurrentPeriod && points ? points.filter(p => p.date > todayIso) : []
+  const todayLabel = todayPoint?.label ?? shortDate(effectiveToday)
+  const futurePoints = isCurrentPeriod && points ? points.filter(p => p.date > effectiveToday) : []
   const futurePointLabels = futurePoints.map(p => p.label)
   const futureLabels = new Set(futurePointLabels)
   const remainingDays = futurePoints.length
@@ -257,7 +269,7 @@ export default function BurnRatePage({ from, to, iban }: { from: string; to: str
   const bottomMargin = tickRotation !== 0 ? 72 : 44
   const hasData = points !== null && points.some(p => p.expenses > 0)
 
-  const rollingAvgLayer = points ? makeRollingAvgLayer(points, isCurrentPeriod ? todayIso : null) : null
+  const rollingAvgLayer = points ? makeRollingAvgLayer(points, isCurrentPeriod ? effectiveToday : null) : null
   const projectionBarsLayer = isCurrentPeriod && futureLabels.size > 0
     ? makeProjectionBarsLayer(avgPerDay, sollPerDay, futureLabels)
     : null
@@ -290,6 +302,28 @@ export default function BurnRatePage({ from, to, iban }: { from: string; to: str
         <button className="load-btn" onClick={load} disabled={loading}>
           {loading ? '…' : t('common.load')}
         </button>
+        {rawTransactions && (
+          <div className={`br-sim-field${simulatedToday ? ' br-sim-field--active' : ''}`}>
+            <span className="range-label">{t('burnrate.simDate')}</span>
+            <DatePicker
+              selected={simulatedToday ? new Date(simulatedToday + 'T12:00:00') : null}
+              onChange={(date: Date | null) => setSimulatedToday(date ? date.toISOString().slice(0, 10) : '')}
+              minDate={new Date(from + 'T12:00:00')}
+              maxDate={new Date((to < realTodayIso ? to : realTodayIso) + 'T12:00:00')}
+              dateFormat="dd.MM.yyyy"
+              locale={de}
+              placeholderText="TT.MM.JJJJ"
+              className={`br-sim-input${simulatedToday ? ' br-sim-input--active' : ''}`}
+              showMonthDropdown
+              showYearDropdown
+              dropdownMode="select"
+              isClearable={false}
+            />
+            {simulatedToday && (
+              <button className="br-sim-clear" onClick={() => setSimulatedToday('')} title={t('burnrate.simClear')}>✕</button>
+            )}
+          </div>
+        )}
         {points && (
           <div className="cf-summary">
             <span className="cf-summary-item cf-summary-expenses">

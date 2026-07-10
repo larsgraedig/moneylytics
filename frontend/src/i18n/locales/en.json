@@ -479,6 +479,8 @@
     "manualExhausted": "Manual: exhausted {{days}} days ago",
     "rowRemaining": "{{days}} more days — until {{date}}",
     "rowExhausted": "exhausted {{days}} days ago",
+    "simDate": "Simulate as of",
+    "simClear": "Reset",
     "sollRate": "Target (until {{date}})",
     "legendIst": "IST forecast",
     "legendSoll": "Target forecast"

@@ -479,6 +479,8 @@
     "manualExhausted": "Manuell: seit {{days}} Tagen aufgebraucht",
     "rowRemaining": "noch {{days}} Tage — bis {{date}}",
     "rowExhausted": "seit {{days}} Tagen aufgebraucht",
+    "simDate": "Simulieren ab",
+    "simClear": "Zurücksetzen",
     "sollRate": "Soll (bis {{date}})",
     "legendIst": "IST-Prognose",
     "legendSoll": "Soll-Prognose"
