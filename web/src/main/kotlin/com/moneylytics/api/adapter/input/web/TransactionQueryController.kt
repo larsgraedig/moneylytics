@@ -4,6 +4,7 @@ import com.moneylytics.api.application.port.input.GetCategoriesUseCase
 import com.moneylytics.api.application.port.input.GetTransactionsQuery
 import com.moneylytics.api.application.port.input.GetTransactionsUseCase
 import com.moneylytics.api.application.port.input.ResolveUserUseCase
+import com.moneylytics.api.application.port.input.TransactionType
 import com.moneylytics.api.application.port.input.UpdateTransactionAccountingDateUseCase
 import com.moneylytics.api.application.port.input.UpdateTransactionCategoryUseCase
 import com.moneylytics.api.application.port.input.UpdateTransactionCommentUseCase
@@ -65,7 +66,7 @@ class TransactionQueryController(
                 val userId = resolveUserUseCase.resolveUser(principal.username)
                 val txns =
                     getTransactionsUseCase.getTransactions(
-                        GetTransactionsQuery(from, to, userId, onlyNegative = true, accountIban = iban),
+                        GetTransactionsQuery(from, to, userId, type = TransactionType.EXPENSES, accountIban = iban),
                     )
                 val lookup = buildGroupLookup(getCategoriesUseCase.getCategories(userId))
                 txns to lookup
@@ -87,8 +88,10 @@ class TransactionQueryController(
         @RequestParam(required = false) subcategory: String? = null,
         @RequestParam(required = false) categoryGroup: String? = null,
         @RequestParam(required = false) iban: String? = null,
-        @RequestParam(required = false) onlyNegative: Boolean = true,
+        @RequestParam(required = false) type: TransactionType = TransactionType.ALL,
         @RequestParam(required = false) uncategorized: Boolean = false,
+        @RequestParam(required = false) excludeCollectionId: Long? = null,
+        @RequestParam(required = false) excludeBudgetId: Long? = null,
         @AuthenticationPrincipal principal: UserDetails,
     ): TransactionListResponse {
         val transactions =
@@ -99,12 +102,14 @@ class TransactionQueryController(
                         from = from,
                         to = to,
                         userId = userId,
-                        onlyNegative = onlyNegative,
+                        type = type,
                         accountIban = iban,
                         category = category,
                         subcategory = subcategory,
                         categoryGroup = categoryGroup,
                         uncategorized = uncategorized,
+                        excludeCollectionId = excludeCollectionId,
+                        excludeBudgetId = excludeBudgetId,
                     ),
                 )
             }
@@ -201,10 +206,10 @@ class TransactionQueryController(
                                 from = from,
                                 to = to,
                                 userId = userId,
+                                type = TransactionType.EXPENSES,
                                 accountIban = iban,
                                 category = category,
                                 categoryGroup = selectedGroup,
-                                onlyNegative = true,
                             ),
                         )
                     }

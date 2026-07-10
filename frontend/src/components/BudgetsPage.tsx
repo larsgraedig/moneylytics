@@ -430,8 +430,6 @@ function AssignTransactionModal({
   const [assigning, setAssigning] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const assignedIds = new Set(budget.transactionLinks.map(l => l.transactionId))
-
   useEffect(() => {
     fetchAccounts().then(setAccounts).catch(() => {})
     fetchCategories().then(r => setCategories(r.categories)).catch(() => {})
@@ -451,8 +449,13 @@ function AssignTransactionModal({
         filterIban || undefined,
         filterCategory || undefined,
         filterSubcategory || undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        budget.id,
       )
-      setTransactions(resp.transactions.filter(tx => !assignedIds.has(tx.id)))
+      setTransactions(resp.transactions)
     } catch {
       setTransactions([])
     } finally {

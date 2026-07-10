@@ -162,9 +162,8 @@ export default function CashflowPage({ from, to, iban }: { from: string; to: str
     const range = periodRange(periodKey, granularity, from, to)
     setDrilldown({ period, type, from: range.from, to: range.to, transactions: null, loading: true, incomeMode, expenseMode })
     try {
-      const resp = await fetchAllTransactions(range.from, range.to, iban)
+      const resp = await fetchAllTransactions(range.from, range.to, iban, undefined, undefined, undefined, undefined, type === 'income' ? 'INCOME' : 'EXPENSES')
       const txs = resp.transactions
-        .filter(tx => type === 'income' ? tx.amount >= 0 : tx.amount < 0)
         .sort((a, b) => b.accountingDate.localeCompare(a.accountingDate))
       setDrilldown(prev => prev ? { ...prev, transactions: txs, loading: false } : prev)
     } catch {

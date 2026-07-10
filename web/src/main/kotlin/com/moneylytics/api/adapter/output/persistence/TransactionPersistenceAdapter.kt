@@ -175,6 +175,10 @@ class TransactionPersistenceAdapter(
             .findLatestDatePerIban(userId)
             .associate { row -> row[0] as String to row[1] as LocalDate }
 
+    @Transactional(readOnly = true)
+    override fun findAssignedTransactionIdsByCollectionId(collectionId: Long): Set<Long> =
+        collectionTransactionJpaRepository.findTransactionIdsByCollectionId(collectionId).toHashSet()
+
     private fun enrichWithOffsetLinks(entities: List<TransactionEntity>): List<Transaction> {
         val ids = entities.mapNotNull { it.id }
         if (ids.isEmpty()) return emptyList()

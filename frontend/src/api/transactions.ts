@@ -107,7 +107,7 @@ export async function fetchTransactionList(
   subcategory?: string,
   iban?: string,
 ): Promise<TransactionListResponse> {
-  const params = new URLSearchParams({ from, to })
+  const params = new URLSearchParams({ from, to, type: 'EXPENSES' })
   if (category) params.set('category', category)
   if (subcategory) params.set('subcategory', subcategory)
   if (iban) params.set('iban', iban)
@@ -124,13 +124,19 @@ export async function fetchAllTransactions(
   subcategory?: string,
   uncategorized?: boolean,
   categoryGroup?: string,
+  type?: 'ALL' | 'INCOME' | 'EXPENSES',
+  excludeCollectionId?: number,
+  excludeBudgetId?: number,
 ): Promise<TransactionListResponse> {
-  const params = new URLSearchParams({ from, to, onlyNegative: 'false' })
+  const params = new URLSearchParams({ from, to })
   if (iban) params.set('iban', iban)
   if (category) params.set('category', category)
   if (subcategory) params.set('subcategory', subcategory)
   if (categoryGroup) params.set('categoryGroup', categoryGroup)
   if (uncategorized) params.set('uncategorized', 'true')
+  if (type) params.set('type', type)
+  if (excludeCollectionId != null) params.set('excludeCollectionId', String(excludeCollectionId))
+  if (excludeBudgetId != null) params.set('excludeBudgetId', String(excludeBudgetId))
   const res = await fetchWithUser(`/transactions/list?${params}`)
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
   return res.json() as Promise<TransactionListResponse>

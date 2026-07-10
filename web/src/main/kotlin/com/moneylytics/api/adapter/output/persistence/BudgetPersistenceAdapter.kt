@@ -84,6 +84,16 @@ class BudgetPersistenceAdapter(
         userId: Long,
     ) = budgetTransactionJpaRepository.deleteByIdAndUserId(linkId, userId)
 
+    @Transactional(readOnly = true)
+    override fun findAssignedTransactionIdsByBudgetId(
+        budgetId: Long,
+        userId: Long,
+    ): Set<Long> =
+        budgetTransactionJpaRepository
+            .findByBudgetIdAndUserId(budgetId, userId)
+            .mapNotNull { it.transaction.id }
+            .toHashSet()
+
     private fun BudgetEntity.toDomain() =
         Budget(
             id = id,
