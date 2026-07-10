@@ -455,7 +455,9 @@
   "burnrate": {
     "windowBtn": "Ø {{days}} days",
     "dailyTitle": "Daily expenses + rolling avg ({{days}} days)",
-    "cumulativeTitle": "Cumulative expenses",
+    "cumulativeTitle": "Cumulative expenses & income",
+    "cumulativeIncome": "Cumulative income",
+    "netBalance": "Balance (income − expenses)",
     "dailyExpenses": "Daily expenses",
     "rollingAvg": "Rolling avg ({{days}} days)",
     "cumulativeLabel": "Cumulative",

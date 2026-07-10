@@ -327,8 +327,31 @@ export default function BurnRatePage({ from, to, iban }: { from: string; to: str
     ]
   })()
 
+  const cumulativeIncomeData: { x: string; y: number }[] = (() => {
+    if (!rawTransactions || !points) return []
+    const incomeByDate = new Map<string, number>()
+    for (const tx of rawTransactions) {
+      if (tx.amount <= 0 || tx.accountingDate > effectiveToday) continue
+      const eff = Math.max(0, tx.effectiveAmount)
+      if (eff > 0) incomeByDate.set(tx.accountingDate, (incomeByDate.get(tx.accountingDate) ?? 0) + eff)
+    }
+    let cum = 0
+    return points.map(p => {
+      cum += incomeByDate.get(p.date) ?? 0
+      return { x: p.label, y: Math.round(cum) }
+    })
+  })()
+
+  const netData: { x: string; y: number }[] = cumulativeIncomeData.length > 0 && points
+    ? cumulativeIncomeData.map((inc, i) => ({ x: inc.x, y: inc.y - Math.round(points![i].cumulative) }))
+    : []
+
+  const lineYMin = netData.length > 0 ? Math.min(0, ...netData.map(d => d.y)) : 0
+
   const lineData = points ? [
     { id: 'cumulative', data: points.map(p => ({ x: p.label, y: Math.round(p.cumulative) })) },
+    ...(cumulativeIncomeData.length > 0 ? [{ id: 'income', data: cumulativeIncomeData }] : []),
+    ...(netData.length > 0 ? [{ id: 'net', data: netData }] : []),
     ...(istProjectionData.length > 1 ? [{ id: 'ist', data: istProjectionData }] : []),
     ...(sollProjectionData.length > 1 ? [{ id: 'soll', data: sollProjectionData }] : []),
   ] : []
@@ -577,10 +600,10 @@ export default function BurnRatePage({ from, to, iban }: { from: string; to: str
                   data={lineData}
                   margin={{ top: 12, right: 24, bottom: bottomMargin, left: 84 }}
                   xScale={{ type: 'point' }}
-                  yScale={{ type: 'linear', min: 0, max: lineYMax > 0 ? lineYMax * 1.05 : 'auto' }}
+                  yScale={{ type: 'linear', min: lineYMin < 0 ? lineYMin * 1.05 : 0, max: lineYMax > 0 ? lineYMax * 1.05 : 'auto' }}
                   curve="monotoneX"
                   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                  colors={(series: any) => series.id === 'cumulative' ? '#f87171' : 'rgba(0,0,0,0)'}
+                  colors={(series: any) => series.id === 'cumulative' ? '#f87171' : series.id === 'income' ? '#4ade80' : series.id === 'net' ? '#fbbf24' : 'rgba(0,0,0,0)'}
                   lineWidth={2}
                   enableArea
                   areaOpacity={0.1}
@@ -600,11 +623,15 @@ export default function BurnRatePage({ from, to, iban }: { from: string; to: str
                       {slice.points.map(point => (
                         <div key={point.id} className="cf-tooltip-row">
                           <span className="cf-dot" style={{ background:
+                            point.seriesId === 'income' ? '#4ade80' :
+                            point.seriesId === 'net'   ? '#fbbf24' :
                             point.seriesId === 'soll' ? 'rgba(96,165,250,0.9)' :
                             point.seriesId === 'ist'  ? 'rgba(248,113,113,0.7)' :
                             '#f87171'
                           }} />
                           <span>{
+                            point.seriesId === 'income' ? t('burnrate.cumulativeIncome') :
+                            point.seriesId === 'net'   ? t('burnrate.netBalance') :
                             point.seriesId === 'ist'  ? t('burnrate.legendIst') :
                             point.seriesId === 'soll' ? t('burnrate.legendSoll') :
                             t('burnrate.cumulativeLabel')

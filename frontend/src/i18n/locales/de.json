@@ -455,7 +455,9 @@
   "burnrate": {
     "windowBtn": "Ø {{days}} Tage",
     "dailyTitle": "Tagesausgaben + gleitender Ø ({{days}} Tage)",
-    "cumulativeTitle": "Kumulierte Ausgaben",
+    "cumulativeTitle": "Kumulierte Ausgaben & Einnahmen",
+    "cumulativeIncome": "Kumulierte Einnahmen",
+    "netBalance": "Saldo (Einnahmen − Ausgaben)",
     "dailyExpenses": "Tagesausgaben",
     "rollingAvg": "Gleitender Ø ({{days}} Tage)",
     "cumulativeLabel": "Kumuliert",
