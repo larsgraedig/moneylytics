@@ -4307,8 +4307,9 @@ body {
   margin-left: 8px;
 }
 
-.br-legend-dot--ist  { background: rgba(248,113,113,0.7); }
-.br-legend-dot--soll { background: rgba(96,165,250,0.7); }
+.br-legend-dot--ist       { background: rgba(248,113,113,0.7); }
+.br-legend-dot--soll      { background: rgba(96,165,250,0.7); }
+.br-legend-dot--soll-rate { background: rgba(96,165,250,0.75); }
 
 .br-runway-stat-val--soll { color: rgba(96,165,250,0.9); }
 

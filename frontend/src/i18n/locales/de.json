@@ -482,6 +482,7 @@
     "simDate": "Simulieren ab",
     "simClear": "Zurücksetzen",
     "sollRate": "Soll (bis {{date}})",
+    "legendSollRate": "Soll-Tagesrate",
     "legendIst": "IST-Prognose",
     "legendSoll": "Soll-Prognose"
   }

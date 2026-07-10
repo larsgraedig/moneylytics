@@ -482,6 +482,7 @@
     "simDate": "Simulate as of",
     "simClear": "Reset",
     "sollRate": "Target (until {{date}})",
+    "legendSollRate": "Target daily rate",
     "legendIst": "IST forecast",
     "legendSoll": "Target forecast"
   }

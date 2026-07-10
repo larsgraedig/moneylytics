@@ -110,6 +110,33 @@ function makeRollingAvgLayer(points: DayPoint[], cutoffDateIso: string | null) {
   }
 }
 
+function makeSollRateLayer(sollByLabel: Map<string, number>) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return function SollRateLayer({ bars, yScale }: any) {
+    if (!bars?.length) return null
+    const pts = [...bars]
+      .filter((b: any) => sollByLabel.has(b.data.indexValue as string))
+      .sort((a: any, b: any) => a.x - b.x)
+      .map((bar: any) => ({
+        cx: bar.x + bar.width / 2,
+        cy: yScale(sollByLabel.get(bar.data.indexValue as string) ?? 0),
+      }))
+    if (pts.length < 2) return null
+    return (
+      <g>
+        <polyline
+          points={pts.map(p => `${p.cx},${p.cy}`).join(' ')}
+          fill="none"
+          stroke="rgba(96,165,250,0.75)"
+          strokeWidth={2}
+          strokeLinejoin="round"
+          strokeLinecap="round"
+        />
+      </g>
+    )
+  }
+}
+
 function makeProjectionBarsLayer(avgPerDay: number, sollPerDay: number | null, futureLabels: Set<string>) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return function ProjectionBarsLayer({ bars, yScale }: any) {
@@ -273,6 +300,19 @@ export default function BurnRatePage({ from, to, iban }: { from: string; to: str
   const projectionBarsLayer = isCurrentPeriod && futureLabels.size > 0
     ? makeProjectionBarsLayer(avgPerDay, sollPerDay, futureLabels)
     : null
+
+  const sollRateLayer = (() => {
+    if (!points || income === null) return null
+    const totalDays = points.length
+    const pastPoints = points.filter(p => p.date <= effectiveTo)
+    const sollByLabel = new Map(pastPoints.map((p) => {
+      const idx = points.findIndex(p2 => p2.date === p.date)
+      const daysRemaining = totalDays - idx
+      const rate = daysRemaining > 0 ? Math.max(0, (income - p.cumulative) / daysRemaining) : 0
+      return [p.label, rate]
+    }))
+    return makeSollRateLayer(sollByLabel)
+  })()
   const cumulativeProjectionLayer = istProjectionData.length > 1
     ? makeCumulativeProjectionLayer(istProjectionData, sollProjectionData)
     : null
@@ -412,12 +452,13 @@ export default function BurnRatePage({ from, to, iban }: { from: string; to: str
             <div className="br-chart-block">
               <div className="br-chart-label">
                 {t('burnrate.dailyTitle', { days: rollingWindow })}
-                {projectionBarsLayer && (
-                  <span className="br-chart-legend">
+                <span className="br-chart-legend">
+                  {sollRateLayer && <><span className="br-legend-dot br-legend-dot--soll-rate" />{t('burnrate.legendSollRate')}</>}
+                  {projectionBarsLayer && <>
                     <span className="br-legend-dot br-legend-dot--ist" />{t('burnrate.legendIst')}
                     {sollPerDay !== null && <><span className="br-legend-dot br-legend-dot--soll" />{t('burnrate.legendSoll')}</>}
-                  </span>
-                )}
+                  </>}
+                </span>
               </div>
               <div className="br-chart">
                 <ResponsiveBar
@@ -436,6 +477,7 @@ export default function BurnRatePage({ from, to, iban }: { from: string; to: str
                   layers={[
                     'grid', 'axes', 'bars',
                     ...(rollingAvgLayer ? [rollingAvgLayer] : []),
+                    ...(sollRateLayer ? [sollRateLayer] : []),
                     ...(projectionBarsLayer ? [projectionBarsLayer] : []),
                     'legends',
                   ]}
