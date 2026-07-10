@@ -55,7 +55,9 @@ function buildPoints(transactions: TransactionItem[], from: string, to: string, 
   const byDate = new Map<string, number>()
   for (const tx of transactions) {
     if (tx.amount >= 0) continue
-    byDate.set(tx.accountingDate, (byDate.get(tx.accountingDate) ?? 0) + Math.abs(tx.amount))
+    const effective = Math.abs(Math.min(0, tx.effectiveAmount))
+    if (effective === 0) continue
+    byDate.set(tx.accountingDate, (byDate.get(tx.accountingDate) ?? 0) + effective)
   }
   const dates = fillDates(from, to)
   const raw = dates.map(date => ({ date, expenses: byDate.get(date) ?? 0 }))
@@ -118,7 +120,7 @@ export default function BurnRatePage({ from, to, iban }: { from: string; to: str
     try {
       const resp = await fetchAllTransactions(from, to, iban)
       setPoints(buildPoints(resp.transactions, from, to, rollingWindow))
-      setIncome(resp.transactions.filter(tx => tx.amount > 0).reduce((s, tx) => s + tx.amount, 0))
+      setIncome(resp.transactions.filter(tx => tx.amount > 0).reduce((s, tx) => s + Math.max(0, tx.effectiveAmount), 0))
     } catch (e) {
       setError(e instanceof Error ? e.message : 'request failed')
     } finally {
