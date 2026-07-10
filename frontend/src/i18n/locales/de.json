@@ -259,6 +259,7 @@
     "assignTitle": "Transaktion zu «{{name}}» zuweisen",
     "presets": {
       "placeholder": "Zeitraum wählen…",
+      "last30": "Letzte 30 Tage",
       "currentMonth": "Aktueller Monat",
       "lastMonth": "Letzter Monat",
       "currentQuarter": "Aktuelles Quartal",
@@ -454,7 +455,9 @@
   "burnrate": {
     "windowBtn": "Ø {{days}} Tage",
     "dailyTitle": "Tagesausgaben + gleitender Ø ({{days}} Tage)",
-    "cumulativeTitle": "Kumulierte Ausgaben",
+    "cumulativeTitle": "Kumulierte Ausgaben & Einnahmen",
+    "cumulativeIncome": "Kumulierte Einnahmen",
+    "netBalance": "Saldo (Einnahmen − Ausgaben)",
     "dailyExpenses": "Tagesausgaben",
     "rollingAvg": "Gleitender Ø ({{days}} Tage)",
     "cumulativeLabel": "Kumuliert",
@@ -477,6 +480,12 @@
     "manualRemaining": "Manuell: noch {{days}} Tage — bis {{date}}",
     "manualExhausted": "Manuell: seit {{days}} Tagen aufgebraucht",
     "rowRemaining": "noch {{days}} Tage — bis {{date}}",
-    "rowExhausted": "seit {{days}} Tagen aufgebraucht"
+    "rowExhausted": "seit {{days}} Tagen aufgebraucht",
+    "simDate": "Simulieren ab",
+    "simClear": "Zurücksetzen",
+    "sollRate": "Soll (bis {{date}})",
+    "legendSollRate": "Soll-Tagesrate",
+    "legendIst": "IST-Prognose",
+    "legendSoll": "Soll-Prognose"
   }
 }

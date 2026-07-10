@@ -259,6 +259,7 @@
     "assignTitle": "Assign transaction to «{{name}}»",
     "presets": {
       "placeholder": "Select period…",
+      "last30": "Last 30 days",
       "currentMonth": "Current month",
       "lastMonth": "Last month",
       "currentQuarter": "Current quarter",
@@ -454,7 +455,9 @@
   "burnrate": {
     "windowBtn": "Ø {{days}} days",
     "dailyTitle": "Daily expenses + rolling avg ({{days}} days)",
-    "cumulativeTitle": "Cumulative expenses",
+    "cumulativeTitle": "Cumulative expenses & income",
+    "cumulativeIncome": "Cumulative income",
+    "netBalance": "Balance (income − expenses)",
     "dailyExpenses": "Daily expenses",
     "rollingAvg": "Rolling avg ({{days}} days)",
     "cumulativeLabel": "Cumulative",
@@ -477,6 +480,12 @@
     "manualRemaining": "Manual: {{days}} more days — until {{date}}",
     "manualExhausted": "Manual: exhausted {{days}} days ago",
     "rowRemaining": "{{days}} more days — until {{date}}",
-    "rowExhausted": "exhausted {{days}} days ago"
+    "rowExhausted": "exhausted {{days}} days ago",
+    "simDate": "Simulate as of",
+    "simClear": "Reset",
+    "sollRate": "Target (until {{date}})",
+    "legendSollRate": "Target daily rate",
+    "legendIst": "IST forecast",
+    "legendSoll": "Target forecast"
   }
 }

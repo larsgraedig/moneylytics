@@ -1,10 +1,12 @@
 export type Preset =
+  | 'last30'
   | 'currentMonth' | 'lastMonth'
   | 'currentQuarter' | 'lastQuarter'
   | 'currentHalf' | 'lastHalf'
   | 'currentYear' | 'lastYear'
 
 export const PRESETS: Preset[] = [
+  'last30',
   'currentMonth', 'lastMonth',
   'currentQuarter', 'lastQuarter',
   'currentHalf', 'lastHalf',
@@ -33,6 +35,13 @@ export function getPresetRange(preset: Preset): { from: string; to: string } {
   const h = m < 6 ? 0 : 1
 
   switch (preset) {
+    case 'last30': {
+      const to = new Date(now)
+      to.setDate(to.getDate() - 1)
+      const from = new Date(to)
+      from.setDate(from.getDate() - 29)
+      return { from: localIso(from), to: localIso(to) }
+    }
     case 'currentMonth':
       return { from: localIso(new Date(y, m, 1)), to: localIso(new Date(y, m + 1, 0)) }
     case 'lastMonth':
