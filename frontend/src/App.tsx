@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import type { LucideIcon } from 'lucide-react'
 import {
-  Workflow, TrendingUp, PieChart, BarChart2,
+  Workflow, TrendingUp, TrendingDown, PieChart, BarChart2,
   List, Landmark, Wallet, Gauge,
   FileSpreadsheet, FileCode, Link2, FolderOpen,
 } from 'lucide-react'
@@ -17,6 +17,7 @@ import PiePage from './components/PiePage'
 import TransactionsPage from './components/TransactionsPage'
 import TransactionListPanel from './components/TransactionListPanel'
 import CashflowPage from './components/CashflowPage'
+import BurnRatePage from './components/BurnRatePage'
 import AccountsPage from './components/AccountsPage'
 import LinkedTransactionsPage from './components/LinkedTransactionsPage'
 import CollectionsPage from './components/CollectionsPage'
@@ -34,9 +35,9 @@ function isoDate(d: Date) {
 const today = isoDate(new Date())
 const firstOfYear = isoDate(new Date(new Date().getFullYear(), 0, 1))
 
-type Tab = 'sankey' | 'trends' | 'breakdown' | 'cashflow' | 'kontoauszug' | 'verknuepfungen' | 'sammlungen' | 'konten' | 'budgets' | 'limits' | 'csv' | 'camt'
+type Tab = 'sankey' | 'trends' | 'breakdown' | 'cashflow' | 'burnrate' | 'kontoauszug' | 'verknuepfungen' | 'sammlungen' | 'konten' | 'budgets' | 'limits' | 'csv' | 'camt'
 
-const VALID_TABS = new Set<string>(['sankey', 'trends', 'breakdown', 'cashflow', 'kontoauszug', 'verknuepfungen', 'sammlungen', 'konten', 'budgets', 'limits', 'csv', 'camt'])
+const VALID_TABS = new Set<string>(['sankey', 'trends', 'breakdown', 'cashflow', 'burnrate', 'kontoauszug', 'verknuepfungen', 'sammlungen', 'konten', 'budgets', 'limits', 'csv', 'camt'])
 
 type ViewState =
   | { phase: 'idle' }
@@ -54,6 +55,7 @@ const NAV: NavSection[] = [
       ['trends', 'nav.trends', TrendingUp],
       ['breakdown', 'nav.breakdown', PieChart],
       ['cashflow', 'nav.cashflow', BarChart2],
+      ['burnrate', 'nav.burnrate', TrendingDown],
     ],
   },
   {
@@ -289,6 +291,7 @@ export default function App() {
           )}
 
           {tab === 'cashflow' && <CashflowPage key={username} from={from} to={to} iban={iban} />}
+          {tab === 'burnrate' && <BurnRatePage key={username} from={from} to={to} iban={iban} />}
           {tab === 'trends' && <TrendsPage key={username} from={from} to={to} iban={iban} />}
           {tab === 'breakdown' && <PiePage key={username} from={from} to={to} iban={iban} />}
           {tab === 'kontoauszug' && <TransactionsPage key={username} from={from} to={to} iban={iban} accounts={accounts} columnOrder={txColumnOrder ?? undefined} onColumnOrderChange={order => setTxColumnOrder(order)} />}
