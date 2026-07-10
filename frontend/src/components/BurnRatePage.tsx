@@ -139,32 +139,18 @@ function makeProjectionBarsLayer(avgPerDay: number, sollPerDay: number | null, f
 }
 
 function makeCumulativeProjectionLayer(
-  avgPerDay: number,
-  sollPerDay: number | null,
-  cumulativeAtToday: number,
-  todayLabel: string,
-  futurePointLabels: string[],
+  istData: { x: string; y: number }[],
+  sollData: { x: string; y: number }[],
 ) {
-  let istCum = cumulativeAtToday
-  const istPts = [
-    { label: todayLabel, y: Math.round(cumulativeAtToday) },
-    ...futurePointLabels.map(label => { istCum += avgPerDay; return { label, y: Math.round(istCum) } }),
-  ]
-  let sollCum = cumulativeAtToday
-  const sollPts = sollPerDay !== null ? [
-    { label: todayLabel, y: Math.round(cumulativeAtToday) },
-    ...futurePointLabels.map(label => { sollCum += sollPerDay; return { label, y: Math.round(sollCum) } }),
-  ] : []
-
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return function CumulativeProjectionLayer({ xScale, yScale }: any) {
-    const coord = (pts: { label: string; y: number }[]) =>
-      pts.map(p => `${xScale(p.label)},${yScale(p.y)}`).join(' ')
+    const coord = (pts: { x: string; y: number }[]) =>
+      pts.map(p => `${xScale(p.x)},${yScale(p.y)}`).join(' ')
     return (
       <g>
-        {istPts.length > 1 && (
+        {istData.length > 1 && (
           <polyline
-            points={coord(istPts)}
+            points={coord(istData)}
             fill="none"
             stroke="rgba(248,113,113,0.55)"
             strokeWidth={2}
@@ -173,9 +159,9 @@ function makeCumulativeProjectionLayer(
             strokeLinejoin="round"
           />
         )}
-        {sollPts.length > 1 && (
+        {sollData.length > 1 && (
           <polyline
-            points={coord(sollPts)}
+            points={coord(sollData)}
             fill="none"
             stroke="rgba(96,165,250,0.55)"
             strokeWidth={2}
@@ -235,9 +221,30 @@ export default function BurnRatePage({ from, to, iban }: { from: string; to: str
     : null
 
   const barData = points?.map(p => ({ date: p.label, expenses: p.expenses, rollingAvg: p.rollingAvg })) ?? []
-  const lineData = points
-    ? [{ id: 'cumulative', data: points.map(p => ({ x: p.label, y: Math.round(p.cumulative) })) }]
-    : []
+
+  // Projection point arrays (shared between lineData and custom dashed layer)
+  const istProjectionData: { x: string; y: number }[] = (() => {
+    if (!isCurrentPeriod || futurePointLabels.length === 0) return []
+    let c = cumulativeAtToday
+    return [
+      { x: todayLabel, y: Math.round(cumulativeAtToday) },
+      ...futurePointLabels.map(x => { c += avgPerDay; return { x, y: Math.round(c) } }),
+    ]
+  })()
+  const sollProjectionData: { x: string; y: number }[] = (() => {
+    if (!isCurrentPeriod || futurePointLabels.length === 0 || sollPerDay === null) return []
+    let c = cumulativeAtToday
+    return [
+      { x: todayLabel, y: Math.round(cumulativeAtToday) },
+      ...futurePointLabels.map(x => { c += sollPerDay!; return { x, y: Math.round(c) } }),
+    ]
+  })()
+
+  const lineData = points ? [
+    { id: 'cumulative', data: points.map(p => ({ x: p.label, y: Math.round(p.cumulative) })) },
+    ...(istProjectionData.length > 1 ? [{ id: 'ist', data: istProjectionData }] : []),
+    ...(sollProjectionData.length > 1 ? [{ id: 'soll', data: sollProjectionData }] : []),
+  ] : []
 
   const istProjectedEnd = isCurrentPeriod ? cumulativeAtToday + avgPerDay * remainingDays : 0
   const lineYMax = Math.max(
@@ -255,8 +262,8 @@ export default function BurnRatePage({ from, to, iban }: { from: string; to: str
   const projectionBarsLayer = isCurrentPeriod && futureLabels.size > 0
     ? makeProjectionBarsLayer(avgPerDay, sollPerDay, futureLabels)
     : null
-  const cumulativeProjectionLayer = isCurrentPeriod && futurePointLabels.length > 0
-    ? makeCumulativeProjectionLayer(avgPerDay, sollPerDay, cumulativeAtToday, todayLabel, futurePointLabels)
+  const cumulativeProjectionLayer = istProjectionData.length > 1
+    ? makeCumulativeProjectionLayer(istProjectionData, sollProjectionData)
     : null
 
   // Runway derived values
@@ -505,30 +512,39 @@ export default function BurnRatePage({ from, to, iban }: { from: string; to: str
                   xScale={{ type: 'point' }}
                   yScale={{ type: 'linear', min: 0, max: lineYMax > 0 ? lineYMax * 1.05 : 'auto' }}
                   curve="monotoneX"
-                  colors={['#f87171']}
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  colors={(series: any) => series.id === 'cumulative' ? '#f87171' : 'rgba(0,0,0,0)'}
                   lineWidth={2}
                   enableArea
                   areaOpacity={0.1}
                   enablePoints={false}
-                  useMesh={true}
-                  enableCrosshair={true}
-                  crosshairType="x"
+                  enableSlices="x"
                   enableGridX={false}
                   gridYValues={4}
                   axisBottom={{ tickSize: 0, tickPadding: 8, tickRotation, tickValues: ticks }}
                   axisLeft={{ tickSize: 0, tickPadding: 8, tickValues: 4, format: v => EUR0.format(v as number) }}
                   layers={[
-                    'grid', 'axes', 'areas', 'crosshair', 'lines', 'points', 'slices', 'mesh', 'legends',
+                    'grid', 'axes', 'areas', 'lines', 'points', 'slices', 'mesh', 'legends',
                     ...(cumulativeProjectionLayer ? [cumulativeProjectionLayer] : []),
                   ]}
-                  tooltip={({ point }) => (
+                  sliceTooltip={({ slice }) => (
                     <div className="cf-tooltip">
-                      <span className="cf-tooltip-period">{String(point.data.x)}</span>
-                      <div className="cf-tooltip-row">
-                        <span className="cf-dot" style={{ background: '#f87171' }} />
-                        <span>{t('burnrate.cumulativeLabel')}</span>
-                        <span className="cf-tooltip-amt">{EUR.format(point.data.y as number)}</span>
-                      </div>
+                      <span className="cf-tooltip-period">{String(slice.points[0].data.x)}</span>
+                      {slice.points.map(point => (
+                        <div key={point.id} className="cf-tooltip-row">
+                          <span className="cf-dot" style={{ background:
+                            point.seriesId === 'soll' ? 'rgba(96,165,250,0.9)' :
+                            point.seriesId === 'ist'  ? 'rgba(248,113,113,0.7)' :
+                            '#f87171'
+                          }} />
+                          <span>{
+                            point.seriesId === 'ist'  ? t('burnrate.legendIst') :
+                            point.seriesId === 'soll' ? t('burnrate.legendSoll') :
+                            t('burnrate.cumulativeLabel')
+                          }</span>
+                          <span className="cf-tooltip-amt">{EUR.format(point.data.y as number)}</span>
+                        </div>
+                      ))}
                     </div>
                   )}
                   theme={NIVO_THEME}
