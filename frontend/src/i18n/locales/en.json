@@ -478,6 +478,9 @@
     "manualRemaining": "Manual: {{days}} more days — until {{date}}",
     "manualExhausted": "Manual: exhausted {{days}} days ago",
     "rowRemaining": "{{days}} more days — until {{date}}",
-    "rowExhausted": "exhausted {{days}} days ago"
+    "rowExhausted": "exhausted {{days}} days ago",
+    "sollRate": "Target (until {{date}})",
+    "legendIst": "IST forecast",
+    "legendSoll": "Target forecast"
   }
 }

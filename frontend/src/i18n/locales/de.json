@@ -478,6 +478,9 @@
     "manualRemaining": "Manuell: noch {{days}} Tage — bis {{date}}",
     "manualExhausted": "Manuell: seit {{days}} Tagen aufgebraucht",
     "rowRemaining": "noch {{days}} Tage — bis {{date}}",
-    "rowExhausted": "seit {{days}} Tagen aufgebraucht"
+    "rowExhausted": "seit {{days}} Tagen aufgebraucht",
+    "sollRate": "Soll (bis {{date}})",
+    "legendIst": "IST-Prognose",
+    "legendSoll": "Soll-Prognose"
   }
 }
