@@ -130,8 +130,10 @@ export default function BurnRatePage({ from, to, iban }: { from: string; to: str
 
   // Burn rate chart derived values
   const totalExpenses = points ? points.reduce((s, p) => s + p.expenses, 0) : 0
-  const days = points?.length ?? 1
-  const avgPerDay = days > 0 ? totalExpenses / days : 0
+  const todayIso = new Date().toISOString().slice(0, 10)
+  const effectiveTo = todayIso >= from && todayIso <= to ? todayIso : to
+  const effectiveDays = points ? Math.max(1, points.filter(p => p.date <= effectiveTo).length) : 1
+  const avgPerDay = totalExpenses / effectiveDays
 
   const barData = points?.map(p => ({ date: p.label, expenses: p.expenses, rollingAvg: p.rollingAvg })) ?? []
   const lineData = points
