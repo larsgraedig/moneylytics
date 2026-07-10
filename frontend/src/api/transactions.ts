@@ -270,6 +270,33 @@ export async function updateOffsetLinkComment(linkId: number, comment: string | 
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
 }
 
+export interface CashflowBucketDto {
+  key: string
+  incomeGross: number
+  incomeNet: number
+  expensesGross: number
+  expensesNet: number
+  net: number
+}
+
+export interface CashflowResponseDto {
+  granularity: string
+  buckets: CashflowBucketDto[]
+}
+
+export async function fetchCashflow(
+  from: string,
+  to: string,
+  granularity: 'monthly' | 'yearly',
+  iban?: string,
+): Promise<CashflowResponseDto> {
+  const params = new URLSearchParams({ from, to, granularity: granularity.toUpperCase() })
+  if (iban) params.set('iban', iban)
+  const res = await fetchWithUser(`/transactions/cashflow?${params}`)
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  return res.json() as Promise<CashflowResponseDto>
+}
+
 export async function fetchSankeyData(from: string, to: string, iban?: string): Promise<SankeyResponse> {
   const params = new URLSearchParams({ from, to })
   if (iban) params.set('iban', iban)

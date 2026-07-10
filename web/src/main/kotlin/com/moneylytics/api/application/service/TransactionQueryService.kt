@@ -1,12 +1,18 @@
 package com.moneylytics.api.application.service
 
+import com.moneylytics.api.application.port.input.CashflowBucket
+import com.moneylytics.api.application.port.input.CashflowResponse
 import com.moneylytics.api.application.port.input.EnrichTransactionUseCase
+import com.moneylytics.api.application.port.input.GetCashflowQuery
+import com.moneylytics.api.application.port.input.GetCashflowUseCase
 import com.moneylytics.api.application.port.input.GetTransactionsQuery
 import com.moneylytics.api.application.port.input.GetTransactionsUseCase
 import com.moneylytics.api.application.port.input.TransactionType
 import com.moneylytics.api.application.port.input.UpdateTransactionAccountingDateUseCase
 import com.moneylytics.api.application.port.input.UpdateTransactionCategoryUseCase
 import com.moneylytics.api.application.port.input.UpdateTransactionCommentUseCase
+import com.moneylytics.api.application.port.input.bucketKey
+import com.moneylytics.api.application.port.input.generateBuckets
 import com.moneylytics.api.application.port.output.BudgetRepository
 import com.moneylytics.api.application.port.output.TransactionRepository
 import com.moneylytics.api.domain.Transaction
@@ -19,6 +25,7 @@ class TransactionQueryService(
     private val transactionRepository: TransactionRepository,
     private val budgetRepository: BudgetRepository,
 ) : GetTransactionsUseCase,
+    GetCashflowUseCase,
     UpdateTransactionCategoryUseCase,
     UpdateTransactionCommentUseCase,
     UpdateTransactionAccountingDateUseCase,
@@ -47,6 +54,29 @@ class TransactionQueryService(
                     list.filter { it.id !in assigned }
                 } ?: list
             }
+    }
+
+    override fun getCashflow(query: GetCashflowQuery): CashflowResponse {
+        val transactions = transactionRepository.findByAccountingDateBetween(query.from, query.to, query.userId, query.accountIban)
+        val bucketKeys = generateBuckets(query.from, query.to, query.granularity)
+        val byBucket = transactions.groupBy { bucketKey(it.accountingDate, query.granularity) }
+        val buckets =
+            bucketKeys.map { key ->
+                val txns = byBucket[key] ?: emptyList()
+                val incomeGross = txns.filter { it.amount >= BigDecimal.ZERO }.sumOf { it.amount }
+                val incomeNet = txns.filter { it.effectiveAmount() >= BigDecimal.ZERO }.sumOf { it.effectiveAmount() }
+                val expensesGross = txns.filter { it.amount < BigDecimal.ZERO }.sumOf { it.amount.abs() }
+                val expensesNet = txns.filter { it.effectiveAmount() < BigDecimal.ZERO }.sumOf { it.effectiveAmount().abs() }
+                CashflowBucket(
+                    key = key,
+                    incomeGross = incomeGross,
+                    incomeNet = incomeNet,
+                    expensesGross = expensesGross,
+                    expensesNet = expensesNet,
+                    net = incomeNet - expensesNet,
+                )
+            }
+        return CashflowResponse(granularity = query.granularity, buckets = buckets)
     }
 
     override fun updateCategory(

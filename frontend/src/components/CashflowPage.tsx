@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { Trans, useTranslation } from 'react-i18next'
 import { ResponsiveBar } from '@nivo/bar'
-import { fetchAllTransactions, fetchLinkedGroup, type LinkedGroupItem, type TransactionItem } from '../api/transactions'
+import { fetchAllTransactions, fetchCashflow, fetchLinkedGroup, type LinkedGroupItem, type TransactionItem } from '../api/transactions'
 import { fetchCollection, type CollectionDto } from '../api/collections'
 import { GroupCard } from './GroupCard'
 import { CollectionCard } from './CollectionCard'
@@ -44,10 +44,6 @@ interface DrilldownState {
   loading: boolean
   incomeMode: IncomeMode
   expenseMode: ExpenseMode
-}
-
-function bucketKey(date: string, gran: Granularity): string {
-  return gran === 'monthly' ? date.slice(0, 7) : date.slice(0, 4)
 }
 
 function bucketLabel(key: string, gran: Granularity): string {
@@ -123,33 +119,15 @@ export default function CashflowPage({ from, to, iban }: { from: string; to: str
     setLoading(true)
     setError(null)
     try {
-      const resp = await fetchAllTransactions(from, to, iban)
-      const map = new Map<string, { incomeAll: number; incomeUnnetted: number; expensesAll: number; expensesUnnetted: number }>()
-
-      for (const tx of resp.transactions) {
-        const key = bucketKey(tx.accountingDate, granularity)
-        if (!map.has(key)) map.set(key, { incomeAll: 0, incomeUnnetted: 0, expensesAll: 0, expensesUnnetted: 0 })
-        const entry = map.get(key)!
-        if (tx.amount >= 0) {
-          entry.incomeAll += tx.amount
-          entry.incomeUnnetted += Math.max(0, tx.effectiveAmount)
-        } else {
-          entry.expensesAll += Math.abs(tx.amount)
-          entry.expensesUnnetted += Math.abs(Math.min(0, tx.effectiveAmount))
-        }
-      }
-
-      const buckets: RawBucket[] = [...map.entries()]
-        .sort(([a], [b]) => a.localeCompare(b))
-        .map(([key, v]) => ({
-          period: bucketLabel(key, granularity),
-          periodKey: key,
-          incomeAll: Math.round(v.incomeAll),
-          incomeUnnetted: Math.round(v.incomeUnnetted),
-          expensesAll: Math.round(v.expensesAll),
-          expensesUnnetted: Math.round(v.expensesUnnetted),
-        }))
-
+      const resp = await fetchCashflow(from, to, granularity, iban)
+      const buckets: RawBucket[] = resp.buckets.map(b => ({
+        period: bucketLabel(b.key, granularity),
+        periodKey: b.key,
+        incomeAll: Math.round(b.incomeGross),
+        incomeUnnetted: Math.round(b.incomeNet),
+        expensesAll: Math.round(b.expensesGross),
+        expensesUnnetted: Math.round(b.expensesNet),
+      }))
       setRawData(buckets)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'request failed')
