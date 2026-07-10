@@ -168,6 +168,40 @@ function makeProjectionBarsLayer(avgPerDay: number, sollPerDay: number | null, f
   }
 }
 
+interface ColHoverInfo { clientX: number; clientY: number; label: string }
+
+function makeColumnHoverLayer(onHover: (info: ColHoverInfo | null) => void) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return function ColumnHoverLayer({ bars, innerHeight }: any) {
+    if (!bars?.length) return null
+    const seen = new Set<string>()
+    const columns: { label: string; x: number; width: number }[] = []
+    for (const bar of bars) {
+      const label = bar.data.indexValue as string
+      if (!seen.has(label)) {
+        seen.add(label)
+        columns.push({ label, x: bar.x, width: bar.width })
+      }
+    }
+    return (
+      <g>
+        {columns.map(({ label, x, width }) => (
+          <rect
+            key={label}
+            x={x}
+            y={0}
+            width={width}
+            height={innerHeight}
+            fill="transparent"
+            onMouseMove={(e) => onHover({ clientX: e.clientX, clientY: e.clientY, label })}
+            onMouseLeave={() => onHover(null)}
+          />
+        ))}
+      </g>
+    )
+  }
+}
+
 function makeCumulativeProjectionLayer(
   istData: { x: string; y: number }[],
   sollData: { x: string; y: number }[],
@@ -215,6 +249,7 @@ export default function BurnRatePage({ from, to, iban }: { from: string; to: str
   const [rollingWindow, setRollingWindow] = useState<RollingWindow>(7)
   const [income, setIncome] = useState<number | null>(null)
   const [simulatedToday, setSimulatedToday] = useState('')
+  const [colHover, setColHover] = useState<ColHoverInfo | null>(null)
 
   const realTodayIso = new Date().toISOString().slice(0, 10)
   const effectiveToday = simulatedToday || realTodayIso
@@ -257,6 +292,20 @@ export default function BurnRatePage({ from, to, iban }: { from: string; to: str
   const sollPerDay = isCurrentPeriod && income !== null && remainingDays > 0 && (income - totalExpenses) > 0
     ? (income - totalExpenses) / remainingDays
     : null
+
+  const sollByLabel: Map<string, number> = (() => {
+    if (!points || income === null) return new Map()
+    const totalDays = points.length
+    return new Map(
+      points
+        .filter(p => p.date <= effectiveTo)
+        .map(p => {
+          const idx = points.findIndex(p2 => p2.date === p.date)
+          const daysRemaining = totalDays - idx
+          return [p.label, daysRemaining > 0 ? Math.max(0, (income - p.cumulative) / daysRemaining) : 0]
+        })
+    )
+  })()
 
   const barData = points?.map(p => ({ date: p.label, expenses: p.expenses, rollingAvg: p.rollingAvg })) ?? []
 
@@ -301,18 +350,11 @@ export default function BurnRatePage({ from, to, iban }: { from: string; to: str
     ? makeProjectionBarsLayer(avgPerDay, sollPerDay, futureLabels)
     : null
 
-  const sollRateLayer = (() => {
-    if (!points || income === null) return null
-    const totalDays = points.length
-    const pastPoints = points.filter(p => p.date <= effectiveTo)
-    const sollByLabel = new Map(pastPoints.map((p) => {
-      const idx = points.findIndex(p2 => p2.date === p.date)
-      const daysRemaining = totalDays - idx
-      const rate = daysRemaining > 0 ? Math.max(0, (income - p.cumulative) / daysRemaining) : 0
-      return [p.label, rate]
-    }))
-    return makeSollRateLayer(sollByLabel)
-  })()
+  const sollRateLayer = sollByLabel.size > 0 ? makeSollRateLayer(sollByLabel) : null
+  const columnHoverLayer = makeColumnHoverLayer(setColHover)
+
+  const rollingAvgByLabel = new Map(points?.map(p => [p.label, p.rollingAvg]) ?? [])
+  const expensesByLabel = new Map(barData.map(d => [d.date, d.expenses as number]))
   const cumulativeProjectionLayer = istProjectionData.length > 1
     ? makeCumulativeProjectionLayer(istProjectionData, sollProjectionData)
     : null
@@ -479,26 +521,44 @@ export default function BurnRatePage({ from, to, iban }: { from: string; to: str
                     ...(rollingAvgLayer ? [rollingAvgLayer] : []),
                     ...(sollRateLayer ? [sollRateLayer] : []),
                     ...(projectionBarsLayer ? [projectionBarsLayer] : []),
+                    columnHoverLayer,
                     'legends',
                   ]}
-                  tooltip={({ indexValue, value, data: d }) => (
-                    <div className="cf-tooltip">
-                      <span className="cf-tooltip-period">{indexValue}</span>
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  tooltip={() => null as any}
+                  theme={NIVO_THEME}
+                />
+                {colHover && (() => {
+                  const expenses = expensesByLabel.get(colHover.label) ?? 0
+                  const rollingAvg = rollingAvgByLabel.get(colHover.label) ?? 0
+                  const sollRate = sollByLabel.get(colHover.label)
+                  const leftOffset = colHover.clientX > window.innerWidth * 0.6 ? -180 : 14
+                  return (
+                    <div
+                      className="cf-tooltip"
+                      style={{ position: 'fixed', left: colHover.clientX + leftOffset, top: colHover.clientY - 10, pointerEvents: 'none', zIndex: 9999 }}
+                    >
+                      <span className="cf-tooltip-period">{colHover.label}</span>
                       <div className="cf-tooltip-row">
                         <span className="cf-dot" style={{ background: '#f87171' }} />
                         <span>{t('burnrate.dailyExpenses')}</span>
-                        <span className="cf-tooltip-amt">{EUR.format(value as number)}</span>
+                        <span className="cf-tooltip-amt">{EUR.format(expenses)}</span>
                       </div>
                       <div className="cf-tooltip-row">
                         <span className="cf-dot" style={{ background: '#fb923c' }} />
                         <span>{t('burnrate.rollingAvg', { days: rollingWindow })}</span>
-                        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                        <span className="cf-tooltip-amt">{EUR.format((d as any).rollingAvg)}</span>
+                        <span className="cf-tooltip-amt">{EUR.format(rollingAvg)}</span>
                       </div>
+                      {sollRate !== undefined && (
+                        <div className="cf-tooltip-row">
+                          <span className="cf-dot" style={{ background: 'rgba(96,165,250,0.85)' }} />
+                          <span>{t('burnrate.legendSollRate')}</span>
+                          <span className="cf-tooltip-amt">{EUR.format(sollRate)}</span>
+                        </div>
+                      )}
                     </div>
-                  )}
-                  theme={NIVO_THEME}
-                />
+                  )
+                })()}
               </div>
             </div>
 
