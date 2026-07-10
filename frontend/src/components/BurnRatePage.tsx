@@ -363,6 +363,9 @@ export default function BurnRatePage({ from, to, iban }: { from: string; to: str
                   enableArea
                   areaOpacity={0.1}
                   enablePoints={false}
+                  useMesh={true}
+                  enableCrosshair={true}
+                  crosshairType="x"
                   enableGridX={false}
                   gridYValues={4}
                   axisBottom={{ tickSize: 0, tickPadding: 8, tickRotation, tickValues: ticks }}

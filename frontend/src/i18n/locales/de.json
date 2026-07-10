@@ -259,6 +259,7 @@
     "assignTitle": "Transaktion zu «{{name}}» zuweisen",
     "presets": {
       "placeholder": "Zeitraum wählen…",
+      "last30": "Letzte 30 Tage",
       "currentMonth": "Aktueller Monat",
       "lastMonth": "Letzter Monat",
       "currentQuarter": "Aktuelles Quartal",

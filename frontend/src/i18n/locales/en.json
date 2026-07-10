@@ -259,6 +259,7 @@
     "assignTitle": "Assign transaction to «{{name}}»",
     "presets": {
       "placeholder": "Select period…",
+      "last30": "Last 30 days",
       "currentMonth": "Current month",
       "lastMonth": "Last month",
       "currentQuarter": "Current quarter",
