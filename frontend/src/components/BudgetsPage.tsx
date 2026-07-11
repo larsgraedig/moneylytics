@@ -8,7 +8,6 @@ import {
   removeTransactionLink,
   updateBudget,
   type Budget,
-  type BudgetTransactionLink,
 } from '../api/budgets'
 import BudgetDetail from './BudgetDetail'
 import { fetchCategories, type CategoryGroup } from '../api/rawImport'
@@ -32,11 +31,6 @@ function parseAmt(s: string): number | null {
 }
 
 import { getPresetRange, PRESETS, type Preset } from '../utils/datePresets'
-
-function effectiveContrib(amount: number | null, transactionAmount: number): number {
-  if (amount === null) return transactionAmount
-  return transactionAmount < 0 ? -Math.abs(amount) : Math.abs(amount)
-}
 
 interface FormState {
   name: string
@@ -135,34 +129,16 @@ export default function BudgetsPage({ from, to, iban }: { from: string; to: stri
     }
   }
 
-  async function handleRemoveLink(budgetId: number, linkId: number) {
+  async function handleRemoveLink(linkId: number) {
     try {
       await removeTransactionLink(linkId)
-      setBudgets(prev =>
-        prev.map(b => {
-          if (b.id !== budgetId) return b
-          const removed = b.transactionLinks.find(l => l.id === linkId)
-          return {
-            ...b,
-            transactionLinks: b.transactionLinks.filter(l => l.id !== linkId),
-            balance: b.balance - effectiveContrib(removed?.amount ?? null, removed?.transactionAmount ?? 0),
-          }
-        }),
-      )
+      const fresh = await fetchBudgets()
+      setBudgets(fresh)
     } catch { /* silent */ }
   }
 
-  function handleAssigned(budgetId: number, link: BudgetTransactionLink) {
-    setBudgets(prev =>
-      prev.map(b => {
-        if (b.id !== budgetId) return b
-        return {
-          ...b,
-          transactionLinks: [...b.transactionLinks, link],
-          balance: b.balance + effectiveContrib(link.amount, link.transactionAmount),
-        }
-      }),
-    )
+  function handleAssigned() {
+    fetchBudgets().then(setBudgets).catch(() => {})
   }
 
   if (loading) return <div className="bdg-page"><p className="hint">{t('common.fetching')}</p></div>
@@ -172,7 +148,7 @@ export default function BudgetsPage({ from, to, iban }: { from: string; to: stri
       <BudgetDetail
         budget={detailBudget}
         onBack={() => setDetailBudgetId(null)}
-        onRemoveLink={linkId => handleRemoveLink(detailBudget.id, linkId)}
+        onRemoveLink={handleRemoveLink}
         onAssign={() => setAssigningBudget(detailBudget)}
       />
     )
@@ -303,7 +279,7 @@ export default function BudgetsPage({ from, to, iban }: { from: string; to: stri
         <BudgetPanel
           budget={drilldownBudget}
           onClose={() => setDrilldownId(null)}
-          onRemoveLink={linkId => handleRemoveLink(drilldownBudget.id, linkId)}
+          onRemoveLink={handleRemoveLink}
           onAssign={() => setAssigningBudget(drilldownBudget)}
           t={t}
         />
@@ -316,7 +292,7 @@ export default function BudgetsPage({ from, to, iban }: { from: string; to: stri
           defaultTo={to}
           defaultIban={iban}
           onClose={() => setAssigningBudget(null)}
-          onAssigned={link => handleAssigned(assigningBudget.id, link)}
+          onAssigned={handleAssigned}
         />
       )}
     </div>
@@ -335,7 +311,7 @@ function BudgetPanel({
   t: (key: string, opts?: Record<string, unknown>) => string
 }) {
   const links = [...budget.transactionLinks].sort((a, b) => b.transactionDate.localeCompare(a.transactionDate))
-  const total = links.reduce((s, l) => s + effectiveContrib(l.amount, l.transactionAmount), 0)
+  const total = budget.totalContributions
 
   return (
     <>
@@ -370,8 +346,8 @@ function BudgetPanel({
                     <tr key={link.id}>
                       <td className="txn-cell-date">{formatDate(link.transactionDate)}</td>
                       <td className="txn-cell-sub">{link.transactionCategory} / {link.transactionSubcategory}</td>
-                      <td className={`txn-cell-amount${effectiveContrib(link.amount, link.transactionAmount) < 0 ? ' negative' : ''}`}>
-                        {EUR.format(effectiveContrib(link.amount, link.transactionAmount))}
+                      <td className={`txn-cell-amount${link.effectiveAmount < 0 ? ' negative' : ''}`}>
+                        {EUR.format(link.effectiveAmount)}
                       </td>
                       <td>
                         <button className="bdg-remove-btn" title={t('budgets.remove')} onClick={() => onRemoveLink(link.id)}>
@@ -409,7 +385,7 @@ function AssignTransactionModal({
   defaultTo: string
   defaultIban?: string
   onClose: () => void
-  onAssigned: (link: BudgetTransactionLink) => void
+  onAssigned: () => void
 }) {
   const { t } = useTranslation()
   const [accounts, setAccounts] = useState<Account[]>([])
@@ -478,8 +454,8 @@ function AssignTransactionModal({
     setAssigning(true)
     setError(null)
     try {
-      const link = await assignTransaction(budget.id, txId, amount)
-      onAssigned(link)
+      await assignTransaction(budget.id, txId, amount)
+      onAssigned()
       setTransactions(prev => prev ? prev.filter(tx => tx.id !== txId) : null)
       setAssigningId(null)
       setPartialAmount('')

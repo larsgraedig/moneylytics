@@ -12,10 +12,17 @@ import com.moneylytics.api.domain.BudgetTransactionLink
 import org.springframework.stereotype.Service
 import java.math.BigDecimal
 
+data class BudgetChartPoint(
+    val date: String,
+    val cumulative: BigDecimal,
+)
+
 data class BudgetWithBalance(
     val budget: Budget,
     val balance: BigDecimal,
     val transactionLinks: List<BudgetTransactionLink>,
+    val totalContributions: BigDecimal,
+    val chartPoints: List<BudgetChartPoint>,
 )
 
 @Service
@@ -33,13 +40,24 @@ class BudgetService(
         val linksByBudgetId = allLinks.groupBy { it.budgetId }
         return budgets.map { budget ->
             val links = linksByBudgetId[budget.id] ?: emptyList()
+            val sortedLinks = links.sortedBy { it.transactionDate }
+            var cumulative = BigDecimal.ZERO
+            val chartPoints =
+                sortedLinks.map { link ->
+                    cumulative += effectiveContrib(link)
+                    BudgetChartPoint(date = link.transactionDate.toString(), cumulative = cumulative)
+                }
             BudgetWithBalance(
                 budget = budget,
                 balance = links.sumOf { it.effectiveAmount() },
                 transactionLinks = links,
+                totalContributions = cumulative,
+                chartPoints = chartPoints,
             )
         }
     }
+
+    private fun effectiveContrib(link: BudgetTransactionLink): BigDecimal = link.effectiveAmount().abs()
 
     override fun createBudget(
         budget: Budget,

@@ -1,10 +1,16 @@
 import { fetchWithUser } from './client'
 
+export interface BudgetChartPoint {
+  date: string
+  cumulative: number
+}
+
 export interface BudgetTransactionLink {
   id: number
   transactionId: number
   amount: number | null
   transactionAmount: number
+  effectiveAmount: number
   transactionDate: string
   transactionCategory: string
   transactionSubcategory: string
@@ -19,6 +25,8 @@ export interface Budget {
   note: string | null
   balance: number
   transactionLinks: BudgetTransactionLink[]
+  totalContributions: number
+  chartPoints: BudgetChartPoint[]
 }
 
 export async function fetchBudgets(): Promise<Budget[]> {

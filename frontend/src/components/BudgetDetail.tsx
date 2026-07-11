@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ResponsiveLine } from '@nivo/line'
-import type { Budget, BudgetTransactionLink } from '../api/budgets'
+import type { Budget } from '../api/budgets'
 
 const EUR = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' })
 const EUR2 = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' })
@@ -17,11 +17,6 @@ function subtractDay(iso: string): string {
   return d.toISOString().slice(0, 10)
 }
 
-function effectiveContrib(amount: number | null, transactionAmount: number): number {
-  if (amount === null) return transactionAmount
-  return transactionAmount < 0 ? -Math.abs(amount) : Math.abs(amount)
-}
-
 const NIVO_THEME = {
   background: 'transparent',
   text: { fill: '#6b6b78', fontSize: 11, fontFamily: "ui-monospace, 'SF Mono', Consolas, monospace" },
@@ -30,20 +25,6 @@ const NIVO_THEME = {
   tooltip: { container: { display: 'none' } },
 }
 
-function buildChartData(links: BudgetTransactionLink[]): Array<{ x: string; y: number }> {
-  const sorted = [...links].sort((a, b) => a.transactionDate.localeCompare(b.transactionDate))
-  if (sorted.length === 0) return []
-
-  const points: Array<{ x: string; y: number }> = [
-    { x: subtractDay(sorted[0].transactionDate), y: 0 },
-  ]
-  let running = 0
-  for (const link of sorted) {
-    running += effectiveContrib(link.amount, link.transactionAmount)
-    points.push({ x: link.transactionDate, y: Math.round(running * 100) / 100 })
-  }
-  return points
-}
 
 export default function BudgetDetail({
   budget,
@@ -61,13 +42,19 @@ export default function BudgetDetail({
     () => [...budget.transactionLinks].sort((a, b) => b.transactionDate.localeCompare(a.transactionDate)),
     [budget.transactionLinks],
   )
-  const chartPoints = useMemo(() => buildChartData(budget.transactionLinks), [budget.transactionLinks])
-  const total = links.reduce((s, l) => s + effectiveContrib(l.amount, l.transactionAmount), 0)
+  const lineData = useMemo(() => {
+    if (budget.chartPoints.length === 0) return []
+    return [
+      { x: subtractDay(budget.chartPoints[0].date), y: 0 },
+      ...budget.chartPoints.map(p => ({ x: p.date, y: p.cumulative })),
+    ]
+  }, [budget.chartPoints])
+  const total = budget.totalContributions
 
   const hasTarget = budget.targetAmount != null && budget.targetAmount > 0
-  const pct = hasTarget ? Math.abs(budget.balance) / budget.targetAmount! : null
+  const pct = hasTarget ? budget.totalContributions / budget.targetAmount! : null
 
-  const yValues = chartPoints.map(p => p.y)
+  const yValues = lineData.map(p => p.y)
   const yMin = Math.min(0, ...yValues)
   const yMax = Math.max(hasTarget ? budget.targetAmount! : 0, ...yValues)
   const yPad = (yMax - yMin) * 0.1 || 100
@@ -124,12 +111,12 @@ export default function BudgetDetail({
       <div className="bdt-body">
         <div className="bdt-chart-section">
           <span className="bdt-section-label">{t('budgets.detail.cumulativeBalance')}</span>
-          {chartPoints.length < 2 ? (
+          {budget.chartPoints.length === 0 ? (
             <p className="hint" style={{ marginTop: '2rem' }}>{t('budgets.noTransactions')}</p>
           ) : (
             <div className="bdt-chart-wrap">
               <ResponsiveLine
-                data={[{ id: 'balance', data: chartPoints }]}
+                data={[{ id: 'balance', data: lineData }]}
                 xScale={{ type: 'time', format: '%Y-%m-%d', precision: 'day', useUTC: false }}
                 xFormat="time:%d.%m.%Y"
                 yScale={{ type: 'linear', min: yMin - yPad, max: yMax + yPad }}
@@ -205,9 +192,7 @@ export default function BudgetDetail({
                     </tr>
                   </thead>
                   <tbody>
-                    {links.map(link => {
-                      const contrib = effectiveContrib(link.amount, link.transactionAmount)
-                      return (
+                    {links.map(link => (
                         <tr key={link.id}>
                           <td className="txn-cell-date">{formatDate(link.transactionDate)}</td>
                           <td className="txn-cell-sub bdt-cell-cat">
@@ -221,8 +206,8 @@ export default function BudgetDetail({
                               </span>
                             )}
                           </td>
-                          <td className={`txn-cell-amount${contrib < 0 ? ' negative' : ''}`}>
-                            {EUR2.format(contrib)}
+                          <td className={`txn-cell-amount${link.effectiveAmount < 0 ? ' negative' : ''}`}>
+                            {EUR2.format(link.effectiveAmount)}
                           </td>
                           <td>
                             <button
@@ -234,8 +219,7 @@ export default function BudgetDetail({
                             </button>
                           </td>
                         </tr>
-                      )
-                    })}
+                    ))}
                   </tbody>
                 </table>
               </div>
