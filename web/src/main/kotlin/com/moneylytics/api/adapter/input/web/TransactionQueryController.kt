@@ -1,6 +1,9 @@
 package com.moneylytics.api.adapter.input.web
 
+import com.moneylytics.api.application.port.input.BurnRateResponse
 import com.moneylytics.api.application.port.input.CashflowResponse
+import com.moneylytics.api.application.port.input.GetBurnRateQuery
+import com.moneylytics.api.application.port.input.GetBurnRateUseCase
 import com.moneylytics.api.application.port.input.GetCashflowQuery
 import com.moneylytics.api.application.port.input.GetCashflowUseCase
 import com.moneylytics.api.application.port.input.GetCategoriesUseCase
@@ -52,6 +55,7 @@ data class UpdateAccountingDateRequest(
 class TransactionQueryController(
     private val getTransactionsUseCase: GetTransactionsUseCase,
     private val getCashflowUseCase: GetCashflowUseCase,
+    private val getBurnRateUseCase: GetBurnRateUseCase,
     private val getCategoriesUseCase: GetCategoriesUseCase,
     private val resolveUserUseCase: ResolveUserUseCase,
     private val updateTransactionCategoryUseCase: UpdateTransactionCategoryUseCase,
@@ -283,6 +287,27 @@ class TransactionQueryController(
                     userId = userId,
                     granularity = granularity,
                     accountIban = iban,
+                ),
+            )
+        }
+
+    @GetMapping("/burnrate")
+    suspend fun getBurnRate(
+        @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) from: LocalDate,
+        @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) to: LocalDate,
+        @RequestParam(required = false) iban: String? = null,
+        @RequestParam(required = false) rollingWindow: Int = 7,
+        @AuthenticationPrincipal principal: UserDetails,
+    ): BurnRateResponse =
+        withContext(Dispatchers.IO) {
+            val userId = resolveUserUseCase.resolveUser(principal.username)
+            getBurnRateUseCase.getBurnRate(
+                GetBurnRateQuery(
+                    from = from,
+                    to = to,
+                    userId = userId,
+                    accountIban = iban,
+                    rollingWindow = rollingWindow,
                 ),
             )
         }

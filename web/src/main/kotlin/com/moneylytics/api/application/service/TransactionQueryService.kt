@@ -1,8 +1,12 @@
 package com.moneylytics.api.application.service
 
+import com.moneylytics.api.application.port.input.BurnRatePoint
+import com.moneylytics.api.application.port.input.BurnRateResponse
 import com.moneylytics.api.application.port.input.CashflowBucket
 import com.moneylytics.api.application.port.input.CashflowResponse
 import com.moneylytics.api.application.port.input.EnrichTransactionUseCase
+import com.moneylytics.api.application.port.input.GetBurnRateQuery
+import com.moneylytics.api.application.port.input.GetBurnRateUseCase
 import com.moneylytics.api.application.port.input.GetCashflowQuery
 import com.moneylytics.api.application.port.input.GetCashflowUseCase
 import com.moneylytics.api.application.port.input.GetTransactionsQuery
@@ -18,7 +22,9 @@ import com.moneylytics.api.application.port.output.TransactionRepository
 import com.moneylytics.api.domain.Transaction
 import org.springframework.stereotype.Service
 import java.math.BigDecimal
+import java.math.RoundingMode
 import java.time.LocalDate
+import java.time.temporal.ChronoUnit
 
 @Service
 class TransactionQueryService(
@@ -26,6 +32,7 @@ class TransactionQueryService(
     private val budgetRepository: BudgetRepository,
 ) : GetTransactionsUseCase,
     GetCashflowUseCase,
+    GetBurnRateUseCase,
     UpdateTransactionCategoryUseCase,
     UpdateTransactionCommentUseCase,
     UpdateTransactionAccountingDateUseCase,
@@ -77,6 +84,62 @@ class TransactionQueryService(
                 )
             }
         return CashflowResponse(granularity = query.granularity, buckets = buckets)
+    }
+
+    override fun getBurnRate(query: GetBurnRateQuery): BurnRateResponse {
+        val transactions = transactionRepository.findByAccountingDateBetween(query.from, query.to, query.userId, query.accountIban)
+        val expensesByDate =
+            transactions
+                .filter { it.effectiveAmount() < BigDecimal.ZERO }
+                .groupBy { it.accountingDate }
+                .mapValues { (_, txns) -> txns.sumOf { it.effectiveAmount().abs() } }
+        val incomeByDate =
+            transactions
+                .filter { it.effectiveAmount() > BigDecimal.ZERO }
+                .groupBy { it.accountingDate }
+                .mapValues { (_, txns) -> txns.sumOf { it.effectiveAmount() } }
+
+        val dates =
+            generateSequence(query.from) { it.plusDays(1) }
+                .takeWhile { !it.isAfter(query.to) }
+                .toList()
+        val dailyExpenses = dates.map { date -> expensesByDate[date] ?: BigDecimal.ZERO }
+
+        var cumulative = BigDecimal.ZERO
+        var cumulativeIncome = BigDecimal.ZERO
+        val points =
+            dates.mapIndexed { i, date ->
+                cumulative += dailyExpenses[i]
+                cumulativeIncome += incomeByDate[date] ?: BigDecimal.ZERO
+                val windowStart = maxOf(0, i - query.rollingWindow + 1)
+                val windowSum = dailyExpenses.subList(windowStart, i + 1).fold(BigDecimal.ZERO, BigDecimal::add)
+                val windowSize = i - windowStart + 1
+                val rollingAvg = windowSum.divide(BigDecimal(windowSize), 2, RoundingMode.HALF_UP)
+                BurnRatePoint(
+                    date = date.toString(),
+                    expenses = dailyExpenses[i],
+                    rollingAvg = rollingAvg,
+                    cumulative = cumulative,
+                    cumulativeIncome = cumulativeIncome,
+                )
+            }
+
+        val totalExpenses = cumulative
+        val totalIncome = cumulativeIncome
+        val numberOfDays = ChronoUnit.DAYS.between(query.from, query.to) + 1
+        val avgPerDay =
+            if (totalExpenses > BigDecimal.ZERO) {
+                totalExpenses.divide(BigDecimal(numberOfDays), 2, RoundingMode.HALF_UP)
+            } else {
+                BigDecimal.ZERO
+            }
+
+        return BurnRateResponse(
+            points = points,
+            totalExpenses = totalExpenses,
+            totalIncome = totalIncome,
+            avgPerDay = avgPerDay,
+        )
     }
 
     override fun updateCategory(

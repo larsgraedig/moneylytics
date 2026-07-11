@@ -297,6 +297,34 @@ export async function fetchCashflow(
   return res.json() as Promise<CashflowResponseDto>
 }
 
+export interface BurnRatePointDto {
+  date: string
+  expenses: number
+  rollingAvg: number
+  cumulative: number
+  cumulativeIncome: number
+}
+
+export interface BurnRateResponseDto {
+  points: BurnRatePointDto[]
+  totalExpenses: number
+  totalIncome: number
+  avgPerDay: number
+}
+
+export async function fetchBurnRate(
+  from: string,
+  to: string,
+  rollingWindow: number,
+  iban?: string,
+): Promise<BurnRateResponseDto> {
+  const params = new URLSearchParams({ from, to, rollingWindow: String(rollingWindow) })
+  if (iban) params.set('iban', iban)
+  const res = await fetchWithUser(`/transactions/burnrate?${params}`)
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  return res.json() as Promise<BurnRateResponseDto>
+}
+
 export async function fetchSankeyData(from: string, to: string, iban?: string): Promise<SankeyResponse> {
   const params = new URLSearchParams({ from, to })
   if (iban) params.set('iban', iban)
