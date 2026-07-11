@@ -2,11 +2,14 @@ package com.moneylytics.api.adapter.input.web
 
 import com.moneylytics.api.application.port.input.BurnRateResponse
 import com.moneylytics.api.application.port.input.CashflowResponse
+import com.moneylytics.api.application.port.input.CategoryTotalsResponse
 import com.moneylytics.api.application.port.input.GetBurnRateQuery
 import com.moneylytics.api.application.port.input.GetBurnRateUseCase
 import com.moneylytics.api.application.port.input.GetCashflowQuery
 import com.moneylytics.api.application.port.input.GetCashflowUseCase
 import com.moneylytics.api.application.port.input.GetCategoriesUseCase
+import com.moneylytics.api.application.port.input.GetCategoryTotalsQuery
+import com.moneylytics.api.application.port.input.GetCategoryTotalsUseCase
 import com.moneylytics.api.application.port.input.GetTransactionsQuery
 import com.moneylytics.api.application.port.input.GetTransactionsUseCase
 import com.moneylytics.api.application.port.input.Granularity
@@ -57,6 +60,7 @@ class TransactionQueryController(
     private val getCashflowUseCase: GetCashflowUseCase,
     private val getBurnRateUseCase: GetBurnRateUseCase,
     private val getCategoriesUseCase: GetCategoriesUseCase,
+    private val getCategoryTotalsUseCase: GetCategoryTotalsUseCase,
     private val resolveUserUseCase: ResolveUserUseCase,
     private val updateTransactionCategoryUseCase: UpdateTransactionCategoryUseCase,
     private val updateTransactionCommentUseCase: UpdateTransactionCommentUseCase,
@@ -287,6 +291,27 @@ class TransactionQueryController(
                     userId = userId,
                     granularity = granularity,
                     accountIban = iban,
+                ),
+            )
+        }
+
+    @GetMapping("/category-totals")
+    suspend fun getCategoryTotals(
+        @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) from: LocalDate,
+        @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) to: LocalDate,
+        @RequestParam(required = false) iban: String? = null,
+        @RequestParam(required = false) category: String? = null,
+        @AuthenticationPrincipal principal: UserDetails,
+    ): CategoryTotalsResponse =
+        withContext(Dispatchers.IO) {
+            val userId = resolveUserUseCase.resolveUser(principal.username)
+            getCategoryTotalsUseCase.getCategoryTotals(
+                GetCategoryTotalsQuery(
+                    from = from,
+                    to = to,
+                    userId = userId,
+                    accountIban = iban,
+                    category = category,
                 ),
             )
         }

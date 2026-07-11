@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { ResponsivePie } from '@nivo/pie'
-import { fetchSankeyData, type SankeyResponse } from '../api/transactions'
+import { fetchCategoryTotals, type CategoryTotalItem } from '../api/transactions'
 import TransactionListPanel from './TransactionListPanel'
 
 const EUR = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' })
@@ -19,57 +19,72 @@ type ViewState =
   | { phase: 'idle' }
   | { phase: 'loading' }
   | { phase: 'error'; message: string }
-  | { phase: 'ready'; data: SankeyResponse }
+  | { phase: 'ready'; categoryItems: CategoryTotalItem[] }
+
+type SubState =
+  | null
+  | { phase: 'loading' }
+  | { phase: 'error'; message: string }
+  | { phase: 'ready'; items: CategoryTotalItem[] }
 
 export default function PiePage({ from, to, iban }: { from: string; to: string; iban?: string }) {
   const { t } = useTranslation()
   const [view, setView] = useState<ViewState>({ phase: 'idle' })
   const [level, setLevel] = useState<Level>('categories')
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
+  const [subState, setSubState] = useState<SubState>(null)
   const [drilldown, setDrilldown] = useState<{ nodeKey: string } | null>(null)
 
   async function load() {
     setView({ phase: 'loading' })
     setLevel('categories')
     setSelectedCategory(null)
+    setSubState(null)
     setDrilldown(null)
     try {
-      const data = await fetchSankeyData(from, to, iban)
-      setView(data.nodes.length === 0 ? { phase: 'idle' } : { phase: 'ready', data })
+      const data = await fetchCategoryTotals(from, to, iban)
+      setView(data.items.length === 0 ? { phase: 'idle' } : { phase: 'ready', categoryItems: data.items })
     } catch (e) {
       setView({ phase: 'error', message: e instanceof Error ? e.message : t('common.requestFailed') })
     }
   }
 
   const pieItems = useMemo<PieItem[]>(() => {
-    if (view.phase !== 'ready') return []
     if (level === 'categories') {
-      return view.data.nodes
-        .filter(n => n.nodeKey.startsWith('cat:'))
-        .map(n => ({ id: n.name, label: n.name, value: n.value, nodeKey: n.nodeKey }))
-        .filter(d => d.value > 0)
-        .sort((a, b) => b.value - a.value)
+      if (view.phase !== 'ready') return []
+      return view.categoryItems.map(item => ({
+        id: item.name,
+        label: item.name,
+        value: item.value,
+        nodeKey: `cat:${item.name}`,
+      }))
     }
-    const prefix = `sub:${selectedCategory}:`
-    return view.data.nodes
-      .filter(n => n.nodeKey.startsWith(prefix))
-      .map(n => {
-        const sub = n.nodeKey.slice(prefix.length)
-        return { id: sub, label: sub, value: n.value, nodeKey: n.nodeKey }
-      })
-      .filter(d => d.value > 0)
-      .sort((a, b) => b.value - a.value)
-  }, [view, level, selectedCategory])
+    if (subState?.phase !== 'ready') return []
+    return subState.items.map(item => ({
+      id: item.name,
+      label: item.name,
+      value: item.value,
+      nodeKey: `sub:${selectedCategory}:${item.name}`,
+    }))
+  }, [view, subState, level, selectedCategory])
 
   function handleSliceClick(datum: any) {
     if (level === 'categories') {
-      setSelectedCategory(datum.id)
+      const category = datum.id as string
+      setSelectedCategory(category)
       setLevel('subcategories')
       setDrilldown(null)
+      setSubState({ phase: 'loading' })
+      fetchCategoryTotals(from, to, iban, category)
+        .then(data => setSubState({ phase: 'ready', items: data.items }))
+        .catch(e => setSubState({ phase: 'error', message: e instanceof Error ? e.message : t('common.requestFailed') }))
     } else {
       setDrilldown({ nodeKey: datum.data.nodeKey })
     }
   }
+
+  const isSubLoading = level === 'subcategories' && subState?.phase === 'loading'
+  const subError = level === 'subcategories' && subState?.phase === 'error' ? subState.message : null
 
   return (
     <div className="pi-page">
@@ -87,7 +102,7 @@ export default function PiePage({ from, to, iban }: { from: string; to: string; 
         <div className="pi-breadcrumb">
           <button
             className="pi-back-btn"
-            onClick={() => { setLevel('categories'); setSelectedCategory(null); setDrilldown(null) }}
+            onClick={() => { setLevel('categories'); setSelectedCategory(null); setSubState(null); setDrilldown(null) }}
           >
             {t('breakdown.backToCategories')}
           </button>
@@ -112,10 +127,16 @@ export default function PiePage({ from, to, iban }: { from: string; to: string; 
         {view.phase === 'error' && (
           <p className="hint error">{view.message}</p>
         )}
-        {view.phase === 'ready' && pieItems.length === 0 && (
+        {isSubLoading && (
+          <p className="hint loading">{t('common.fetching')}</p>
+        )}
+        {subError && (
+          <p className="hint error">{subError}</p>
+        )}
+        {view.phase === 'ready' && !isSubLoading && !subError && pieItems.length === 0 && (
           <p className="hint">{t('breakdown.noData')}</p>
         )}
-        {view.phase === 'ready' && pieItems.length > 0 && (
+        {view.phase === 'ready' && !isSubLoading && pieItems.length > 0 && (
           <ResponsivePie
             data={pieItems}
             innerRadius={0.55}

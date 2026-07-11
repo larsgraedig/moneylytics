@@ -4,11 +4,15 @@ import com.moneylytics.api.application.port.input.BurnRatePoint
 import com.moneylytics.api.application.port.input.BurnRateResponse
 import com.moneylytics.api.application.port.input.CashflowBucket
 import com.moneylytics.api.application.port.input.CashflowResponse
+import com.moneylytics.api.application.port.input.CategoryTotal
+import com.moneylytics.api.application.port.input.CategoryTotalsResponse
 import com.moneylytics.api.application.port.input.EnrichTransactionUseCase
 import com.moneylytics.api.application.port.input.GetBurnRateQuery
 import com.moneylytics.api.application.port.input.GetBurnRateUseCase
 import com.moneylytics.api.application.port.input.GetCashflowQuery
 import com.moneylytics.api.application.port.input.GetCashflowUseCase
+import com.moneylytics.api.application.port.input.GetCategoryTotalsQuery
+import com.moneylytics.api.application.port.input.GetCategoryTotalsUseCase
 import com.moneylytics.api.application.port.input.GetTransactionsQuery
 import com.moneylytics.api.application.port.input.GetTransactionsUseCase
 import com.moneylytics.api.application.port.input.TransactionType
@@ -33,6 +37,7 @@ class TransactionQueryService(
 ) : GetTransactionsUseCase,
     GetCashflowUseCase,
     GetBurnRateUseCase,
+    GetCategoryTotalsUseCase,
     UpdateTransactionCategoryUseCase,
     UpdateTransactionCommentUseCase,
     UpdateTransactionAccountingDateUseCase,
@@ -140,6 +145,31 @@ class TransactionQueryService(
             totalIncome = totalIncome,
             avgPerDay = avgPerDay,
         )
+    }
+
+    override fun getCategoryTotals(query: GetCategoryTotalsQuery): CategoryTotalsResponse {
+        val transactions =
+            getTransactions(
+                GetTransactionsQuery(
+                    from = query.from,
+                    to = query.to,
+                    userId = query.userId,
+                    type = TransactionType.EXPENSES,
+                    accountIban = query.accountIban,
+                    category = query.category,
+                ),
+            )
+        val items =
+            if (query.category == null) {
+                transactions
+                    .groupBy { it.category ?: "" }
+                    .map { (name, txns) -> CategoryTotal(name = name, value = txns.sumOf { it.effectiveAmount().abs() }) }
+            } else {
+                transactions
+                    .groupBy { it.subcategory ?: "" }
+                    .map { (name, txns) -> CategoryTotal(name = name, value = txns.sumOf { it.effectiveAmount().abs() }) }
+            }
+        return CategoryTotalsResponse(items = items.sortedByDescending { it.value })
     }
 
     override fun updateCategory(
