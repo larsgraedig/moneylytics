@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   detectCsvFormat,
@@ -11,7 +11,7 @@ import {
   type GenericCsvPreviewRow,
   type GenericRowToImport,
 } from '../api/genericCsvImport'
-import { fetchCamtCategories, type CategoryGroup } from '../api/camtImport'
+import type { CategoryGroup } from '../api/rawImport'
 
 const COMMON_DATE_FORMATS = [
   'dd.MM.yyyy',
@@ -278,17 +278,12 @@ function MappingView({
 const needsPreview = (m: CsvMapping, rows: GenericCsvPreviewRow[]) =>
   !m.categoryColumn || !m.subcategoryColumn || rows.some(r => r.unknownAccount && r.status !== 'DUPLICATE')
 
-export default function CsvImportPage() {
+export default function CsvImportPage({ categories }: { categories: CategoryGroup[] }) {
   const { t } = useTranslation()
   const [phase, setPhase] = useState<Phase>({ step: 'upload' })
   const [isDragging, setIsDragging] = useState(false)
-  const [categories, setCategories] = useState<CategoryGroup[]>([])
   const [decisions, setDecisions] = useState<Record<number, RowDecision>>({})
   const fileInputRef = useRef<HTMLInputElement>(null)
-
-  useEffect(() => {
-    fetchCamtCategories().then(r => setCategories(r.categories)).catch(() => {})
-  }, [])
 
   const handleFile = useCallback(async (file: File) => {
     setPhase({ step: 'detecting' })

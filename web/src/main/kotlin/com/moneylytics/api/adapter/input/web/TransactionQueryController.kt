@@ -1,5 +1,7 @@
 package com.moneylytics.api.adapter.input.web
 
+import com.moneylytics.api.application.port.input.BulkCategoryUpdate
+import com.moneylytics.api.application.port.input.BulkUpdateTransactionCategoryUseCase
 import com.moneylytics.api.application.port.input.BurnRateResponse
 import com.moneylytics.api.application.port.input.CashflowResponse
 import com.moneylytics.api.application.port.input.CategoryTotalsResponse
@@ -38,6 +40,17 @@ import org.springframework.web.bind.annotation.RestController
 import java.math.BigDecimal
 import java.time.LocalDate
 
+data class BulkUpdateCategoryRequestDto(
+    val updates: List<BulkCategoryUpdateDto>,
+)
+
+data class BulkCategoryUpdateDto(
+    val id: Long,
+    val category: String,
+    val subcategory: String,
+    val categoryGroup: String? = null,
+)
+
 data class UpdateCategoryRequest(
     val category: String,
     val subcategory: String,
@@ -65,6 +78,7 @@ class TransactionQueryController(
     private val updateTransactionCategoryUseCase: UpdateTransactionCategoryUseCase,
     private val updateTransactionCommentUseCase: UpdateTransactionCommentUseCase,
     private val updateTransactionAccountingDateUseCase: UpdateTransactionAccountingDateUseCase,
+    private val bulkUpdateTransactionCategoryUseCase: BulkUpdateTransactionCategoryUseCase,
 ) {
     @GetMapping("/sankey")
     suspend fun getSankeyData(
@@ -175,6 +189,20 @@ class TransactionQueryController(
             val userId = resolveUserUseCase.resolveUser(principal.username)
             val updated = updateTransactionCommentUseCase.updateComment(id, userId, request.comment)
             if (updated != null) ResponseEntity.ok(updated.toItem()) else ResponseEntity.notFound().build()
+        }
+
+    @PatchMapping("/bulk")
+    suspend fun bulkUpdateTransactionCategory(
+        @RequestBody request: BulkUpdateCategoryRequestDto,
+        @AuthenticationPrincipal principal: UserDetails,
+    ): List<TransactionItem> =
+        withContext(Dispatchers.IO) {
+            val userId = resolveUserUseCase.resolveUser(principal.username)
+            bulkUpdateTransactionCategoryUseCase
+                .bulkUpdateCategory(
+                    request.updates.map { BulkCategoryUpdate(it.id, it.category, it.subcategory, it.categoryGroup) },
+                    userId,
+                ).map { it.toItem() }
         }
 
     @GetMapping("/trends")

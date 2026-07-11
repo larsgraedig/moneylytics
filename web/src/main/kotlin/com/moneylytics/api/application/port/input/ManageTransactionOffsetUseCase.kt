@@ -1,10 +1,16 @@
 package com.moneylytics.api.application.port.input
 
-import com.moneylytics.api.application.port.output.OffsetLinkResult
+import com.moneylytics.api.domain.Transaction
 import java.math.BigDecimal
 
+data class LinkTransactionResult(
+    val groupId: Long,
+    val sourceTransaction: Transaction,
+    val otherTransaction: Transaction,
+)
+
 interface ManageTransactionOffsetUseCase {
-    fun linkTransactions(command: LinkTransactionsCommand): OffsetLinkResult
+    fun linkTransactions(command: LinkTransactionsCommand): LinkTransactionResult
 
     fun unlinkTransactions(
         linkId: Long,

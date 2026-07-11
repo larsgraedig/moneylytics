@@ -10,9 +10,8 @@ import {
   type Budget,
 } from '../api/budgets'
 import BudgetDetail from './BudgetDetail'
-import { fetchCategories, type CategoryGroup } from '../api/rawImport'
+import type { CategoryGroup } from '../api/rawImport'
 import {
-  fetchAccounts,
   fetchAllTransactions,
   type Account,
   type TransactionItem,
@@ -48,7 +47,7 @@ function budgetToForm(b: Budget): FormState {
   }
 }
 
-export default function BudgetsPage({ from, to, iban }: { from: string; to: string; iban?: string }) {
+export default function BudgetsPage({ from, to, iban, accounts, categories }: { from: string; to: string; iban?: string; accounts: Account[]; categories: CategoryGroup[] }) {
   const { t } = useTranslation()
   const [budgets, setBudgets] = useState<Budget[]>([])
   const [loading, setLoading] = useState(true)
@@ -291,6 +290,8 @@ export default function BudgetsPage({ from, to, iban }: { from: string; to: stri
           defaultFrom={from}
           defaultTo={to}
           defaultIban={iban}
+          accounts={accounts}
+          categories={categories}
           onClose={() => setAssigningBudget(null)}
           onAssigned={handleAssigned}
         />
@@ -377,6 +378,8 @@ function AssignTransactionModal({
   defaultFrom,
   defaultTo,
   defaultIban,
+  accounts,
+  categories,
   onClose,
   onAssigned,
 }: {
@@ -384,12 +387,12 @@ function AssignTransactionModal({
   defaultFrom: string
   defaultTo: string
   defaultIban?: string
+  accounts: Account[]
+  categories: CategoryGroup[]
   onClose: () => void
   onAssigned: () => void
 }) {
   const { t } = useTranslation()
-  const [accounts, setAccounts] = useState<Account[]>([])
-  const [categories, setCategories] = useState<CategoryGroup[]>([])
 
   const [filterFrom, setFilterFrom] = useState(defaultFrom)
   const [filterTo, setFilterTo] = useState(defaultTo)
@@ -405,11 +408,6 @@ function AssignTransactionModal({
   const [partialAmount, setPartialAmount] = useState('')
   const [assigning, setAssigning] = useState(false)
   const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    fetchAccounts().then(setAccounts).catch(() => {})
-    fetchCategories().then(r => setCategories(r.categories)).catch(() => {})
-  }, [])
 
   const subcategoriesFor = (cat: string) => categories.find(c => c.name === cat)?.subcategories ?? []
 

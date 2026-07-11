@@ -1,13 +1,12 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
-  fetchCamtCategories,
   importCamt,
   previewCamtImport,
   type CamtAccountInfo,
-  type CategoryGroup,
   type RawPreviewRow,
 } from '../api/camtImport'
+import type { CategoryGroup } from '../api/rawImport'
 
 type PageState =
   | { phase: 'idle' }
@@ -45,19 +44,14 @@ function initDecisions(rows: RawPreviewRow[]): Record<number, RowDecision> {
   return out
 }
 
-export default function CamtImportPage() {
+export default function CamtImportPage({ categories }: { categories: CategoryGroup[] }) {
   const { t } = useTranslation()
   const [state, setState] = useState<PageState>({ phase: 'idle' })
-  const [categories, setCategories] = useState<CategoryGroup[]>([])
   const [decisions, setDecisions] = useState<Record<number, RowDecision>>({})
   const [accountNames, setAccountNames] = useState<Record<string, string>>({})
   const [importing, setImporting] = useState(false)
   const [isDragging, setIsDragging] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
-
-  useEffect(() => {
-    fetchCamtCategories().then(r => setCategories(r.categories)).catch(() => {})
-  }, [])
 
   const handleFiles = useCallback(async (files: File[]) => {
     if (files.length === 0) return

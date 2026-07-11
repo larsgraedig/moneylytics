@@ -1,7 +1,7 @@
 import { fetchWithUser } from './client'
-import type { RawPreviewRow, CategoryGroup, CategorySubGroup, CategoriesResponse } from './rawImport'
+import type { RawPreviewRow } from './rawImport'
 
-export type { RawPreviewRow, CategoryGroup, CategorySubGroup }
+export type { RawPreviewRow }
 
 export interface CamtAccountInfo {
   iban: string
@@ -57,12 +57,6 @@ export async function previewCamtImport(files: File[]): Promise<CamtPreviewRespo
     throw new Error((body.error as string | undefined) ?? `HTTP ${res.status}`)
   }
   return res.json() as Promise<CamtPreviewResponse>
-}
-
-export async function fetchCamtCategories(): Promise<CategoriesResponse> {
-  const res = await fetchWithUser('/categories')
-  if (!res.ok) throw new Error(`HTTP ${res.status}`)
-  return res.json() as Promise<CategoriesResponse>
 }
 
 export async function importCamt(request: CamtImportRequest): Promise<CamtImportResponse> {

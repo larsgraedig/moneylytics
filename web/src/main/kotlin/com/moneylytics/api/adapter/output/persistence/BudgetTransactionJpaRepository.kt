@@ -16,6 +16,13 @@ interface BudgetTransactionJpaRepository : JpaRepository<BudgetTransactionEntity
     @Query("SELECT bt FROM BudgetTransactionEntity bt JOIN FETCH bt.transaction WHERE bt.budget.user.id = :userId")
     fun findAllByUserId(userId: Long): List<BudgetTransactionEntity>
 
+    @Query(
+        "SELECT bt FROM BudgetTransactionEntity bt JOIN FETCH bt.budget JOIN FETCH bt.transaction WHERE bt.transaction.id IN :transactionIds",
+    )
+    fun findByTransactionIds(
+        @org.springframework.data.repository.query.Param("transactionIds") transactionIds: Collection<Long>,
+    ): List<BudgetTransactionEntity>
+
     @Modifying
     @Query("DELETE FROM BudgetTransactionEntity bt WHERE bt.id = :id AND bt.budget.user.id = :userId")
     fun deleteByIdAndUserId(

@@ -23,7 +23,9 @@ import LinkedTransactionsPage from './components/LinkedTransactionsPage'
 import CollectionsPage from './components/CollectionsPage'
 import LoginPage from './components/LoginPage'
 import SettingsPanel from './components/SettingsPanel'
-import { fetchSankeyData, fetchAccounts, type SankeyResponse, type Account } from './api/transactions'
+import { fetchSankeyData, type SankeyResponse } from './api/transactions'
+import { fetchAccounts, type Account } from './api/accounts'
+import { fetchCategories, type CategoryGroup } from './api/rawImport'
 import { fetchUserSettings } from './api/settings'
 import { useAuth } from './context/AuthContext'
 import { useTranslation, Trans } from 'react-i18next'
@@ -95,6 +97,7 @@ export default function App() {
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [accounts, setAccounts] = useState<Account[]>([])
+  const [categories, setCategories] = useState<CategoryGroup[]>([])
   const [txColumnOrder, setTxColumnOrder] = useState<string[] | null>(null)
   const [view, setView] = useState<ViewState>({ phase: 'idle' })
   const [activeNode, setActiveNode] = useState<string | null>(null)
@@ -115,11 +118,13 @@ export default function App() {
   useEffect(() => {
     if (!username) return
     setAccounts([])
+    setCategories([])
     setTxColumnOrder(null)
     setView({ phase: 'idle' })
     setActiveNode(null)
-    Promise.all([fetchAccounts(), fetchUserSettings()]).then(([accs, settings]) => {
+    Promise.all([fetchAccounts(), fetchUserSettings(), fetchCategories()]).then(([accs, settings, cats]) => {
       setAccounts(accs)
+      setCategories(cats.categories)
       if (settings.language) {
         i18n.changeLanguage(settings.language)
         localStorage.setItem('lang', settings.language)
@@ -134,8 +139,9 @@ export default function App() {
       }
       setTxColumnOrder(settings.transactionsColumnOrder ?? null)
     }).catch(() => {
-      fetchAccounts().then(accs => {
+      Promise.all([fetchAccounts(), fetchCategories()]).then(([accs, cats]) => {
         setAccounts(accs)
+        setCategories(cats.categories)
         const defaultIban = localStorage.getItem('defaultIban') ?? ''
         if (defaultIban && accs.some(a => a.iban === defaultIban)) {
           const current = new URLSearchParams(window.location.search)
@@ -292,16 +298,16 @@ export default function App() {
 
           {tab === 'cashflow' && <CashflowPage key={username} from={from} to={to} iban={iban} />}
           {tab === 'burnrate' && <BurnRatePage key={username} from={from} to={to} iban={iban} />}
-          {tab === 'trends' && <TrendsPage key={username} from={from} to={to} iban={iban} />}
+          {tab === 'trends' && <TrendsPage key={username} from={from} to={to} iban={iban} categories={categories} />}
           {tab === 'breakdown' && <PiePage key={username} from={from} to={to} iban={iban} />}
-          {tab === 'kontoauszug' && <TransactionsPage key={username} from={from} to={to} iban={iban} accounts={accounts} columnOrder={txColumnOrder ?? undefined} onColumnOrderChange={order => setTxColumnOrder(order)} />}
+          {tab === 'kontoauszug' && <TransactionsPage key={username} from={from} to={to} iban={iban} accounts={accounts} categories={categories} columnOrder={txColumnOrder ?? undefined} onColumnOrderChange={order => setTxColumnOrder(order)} />}
           {tab === 'verknuepfungen' && <LinkedTransactionsPage key={username} />}
-          {tab === 'sammlungen' && <CollectionsPage key={username} />}
-          {tab === 'budgets' && <BudgetsPage key={username} from={from} to={to} iban={iban} />}
-          {tab === 'limits' && <ThresholdsPage key={username} from={from} to={to} iban={iban} />}
+          {tab === 'sammlungen' && <CollectionsPage key={username} accounts={accounts} categories={categories} />}
+          {tab === 'budgets' && <BudgetsPage key={username} from={from} to={to} iban={iban} accounts={accounts} categories={categories} />}
+          {tab === 'limits' && <ThresholdsPage key={username} from={from} to={to} iban={iban} categories={categories} />}
           {tab === 'konten' && <AccountsPage key={username} />}
-          {tab === 'csv' && <CsvImportPage key={username} />}
-          {tab === 'camt' && <CamtImportPage key={username} />}
+          {tab === 'csv' && <CsvImportPage key={username} categories={categories} />}
+          {tab === 'camt' && <CamtImportPage key={username} categories={categories} />}
         </main>
       </div>
       {settingsOpen && <SettingsPanel accounts={accounts} defaultAccountIban={selectedIban} onClose={() => setSettingsOpen(false)} />}

@@ -3,6 +3,13 @@ package com.moneylytics.api.application.port.output
 import com.moneylytics.api.domain.Transaction
 import java.time.LocalDate
 
+data class CategoryUpdateEntry(
+    val id: Long,
+    val category: String,
+    val subcategory: String,
+    val categoryGroup: String?,
+)
+
 interface TransactionRepository {
     fun saveAll(
         transactions: List<Transaction>,
@@ -70,4 +77,9 @@ interface TransactionRepository {
     fun latestTransactionDatesByUserId(userId: Long): Map<String, LocalDate>
 
     fun findAssignedTransactionIdsByCollectionId(collectionId: Long): Set<Long>
+
+    fun bulkUpdateCategory(
+        updates: List<CategoryUpdateEntry>,
+        userId: Long,
+    ): List<Transaction>
 }

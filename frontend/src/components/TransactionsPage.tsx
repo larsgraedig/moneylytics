@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { Trans, useTranslation } from 'react-i18next'
-import { fetchCategories, type CategoryGroup } from '../api/rawImport'
+import type { CategoryGroup } from '../api/rawImport'
 import {
   AllocationExceededError,
-  computeEffectiveAmount,
+  bulkUpdateTransactionCategory,
   fetchAllTransactions,
   fetchLinkedGroup,
   linkTransactions,
@@ -15,7 +15,6 @@ import {
   type AllocationError,
   type GroupSummary,
   type LinkedGroupItem,
-  type OffsetLinkItem,
   type TransactionItem,
 } from '../api/transactions'
 import { GroupCard } from './GroupCard'
@@ -89,6 +88,7 @@ export default function TransactionsPage({
   to,
   iban,
   accounts,
+  categories,
   columnOrder,
   onColumnOrderChange,
 }: {
@@ -96,6 +96,7 @@ export default function TransactionsPage({
   to: string
   iban?: string
   accounts: Account[]
+  categories: CategoryGroup[]
   columnOrder?: string[]
   onColumnOrderChange?: (order: string[]) => void
 }) {
@@ -103,7 +104,6 @@ export default function TransactionsPage({
   const location = useLocation()
   const [rows, setRows] = useState<RowState[]>([])
   const [page, setPage] = useState<PageState>({ phase: 'idle' })
-  const [categories, setCategories] = useState<CategoryGroup[]>([])
   const [budgets, setBudgets] = useState<Budget[]>([])
   const [allCollections, setAllCollections] = useState<CollectionSummary[]>([])
   const [linkingState, setLinkingState] = useState<LinkingState>(null)
@@ -123,7 +123,6 @@ export default function TransactionsPage({
   const [dragOverCol, setDragOverCol] = useState<ColumnKey | null>(null)
 
   useEffect(() => {
-    fetchCategories().then(r => setCategories(r.categories)).catch(() => {})
     fetchBudgets().then(setBudgets).catch(() => {})
     fetchCollections().then(cols => setAllCollections(cols.map(c => ({ id: c.id, name: c.name })))).catch(() => {})
   }, [])
@@ -132,20 +131,6 @@ export default function TransactionsPage({
     () => new Map(accounts.map(a => [a.iban, a.name])),
     [accounts],
   )
-
-  const txBudgetMap = useMemo(() => {
-    const map = new Map<number, BudgetAssignment[]>()
-    budgets.forEach(b => {
-      b.transactionLinks.forEach(link => {
-        const existing = map.get(link.transactionId) ?? []
-        map.set(link.transactionId, [
-          ...existing,
-          { linkId: link.id, budgetId: b.id, budgetName: b.name, amount: link.amount },
-        ])
-      })
-    })
-    return map
-  }, [budgets])
 
   const allCategoryNames = useMemo(() => categories.map(c => c.name), [categories])
 
@@ -219,7 +204,7 @@ export default function TransactionsPage({
           savingComment: false,
           savingAccountingDate: false,
           error: null,
-          budgetAssignments: txBudgetMap.get(tx.id) ?? [],
+          budgetAssignments: (tx.budgetLinks ?? []).map(l => ({ linkId: l.linkId, budgetId: l.budgetId, budgetName: l.budgetName, amount: l.amount })),
           addingBudget: null,
           collections: tx.collections ?? [],
           addingCollection: null,
@@ -341,9 +326,6 @@ export default function TransactionsPage({
     }
   }
 
-  function resolveCommitted(myAmount: number | null, txAmount: number): number {
-    return myAmount !== null ? myAmount : txAmount
-  }
 
   function collectAvailableGroups(sourceIndex: number, targetIndex: number): GroupSummary[] {
     const seen = new Set<number>()
@@ -385,74 +367,13 @@ export default function TransactionsPage({
     const parsedOther = otherAmount !== '' ? parseFloat(otherAmount) : undefined
     setLinkError(null)
     try {
-      const result = await linkTransactions(
+      const { sourceTransaction, otherTransaction } = await linkTransactions(
         sourceRow.original.id, targetRow.original.id, parsedMy, parsedOther, targetGroupId, forceNewGroup,
-      )
-      const sourceIsA = sourceRow.original.id < targetRow.original.id
-      const sourceCommitted = resolveCommitted(
-        sourceIsA ? result.amountA : result.amountB,
-        sourceRow.original.amount,
-      )
-      const targetCommitted = resolveCommitted(
-        sourceIsA ? result.amountB : result.amountA,
-        targetRow.original.amount,
       )
       setRows(prev => {
         const next = [...prev]
-        const newGroup = { id: result.groupId, name: null }
-        const addGroup = (groups: GroupSummary[]) =>
-          groups.some(g => g.id === result.groupId) ? groups : [...groups, newGroup]
-        if (result.id !== null) {
-          const newForSource: OffsetLinkItem = {
-            id: result.id,
-            linkedTransactionId: targetRow.original.id,
-            linkedTransactionAmount: targetRow.original.amount,
-            amountA: result.amountA,
-            amountB: result.amountB,
-            committedAmount: sourceCommitted,
-            comment: null,
-            groupId: result.groupId,
-          }
-          const newForTarget: OffsetLinkItem = {
-            id: result.id,
-            linkedTransactionId: sourceRow.original.id,
-            linkedTransactionAmount: sourceRow.original.amount,
-            amountA: result.amountA,
-            amountB: result.amountB,
-            committedAmount: targetCommitted,
-            comment: null,
-            groupId: result.groupId,
-          }
-          const srcLinks = [...next[sourceIndex].original.offsetLinks, newForSource]
-          const tgtLinks = [...next[targetIndex].original.offsetLinks, newForTarget]
-          next[sourceIndex] = {
-            ...next[sourceIndex],
-            original: {
-              ...next[sourceIndex].original,
-              offsetLinks: srcLinks,
-              effectiveAmount: computeEffectiveAmount(next[sourceIndex].original.amount, srcLinks),
-              groups: addGroup(next[sourceIndex].original.groups),
-            },
-          }
-          next[targetIndex] = {
-            ...next[targetIndex],
-            original: {
-              ...next[targetIndex].original,
-              offsetLinks: tgtLinks,
-              effectiveAmount: computeEffectiveAmount(next[targetIndex].original.amount, tgtLinks),
-              groups: addGroup(next[targetIndex].original.groups),
-            },
-          }
-        } else {
-          next[sourceIndex] = {
-            ...next[sourceIndex],
-            original: { ...next[sourceIndex].original, groups: addGroup(next[sourceIndex].original.groups) },
-          }
-          next[targetIndex] = {
-            ...next[targetIndex],
-            original: { ...next[targetIndex].original, groups: addGroup(next[targetIndex].original.groups) },
-          }
-        }
+        next[sourceIndex] = { ...next[sourceIndex], original: sourceTransaction }
+        next[targetIndex] = { ...next[targetIndex], original: otherTransaction }
         return next
       })
       setLinkingState(null)
@@ -482,13 +403,6 @@ export default function TransactionsPage({
         budgetName: budget.name,
         amount: link.amount,
       }
-      setBudgets(prev =>
-        prev.map(b =>
-          b.id === budgetId
-            ? { ...b, transactionLinks: [...b.transactionLinks, link], balance: b.balance + (link.amount ?? row.original.amount) }
-            : b,
-        ),
-      )
       setRows(prev => {
         const next = [...prev]
         next[rowIndex] = {
@@ -503,16 +417,9 @@ export default function TransactionsPage({
     }
   }
 
-  async function removeBudgetAssign(rowIndex: number, linkId: number, budgetId: number) {
+  async function removeBudgetAssign(rowIndex: number, linkId: number) {
     try {
       await removeBudgetLink(linkId)
-      setBudgets(prev =>
-        prev.map(b =>
-          b.id === budgetId
-            ? { ...b, transactionLinks: b.transactionLinks.filter(l => l.id !== linkId) }
-            : b,
-        ),
-      )
       setRows(prev => {
         const next = [...prev]
         next[rowIndex] = {
@@ -556,27 +463,31 @@ export default function TransactionsPage({
     const grp = bulkCategoryGroup.trim() || null
     const sub = bulkSubcategory.trim()
     const indices = rows.map((r, i) => ({ r, i })).filter(({ r }) => r.selected).map(({ i }) => i)
-    const results = await Promise.allSettled(
-      indices.map(i => updateTransactionCategory(rows[i].original.id, cat, sub, grp)),
-    )
-    setRows(prev => {
-      const next = [...prev]
-      results.forEach((result, idx) => {
-        const i = indices[idx]
-        if (result.status === 'fulfilled') {
-          const updated = result.value
-          next[i] = {
-            ...next[i],
-            original: updated,
-            category: updated.category,
-            categoryGroup: updated.categoryGroup ?? '',
-            subcategory: updated.subcategory,
-            selected: false,
+    try {
+      const updated = await bulkUpdateTransactionCategory(
+        indices.map(i => ({ id: rows[i].original.id, category: cat, subcategory: sub, categoryGroup: grp })),
+      )
+      const updatedById = new Map(updated.map(tx => [tx.id, tx]))
+      setRows(prev => {
+        const next = [...prev]
+        indices.forEach(i => {
+          const tx = updatedById.get(next[i].original.id)
+          if (tx) {
+            next[i] = {
+              ...next[i],
+              original: tx,
+              category: tx.category ?? '',
+              categoryGroup: tx.categoryGroup ?? '',
+              subcategory: tx.subcategory ?? '',
+              selected: false,
+            }
           }
-        }
+        })
+        return next
       })
-      return next
-    })
+    } catch {
+      // silent — user can retry
+    }
     setBulkApplying(false)
     setBulkCategory('')
     setBulkCategoryGroup('')
@@ -923,7 +834,7 @@ export default function TransactionsPage({
             )}
             <button
               className="txnv-link-chip-remove"
-              onClick={() => removeBudgetAssign(i, a.linkId, a.budgetId)}
+              onClick={() => removeBudgetAssign(i, a.linkId)}
               title={t('budgets.remove')}
             >
               ×
