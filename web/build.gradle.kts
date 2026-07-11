@@ -7,6 +7,7 @@ plugins {
     alias(libs.plugins.jib.conventions)
     alias(libs.plugins.detekt)
     alias(libs.plugins.ktlint)
+    jacoco
     idea
 }
 
@@ -70,4 +71,13 @@ idea {
 
 tasks.withType<Test> {
     useJUnitPlatform()
+    finalizedBy(tasks.jacocoTestReport)
+}
+
+tasks.jacocoTestReport {
+    dependsOn(tasks.test)
+    reports {
+        xml.required = true
+        html.required = true
+    }
 }
