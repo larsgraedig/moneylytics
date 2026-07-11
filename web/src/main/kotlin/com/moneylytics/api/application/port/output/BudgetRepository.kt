@@ -39,4 +39,9 @@ interface BudgetRepository {
         linkId: Long,
         userId: Long,
     )
+
+    fun findAssignedTransactionIdsByBudgetId(
+        budgetId: Long,
+        userId: Long,
+    ): Set<Long>
 }

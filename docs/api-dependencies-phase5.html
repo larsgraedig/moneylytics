@@ -1,0 +1,1134 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Moneylytics — Frontend → Backend Dependencies (Refactoring Phase 5)</title>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --surface2: #21253a;
+      --border: #2d3250;
+      --text: #e2e8f0;
+      --muted: #64748b;
+      --accent: #6366f1;
+      --accent-dim: #312e81;
+
+      --get:    #10b981;
+      --post:   #3b82f6;
+      --put:    #f59e0b;
+      --patch:  #a78bfa;
+      --delete: #ef4444;
+
+      --get-bg:    rgba(16,185,129,.12);
+      --post-bg:   rgba(59,130,246,.12);
+      --put-bg:    rgba(245,158,11,.12);
+      --patch-bg:  rgba(167,139,250,.12);
+      --delete-bg: rgba(239,68,68,.12);
+
+      --new: #22d3ee;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      font-size: 14px;
+    }
+
+    /* ── Header ─────────────────────────────────────────── */
+    header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 20px 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    header h1 {
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: -.3px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    header h1 span.logo {
+      background: linear-gradient(135deg, var(--accent), #818cf8);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .header-meta {
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .header-branch {
+      background: rgba(34,211,238,.15);
+      color: var(--new);
+      border: 1px solid rgba(34,211,238,.3);
+      font-size: 11px;
+      font-weight: 600;
+      padding: 2px 10px;
+      border-radius: 20px;
+      font-family: monospace;
+    }
+
+    /* ── Legend ─────────────────────────────────────────── */
+    .legend {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+      padding: 12px 32px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      align-items: center;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--muted);
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .5px;
+    }
+    .GET    { color: var(--get);    background: var(--get-bg);    border: 1px solid rgba(16,185,129,.3); }
+    .POST   { color: var(--post);   background: var(--post-bg);   border: 1px solid rgba(59,130,246,.3); }
+    .PUT    { color: var(--put);    background: var(--put-bg);    border: 1px solid rgba(245,158,11,.3); }
+    .PATCH  { color: var(--patch);  background: var(--patch-bg);  border: 1px solid rgba(167,139,250,.3); }
+    .DELETE { color: var(--delete); background: var(--delete-bg); border: 1px solid rgba(239,68,68,.3); }
+
+    .legend-new {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--new);
+      margin-left: auto;
+    }
+    .new-dot {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--new);
+      flex-shrink: 0;
+    }
+
+    /* ── Layout ─────────────────────────────────────────── */
+    .layout {
+      display: grid;
+      grid-template-columns: 240px 1fr;
+      min-height: calc(100vh - 93px);
+    }
+
+    /* ── Sidebar ─────────────────────────────────────────── */
+    aside {
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      padding: 24px 0;
+      position: sticky;
+      top: 93px;
+      height: calc(100vh - 93px);
+      overflow-y: auto;
+    }
+    aside h2 {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: var(--muted);
+      padding: 0 20px 8px;
+    }
+    .nav-section { margin-bottom: 16px; }
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 20px;
+      cursor: pointer;
+      border-left: 3px solid transparent;
+      transition: all .15s;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .nav-item:hover { background: var(--surface2); color: var(--text); border-left-color: var(--border); }
+    .nav-item.active { background: var(--accent-dim); color: #a5b4fc; border-left-color: var(--accent); font-weight: 600; }
+    .nav-icon { font-size: 15px; width: 20px; text-align: center; }
+    .nav-count {
+      margin-left: auto;
+      background: var(--surface2);
+      color: var(--muted);
+      font-size: 10px;
+      padding: 1px 6px;
+      border-radius: 10px;
+    }
+    .nav-item.active .nav-count { background: var(--accent-dim); color: #a5b4fc; }
+
+    /* ── Main ─────────────────────────────────────────── */
+    main {
+      padding: 32px;
+      overflow-y: auto;
+    }
+
+    /* ── Section header ─────────────────────────────────── */
+    .section-header {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin: 0 0 16px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border);
+    }
+    .section-header:not(:first-child) { margin-top: 40px; }
+
+    /* ── Cards ──────────────────────────────────────────── */
+    .cards-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(420px, 1fr));
+      gap: 16px;
+      margin-bottom: 8px;
+    }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      transition: border-color .2s, box-shadow .2s;
+    }
+    .card:hover {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 1px var(--accent), 0 8px 24px rgba(0,0,0,.4);
+    }
+    .card-header {
+      padding: 16px 20px 12px;
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      border-bottom: 1px solid var(--border);
+    }
+    .card-icon { font-size: 22px; line-height: 1; padding-top: 2px; }
+    .card-title { font-size: 15px; font-weight: 700; }
+    .card-subtitle { font-size: 11px; color: var(--muted); margin-top: 2px; font-family: 'JetBrains Mono', monospace; }
+    .card-meta { margin-left: auto; display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+    .endpoint-count {
+      background: var(--accent-dim);
+      color: #a5b4fc;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 20px;
+    }
+    .tag {
+      font-size: 10px;
+      font-weight: 700;
+      padding: 1px 6px;
+      border-radius: 4px;
+      letter-spacing: .3px;
+    }
+    .tag-global  { background: rgba(245,158,11,.15); color: #fbbf24; border: 1px solid rgba(245,158,11,.3); }
+    .tag-new     { background: rgba(34,211,238,.15); color: var(--new); border: 1px solid rgba(34,211,238,.3); }
+    .tag-legacy  { background: rgba(239,68,68,.1);  color: #f87171;   border: 1px solid rgba(239,68,68,.2); }
+    .tag-api     { background: rgba(99,102,241,.15); color: #a5b4fc;   border: 1px solid rgba(99,102,241,.3); }
+
+    .card-body { padding: 12px 20px 16px; }
+    .endpoint-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 0;
+      border-bottom: 1px solid rgba(45,50,80,.5);
+    }
+    .endpoint-row:last-child { border-bottom: none; }
+    .endpoint-path {
+      font-family: 'JetBrains Mono', 'Fira Code', monospace;
+      font-size: 12px;
+      color: var(--text);
+      flex: 1;
+    }
+    .endpoint-path .param { color: #94a3b8; }
+    .endpoint-note { font-size: 10px; color: var(--muted); font-style: italic; }
+
+    /* ── Matrix View ─────────────────────────────────────── */
+    #matrix-view { display: none; }
+    .matrix-container { overflow-x: auto; }
+    .matrix-table {
+      border-collapse: collapse;
+      width: 100%;
+      min-width: 800px;
+      font-size: 12px;
+    }
+    .matrix-table th, .matrix-table td { border: 1px solid var(--border); padding: 0; }
+    .matrix-table th {
+      background: var(--surface2);
+      color: var(--muted);
+      font-weight: 700;
+      font-size: 10px;
+      letter-spacing: .5px;
+      text-transform: uppercase;
+    }
+    .matrix-table th.row-header {
+      text-align: left;
+      padding: 8px 14px;
+      position: sticky;
+      left: 0;
+      z-index: 2;
+      min-width: 180px;
+    }
+    .matrix-table th.col-header {
+      writing-mode: vertical-rl;
+      transform: rotate(180deg);
+      padding: 10px 6px;
+      max-width: 36px;
+      min-width: 36px;
+      vertical-align: bottom;
+      white-space: nowrap;
+      text-align: left;
+    }
+    .matrix-table td.row-label {
+      background: var(--surface);
+      padding: 8px 14px;
+      white-space: nowrap;
+      font-weight: 600;
+      position: sticky;
+      left: 0;
+      z-index: 1;
+      border-right: 2px solid var(--border);
+    }
+    .matrix-table td.cell { text-align: center; width: 36px; min-width: 36px; max-width: 36px; }
+    .cell-dot { display: inline-block; width: 18px; height: 18px; border-radius: 4px; margin: 6px auto; }
+    .matrix-table tr:hover td { background: rgba(99,102,241,.06); }
+    .matrix-table tr:hover td.row-label { background: var(--surface2); }
+
+    /* ── Tabs ────────────────────────────────────────────── */
+    .tabs {
+      display: flex;
+      gap: 4px;
+      margin-bottom: 28px;
+      border-bottom: 1px solid var(--border);
+    }
+    .tab {
+      padding: 8px 18px;
+      border-radius: 8px 8px 0 0;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--muted);
+      border: 1px solid transparent;
+      border-bottom: none;
+      transition: all .15s;
+      margin-bottom: -1px;
+    }
+    .tab:hover { color: var(--text); }
+    .tab.active {
+      background: var(--surface);
+      color: var(--text);
+      border-color: var(--border);
+      border-bottom-color: var(--surface);
+    }
+
+    .view-anchor { scroll-margin-top: 110px; }
+
+    /* ── Search ──────────────────────────────────────────── */
+    .search-box { margin: 0 16px 16px; position: relative; }
+    .search-box input {
+      width: 100%;
+      padding: 7px 10px 7px 32px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-size: 12px;
+      outline: none;
+    }
+    .search-box input:focus { border-color: var(--accent); }
+    .search-icon { position: absolute; left: 9px; top: 50%; transform: translateY(-50%); color: var(--muted); font-size: 13px; }
+
+    /* ── Stats bar ───────────────────────────────────────── */
+    .stats-bar {
+      display: flex;
+      gap: 24px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px 24px;
+      margin-bottom: 20px;
+    }
+    .stat { text-align: center; }
+    .stat-value { font-size: 28px; font-weight: 800; color: var(--accent); line-height: 1; }
+    .stat-value.cyan { color: var(--new); }
+    .stat-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; margin-top: 4px; }
+    .stats-divider { width: 1px; background: var(--border); }
+
+    /* ── Diff banner ─────────────────────────────────────── */
+    .diff-banner {
+      background: rgba(34,211,238,.06);
+      border: 1px solid rgba(34,211,238,.18);
+      border-radius: 10px;
+      padding: 14px 18px;
+      margin-bottom: 24px;
+      font-size: 12px;
+      color: #94e9f5;
+      line-height: 1.7;
+    }
+    .diff-banner strong { color: var(--new); font-weight: 700; }
+    .diff-banner code {
+      background: rgba(34,211,238,.1);
+      border-radius: 3px;
+      padding: 1px 5px;
+      font-family: monospace;
+      font-size: 11px;
+    }
+    .diff-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-top: 12px;
+    }
+    .diff-col h4 {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .5px;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+    .diff-item {
+      font-family: monospace;
+      font-size: 11px;
+      padding: 3px 0;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .diff-item.added   { color: #4ade80; }
+    .diff-item.changed { color: var(--new); }
+    .diff-item.removed { color: #f87171; }
+
+    /* ── API layer card ──────────────────────────────────── */
+    .api-modules-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+    .api-module-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 14px;
+      font-family: monospace;
+      font-size: 11px;
+    }
+    .api-module-card .mod-name { color: var(--accent); font-weight: 700; margin-bottom: 4px; }
+    .api-module-card .mod-desc { color: var(--muted); font-size: 10px; font-family: system-ui; }
+    .api-module-card.legacy { opacity: .5; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1><span class="logo">Moneylytics</span> — API Dependency Map</h1>
+  <div style="display:flex;gap:12px;align-items:center">
+    <span class="header-branch">refactoring-phase-5</span>
+    <span class="header-meta">Frontend → Backend · Stand: Juli 2026</span>
+  </div>
+</header>
+
+<div class="legend">
+  <span class="legend-item"><span class="badge GET">GET</span> Daten laden</span>
+  <span class="legend-item"><span class="badge POST">POST</span> Erstellen / Import</span>
+  <span class="legend-item"><span class="badge PUT">PUT</span> Vollständig ersetzen</span>
+  <span class="legend-item"><span class="badge PATCH">PATCH</span> Partiell aktualisieren</span>
+  <span class="legend-item"><span class="badge DELETE">DELETE</span> Löschen</span>
+  <span class="legend-new"><span class="new-dot"></span> Neuer Endpoint</span>
+</div>
+
+<div class="layout">
+
+  <!-- Sidebar -->
+  <aside>
+    <div class="search-box">
+      <span class="search-icon">⌕</span>
+      <input type="text" id="sidebar-search" placeholder="View suchen…" oninput="filterNav(this.value)" />
+    </div>
+
+    <div class="nav-section">
+      <h2>Global</h2>
+      <div class="nav-item" onclick="scrollToView('auth')"><span class="nav-icon">🔐</span>Auth Context<span class="nav-count">4</span></div>
+      <div class="nav-item" onclick="scrollToView('shell')"><span class="nav-icon">🏠</span>App Shell<span class="nav-count">2</span></div>
+    </div>
+
+    <div class="nav-section">
+      <h2>Analyse</h2>
+      <div class="nav-item" onclick="scrollToView('sankey')"><span class="nav-icon">🌊</span>Sankey<span class="nav-count">2</span></div>
+      <div class="nav-item" onclick="scrollToView('trends')"><span class="nav-icon">📈</span>Trends<span class="nav-count">4</span></div>
+      <div class="nav-item" onclick="scrollToView('pie')"><span class="nav-icon">🥧</span>Pie Chart<span class="nav-count">2</span></div>
+      <div class="nav-item" onclick="scrollToView('cashflow')"><span class="nav-icon">💸</span>Cashflow<span class="nav-count">4</span></div>
+      <div class="nav-item" onclick="scrollToView('burnrate')"><span class="nav-icon">🔥</span>Burn Rate<span class="nav-count">1</span></div>
+    </div>
+
+    <div class="nav-section">
+      <h2>Verwaltung</h2>
+      <div class="nav-item" onclick="scrollToView('transactions')"><span class="nav-icon">📋</span>Transactions<span class="nav-count">15</span></div>
+      <div class="nav-item" onclick="scrollToView('linked')"><span class="nav-icon">🔗</span>Linked Transactions<span class="nav-count">5</span></div>
+      <div class="nav-item" onclick="scrollToView('budgets')"><span class="nav-icon">💰</span>Budgets<span class="nav-count">9</span></div>
+      <div class="nav-item" onclick="scrollToView('collections')"><span class="nav-icon">📁</span>Collections<span class="nav-count">9</span></div>
+      <div class="nav-item" onclick="scrollToView('thresholds')"><span class="nav-icon">🎯</span>Thresholds<span class="nav-count">5</span></div>
+      <div class="nav-item" onclick="scrollToView('accounts')"><span class="nav-icon">🏦</span>Accounts<span class="nav-count">4</span></div>
+    </div>
+
+    <div class="nav-section">
+      <h2>Import</h2>
+      <div class="nav-item" onclick="scrollToView('csv')"><span class="nav-icon">📄</span>CSV Import<span class="nav-count">5</span></div>
+      <div class="nav-item" onclick="scrollToView('camt')"><span class="nav-icon">🏛️</span>CAMT Import<span class="nav-count">3</span></div>
+    </div>
+
+    <div class="nav-section">
+      <h2>Einstellungen</h2>
+      <div class="nav-item" onclick="scrollToView('settings')"><span class="nav-icon">⚙️</span>Settings<span class="nav-count">1</span></div>
+    </div>
+
+    <div class="nav-section">
+      <h2>API-Schicht</h2>
+      <div class="nav-item" onclick="scrollToView('api-layer')"><span class="nav-icon">📦</span>API Module<span class="nav-count">12</span></div>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main>
+
+    <div class="tabs">
+      <div class="tab active" onclick="switchTab('cards')">Karten-Ansicht</div>
+      <div class="tab" onclick="switchTab('matrix')">Matrix-Ansicht</div>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-bar">
+      <div class="stat"><div class="stat-value">46</div><div class="stat-label">Aktive Endpoints</div></div>
+      <div class="stats-divider"></div>
+      <div class="stat"><div class="stat-value cyan">4</div><div class="stat-label">Neue Endpoints</div></div>
+      <div class="stats-divider"></div>
+      <div class="stat"><div class="stat-value">16</div><div class="stat-label">Frontend Views</div></div>
+      <div class="stats-divider"></div>
+      <div class="stat"><div class="stat-value">12</div><div class="stat-label">API Module</div></div>
+    </div>
+
+    <!-- Diff summary -->
+    <div class="diff-banner">
+      <strong>Änderungen seit letztem Report (vor Refactoring)</strong>
+      <div class="diff-grid">
+        <div class="diff-col">
+          <h4>Neue Endpoints</h4>
+          <div class="diff-item added">+ GET /transactions/cashflow</div>
+          <div class="diff-item added">+ GET /transactions/burnrate</div>
+          <div class="diff-item added">+ GET /transactions/category-totals</div>
+          <div class="diff-item added">+ POST /transactions/csv/import</div>
+        </div>
+        <div class="diff-col">
+          <h4>Architektur</h4>
+          <div class="diff-item changed">● Neue <code>api/</code>-Schicht: alle Fetches zentralisiert</div>
+          <div class="diff-item changed">● App Shell als eigener Global-View</div>
+          <div class="diff-item changed">● TrendsPage: +/categories, +/thresholds</div>
+          <div class="diff-item changed">● CashflowPage: +/collections/{id}, +/transactions/linked/{groupId}</div>
+          <div class="diff-item removed">– POST /transactions/import (Legacy, ungenutzt)</div>
+          <div class="diff-item removed">– Settings: GET /users/settings + POST /auth/logout entfernt (→ App Shell)</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ CARDS VIEW ═══ -->
+    <div id="cards-view">
+
+      <p class="section-header">Global</p>
+      <div class="cards-grid">
+
+        <div class="card view-anchor" id="auth">
+          <div class="card-header">
+            <div class="card-icon">🔐</div>
+            <div>
+              <div class="card-title">Auth Context</div>
+              <div class="card-subtitle">context/AuthContext.tsx + LoginPage.tsx</div>
+            </div>
+            <div class="card-meta">
+              <span class="endpoint-count">4 Endpoints</span>
+              <span class="tag tag-global">GLOBAL</span>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="endpoint-row"><span class="badge GET">GET</span><span class="endpoint-path">/auth/me</span><span class="endpoint-note">Session prüfen (on mount)</span></div>
+            <div class="endpoint-row"><span class="badge POST">POST</span><span class="endpoint-path">/auth/login</span></div>
+            <div class="endpoint-row"><span class="badge POST">POST</span><span class="endpoint-path">/auth/register</span></div>
+            <div class="endpoint-row"><span class="badge POST">POST</span><span class="endpoint-path">/auth/logout</span></div>
+          </div>
+        </div>
+
+        <div class="card view-anchor" id="shell">
+          <div class="card-header">
+            <div class="card-icon">🏠</div>
+            <div>
+              <div class="card-title">App Shell</div>
+              <div class="card-subtitle">App.tsx</div>
+            </div>
+            <div class="card-meta">
+              <span class="endpoint-count">2 Endpoints</span>
+              <span class="tag tag-global">GLOBAL</span>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="endpoint-row"><span class="badge GET">GET</span><span class="endpoint-path">/accounts</span><span class="endpoint-note">Nach Login, einmalig</span></div>
+            <div class="endpoint-row"><span class="badge GET">GET</span><span class="endpoint-path">/users/settings</span><span class="endpoint-note">Sprache, Standard-Konto, Spaltenreihenfolge</span></div>
+          </div>
+        </div>
+
+      </div>
+
+      <p class="section-header">Analyse</p>
+      <div class="cards-grid">
+
+        <div class="card view-anchor" id="sankey">
+          <div class="card-header">
+            <div class="card-icon">🌊</div>
+            <div>
+              <div class="card-title">Sankey Chart</div>
+              <div class="card-subtitle">App.tsx → SankeyChart.tsx + TransactionListPanel.tsx</div>
+            </div>
+            <div class="card-meta"><span class="endpoint-count">2 Endpoints</span></div>
+          </div>
+          <div class="card-body">
+            <div class="endpoint-row"><span class="badge GET">GET</span><span class="endpoint-path">/transactions/sankey</span><span class="endpoint-note">Fetch in App.tsx, nicht in SankeyChart</span></div>
+            <div class="endpoint-row"><span class="badge GET">GET</span><span class="endpoint-path">/transactions/list</span><span class="endpoint-note">TransactionListPanel bei Node-Klick</span></div>
+          </div>
+        </div>
+
+        <div class="card view-anchor" id="trends">
+          <div class="card-header">
+            <div class="card-icon">📈</div>
+            <div>
+              <div class="card-title">Trends</div>
+              <div class="card-subtitle">TrendsPage.tsx + TransactionListPanel.tsx</div>
+            </div>
+            <div class="card-meta"><span class="endpoint-count">4 Endpoints</span></div>
+          </div>
+          <div class="card-body">
+            <div class="endpoint-row"><span class="badge GET">GET</span><span class="endpoint-path">/transactions/trends</span></div>
+            <div class="endpoint-row"><span class="badge GET">GET</span><span class="endpoint-path">/categories</span><span class="endpoint-note">Serien-Auswahl</span></div>
+            <div class="endpoint-row"><span class="badge GET">GET</span><span class="endpoint-path">/thresholds</span><span class="endpoint-note">Schwellwert-Linien im Chart</span></div>
+            <div class="endpoint-row"><span class="badge GET">GET</span><span class="endpoint-path">/transactions/list</span><span class="endpoint-note">TransactionListPanel bei Bucket-Klick</span></div>
+          </div>
+        </div>
+
+        <div class="card view-anchor" id="pie">
+          <div class="card-header">
+            <div class="card-icon">🥧</div>
+            <div>
+              <div class="card-title">Pie Chart</div>
+              <div class="card-subtitle">PiePage.tsx + TransactionListPanel.tsx</div>
+            </div>
+            <div class="card-meta"><span class="endpoint-count">2 Endpoints</span></div>
+          </div>
+          <div class="card-body">
+            <div class="endpoint-row">
+              <span class="badge GET">GET</span>
+              <span class="endpoint-path">/transactions/category-totals</span>
+              <span class="new-dot" title="Neuer Endpoint"></span>
+              <span class="endpoint-note">Ersetzt /transactions/list + Kategorie-Filter</span>
+            </div>
+            <div class="endpoint-row"><span class="badge GET">GET</span><span class="endpoint-path">/transactions/list</span><span class="endpoint-note">TransactionListPanel bei Segment-Klick</span></div>
+          </div>
+        </div>
+
+        <div class="card view-anchor" id="cashflow">
+          <div class="card-header">
+            <div class="card-icon">💸</div>
+            <div>
+              <div class="card-title">Cashflow</div>
+              <div class="card-subtitle">CashflowPage.tsx</div>
+            </div>
+            <div class="card-meta"><span class="endpoint-count">4 Endpoints</span></div>
+          </div>
+          <div class="card-body">
+            <div class="endpoint-row">
+              <span class="badge GET">GET</span>
+              <span class="endpoint-path">/transactions/cashflow</span>
+              <span class="new-dot" title="Neuer Endpoint"></span>
+              <span class="endpoint-note">Ersetzt /transactions/list</span>
+            </div>
+            <div class="endpoint-row"><span class="badge GET">GET</span><span class="endpoint-path">/transactions/list</span><span class="endpoint-note">Detail-Panel bei Bar-Klick</span></div>
+            <div class="endpoint-row"><span class="badge GET">GET</span><span class="endpoint-path">/transactions/linked/<span class="param">{groupId}</span></span><span class="endpoint-note">GroupCard-Detail</span></div>
+            <div class="endpoint-row"><span class="badge GET">GET</span><span class="endpoint-path">/collections/<span class="param">{id}</span></span><span class="endpoint-note">CollectionCard-Detail</span></div>
+          </div>
+        </div>
+
+        <div class="card view-anchor" id="burnrate">
+          <div class="card-header">
+            <div class="card-icon">🔥</div>
+            <div>
+              <div class="card-title">Burn Rate</div>
+              <div class="card-subtitle">BurnRatePage.tsx</div>
+            </div>
+            <div class="card-meta"><span class="endpoint-count">1 Endpoint</span></div>
+          </div>
+          <div class="card-body">
+            <div class="endpoint-row">
+              <span class="badge GET">GET</span>
+              <span class="endpoint-path">/transactions/burnrate</span>
+              <span class="new-dot" title="Neuer Endpoint"></span>
+              <span class="endpoint-note">Ersetzt /transactions/list + Filter</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <p class="section-header">Verwaltung</p>
+      <div class="cards-grid">
+
+        <div class="card view-anchor" id="transactions">
+          <div class="card-header">
+            <div class="card-icon">📋</div>
+            <div>
+              <div class="card-title">Transactions</div>
+              <div class="card-subtitle">TransactionsPage.tsx</div>
+            </div>
+            <div class="card-meta"><span class="endpoint-count">15 Endpoints</span></div>
+          </div>
+          <div class="card-body">
+            <div class="endpoint-row"><span class="badge GET">GET</span><span class="endpoint-path">/transactions/list</span></div>
+            <div class="endpoint-row"><span class="badge GET">GET</span><span class="endpoint-path">/categories</span></div>
+            <div class="endpoint-row"><span class="badge PATCH">PATCH</span><span class="endpoint-path">/transactions/<span class="param">{id}</span></span><span class="endpoint-note">Kategorie</span></div>
+            <div class="endpoint-row"><span class="badge PATCH">PATCH</span><span class="endpoint-path">/transactions/<span class="param">{id}</span>/comment</span></div>
+            <div class="endpoint-row"><span class="badge PATCH">PATCH</span><span class="endpoint-path">/transactions/<span class="param">{id}</span>/accounting-date</span></div>
+            <div class="endpoint-row"><span class="badge POST">POST</span><span class="endpoint-path">/transactions/<span class="param">{id}</span>/offsets</span><span class="endpoint-note">Verknüpfen</span></div>
+            <div class="endpoint-row"><span class="badge GET">GET</span><span class="endpoint-path">/transactions/linked/<span class="param">{groupId}</span></span><span class="endpoint-note">GroupCard-Modal</span></div>
+            <div class="endpoint-row"><span class="badge GET">GET</span><span class="endpoint-path">/budgets</span></div>
+            <div class="endpoint-row"><span class="badge POST">POST</span><span class="endpoint-path">/budgets/<span class="param">{id}</span>/transactions</span></div>
+            <div class="endpoint-row"><span class="badge DELETE">DELETE</span><span class="endpoint-path">/budgets/transactions/<span class="param">{linkId}</span></span></div>
+            <div class="endpoint-row"><span class="badge GET">GET</span><span class="endpoint-path">/collections</span></div>
+            <div class="endpoint-row"><span class="badge POST">POST</span><span class="endpoint-path">/collections</span><span class="endpoint-note">Neue Sammlung inline erstellen</span></div>
+            <div class="endpoint-row"><span class="badge POST">POST</span><span class="endpoint-path">/collections/<span class="param">{id}</span>/transactions</span></div>
+            <div class="endpoint-row"><span class="badge DELETE">DELETE</span><span class="endpoint-path">/collections/<span class="param">{id}</span>/transactions/<span class="param">{txId}</span></span></div>
+            <div class="endpoint-row"><span class="badge PATCH">PATCH</span><span class="endpoint-path">/users/settings</span><span class="endpoint-note">Spaltenreihenfolge speichern</span></div>
+          </div>
+        </div>
+
+        <div class="card view-anchor" id="linked">
+          <div class="card-header">
+            <div class="card-icon">🔗</div>
+            <div>
+              <div class="card-title">Linked Transactions</div>
+              <div class="card-subtitle">LinkedTransactionsPage.tsx + GroupCard.tsx</div>
+            </div>
+            <div class="card-meta"><span class="endpoint-count">5 Endpoints</span></div>
+          </div>
+          <div class="card-body">
+            <div class="endpoint-row"><span class="badge GET">GET</span><span class="endpoint-path">/transactions/linked</span></div>
+            <div class="endpoint-row"><span class="badge PATCH">PATCH</span><span class="endpoint-path">/transactions/linked/<span class="param">{groupId}</span></span><span class="endpoint-note">Name / Kommentar</span></div>
+            <div class="endpoint-row"><span class="badge PATCH">PATCH</span><span class="endpoint-path">/transactions/offsets/<span class="param">{linkId}</span>/comment</span></div>
+            <div class="endpoint-row"><span class="badge DELETE">DELETE</span><span class="endpoint-path">/transactions/<span class="param">{txId}</span>/groups/<span class="param">{groupId}</span></span></div>
+            <div class="endpoint-row"><span class="badge DELETE">DELETE</span><span class="endpoint-path">/transactions/offsets/<span class="param">{linkId}</span></span></div>
+          </div>
+        </div>
+
+        <div class="card view-anchor" id="budgets">
+          <div class="card-header">
+            <div class="card-icon">💰</div>
+            <div>
+              <div class="card-title">Budgets</div>
+              <div class="card-subtitle">BudgetsPage.tsx + BudgetDetail.tsx</div>
+            </div>
+            <div class="card-meta"><span class="endpoint-count">9 Endpoints</span></div>
+          </div>
+          <div class="card-body">
+            <div class="endpoint-row"><span class="badge GET">GET</span><span class="endpoint-path">/budgets</span></div>
+            <div class="endpoint-row"><span class="badge POST">POST</span><span class="endpoint-path">/budgets</span></div>
+            <div class="endpoint-row"><span class="badge PUT">PUT</span><span class="endpoint-path">/budgets/<span class="param">{id}</span></span></div>
+            <div class="endpoint-row"><span class="badge DELETE">DELETE</span><span class="endpoint-path">/budgets/<span class="param">{id}</span></span></div>
+            <div class="endpoint-row"><span class="badge POST">POST</span><span class="endpoint-path">/budgets/<span class="param">{id}</span>/transactions</span><span class="endpoint-note">Tx zuweisen</span></div>
+            <div class="endpoint-row"><span class="badge DELETE">DELETE</span><span class="endpoint-path">/budgets/transactions/<span class="param">{linkId}</span></span><span class="endpoint-note">Zuweisung lösen</span></div>
+            <div class="endpoint-row"><span class="badge GET">GET</span><span class="endpoint-path">/categories</span></div>
+            <div class="endpoint-row"><span class="badge GET">GET</span><span class="endpoint-path">/transactions/list</span><span class="endpoint-note">Tx zum Zuweisen auswählen</span></div>
+            <div class="endpoint-row"><span class="badge GET">GET</span><span class="endpoint-path">/accounts</span></div>
+          </div>
+        </div>
+
+        <div class="card view-anchor" id="collections">
+          <div class="card-header">
+            <div class="card-icon">📁</div>
+            <div>
+              <div class="card-title">Collections</div>
+              <div class="card-subtitle">CollectionsPage.tsx + CollectionCard.tsx</div>
+            </div>
+            <div class="card-meta"><span class="endpoint-count">9 Endpoints</span></div>
+          </div>
+          <div class="card-body">
+            <div class="endpoint-row"><span class="badge GET">GET</span><span class="endpoint-path">/collections</span></div>
+            <div class="endpoint-row"><span class="badge POST">POST</span><span class="endpoint-path">/collections</span></div>
+            <div class="endpoint-row"><span class="badge PUT">PUT</span><span class="endpoint-path">/collections/<span class="param">{id}</span></span><span class="endpoint-note">Inline-Edit via CollectionCard</span></div>
+            <div class="endpoint-row"><span class="badge DELETE">DELETE</span><span class="endpoint-path">/collections/<span class="param">{id}</span></span></div>
+            <div class="endpoint-row"><span class="badge POST">POST</span><span class="endpoint-path">/collections/<span class="param">{id}</span>/transactions</span><span class="endpoint-note">Tx hinzufügen</span></div>
+            <div class="endpoint-row"><span class="badge DELETE">DELETE</span><span class="endpoint-path">/collections/<span class="param">{id}</span>/transactions/<span class="param">{txId}</span></span></div>
+            <div class="endpoint-row"><span class="badge GET">GET</span><span class="endpoint-path">/transactions/list</span><span class="endpoint-note">Tx zum Hinzufügen auswählen</span></div>
+            <div class="endpoint-row"><span class="badge GET">GET</span><span class="endpoint-path">/categories</span></div>
+            <div class="endpoint-row"><span class="badge GET">GET</span><span class="endpoint-path">/accounts</span></div>
+          </div>
+        </div>
+
+        <div class="card view-anchor" id="thresholds">
+          <div class="card-header">
+            <div class="card-icon">🎯</div>
+            <div>
+              <div class="card-title">Thresholds / Limits</div>
+              <div class="card-subtitle">ThresholdsPage.tsx</div>
+            </div>
+            <div class="card-meta"><span class="endpoint-count">5 Endpoints</span></div>
+          </div>
+          <div class="card-body">
+            <div class="endpoint-row"><span class="badge GET">GET</span><span class="endpoint-path">/thresholds</span></div>
+            <div class="endpoint-row"><span class="badge PUT">PUT</span><span class="endpoint-path">/thresholds</span><span class="endpoint-note">Upsert</span></div>
+            <div class="endpoint-row"><span class="badge DELETE">DELETE</span><span class="endpoint-path">/thresholds/<span class="param">{id}</span></span></div>
+            <div class="endpoint-row"><span class="badge GET">GET</span><span class="endpoint-path">/categories</span></div>
+            <div class="endpoint-row"><span class="badge GET">GET</span><span class="endpoint-path">/transactions/list</span><span class="endpoint-note">Aktuelle Ausgaben vs. Limit</span></div>
+          </div>
+        </div>
+
+        <div class="card view-anchor" id="accounts">
+          <div class="card-header">
+            <div class="card-icon">🏦</div>
+            <div>
+              <div class="card-title">Accounts</div>
+              <div class="card-subtitle">AccountsPage.tsx</div>
+            </div>
+            <div class="card-meta"><span class="endpoint-count">4 Endpoints</span></div>
+          </div>
+          <div class="card-body">
+            <div class="endpoint-row"><span class="badge GET">GET</span><span class="endpoint-path">/accounts</span></div>
+            <div class="endpoint-row"><span class="badge POST">POST</span><span class="endpoint-path">/accounts</span></div>
+            <div class="endpoint-row"><span class="badge PUT">PUT</span><span class="endpoint-path">/accounts/<span class="param">{iban}</span></span></div>
+            <div class="endpoint-row"><span class="badge DELETE">DELETE</span><span class="endpoint-path">/accounts/<span class="param">{iban}</span></span></div>
+          </div>
+        </div>
+
+      </div>
+
+      <p class="section-header">Import</p>
+      <div class="cards-grid">
+
+        <div class="card view-anchor" id="csv">
+          <div class="card-header">
+            <div class="card-icon">📄</div>
+            <div>
+              <div class="card-title">CSV Import</div>
+              <div class="card-subtitle">CsvImportPage.tsx</div>
+            </div>
+            <div class="card-meta"><span class="endpoint-count">5 Endpoints</span></div>
+          </div>
+          <div class="card-body">
+            <div class="endpoint-row"><span class="badge POST">POST</span><span class="endpoint-path">/transactions/csv/detect</span><span class="endpoint-note">Format erkennen</span></div>
+            <div class="endpoint-row"><span class="badge POST">POST</span><span class="endpoint-path">/transactions/csv/preview</span><span class="endpoint-note">Vorschau mit Mapping</span></div>
+            <div class="endpoint-row"><span class="badge POST">POST</span><span class="endpoint-path">/transactions/csv/import-rows</span><span class="endpoint-note">Einzelne Zeilen importieren</span></div>
+            <div class="endpoint-row">
+              <span class="badge POST">POST</span>
+              <span class="endpoint-path">/transactions/csv/import</span>
+              <span class="new-dot" title="Neuer Endpoint"></span>
+              <span class="endpoint-note">Direkter Bulk-Import</span>
+            </div>
+            <div class="endpoint-row"><span class="badge GET">GET</span><span class="endpoint-path">/categories</span><span class="endpoint-note">Kategorie-Zuordnung</span></div>
+          </div>
+        </div>
+
+        <div class="card view-anchor" id="camt">
+          <div class="card-header">
+            <div class="card-icon">🏛️</div>
+            <div>
+              <div class="card-title">CAMT Import</div>
+              <div class="card-subtitle">CamtImportPage.tsx</div>
+            </div>
+            <div class="card-meta"><span class="endpoint-count">3 Endpoints</span></div>
+          </div>
+          <div class="card-body">
+            <div class="endpoint-row"><span class="badge POST">POST</span><span class="endpoint-path">/transactions/camt/preview</span></div>
+            <div class="endpoint-row"><span class="badge POST">POST</span><span class="endpoint-path">/transactions/camt/import</span></div>
+            <div class="endpoint-row"><span class="badge GET">GET</span><span class="endpoint-path">/categories</span><span class="endpoint-note">Kategorie-Zuordnung</span></div>
+          </div>
+        </div>
+
+        <!-- Legacy dead code -->
+        <div class="card" style="opacity:.45;filter:grayscale(.5)">
+          <div class="card-header">
+            <div class="card-icon">🗂️</div>
+            <div>
+              <div class="card-title">Legacy DKB-CSV</div>
+              <div class="card-subtitle">api/csvImport.ts — kein Component importiert dies</div>
+            </div>
+            <div class="card-meta">
+              <span class="endpoint-count">1 Endpoint</span>
+              <span class="tag tag-legacy">UNUSED</span>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="endpoint-row"><span class="badge POST">POST</span><span class="endpoint-path">/transactions/import</span></div>
+          </div>
+        </div>
+
+      </div>
+
+      <p class="section-header">Einstellungen</p>
+      <div class="cards-grid">
+
+        <div class="card view-anchor" id="settings">
+          <div class="card-header">
+            <div class="card-icon">⚙️</div>
+            <div>
+              <div class="card-title">Settings Panel</div>
+              <div class="card-subtitle">SettingsPanel.tsx</div>
+            </div>
+            <div class="card-meta"><span class="endpoint-count">1 Endpoint</span></div>
+          </div>
+          <div class="card-body">
+            <div class="endpoint-row"><span class="badge PATCH">PATCH</span><span class="endpoint-path">/users/settings</span><span class="endpoint-note">Sprache + Standard-Konto</span></div>
+          </div>
+        </div>
+
+      </div>
+
+      <p class="section-header">API-Schicht (neu)</p>
+      <div class="api-modules-grid view-anchor" id="api-layer">
+        <div class="api-module-card">
+          <div class="mod-name">api/client.ts</div>
+          <div class="mod-desc">fetchWithUser Basis-Wrapper</div>
+        </div>
+        <div class="api-module-card">
+          <div class="mod-name">api/transactions.ts</div>
+          <div class="mod-desc">list, sankey, cashflow, burnrate, category-totals, linked, offsets, …</div>
+        </div>
+        <div class="api-module-card">
+          <div class="mod-name">api/trends.ts</div>
+          <div class="mod-desc">/transactions/trends</div>
+        </div>
+        <div class="api-module-card">
+          <div class="mod-name">api/rawImport.ts</div>
+          <div class="mod-desc">/categories</div>
+        </div>
+        <div class="api-module-card">
+          <div class="mod-name">api/accounts.ts</div>
+          <div class="mod-desc">CRUD /accounts</div>
+        </div>
+        <div class="api-module-card">
+          <div class="mod-name">api/budgets.ts</div>
+          <div class="mod-desc">CRUD /budgets</div>
+        </div>
+        <div class="api-module-card">
+          <div class="mod-name">api/collections.ts</div>
+          <div class="mod-desc">CRUD /collections</div>
+        </div>
+        <div class="api-module-card">
+          <div class="mod-name">api/thresholds.ts</div>
+          <div class="mod-desc">CRUD /thresholds</div>
+        </div>
+        <div class="api-module-card">
+          <div class="mod-name">api/settings.ts</div>
+          <div class="mod-desc">/users/settings</div>
+        </div>
+        <div class="api-module-card">
+          <div class="mod-name">api/genericCsvImport.ts</div>
+          <div class="mod-desc">csv/detect, preview, import-rows, import</div>
+        </div>
+        <div class="api-module-card">
+          <div class="mod-name">api/camtImport.ts</div>
+          <div class="mod-desc">camt/preview, import + re-exports /categories</div>
+        </div>
+        <div class="api-module-card legacy">
+          <div class="mod-name">api/csvImport.ts</div>
+          <div class="mod-desc">⚠ Legacy — /transactions/import, nicht mehr importiert</div>
+        </div>
+      </div>
+
+    </div><!-- /cards-view -->
+
+    <!-- ═══ MATRIX VIEW ═══ -->
+    <div id="matrix-view">
+      <div class="matrix-container">
+        <table class="matrix-table" id="matrix-table">
+          <thead>
+            <tr id="matrix-head-row">
+              <th class="row-header">View \ Endpoint</th>
+            </tr>
+          </thead>
+          <tbody id="matrix-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+  function switchTab(tab) {
+    document.querySelectorAll('.tab').forEach((t, i) => {
+      t.classList.toggle('active', (i === 0 && tab === 'cards') || (i === 1 && tab === 'matrix'));
+    });
+    document.getElementById('cards-view').style.display  = tab === 'cards'  ? '' : 'none';
+    document.getElementById('matrix-view').style.display = tab === 'matrix' ? '' : 'none';
+    if (tab === 'matrix') buildMatrix();
+  }
+
+  function scrollToView(id) {
+    const el = document.getElementById(id);
+    if (el) { el.scrollIntoView({ behavior: 'smooth' }); highlightNav(id); }
+  }
+  function highlightNav(id) {
+    document.querySelectorAll('.nav-item').forEach(n => {
+      n.classList.toggle('active', n.getAttribute('onclick')?.includes(`'${id}'`));
+    });
+  }
+  function filterNav(q) {
+    q = q.toLowerCase();
+    document.querySelectorAll('.nav-item').forEach(n => {
+      n.style.display = n.textContent.toLowerCase().includes(q) ? '' : 'none';
+    });
+  }
+
+  const ENDPOINTS = [
+    // Auth
+    { key: 'auth-me',           method: 'GET',    path: '/auth/me' },
+    { key: 'auth-login',        method: 'POST',   path: '/auth/login' },
+    { key: 'auth-register',     method: 'POST',   path: '/auth/register' },
+    { key: 'auth-logout',       method: 'POST',   path: '/auth/logout' },
+    // Global
+    { key: 'accounts-get',      method: 'GET',    path: '/accounts' },
+    { key: 'settings-get',      method: 'GET',    path: '/users/settings' },
+    // Transactions read
+    { key: 'tx-sankey',         method: 'GET',    path: '/transactions/sankey' },
+    { key: 'tx-trends',         method: 'GET',    path: '/transactions/trends' },
+    { key: 'tx-list',           method: 'GET',    path: '/transactions/list' },
+    { key: 'tx-cashflow',       method: 'GET',    path: '/transactions/cashflow' },
+    { key: 'tx-burnrate',       method: 'GET',    path: '/transactions/burnrate' },
+    { key: 'tx-cat-totals',     method: 'GET',    path: '/transactions/category-totals' },
+    // Transactions write
+    { key: 'tx-patch',          method: 'PATCH',  path: '/transactions/{id}' },
+    { key: 'tx-patch-comment',  method: 'PATCH',  path: '/transactions/{id}/comment' },
+    { key: 'tx-patch-date',     method: 'PATCH',  path: '/transactions/{id}/accounting-date' },
+    { key: 'tx-offsets-post',   method: 'POST',   path: '/transactions/{id}/offsets' },
+    { key: 'tx-linked',         method: 'GET',    path: '/transactions/linked' },
+    { key: 'tx-linked-group',   method: 'GET',    path: '/transactions/linked/{groupId}' },
+    { key: 'tx-linked-patch',   method: 'PATCH',  path: '/transactions/linked/{groupId}' },
+    { key: 'tx-offsets-patch',  method: 'PATCH',  path: '/transactions/offsets/{linkId}/comment' },
+    { key: 'tx-del-group',      method: 'DELETE', path: '/transactions/{txId}/groups/{groupId}' },
+    { key: 'tx-del-offset',     method: 'DELETE', path: '/transactions/offsets/{linkId}' },
+    // Import
+    { key: 'csv-detect',        method: 'POST',   path: '/transactions/csv/detect' },
+    { key: 'csv-preview',       method: 'POST',   path: '/transactions/csv/preview' },
+    { key: 'csv-import-rows',   method: 'POST',   path: '/transactions/csv/import-rows' },
+    { key: 'csv-import',        method: 'POST',   path: '/transactions/csv/import' },
+    { key: 'camt-preview',      method: 'POST',   path: '/transactions/camt/preview' },
+    { key: 'camt-import',       method: 'POST',   path: '/transactions/camt/import' },
+    // Categories
+    { key: 'categories',        method: 'GET',    path: '/categories' },
+    // Accounts CRUD
+    { key: 'accounts-post',     method: 'POST',   path: '/accounts' },
+    { key: 'accounts-put',      method: 'PUT',    path: '/accounts/{iban}' },
+    { key: 'accounts-del',      method: 'DELETE', path: '/accounts/{iban}' },
+    // Budgets
+    { key: 'budgets-get',       method: 'GET',    path: '/budgets' },
+    { key: 'budgets-post',      method: 'POST',   path: '/budgets' },
+    { key: 'budgets-put',       method: 'PUT',    path: '/budgets/{id}' },
+    { key: 'budgets-del',       method: 'DELETE', path: '/budgets/{id}' },
+    { key: 'budgets-tx-post',   method: 'POST',   path: '/budgets/{id}/transactions' },
+    { key: 'budgets-tx-del',    method: 'DELETE', path: '/budgets/transactions/{linkId}' },
+    // Collections
+    { key: 'col-get',           method: 'GET',    path: '/collections' },
+    { key: 'col-get-id',        method: 'GET',    path: '/collections/{id}' },
+    { key: 'col-post',          method: 'POST',   path: '/collections' },
+    { key: 'col-put',           method: 'PUT',    path: '/collections/{id}' },
+    { key: 'col-del',           method: 'DELETE', path: '/collections/{id}' },
+    { key: 'col-tx-post',       method: 'POST',   path: '/collections/{id}/transactions' },
+    { key: 'col-tx-del',        method: 'DELETE', path: '/collections/{id}/transactions/{txId}' },
+    // Thresholds
+    { key: 'thresh-get',        method: 'GET',    path: '/thresholds' },
+    { key: 'thresh-put',        method: 'PUT',    path: '/thresholds' },
+    { key: 'thresh-del',        method: 'DELETE', path: '/thresholds/{id}' },
+    // Settings
+    { key: 'settings-patch',    method: 'PATCH',  path: '/users/settings' },
+  ];
+
+  const VIEWS = [
+    { name: 'Auth Context',         endpoints: ['auth-me','auth-login','auth-register','auth-logout'] },
+    { name: 'App Shell',            endpoints: ['accounts-get','settings-get'] },
+    { name: 'Sankey Chart',         endpoints: ['tx-sankey','tx-list'] },
+    { name: 'Trends',               endpoints: ['tx-trends','categories','thresh-get','tx-list'] },
+    { name: 'Pie Chart',            endpoints: ['tx-cat-totals','tx-list'] },
+    { name: 'Cashflow',             endpoints: ['tx-cashflow','tx-list','tx-linked-group','col-get-id'] },
+    { name: 'Burn Rate',            endpoints: ['tx-burnrate'] },
+    { name: 'Transactions',         endpoints: ['tx-list','categories','tx-patch','tx-patch-comment','tx-patch-date','tx-offsets-post','tx-linked-group','budgets-get','budgets-tx-post','budgets-tx-del','col-get','col-post','col-tx-post','col-tx-del','settings-patch'] },
+    { name: 'Linked Transactions',  endpoints: ['tx-linked','tx-linked-patch','tx-offsets-patch','tx-del-group','tx-del-offset'] },
+    { name: 'Budgets',              endpoints: ['budgets-get','budgets-post','budgets-put','budgets-del','budgets-tx-post','budgets-tx-del','categories','tx-list','accounts-get'] },
+    { name: 'Collections',          endpoints: ['col-get','col-post','col-put','col-del','col-tx-post','col-tx-del','tx-list','categories','accounts-get'] },
+    { name: 'Thresholds',           endpoints: ['thresh-get','thresh-put','thresh-del','categories','tx-list'] },
+    { name: 'Accounts',             endpoints: ['accounts-get','accounts-post','accounts-put','accounts-del'] },
+    { name: 'CSV Import',           endpoints: ['csv-detect','csv-preview','csv-import-rows','csv-import','categories'] },
+    { name: 'CAMT Import',          endpoints: ['camt-preview','camt-import','categories'] },
+    { name: 'Settings Panel',       endpoints: ['settings-patch'] },
+  ];
+
+  const METHOD_COLORS = { GET: '#10b981', POST: '#3b82f6', PUT: '#f59e0b', PATCH: '#a78bfa', DELETE: '#ef4444' };
+  const NEW_KEYS = new Set(['tx-cashflow','tx-burnrate','tx-cat-totals','csv-import']);
+
+  function buildMatrix() {
+    const head = document.getElementById('matrix-head-row');
+    const body = document.getElementById('matrix-body');
+    if (head.children.length > 1) return;
+
+    ENDPOINTS.forEach(ep => {
+      const th = document.createElement('th');
+      th.className = 'col-header';
+      const isNew = NEW_KEYS.has(ep.key);
+      th.innerHTML = `<span class="badge ${ep.method}" style="writing-mode:horizontal-tb;transform:none;font-size:9px">${ep.method}</span><br/><span style="font-size:10px;font-weight:400;color:${isNew ? '#22d3ee' : '#94a3b8'}">${ep.path}</span>`;
+      head.appendChild(th);
+    });
+
+    VIEWS.forEach(view => {
+      const tr = document.createElement('tr');
+      const td0 = document.createElement('td');
+      td0.className = 'row-label';
+      td0.textContent = view.name;
+      tr.appendChild(td0);
+
+      ENDPOINTS.forEach(ep => {
+        const td = document.createElement('td');
+        td.className = 'cell';
+        if (view.endpoints.includes(ep.key)) {
+          const dot = document.createElement('div');
+          dot.className = 'cell-dot';
+          dot.style.background = NEW_KEYS.has(ep.key) ? '#22d3ee' : METHOD_COLORS[ep.method];
+          dot.title = `${ep.method} ${ep.path}`;
+          td.appendChild(dot);
+        }
+        tr.appendChild(td);
+      });
+
+      body.appendChild(tr);
+    });
+  }
+</script>
+
+</body>
+</html>

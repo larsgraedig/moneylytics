@@ -5,7 +5,7 @@ import { ResponsiveLine } from '@nivo/line'
 import DatePicker from 'react-datepicker'
 import { de } from 'date-fns/locale'
 import 'react-datepicker/dist/react-datepicker.css'
-import { fetchAllTransactions, type TransactionItem } from '../api/transactions'
+import { fetchBurnRate, type BurnRateResponseDto } from '../api/transactions'
 
 type RollingWindow = 7 | 14 | 30
 
@@ -15,6 +15,7 @@ interface DayPoint {
   expenses: number
   rollingAvg: number
   cumulative: number
+  cumulativeIncome: number
 }
 
 const EUR = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' })
@@ -25,17 +26,6 @@ const NIVO_THEME = {
   text: { fill: '#6b6b78', fontSize: 11, fontFamily: "ui-monospace, 'SF Mono', Consolas, monospace" },
   grid: { line: { stroke: '#222228', strokeWidth: 1 } },
   tooltip: { container: { display: 'none' } },
-}
-
-function fillDates(from: string, to: string): string[] {
-  const dates: string[] = []
-  const d = new Date(from + 'T12:00:00')
-  const end = new Date(to + 'T12:00:00')
-  while (d <= end) {
-    dates.push(d.toISOString().slice(0, 10))
-    d.setDate(d.getDate() + 1)
-  }
-  return dates
 }
 
 function shortDate(iso: string): string {
@@ -52,26 +42,6 @@ function addDays(isoFrom: string, days: number): string {
   const d = new Date(isoFrom + 'T12:00:00')
   d.setDate(d.getDate() + Math.floor(days))
   return d.toISOString().slice(0, 10)
-}
-
-function buildPoints(transactions: TransactionItem[], from: string, to: string, rollingWindow: RollingWindow): DayPoint[] {
-  const byDate = new Map<string, number>()
-  for (const tx of transactions) {
-    if (tx.amount >= 0) continue
-    const effective = Math.abs(Math.min(0, tx.effectiveAmount))
-    if (effective === 0) continue
-    byDate.set(tx.accountingDate, (byDate.get(tx.accountingDate) ?? 0) + effective)
-  }
-  const dates = fillDates(from, to)
-  const raw = dates.map(date => ({ date, expenses: byDate.get(date) ?? 0 }))
-  let cumulative = 0
-  return raw.map((d, i) => {
-    cumulative += d.expenses
-    const windowStart = Math.max(0, i - rollingWindow + 1)
-    const slice = raw.slice(windowStart, i + 1)
-    const rollingAvg = slice.reduce((s, x) => s + x.expenses, 0) / slice.length
-    return { date: d.date, label: shortDate(d.date), expenses: d.expenses, rollingAvg, cumulative }
-  })
 }
 
 function tickValues(points: DayPoint[]): string[] {
@@ -244,22 +214,21 @@ export default function BurnRatePage({ from, to, iban }: { from: string; to: str
 
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [rawTransactions, setRawTransactions] = useState<TransactionItem[] | null>(null)
+  const [burnRateData, setBurnRateData] = useState<BurnRateResponseDto | null>(null)
   const [points, setPoints] = useState<DayPoint[] | null>(null)
   const [rollingWindow, setRollingWindow] = useState<RollingWindow>(7)
-  const [income, setIncome] = useState<number | null>(null)
   const [simulatedToday, setSimulatedToday] = useState('')
   const [colHover, setColHover] = useState<ColHoverInfo | null>(null)
 
   const realTodayIso = new Date().toISOString().slice(0, 10)
   const effectiveToday = simulatedToday || realTodayIso
 
-  async function load() {
+  async function load(overrideWindow?: RollingWindow) {
     setLoading(true)
     setError(null)
     try {
-      const resp = await fetchAllTransactions(from, to, iban)
-      setRawTransactions(resp.transactions)
+      const resp = await fetchBurnRate(from, to, overrideWindow ?? rollingWindow, iban)
+      setBurnRateData(resp)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'request failed')
     } finally {
@@ -268,20 +237,28 @@ export default function BurnRatePage({ from, to, iban }: { from: string; to: str
   }
 
   useEffect(() => {
-    if (!rawTransactions) return
-    const filtered = rawTransactions.filter(tx => tx.accountingDate <= effectiveToday)
-    setPoints(buildPoints(filtered, from, to, rollingWindow))
-    setIncome(filtered.filter(tx => tx.amount > 0).reduce((s, tx) => s + Math.max(0, tx.effectiveAmount), 0))
-  }, [rawTransactions, effectiveToday, rollingWindow])
+    if (!burnRateData) return
+    const filtered = burnRateData.points
+      .filter(p => p.date <= effectiveToday)
+      .map(p => ({
+        date: p.date,
+        label: shortDate(p.date),
+        expenses: p.expenses,
+        rollingAvg: p.rollingAvg,
+        cumulative: p.cumulative,
+        cumulativeIncome: p.cumulativeIncome,
+      }))
+    setPoints(filtered)
+  }, [burnRateData, effectiveToday])
 
-  // Burn rate chart derived values
-  const totalExpenses = points ? points.reduce((s, p) => s + p.expenses, 0) : 0
-  const isCurrentPeriod = effectiveToday >= from && effectiveToday <= to
-  const effectiveTo = isCurrentPeriod ? effectiveToday : to
-  const effectiveDays = points ? Math.max(1, points.filter(p => p.date <= effectiveTo).length) : 1
-  const avgPerDay = totalExpenses / effectiveDays
+  // Values from backend
+  const totalExpenses = burnRateData?.totalExpenses ?? 0
+  const income = burnRateData?.totalIncome ?? 0
+  const avgPerDay = burnRateData?.avgPerDay ?? 0
 
   // Projection values (only when today is within the period)
+  const isCurrentPeriod = effectiveToday >= from && effectiveToday <= to
+  const effectiveTo = isCurrentPeriod ? effectiveToday : to
   const todayPoint = isCurrentPeriod && points ? (points.find(p => p.date === effectiveToday) ?? null) : null
   const cumulativeAtToday = todayPoint?.cumulative ?? 0
   const todayLabel = todayPoint?.label ?? shortDate(effectiveToday)
@@ -289,12 +266,12 @@ export default function BurnRatePage({ from, to, iban }: { from: string; to: str
   const futurePointLabels = futurePoints.map(p => p.label)
   const futureLabels = new Set(futurePointLabels)
   const remainingDays = futurePoints.length
-  const sollPerDay = isCurrentPeriod && income !== null && remainingDays > 0 && (income - totalExpenses) > 0
+  const sollPerDay = isCurrentPeriod && burnRateData !== null && remainingDays > 0 && (income - totalExpenses) > 0
     ? (income - totalExpenses) / remainingDays
     : null
 
   const sollByLabel: Map<string, number> = (() => {
-    if (!points || income === null) return new Map()
+    if (!points || burnRateData === null) return new Map()
     const totalDays = points.length
     return new Map(
       points
@@ -327,22 +304,12 @@ export default function BurnRatePage({ from, to, iban }: { from: string; to: str
     ]
   })()
 
-  const cumulativeIncomeData: { x: string; y: number }[] = (() => {
-    if (!rawTransactions || !points) return []
-    const incomeByDate = new Map<string, number>()
-    for (const tx of rawTransactions) {
-      if (tx.amount <= 0 || tx.accountingDate > effectiveToday) continue
-      const eff = Math.max(0, tx.effectiveAmount)
-      if (eff > 0) incomeByDate.set(tx.accountingDate, (incomeByDate.get(tx.accountingDate) ?? 0) + eff)
-    }
-    let cum = 0
-    return points.map(p => {
-      cum += incomeByDate.get(p.date) ?? 0
-      return { x: p.label, y: Math.round(cum) }
-    })
-  })()
+  const cumulativeIncomeData: { x: string; y: number }[] = points
+    ? points.map(p => ({ x: p.label, y: Math.round(p.cumulativeIncome) }))
+    : []
+  const hasIncome = income > 0
 
-  const netData: { x: string; y: number }[] = cumulativeIncomeData.length > 0 && points
+  const netData: { x: string; y: number }[] = hasIncome && points
     ? cumulativeIncomeData.map((inc, i) => ({ x: inc.x, y: inc.y - Math.round(points![i].cumulative) }))
     : []
 
@@ -350,7 +317,7 @@ export default function BurnRatePage({ from, to, iban }: { from: string; to: str
 
   const lineData = points ? [
     { id: 'cumulative', data: points.map(p => ({ x: p.label, y: Math.round(p.cumulative) })) },
-    ...(cumulativeIncomeData.length > 0 ? [{ id: 'income', data: cumulativeIncomeData }] : []),
+    ...(hasIncome ? [{ id: 'income', data: cumulativeIncomeData }] : []),
     ...(netData.length > 0 ? [{ id: 'net', data: netData }] : []),
     ...(istProjectionData.length > 1 ? [{ id: 'ist', data: istProjectionData }] : []),
     ...(sollProjectionData.length > 1 ? [{ id: 'soll', data: sollProjectionData }] : []),
@@ -360,7 +327,7 @@ export default function BurnRatePage({ from, to, iban }: { from: string; to: str
   const lineYMax = Math.max(
     points?.[points.length - 1]?.cumulative ?? 0,
     istProjectedEnd,
-    income ?? 0,
+    income,
   )
 
   const ticks = points ? tickValues(points) : []
@@ -383,7 +350,7 @@ export default function BurnRatePage({ from, to, iban }: { from: string; to: str
     : null
 
   // Runway derived values
-  const calcRunwayDays = income !== null && avgPerDay > 0 ? income / avgPerDay : null
+  const calcRunwayDays = burnRateData !== null && avgPerDay > 0 ? income / avgPerDay : null
   const elapsedDays = (Date.now() - new Date(from + 'T12:00:00').getTime()) / 86_400_000
   const todayPct = calcRunwayDays ? Math.min((elapsedDays / calcRunwayDays) * 100, 100) : 0
   const calcEndIso = calcRunwayDays !== null ? addDays(from, calcRunwayDays) : null
@@ -398,16 +365,16 @@ export default function BurnRatePage({ from, to, iban }: { from: string; to: str
             <button
               key={w}
               className={`cf-gran-btn${rollingWindow === w ? ' active' : ''}`}
-              onClick={() => setRollingWindow(w)}
+              onClick={() => { setRollingWindow(w); if (burnRateData !== null) load(w) }}
             >
               {t('burnrate.windowBtn', { days: w })}
             </button>
           ))}
         </div>
-        <button className="load-btn" onClick={load} disabled={loading}>
+        <button className="load-btn" onClick={() => load()} disabled={loading}>
           {loading ? '…' : t('common.load')}
         </button>
-        {rawTransactions && (
+        {burnRateData !== null && (
           <div className={`br-sim-field${simulatedToday ? ' br-sim-field--active' : ''}`}>
             <span className="range-label">{t('burnrate.simDate')}</span>
             <DatePicker
@@ -463,7 +430,7 @@ export default function BurnRatePage({ from, to, iban }: { from: string; to: str
           <div className="br-runway">
             <div className="br-chart-label">{t('burnrate.runwayTitle')}</div>
 
-            {income !== null && calcRunwayDays !== null && calcEndIso !== null && (
+            {burnRateData !== null && calcRunwayDays !== null && calcEndIso !== null && (
               <>
                 <div className="br-runway-stats">
                   <span className="br-runway-stat">

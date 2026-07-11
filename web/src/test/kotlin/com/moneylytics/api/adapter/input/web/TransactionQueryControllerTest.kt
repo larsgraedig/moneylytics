@@ -1,8 +1,13 @@
 package com.moneylytics.api.adapter.input.web
 
+import com.moneylytics.api.application.port.input.GetBurnRateUseCase
+import com.moneylytics.api.application.port.input.GetCashflowUseCase
+import com.moneylytics.api.application.port.input.GetCategoriesUseCase
+import com.moneylytics.api.application.port.input.GetCategoryTotalsUseCase
 import com.moneylytics.api.application.port.input.GetTransactionsQuery
 import com.moneylytics.api.application.port.input.GetTransactionsUseCase
 import com.moneylytics.api.application.port.input.ResolveUserUseCase
+import com.moneylytics.api.application.port.input.TransactionType
 import com.moneylytics.api.application.port.input.UpdateTransactionAccountingDateUseCase
 import com.moneylytics.api.application.port.input.UpdateTransactionCategoryUseCase
 import com.moneylytics.api.application.port.input.UpdateTransactionCommentUseCase
@@ -20,6 +25,10 @@ import java.time.LocalDate
 
 class TransactionQueryControllerTest {
     private val getTransactionsUseCase: GetTransactionsUseCase = mock()
+    private val getCashflowUseCase: GetCashflowUseCase = mock()
+    private val getBurnRateUseCase: GetBurnRateUseCase = mock()
+    private val getCategoriesUseCase: GetCategoriesUseCase = mock { on { getCategories(any()) } doReturn emptyList() }
+    private val getCategoryTotalsUseCase: GetCategoryTotalsUseCase = mock()
     private val resolveUserUseCase: ResolveUserUseCase = mock { on { resolveUser(any()) } doReturn USER_ID }
     private val principal =
         User
@@ -33,6 +42,10 @@ class TransactionQueryControllerTest {
     private val controller =
         TransactionQueryController(
             getTransactionsUseCase,
+            getCashflowUseCase,
+            getBurnRateUseCase,
+            getCategoriesUseCase,
+            getCategoryTotalsUseCase,
             resolveUserUseCase,
             updateTransactionCategoryUseCase,
             updateTransactionCommentUseCase,
@@ -48,7 +61,7 @@ class TransactionQueryControllerTest {
             // Arrange
             whenever(
                 getTransactionsUseCase.getTransactions(
-                    GetTransactionsQuery(from, to, USER_ID, onlyNegative = true),
+                    GetTransactionsQuery(from, to, USER_ID, type = TransactionType.EXPENSES),
                 ),
             ).thenReturn(
                 listOf(
@@ -77,7 +90,7 @@ class TransactionQueryControllerTest {
             // Arrange
             whenever(
                 getTransactionsUseCase.getTransactions(
-                    GetTransactionsQuery(from, to, USER_ID, onlyNegative = true),
+                    GetTransactionsQuery(from, to, USER_ID, type = TransactionType.EXPENSES),
                 ),
             ).thenReturn(
                 listOf(
@@ -105,7 +118,7 @@ class TransactionQueryControllerTest {
             // Arrange
             whenever(
                 getTransactionsUseCase.getTransactions(
-                    GetTransactionsQuery(from, to, USER_ID, onlyNegative = true),
+                    GetTransactionsQuery(from, to, USER_ID, type = TransactionType.EXPENSES),
                 ),
             ).thenReturn(
                 listOf(
@@ -131,7 +144,7 @@ class TransactionQueryControllerTest {
             // Arrange
             whenever(
                 getTransactionsUseCase.getTransactions(
-                    GetTransactionsQuery(from, to, USER_ID, onlyNegative = true),
+                    GetTransactionsQuery(from, to, USER_ID, type = TransactionType.EXPENSES),
                 ),
             ).thenReturn(
                 listOf(
@@ -162,7 +175,7 @@ class TransactionQueryControllerTest {
         runTest {
             whenever(
                 getTransactionsUseCase.getTransactions(
-                    GetTransactionsQuery(from, to, USER_ID, onlyNegative = true),
+                    GetTransactionsQuery(from, to, USER_ID, type = TransactionType.EXPENSES),
                 ),
             ).thenReturn(
                 listOf(
@@ -187,7 +200,7 @@ class TransactionQueryControllerTest {
             // degenerate layout where every link appears the same width.
             whenever(
                 getTransactionsUseCase.getTransactions(
-                    GetTransactionsQuery(from, to, USER_ID, onlyNegative = true),
+                    GetTransactionsQuery(from, to, USER_ID, type = TransactionType.EXPENSES),
                 ),
             ).thenReturn(
                 listOf(
@@ -216,7 +229,7 @@ class TransactionQueryControllerTest {
             // Arrange
             whenever(
                 getTransactionsUseCase.getTransactions(
-                    GetTransactionsQuery(from, to, USER_ID, onlyNegative = true),
+                    GetTransactionsQuery(from, to, USER_ID, type = TransactionType.EXPENSES),
                 ),
             ).thenReturn(
                 listOf(
@@ -237,7 +250,7 @@ class TransactionQueryControllerTest {
             // Arrange
             whenever(
                 getTransactionsUseCase.getTransactions(
-                    GetTransactionsQuery(from, to, USER_ID, onlyNegative = true),
+                    GetTransactionsQuery(from, to, USER_ID, type = TransactionType.EXPENSES),
                 ),
             ).thenReturn(emptyList())
 

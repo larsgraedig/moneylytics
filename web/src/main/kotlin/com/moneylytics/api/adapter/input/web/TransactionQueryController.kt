@@ -1,12 +1,25 @@
 package com.moneylytics.api.adapter.input.web
 
+import com.moneylytics.api.application.port.input.BurnRateResponse
+import com.moneylytics.api.application.port.input.CashflowResponse
+import com.moneylytics.api.application.port.input.CategoryTotalsResponse
+import com.moneylytics.api.application.port.input.GetBurnRateQuery
+import com.moneylytics.api.application.port.input.GetBurnRateUseCase
+import com.moneylytics.api.application.port.input.GetCashflowQuery
+import com.moneylytics.api.application.port.input.GetCashflowUseCase
 import com.moneylytics.api.application.port.input.GetCategoriesUseCase
+import com.moneylytics.api.application.port.input.GetCategoryTotalsQuery
+import com.moneylytics.api.application.port.input.GetCategoryTotalsUseCase
 import com.moneylytics.api.application.port.input.GetTransactionsQuery
 import com.moneylytics.api.application.port.input.GetTransactionsUseCase
+import com.moneylytics.api.application.port.input.Granularity
 import com.moneylytics.api.application.port.input.ResolveUserUseCase
+import com.moneylytics.api.application.port.input.TransactionType
 import com.moneylytics.api.application.port.input.UpdateTransactionAccountingDateUseCase
 import com.moneylytics.api.application.port.input.UpdateTransactionCategoryUseCase
 import com.moneylytics.api.application.port.input.UpdateTransactionCommentUseCase
+import com.moneylytics.api.application.port.input.bucketKey
+import com.moneylytics.api.application.port.input.generateBuckets
 import com.moneylytics.api.domain.Category
 import com.moneylytics.api.domain.Transaction
 import kotlinx.coroutines.Dispatchers
@@ -23,10 +36,7 @@ import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import java.math.BigDecimal
-import java.time.DayOfWeek
 import java.time.LocalDate
-import java.time.YearMonth
-import java.time.temporal.IsoFields
 
 data class UpdateCategoryRequest(
     val category: String,
@@ -47,7 +57,10 @@ data class UpdateAccountingDateRequest(
 @RequestMapping("/transactions")
 class TransactionQueryController(
     private val getTransactionsUseCase: GetTransactionsUseCase,
+    private val getCashflowUseCase: GetCashflowUseCase,
+    private val getBurnRateUseCase: GetBurnRateUseCase,
     private val getCategoriesUseCase: GetCategoriesUseCase,
+    private val getCategoryTotalsUseCase: GetCategoryTotalsUseCase,
     private val resolveUserUseCase: ResolveUserUseCase,
     private val updateTransactionCategoryUseCase: UpdateTransactionCategoryUseCase,
     private val updateTransactionCommentUseCase: UpdateTransactionCommentUseCase,
@@ -65,7 +78,7 @@ class TransactionQueryController(
                 val userId = resolveUserUseCase.resolveUser(principal.username)
                 val txns =
                     getTransactionsUseCase.getTransactions(
-                        GetTransactionsQuery(from, to, userId, onlyNegative = true, accountIban = iban),
+                        GetTransactionsQuery(from, to, userId, type = TransactionType.EXPENSES, accountIban = iban),
                     )
                 val lookup = buildGroupLookup(getCategoriesUseCase.getCategories(userId))
                 txns to lookup
@@ -87,8 +100,10 @@ class TransactionQueryController(
         @RequestParam(required = false) subcategory: String? = null,
         @RequestParam(required = false) categoryGroup: String? = null,
         @RequestParam(required = false) iban: String? = null,
-        @RequestParam(required = false) onlyNegative: Boolean = true,
+        @RequestParam(required = false) type: TransactionType = TransactionType.ALL,
         @RequestParam(required = false) uncategorized: Boolean = false,
+        @RequestParam(required = false) excludeCollectionId: Long? = null,
+        @RequestParam(required = false) excludeBudgetId: Long? = null,
         @AuthenticationPrincipal principal: UserDetails,
     ): TransactionListResponse {
         val transactions =
@@ -99,12 +114,14 @@ class TransactionQueryController(
                         from = from,
                         to = to,
                         userId = userId,
-                        onlyNegative = onlyNegative,
+                        type = type,
                         accountIban = iban,
                         category = category,
                         subcategory = subcategory,
                         categoryGroup = categoryGroup,
                         uncategorized = uncategorized,
+                        excludeCollectionId = excludeCollectionId,
+                        excludeBudgetId = excludeBudgetId,
                     ),
                 )
             }
@@ -201,10 +218,10 @@ class TransactionQueryController(
                                 from = from,
                                 to = to,
                                 userId = userId,
+                                type = TransactionType.EXPENSES,
                                 accountIban = iban,
                                 category = category,
                                 categoryGroup = selectedGroup,
-                                onlyNegative = true,
                             ),
                         )
                     }
@@ -257,75 +274,68 @@ class TransactionQueryController(
         return TrendsResponse(granularity = granularity, buckets = buckets, groups = groups)
     }
 
-    private fun generateBuckets(
-        from: LocalDate,
-        to: LocalDate,
-        granularity: Granularity,
-    ): List<String> =
-        when (granularity) {
-            Granularity.MONTHLY ->
-                generateSequence(YearMonth.from(from)) { it.plusMonths(1) }
-                    .takeWhile { !it.isAfter(YearMonth.from(to)) }
-                    .map { it.toString() }
-                    .toList()
-
-            Granularity.WEEKLY ->
-                generateSequence(from.with(DayOfWeek.MONDAY)) { it.plusWeeks(1) }
-                    .takeWhile { !it.isAfter(to) }
-                    .map { weekKey(it) }
-                    .toList()
-
-            Granularity.DAILY ->
-                generateSequence(from) { it.plusDays(1) }
-                    .takeWhile { !it.isAfter(to) }
-                    .map { it.toString() }
-                    .toList()
-
-            Granularity.QUARTERLY -> {
-                val startOfQuarter = from.withMonth(((from.monthValue - 1) / 3) * 3 + 1).withDayOfMonth(1)
-                generateSequence(startOfQuarter) { it.plusMonths(3) }
-                    .takeWhile { !it.isAfter(to) }
-                    .map { quarterKey(it) }
-                    .toList()
-            }
-
-            Granularity.YEARLY -> (from.year..to.year).map { it.toString() }
-
-            Granularity.BI_YEARLY -> {
-                val startMonth = if (from.monthValue <= 6) 1 else 7
-                val startDate = from.withMonth(startMonth).withDayOfMonth(1)
-                generateSequence(startDate) { it.plusMonths(6) }
-                    .takeWhile { !it.isAfter(to) }
-                    .map { halfYearKey(it) }
-                    .toList()
-            }
+    @GetMapping("/cashflow")
+    suspend fun getCashflow(
+        @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) from: LocalDate,
+        @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) to: LocalDate,
+        @RequestParam(required = false) granularity: Granularity = Granularity.MONTHLY,
+        @RequestParam(required = false) iban: String? = null,
+        @AuthenticationPrincipal principal: UserDetails,
+    ): CashflowResponse =
+        withContext(Dispatchers.IO) {
+            val userId = resolveUserUseCase.resolveUser(principal.username)
+            getCashflowUseCase.getCashflow(
+                GetCashflowQuery(
+                    from = from,
+                    to = to,
+                    userId = userId,
+                    granularity = granularity,
+                    accountIban = iban,
+                ),
+            )
         }
 
-    private fun bucketKey(
-        date: LocalDate,
-        granularity: Granularity,
-    ): String =
-        when (granularity) {
-            Granularity.MONTHLY -> YearMonth.from(date).toString()
-            Granularity.WEEKLY -> weekKey(date.with(DayOfWeek.MONDAY))
-            Granularity.DAILY -> date.toString()
-            Granularity.QUARTERLY -> quarterKey(date)
-            Granularity.YEARLY -> date.year.toString()
-            Granularity.BI_YEARLY -> halfYearKey(date)
+    @GetMapping("/category-totals")
+    suspend fun getCategoryTotals(
+        @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) from: LocalDate,
+        @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) to: LocalDate,
+        @RequestParam(required = false) iban: String? = null,
+        @RequestParam(required = false) category: String? = null,
+        @AuthenticationPrincipal principal: UserDetails,
+    ): CategoryTotalsResponse =
+        withContext(Dispatchers.IO) {
+            val userId = resolveUserUseCase.resolveUser(principal.username)
+            getCategoryTotalsUseCase.getCategoryTotals(
+                GetCategoryTotalsQuery(
+                    from = from,
+                    to = to,
+                    userId = userId,
+                    accountIban = iban,
+                    category = category,
+                ),
+            )
         }
 
-    private fun weekKey(monday: LocalDate): String =
-        "${monday.get(IsoFields.WEEK_BASED_YEAR)}-W${String.format("%02d", monday.get(IsoFields.WEEK_OF_WEEK_BASED_YEAR))}"
-
-    private fun quarterKey(date: LocalDate): String {
-        val quarter = (date.monthValue - 1) / 3 + 1
-        return "${date.year}-Q$quarter"
-    }
-
-    private fun halfYearKey(date: LocalDate): String {
-        val half = if (date.monthValue <= 6) 1 else 2
-        return "${date.year}-H$half"
-    }
+    @GetMapping("/burnrate")
+    suspend fun getBurnRate(
+        @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) from: LocalDate,
+        @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) to: LocalDate,
+        @RequestParam(required = false) iban: String? = null,
+        @RequestParam(required = false) rollingWindow: Int = 7,
+        @AuthenticationPrincipal principal: UserDetails,
+    ): BurnRateResponse =
+        withContext(Dispatchers.IO) {
+            val userId = resolveUserUseCase.resolveUser(principal.username)
+            getBurnRateUseCase.getBurnRate(
+                GetBurnRateQuery(
+                    from = from,
+                    to = to,
+                    userId = userId,
+                    accountIban = iban,
+                    rollingWindow = rollingWindow,
+                ),
+            )
+        }
 
     private fun List<Transaction>.toSankeyResponse(groupLookup: Map<Pair<String?, String?>, String> = emptyMap()): SankeyResponse {
         val nodeIndex = linkedMapOf<String, Int>()

@@ -195,11 +195,17 @@ export default function TransactionsPage({
     return categories.find(c => c.name === category)?.groups.map(g => g.name) ?? []
   }
 
-  async function doLoad(category?: string, subcategory?: string, uncategorized?: boolean, categoryGroup?: string) {
+  function toApiType(t: 'all' | 'income' | 'expenses'): 'ALL' | 'INCOME' | 'EXPENSES' {
+    if (t === 'income') return 'INCOME'
+    if (t === 'expenses') return 'EXPENSES'
+    return 'ALL'
+  }
+
+  async function doLoad(category?: string, subcategory?: string, uncategorized?: boolean, categoryGroup?: string, type?: 'ALL' | 'INCOME' | 'EXPENSES') {
     setPage({ phase: 'loading' })
     setLinkingState(null)
     try {
-      const data = await fetchAllTransactions(from, to, iban, category, subcategory, uncategorized, categoryGroup)
+      const data = await fetchAllTransactions(from, to, iban, category, subcategory, uncategorized, categoryGroup, type ?? toApiType(filterType))
       setRows(
         data.transactions.map(tx => ({
           original: tx,
@@ -580,15 +586,7 @@ export default function TransactionsPage({
   const sublistId = (category: string) =>
     `txnv-sub-${category.replace(/\s+/g, '-').toLowerCase()}`
 
-  const filteredRows = useMemo(() => {
-    return rows
-      .map((row, i) => ({ row, i }))
-      .filter(({ row }) => {
-        if (filterType === 'income') return row.original.amount > 0
-        if (filterType === 'expenses') return row.original.amount < 0
-        return true
-      })
-  }, [rows, filterType])
+  const filteredRows = useMemo(() => rows.map((row, i) => ({ row, i })), [rows])
 
   const uniqueRowCategories = useMemo(() => {
     const seen = new Set<string>()
@@ -1393,14 +1391,17 @@ export default function TransactionsPage({
             <button
               key={type}
               className={`txnv-type-btn${filterType === type ? ' txnv-type-btn--active' : ''}`}
-              onClick={() => setFilterType(type)}
+              onClick={() => {
+                setFilterType(type)
+                doLoad(filterCategory || undefined, filterSubcategory || undefined, filterUncategorized || undefined, filterCategoryGroup || undefined, toApiType(type))
+              }}
             >
               {t(`transactions.filter${type.charAt(0).toUpperCase() + type.slice(1)}`)}
             </button>
           ))}
         </div>
         {page.phase === 'ready' && (
-          <span className="txnv-count">{t('transactions.count', { count: filteredRows.length })}{filterType !== 'all' && rows.length !== filteredRows.length ? ` / ${rows.length}` : ''}</span>
+          <span className="txnv-count">{t('transactions.count', { count: filteredRows.length })}</span>
         )}
       </div>
 

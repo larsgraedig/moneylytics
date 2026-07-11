@@ -1,8 +1,7 @@
 package com.moneylytics.api.adapter.input.web
 
+import com.moneylytics.api.application.port.input.Granularity
 import java.math.BigDecimal
-
-enum class Granularity { MONTHLY, WEEKLY, DAILY, QUARTERLY, YEARLY, BI_YEARLY }
 
 enum class SeriesRole {
     /** Category-only config: the thick aggregate line. */

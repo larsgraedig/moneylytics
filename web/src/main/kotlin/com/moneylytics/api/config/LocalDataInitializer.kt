@@ -1,8 +1,21 @@
 package com.moneylytics.api.config
 
+import com.moneylytics.api.application.port.input.AssignTransactionToBudgetUseCase
+import com.moneylytics.api.application.port.input.CreateBudgetUseCase
+import com.moneylytics.api.application.port.input.CreateCollectionUseCase
 import com.moneylytics.api.application.port.input.CreateUserUseCase
+import com.moneylytics.api.application.port.input.GetTransactionsQuery
+import com.moneylytics.api.application.port.input.GetTransactionsUseCase
 import com.moneylytics.api.application.port.input.ImportTransactionsCommand
 import com.moneylytics.api.application.port.input.ImportTransactionsUseCase
+import com.moneylytics.api.application.port.input.LinkTransactionsCommand
+import com.moneylytics.api.application.port.input.ManageCollectionMembersUseCase
+import com.moneylytics.api.application.port.input.ManageTransactionOffsetUseCase
+import com.moneylytics.api.application.port.input.SaveThresholdUseCase
+import com.moneylytics.api.domain.Budget
+import com.moneylytics.api.domain.Collection
+import com.moneylytics.api.domain.Threshold
+import com.moneylytics.api.domain.ThresholdPeriod
 import com.moneylytics.api.domain.Transaction
 import org.springframework.boot.ApplicationArguments
 import org.springframework.boot.ApplicationRunner
@@ -18,6 +31,13 @@ import java.util.Random
 class LocalDataInitializer(
     private val importTransactionsUseCase: ImportTransactionsUseCase,
     private val createUserUseCase: CreateUserUseCase,
+    private val getTransactionsUseCase: GetTransactionsUseCase,
+    private val manageTransactionOffsetUseCase: ManageTransactionOffsetUseCase,
+    private val saveThresholdUseCase: SaveThresholdUseCase,
+    private val createBudgetUseCase: CreateBudgetUseCase,
+    private val assignTransactionToBudgetUseCase: AssignTransactionToBudgetUseCase,
+    private val createCollectionUseCase: CreateCollectionUseCase,
+    private val manageCollectionMembersUseCase: ManageCollectionMembersUseCase,
 ) : ApplicationRunner {
     private val mainIban = "DE00LOCAL000000000000"
     private val mainName = "Girokonto"
@@ -29,7 +49,7 @@ class LocalDataInitializer(
         val userId = createUserUseCase.createUser("local-dev-user", "local")
         importTransactionsUseCase.importTransactions(
             ImportTransactionsCommand(
-                transactions = generateMainTransactions() + generateSavingsTransactions(),
+                transactions = generateMainTransactions() + generateSavingsTransactions() + generateFixedTransactions(),
                 accountNames =
                     mapOf(
                         mainIban to mainName,
@@ -38,7 +58,175 @@ class LocalDataInitializer(
                 userId = userId,
             ),
         )
+        setupOffsetLinks(userId)
+        setupThresholds(userId)
+        setupBudgets(userId)
+        setupCollections(userId)
     }
+
+    private fun setupOffsetLinks(userId: Long) {
+        val arztTx = findTx(userId, LocalDate.of(2025, 3, 15), "Gesundheit", BigDecimal("-180.00"))
+        val erstattungTx = findTx(userId, LocalDate.of(2025, 3, 18), "Einnahmen", BigDecimal("120.00"))
+        if (arztTx != null && erstattungTx != null) {
+            manageTransactionOffsetUseCase.linkTransactions(
+                LinkTransactionsCommand(
+                    transactionId = arztTx.id!!,
+                    otherTransactionId = erstattungTx.id!!,
+                    myAmount = BigDecimal("120"),
+                    otherAmount = BigDecimal("120"),
+                    userId = userId,
+                ),
+            )
+        }
+
+        val restaurantTx = findTx(userId, LocalDate.of(2025, 6, 20), "Lebensmittel", BigDecimal("-95.00"))
+        val uberweisungTx = findTx(userId, LocalDate.of(2025, 6, 21), "Einnahmen", BigDecimal("47.50"))
+        if (restaurantTx != null && uberweisungTx != null) {
+            manageTransactionOffsetUseCase.linkTransactions(
+                LinkTransactionsCommand(
+                    transactionId = restaurantTx.id!!,
+                    otherTransactionId = uberweisungTx.id!!,
+                    myAmount = BigDecimal("47.50"),
+                    otherAmount = BigDecimal("47.50"),
+                    userId = userId,
+                ),
+            )
+        }
+    }
+
+    private fun setupThresholds(userId: Long) {
+        saveThresholdUseCase.saveThreshold(
+            Threshold(
+                id = 0,
+                category = "Lebensmittel",
+                subcategory = null,
+                period = ThresholdPeriod.MONTHLY,
+                notice = BigDecimal("400"),
+                warning = BigDecimal("600"),
+                critical = BigDecimal("800"),
+            ),
+            userId,
+        )
+        saveThresholdUseCase.saveThreshold(
+            Threshold(
+                id = 0,
+                category = "Transport",
+                subcategory = null,
+                period = ThresholdPeriod.MONTHLY,
+                notice = BigDecimal("150"),
+                warning = BigDecimal("250"),
+                critical = null,
+            ),
+            userId,
+        )
+        saveThresholdUseCase.saveThreshold(
+            Threshold(
+                id = 0,
+                category = "Freizeit",
+                subcategory = null,
+                period = ThresholdPeriod.MONTHLY,
+                notice = BigDecimal("80"),
+                warning = null,
+                critical = null,
+            ),
+            userId,
+        )
+    }
+
+    private fun setupBudgets(userId: Long) {
+        val urlaub =
+            createBudgetUseCase.createBudget(
+                Budget(name = "Urlaub 2025", targetAmount = BigDecimal("1200")),
+                userId,
+            )
+        listOf(
+            LocalDate.of(2025, 4, 10) to BigDecimal("-380.00"),
+            LocalDate.of(2025, 5, 22) to BigDecimal("-490.00"),
+            LocalDate.of(2025, 7, 1) to BigDecimal("-200.00"),
+        ).forEach { (date, amount) ->
+            findTx(userId, date, "Reise", amount)?.id?.let { txId ->
+                assignTransactionToBudgetUseCase.assignTransaction(urlaub.id!!, txId, null, userId)
+            }
+        }
+
+        val kueche =
+            createBudgetUseCase.createBudget(
+                Budget(name = "Neue Küche", targetAmount = BigDecimal("3500")),
+                userId,
+            )
+        findTx(userId, LocalDate.of(2025, 9, 5), "Wohnen", BigDecimal("-800.00"))?.id?.let { txId ->
+            assignTransactionToBudgetUseCase.assignTransaction(kueche.id!!, txId, BigDecimal("500"), userId)
+        }
+    }
+
+    private fun setupCollections(userId: Long) {
+        val sommer = createCollectionUseCase.createCollection(Collection(name = "Sommer 2025"), userId)
+        val sommerFrom = LocalDate.of(2025, 6, 1)
+        val sommerTo = LocalDate.of(2025, 8, 31)
+        val restaurantTxs = queryTxs(userId, sommerFrom, sommerTo, "Lebensmittel", "Restaurant").take(3)
+        val sportTxs = queryTxs(userId, sommerFrom, sommerTo, "Freizeit", "Sport").take(2)
+        (restaurantTxs + sportTxs).forEach { tx ->
+            tx.id?.let { manageCollectionMembersUseCase.addTransaction(sommer.id!!, it, userId) }
+        }
+
+        val haushalt = createCollectionUseCase.createCollection(Collection(name = "Haushalt Q1 2025"), userId)
+        val q1From = LocalDate.of(2025, 1, 1)
+        val q1To = LocalDate.of(2025, 3, 31)
+        val mieteTxs = queryTxs(userId, q1From, q1To, "Wohnen", "Miete").take(2)
+        val internetTxs = queryTxs(userId, q1From, q1To, "Wohnen", "Internet").take(2)
+        (mieteTxs + internetTxs).forEach { tx ->
+            tx.id?.let { manageCollectionMembersUseCase.addTransaction(haushalt.id!!, it, userId) }
+        }
+    }
+
+    private fun findTx(
+        userId: Long,
+        date: LocalDate,
+        category: String,
+        amount: BigDecimal,
+    ): Transaction? =
+        getTransactionsUseCase
+            .getTransactions(GetTransactionsQuery(from = date, to = date, userId = userId, category = category))
+            .find { it.amount.compareTo(amount) == 0 }
+
+    private fun queryTxs(
+        userId: Long,
+        from: LocalDate,
+        to: LocalDate,
+        category: String,
+        subcategory: String,
+    ): List<Transaction> =
+        getTransactionsUseCase.getTransactions(
+            GetTransactionsQuery(from = from, to = to, userId = userId, category = category, subcategory = subcategory),
+        )
+
+    private fun generateFixedTransactions(): List<Transaction> =
+        listOf(
+            tx("Gesundheit", "Arzt", LocalDate.of(2025, 3, 15), BigDecimal("-180.00")),
+            tx("Einnahmen", "Erstattung", LocalDate.of(2025, 3, 18), BigDecimal("120.00")),
+            tx("Lebensmittel", "Restaurant", LocalDate.of(2025, 6, 20), BigDecimal("-95.00")),
+            tx("Einnahmen", "Überweisung", LocalDate.of(2025, 6, 21), BigDecimal("47.50")),
+            tx("Reise", "Flug", LocalDate.of(2025, 4, 10), BigDecimal("-380.00")),
+            tx("Reise", "Hotel", LocalDate.of(2025, 5, 22), BigDecimal("-490.00")),
+            tx("Reise", "Aktivitäten", LocalDate.of(2025, 7, 1), BigDecimal("-200.00")),
+            tx("Wohnen", "Einrichtung", LocalDate.of(2025, 9, 5), BigDecimal("-800.00")),
+        )
+
+    private fun tx(
+        category: String,
+        subcategory: String,
+        date: LocalDate,
+        amount: BigDecimal,
+    ) = Transaction(
+        category = category,
+        subcategory = subcategory,
+        bookingDate = date,
+        valueDate = date,
+        accountingDate = date,
+        amount = amount,
+        currency = "EUR",
+        accountIban = mainIban,
+    )
 
     private fun generateMainTransactions(): List<Transaction> {
         val rng = Random(42)

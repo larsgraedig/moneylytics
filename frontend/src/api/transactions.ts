@@ -107,7 +107,7 @@ export async function fetchTransactionList(
   subcategory?: string,
   iban?: string,
 ): Promise<TransactionListResponse> {
-  const params = new URLSearchParams({ from, to })
+  const params = new URLSearchParams({ from, to, type: 'EXPENSES' })
   if (category) params.set('category', category)
   if (subcategory) params.set('subcategory', subcategory)
   if (iban) params.set('iban', iban)
@@ -124,13 +124,19 @@ export async function fetchAllTransactions(
   subcategory?: string,
   uncategorized?: boolean,
   categoryGroup?: string,
+  type?: 'ALL' | 'INCOME' | 'EXPENSES',
+  excludeCollectionId?: number,
+  excludeBudgetId?: number,
 ): Promise<TransactionListResponse> {
-  const params = new URLSearchParams({ from, to, onlyNegative: 'false' })
+  const params = new URLSearchParams({ from, to })
   if (iban) params.set('iban', iban)
   if (category) params.set('category', category)
   if (subcategory) params.set('subcategory', subcategory)
   if (categoryGroup) params.set('categoryGroup', categoryGroup)
   if (uncategorized) params.set('uncategorized', 'true')
+  if (type) params.set('type', type)
+  if (excludeCollectionId != null) params.set('excludeCollectionId', String(excludeCollectionId))
+  if (excludeBudgetId != null) params.set('excludeBudgetId', String(excludeBudgetId))
   const res = await fetchWithUser(`/transactions/list?${params}`)
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
   return res.json() as Promise<TransactionListResponse>
@@ -262,6 +268,84 @@ export async function updateOffsetLinkComment(linkId: number, comment: string | 
     body: JSON.stringify({ comment }),
   })
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
+}
+
+export interface CashflowBucketDto {
+  key: string
+  incomeGross: number
+  incomeNet: number
+  expensesGross: number
+  expensesNet: number
+  net: number
+}
+
+export interface CashflowResponseDto {
+  granularity: string
+  buckets: CashflowBucketDto[]
+}
+
+export async function fetchCashflow(
+  from: string,
+  to: string,
+  granularity: 'monthly' | 'yearly',
+  iban?: string,
+): Promise<CashflowResponseDto> {
+  const params = new URLSearchParams({ from, to, granularity: granularity.toUpperCase() })
+  if (iban) params.set('iban', iban)
+  const res = await fetchWithUser(`/transactions/cashflow?${params}`)
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  return res.json() as Promise<CashflowResponseDto>
+}
+
+export interface BurnRatePointDto {
+  date: string
+  expenses: number
+  rollingAvg: number
+  cumulative: number
+  cumulativeIncome: number
+}
+
+export interface BurnRateResponseDto {
+  points: BurnRatePointDto[]
+  totalExpenses: number
+  totalIncome: number
+  avgPerDay: number
+}
+
+export async function fetchBurnRate(
+  from: string,
+  to: string,
+  rollingWindow: number,
+  iban?: string,
+): Promise<BurnRateResponseDto> {
+  const params = new URLSearchParams({ from, to, rollingWindow: String(rollingWindow) })
+  if (iban) params.set('iban', iban)
+  const res = await fetchWithUser(`/transactions/burnrate?${params}`)
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  return res.json() as Promise<BurnRateResponseDto>
+}
+
+export interface CategoryTotalItem {
+  name: string
+  value: number
+}
+
+export interface CategoryTotalsResponseDto {
+  items: CategoryTotalItem[]
+}
+
+export async function fetchCategoryTotals(
+  from: string,
+  to: string,
+  iban?: string,
+  category?: string,
+): Promise<CategoryTotalsResponseDto> {
+  const params = new URLSearchParams({ from, to })
+  if (iban) params.set('iban', iban)
+  if (category) params.set('category', category)
+  const res = await fetchWithUser(`/transactions/category-totals?${params}`)
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  return res.json() as Promise<CategoryTotalsResponseDto>
 }
 
 export async function fetchSankeyData(from: string, to: string, iban?: string): Promise<SankeyResponse> {

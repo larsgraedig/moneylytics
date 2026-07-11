@@ -68,4 +68,6 @@ interface TransactionRepository {
     )
 
     fun latestTransactionDatesByUserId(userId: Long): Map<String, LocalDate>
+
+    fun findAssignedTransactionIdsByCollectionId(collectionId: Long): Set<Long>
 }

@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<title>Moneylytics — Branch-Vergleich Run 2: Angeglichene Testdaten</title>
+<style>
+  :root {
+    --bg: #0f0f13;
+    --bg2: #18181f;
+    --bg3: #22222c;
+    --border: #2e2e3a;
+    --accent: #f59e0b;
+    --green: #4ade80;
+    --red: #f87171;
+    --blue: #60a5fa;
+    --purple: #a78bfa;
+    --text: #e2e2e8;
+    --muted: #6b6b7a;
+    --r: 8px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'SF Mono', 'Fira Code', monospace; background: var(--bg); color: var(--text); line-height: 1.6; }
+
+  .page { max-width: 1100px; margin: 0 auto; padding: 48px 24px; }
+  .section { margin-bottom: 48px; }
+
+  h1 { font-size: 1.7rem; font-weight: 700; letter-spacing: -.5px; margin-bottom: 4px; }
+  h2 { font-size: 1.15rem; font-weight: 600; letter-spacing: -.3px; margin-bottom: 16px; color: var(--green); border-bottom: 1px solid var(--border); padding-bottom: 8px; }
+  h3 { font-size: 0.95rem; font-weight: 600; margin-bottom: 12px; margin-top: 24px; }
+  p  { color: var(--text); font-size: 0.88rem; margin-bottom: 12px; }
+  code { background: var(--bg3); padding: 1px 6px; border-radius: 4px; font-size: 0.82rem; color: var(--blue); }
+
+  .header { border-bottom: 1px solid var(--border); padding-bottom: 24px; margin-bottom: 40px; }
+  .subtitle { color: var(--muted); font-size: 0.82rem; margin-top: 4px; }
+  .badge-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 16px; }
+  .badge { padding: 3px 10px; border-radius: 100px; font-size: 0.75rem; font-weight: 600; }
+  .badge-green  { background: #14532d; color: var(--green); }
+  .badge-blue   { background: #1e3a5f; color: var(--blue); }
+
+  /* Run comparison banner */
+  .run-compare { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 32px; }
+  .run-card { border-radius: var(--r); padding: 16px 20px; }
+  .run-card.run1 { background: #1a0a0a; border: 1px solid #5a1a1a; }
+  .run-card.run2 { background: #0a1a0a; border: 1px solid #1a5a1a; }
+  .run-card .run-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1px; font-weight: 700; margin-bottom: 6px; }
+  .run-card.run1 .run-label { color: var(--red); }
+  .run-card.run2 .run-label { color: var(--green); }
+  .run-card .run-title { font-size: 1rem; font-weight: 700; margin-bottom: 4px; }
+  .run-card .run-sub { font-size: 0.78rem; color: var(--muted); }
+  .run-card .run-result { font-size: 1.4rem; font-weight: 800; margin-top: 10px; }
+  .run-card.run1 .run-result { color: var(--red); }
+  .run-card.run2 .run-result { color: var(--green); }
+
+  /* Change log */
+  .change-box { background: var(--bg2); border: 1px solid var(--green); border-radius: var(--r); padding: 16px 20px; margin-bottom: 24px; }
+  .change-box .title { font-size: 0.75rem; font-weight: 700; color: var(--green); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; }
+
+  /* Summary stats */
+  .summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 24px; }
+  .stat-card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--r); padding: 16px; text-align: center; }
+  .stat-card .val { font-size: 1.8rem; font-weight: 700; }
+  .stat-card .lbl { font-size: 0.72rem; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-top: 4px; }
+  .stat-card.ok   .val { color: var(--green); }
+  .stat-card.info .val { color: var(--blue); }
+
+  /* Tables */
+  table { width: 100%; border-collapse: collapse; font-size: 0.82rem; margin-bottom: 20px; }
+  th { text-align: left; padding: 8px 12px; background: var(--bg3); color: var(--muted); font-weight: 600; font-size: 0.72rem; text-transform: uppercase; letter-spacing: .5px; border-bottom: 1px solid var(--border); }
+  td { padding: 8px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: var(--bg2); }
+  td.match  { color: var(--green); font-weight: 600; }
+  td.label  { color: var(--text); font-weight: 600; }
+  td.muted  { color: var(--muted); font-style: italic; font-size: 0.78rem; }
+
+  /* Screenshots */
+  .screenshot-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+  .screenshot-box { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--r); overflow: hidden; }
+  .screenshot-box .scr-label { padding: 8px 12px; font-size: 0.75rem; font-weight: 700; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+  .screenshot-box.p5-box .scr-label { color: var(--green); }
+  .screenshot-box.main-box .scr-label { color: var(--blue); }
+  .screenshot-box img { width: 100%; display: block; }
+  .identical-badge { font-size: 0.68rem; background: #14532d; color: var(--green); padding: 2px 7px; border-radius: 100px; font-weight: 700; }
+
+  /* Diff tag */
+  .diff-tag { display: inline-block; padding: 1px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 700; }
+  .diff-ok { background: #14532d; color: var(--green); }
+
+  /* Verdict */
+  .verdict { background: #0a1a0a; border: 1px solid var(--green); border-radius: var(--r); padding: 24px; text-align: center; }
+  .verdict h3 { color: var(--green); font-size: 1.4rem; margin-bottom: 10px; }
+  .verdict p  { color: var(--muted); font-size: 0.88rem; margin: 0; }
+
+  /* Math block */
+  .math-block { background: var(--bg3); border: 1px solid var(--border); border-radius: var(--r); padding: 16px 20px; font-size: 0.82rem; margin-bottom: 12px; }
+  .math-block .eq { display: flex; justify-content: space-between; padding: 3px 0; }
+  .math-block .eq-label { color: var(--muted); }
+  .math-block .eq-val { font-weight: 700; }
+  .math-block .eq-val.green { color: var(--green); }
+
+  @media (max-width: 700px) {
+    .run-compare, .summary-grid, .screenshot-pair { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- Header -->
+  <div class="header section">
+    <h1>Moneylytics — Branch-Vergleich <span style="color:var(--green)">Run 2</span></h1>
+    <p class="subtitle">refactoring-phase-5 &nbsp;vs.&nbsp; main (angeglichene Testdaten) &nbsp;·&nbsp; 11. Juli 2026 &nbsp;·&nbsp; Playwright + API-Analyse</p>
+    <div class="badge-row">
+      <span class="badge badge-green">✓ 19 von 19 Checks bestanden</span>
+      <span class="badge badge-green">0 Unterschiede</span>
+      <span class="badge badge-blue">Gleicher Datensatz auf beiden Branches</span>
+    </div>
+  </div>
+
+  <!-- Run comparison -->
+  <div class="section">
+    <h2>Vergleich: Run 1 → Run 2</h2>
+    <div class="run-compare">
+      <div class="run-card run1">
+        <div class="run-label">Run 1 — 11. Juli 2026, 09:22 Uhr</div>
+        <div class="run-title">Originale Testdaten</div>
+        <div class="run-sub">main ohne generateFixedTransactions(), setupBudgets(), setupCollections(), setupOffsetLinks()</div>
+        <div class="run-result">7 ✗ Unterschiede</div>
+      </div>
+      <div class="run-card run2">
+        <div class="run-label">Run 2 — 11. Juli 2026, 16:45 Uhr</div>
+        <div class="run-title">Angeglichene Testdaten</div>
+        <div class="run-sub">LocalDataInitializer.kt von refactoring-phase-5 in main-Worktree übernommen, JAR neu gebaut</div>
+        <div class="run-result">0 ✗ Unterschiede</div>
+      </div>
+    </div>
+
+    <div class="change-box">
+      <div class="title">Einzige Änderung zwischen Run 1 und Run 2</div>
+      <p style="margin:0;font-size:0.85rem;">
+        <code>cp web/src/main/kotlin/.../LocalDataInitializer.kt /tmp/mly-main/.../LocalDataInitializer.kt</code><br>
+        <span style="color:var(--muted)">→ main-Worktree neu gebaut (<code>./gradlew :web:bootJar</code>) → beide Backends neu gestartet (H2 in-memory frisch befüllt)</span>
+      </p>
+    </div>
+  </div>
+
+  <!-- Summary -->
+  <div class="section">
+    <h2>Ergebnis-Übersicht</h2>
+    <div class="summary-grid">
+      <div class="stat-card info">
+        <div class="val">363</div>
+        <div class="lbl">TXs phase-5</div>
+      </div>
+      <div class="stat-card info">
+        <div class="val">363</div>
+        <div class="lbl">TXs main (Run 2)</div>
+      </div>
+      <div class="stat-card ok">
+        <div class="val">19</div>
+        <div class="lbl">Checks bestanden</div>
+      </div>
+      <div class="stat-card ok">
+        <div class="val">0</div>
+        <div class="lbl">Unterschiede</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Page results -->
+  <div class="section">
+    <h2>Seite-für-Seite-Vergleich</h2>
+
+    <!-- Cashflow -->
+    <h3>CashflowPage</h3>
+    <table>
+      <thead><tr><th>Kennzahl</th><th>refactoring-phase-5</th><th>main (Run 2)</th><th>Status</th></tr></thead>
+      <tbody>
+        <tr><td class="label">Einnahmen</td><td class="match">71.095 €</td><td class="match">71.095 €</td><td><span class="diff-tag diff-ok">✓ identisch</span></td></tr>
+        <tr><td class="label">Ausgaben</td><td class="match">48.421 €</td><td class="match">48.421 €</td><td><span class="diff-tag diff-ok">✓ identisch</span></td></tr>
+        <tr><td class="label">Netto</td><td class="match">22.674 €</td><td class="match">22.674 €</td><td><span class="diff-tag diff-ok">✓ identisch</span></td></tr>
+        <tr><td class="label">Labels (Einnahmen / Ausgaben / Netto)</td><td class="match">✓</td><td class="match">✓</td><td><span class="diff-tag diff-ok">✓ identisch</span></td></tr>
+        <tr><td class="label">Diagramm-Form (24 Monatssäulen)</td><td colspan="2" class="muted">Pixel-identisch — beide Screenshots byte-gleich in relevanten Bereichen</td><td><span class="diff-tag diff-ok">✓ identisch</span></td></tr>
+      </tbody>
+    </table>
+    <div class="screenshot-pair">
+      <div class="screenshot-box p5-box">
+        <div class="scr-label">refactoring-phase-5 · :5173 <span class="identical-badge">IDENTISCH</span></div>
+        <img src="compare-screenshots-run2/cashflow-phase5.png" alt="Cashflow phase5">
+      </div>
+      <div class="screenshot-box main-box">
+        <div class="scr-label">main (Run 2) · :5174 <span class="identical-badge">IDENTISCH</span></div>
+        <img src="compare-screenshots-run2/cashflow-main.png" alt="Cashflow main">
+      </div>
+    </div>
+
+    <!-- BurnRate -->
+    <h3>BurnRatePage</h3>
+    <table>
+      <thead><tr><th>Kennzahl</th><th>refactoring-phase-5</th><th>main (Run 2)</th><th>Status</th></tr></thead>
+      <tbody>
+        <tr><td class="label">Gesamtausgaben</td><td class="match">48.253 €</td><td class="match">48.253 €</td><td><span class="diff-tag diff-ok">✓ identisch</span></td></tr>
+        <tr><td class="label">∅ pro Tag</td><td class="match">66,01 €</td><td class="match">66,01 €</td><td><span class="diff-tag diff-ok">✓ identisch</span></td></tr>
+        <tr><td class="label">∅ pro Monat</td><td class="match">1.980 €</td><td class="match">1.980 €</td><td><span class="diff-tag diff-ok">✓ identisch</span></td></tr>
+        <tr><td class="label">Runway — Einnahmen</td><td class="match">70.928 €</td><td class="match">70.928 €</td><td><span class="diff-tag diff-ok">✓ identisch</span></td></tr>
+        <tr><td class="label">Runway — Rate &amp; Tage</td><td class="match">66,01 €/Tag → 1075 Tage</td><td class="match">66,01 €/Tag → 1075 Tage</td><td><span class="diff-tag diff-ok">✓ identisch</span></td></tr>
+      </tbody>
+    </table>
+    <div class="screenshot-pair">
+      <div class="screenshot-box p5-box">
+        <div class="scr-label">refactoring-phase-5 · :5173 <span class="identical-badge">IDENTISCH</span></div>
+        <img src="compare-screenshots-run2/burnrate-phase5.png" alt="BurnRate phase5">
+      </div>
+      <div class="screenshot-box main-box">
+        <div class="scr-label">main (Run 2) · :5174 <span class="identical-badge">IDENTISCH</span></div>
+        <img src="compare-screenshots-run2/burnrate-main.png" alt="BurnRate main">
+      </div>
+    </div>
+
+    <!-- PiePage -->
+    <h3>PiePage — Kategorie-Totals (API-Vergleich)</h3>
+    <table>
+      <thead><tr><th>Kategorie</th><th>refactoring-phase-5</th><th>main (Run 2, berechnet)</th><th>Status</th></tr></thead>
+      <tbody>
+        <tr><td class="label">Wohnen</td><td class="match">24.559,76 €</td><td class="match">24.559,76 €</td><td><span class="diff-tag diff-ok">✓ identisch</span></td></tr>
+        <tr><td class="label">Sparen</td><td class="match">8.820,83 €</td><td class="match">8.820,83 €</td><td><span class="diff-tag diff-ok">✓ identisch</span></td></tr>
+        <tr><td class="label">Lebensmittel</td><td class="match">8.502,96 €</td><td class="match">8.502,96 €</td><td><span class="diff-tag diff-ok">✓ identisch</span></td></tr>
+        <tr><td class="label">Transport</td><td class="match">2.572,81 €</td><td class="match">2.572,81 €</td><td><span class="diff-tag diff-ok">✓ identisch</span></td></tr>
+        <tr><td class="label">Shopping</td><td class="match">1.512,42 €</td><td class="match">1.512,42 €</td><td><span class="diff-tag diff-ok">✓ identisch</span></td></tr>
+        <tr><td class="label">Reise</td><td class="match">1.070,00 €</td><td class="match">1.070,00 €</td><td><span class="diff-tag diff-ok">✓ identisch</span></td></tr>
+        <tr><td class="label">Gesundheit</td><td class="match">615,89 €</td><td class="match">615,89 €</td><td><span class="diff-tag diff-ok">✓ identisch</span></td></tr>
+        <tr><td class="label">Freizeit</td><td class="match">598,76 €</td><td class="match">598,76 €</td><td><span class="diff-tag diff-ok">✓ identisch</span></td></tr>
+      </tbody>
+    </table>
+
+    <!-- Budgets -->
+    <h3>BudgetsPage</h3>
+    <table>
+      <thead><tr><th>Budget</th><th>Ziel</th><th>totalContributions</th><th>Fortschritt</th><th>Status</th></tr></thead>
+      <tbody>
+        <tr>
+          <td class="label">Urlaub 2025</td>
+          <td>1.200 €</td>
+          <td class="match">1.070 €</td>
+          <td class="match">89,2 %</td>
+          <td><span class="diff-tag diff-ok">✓ auf beiden Branches vorhanden und identisch</span></td>
+        </tr>
+        <tr>
+          <td class="label">Neue Küche</td>
+          <td>3.500 €</td>
+          <td class="match">500 €</td>
+          <td class="match">14,3 %</td>
+          <td><span class="diff-tag diff-ok">✓ auf beiden Branches vorhanden und identisch</span></td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="screenshot-pair">
+      <div class="screenshot-box p5-box">
+        <div class="scr-label">refactoring-phase-5 · :5173</div>
+        <img src="compare-screenshots-run2/budgets-phase5.png" alt="Budgets phase5">
+      </div>
+      <div class="screenshot-box main-box">
+        <div class="scr-label">main (Run 2) · :5174</div>
+        <img src="compare-screenshots-run2/budgets-main.png" alt="Budgets main">
+      </div>
+    </div>
+
+    <!-- Collections -->
+    <h3>CollectionsPage</h3>
+    <table>
+      <thead><tr><th>Sammlung</th><th>Transaktionen</th><th>Status</th></tr></thead>
+      <tbody>
+        <tr><td class="label">Sommer 2025</td><td class="match">5 TXs — auf beiden Branches vorhanden</td><td><span class="diff-tag diff-ok">✓ identisch</span></td></tr>
+        <tr><td class="label">Haushalt Q1 2025</td><td class="match">4 TXs — auf beiden Branches vorhanden</td><td><span class="diff-tag diff-ok">✓ identisch</span></td></tr>
+      </tbody>
+    </table>
+    <div class="screenshot-pair">
+      <div class="screenshot-box p5-box">
+        <div class="scr-label">refactoring-phase-5 · :5173</div>
+        <img src="compare-screenshots-run2/collections-phase5.png" alt="Collections phase5">
+      </div>
+      <div class="screenshot-box main-box">
+        <div class="scr-label">main (Run 2) · :5174</div>
+        <img src="compare-screenshots-run2/collections-main.png" alt="Collections main">
+      </div>
+    </div>
+  </div>
+
+  <!-- Final verdict -->
+  <div class="section">
+    <h2>Gesamtbewertung</h2>
+
+    <div class="math-block">
+      <div class="eq"><span class="eq-label">Unterschiede Run 1 (verschiedene Testdaten)</span><span class="eq-val" style="color:var(--red)">7</span></div>
+      <div class="eq"><span class="eq-label">Unterschiede Run 2 (gleiche Testdaten)</span><span class="eq-val green">0</span></div>
+      <div class="eq"><span class="eq-label">Durch Testdaten erklärte Unterschiede</span><span class="eq-val green">7 von 7 = 100 %</span></div>
+    </div>
+
+    <div class="verdict">
+      <h3>✓ Refactoring vollständig verifiziert</h3>
+      <p>
+        Bei identischen Eingabedaten produzieren <strong>refactoring-phase-5</strong> (Backend-Aggregation) und
+        <strong>main</strong> (Frontend-Aggregation) auf allen geprüften Seiten exakt dieselben Zahlen und Diagramme.
+        Alle 7 Unterschiede aus Run&nbsp;1 waren ausschließlich durch den fehlenden Testdatensatz auf <code>main</code> bedingt —
+        kein einziger Logikfehler, keine Regression.
+      </p>
+    </div>
+  </div>
+
+  <div style="color: var(--muted); font-size: 0.72rem; text-align: center; padding-top: 24px; border-top: 1px solid var(--border);">
+    Run 2 · 11.07.2026, 16:46 Uhr &nbsp;·&nbsp; Playwright 1.61.1 &nbsp;·&nbsp; Vergleich mit <a href="vergleichsbericht.html">Run 1</a>
+  </div>
+
+</div>
+</body>
+</html>

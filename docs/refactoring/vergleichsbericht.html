@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<title>Moneylytics — Branch-Vergleich: refactoring-phase-5 vs. main</title>
+<style>
+  :root {
+    --bg: #0f0f13;
+    --bg2: #18181f;
+    --bg3: #22222c;
+    --border: #2e2e3a;
+    --accent: #f59e0b;
+    --green: #4ade80;
+    --red: #f87171;
+    --blue: #60a5fa;
+    --purple: #a78bfa;
+    --text: #e2e2e8;
+    --muted: #6b6b7a;
+    --r: 8px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'SF Mono', 'Fira Code', monospace; background: var(--bg); color: var(--text); line-height: 1.6; }
+  a { color: var(--accent); }
+
+  /* Layout */
+  .page { max-width: 1100px; margin: 0 auto; padding: 48px 24px; }
+  .section { margin-bottom: 48px; }
+
+  /* Typography */
+  h1 { font-size: 1.7rem; font-weight: 700; letter-spacing: -.5px; margin-bottom: 4px; }
+  h2 { font-size: 1.15rem; font-weight: 600; letter-spacing: -.3px; margin-bottom: 16px; color: var(--accent); border-bottom: 1px solid var(--border); padding-bottom: 8px; }
+  h3 { font-size: 0.95rem; font-weight: 600; margin-bottom: 12px; }
+  p  { color: var(--text); font-size: 0.88rem; margin-bottom: 12px; }
+  code { background: var(--bg3); padding: 1px 6px; border-radius: 4px; font-size: 0.82rem; color: var(--blue); }
+
+  /* Header */
+  .header { border-bottom: 1px solid var(--border); padding-bottom: 24px; margin-bottom: 40px; }
+  .subtitle { color: var(--muted); font-size: 0.82rem; margin-top: 4px; }
+  .badge-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 16px; }
+  .badge { padding: 3px 10px; border-radius: 100px; font-size: 0.75rem; font-weight: 600; }
+  .badge-green  { background: #14532d; color: var(--green); }
+  .badge-red    { background: #450a0a; color: var(--red); }
+  .badge-yellow { background: #451a03; color: var(--accent); }
+  .badge-blue   { background: #1e3a5f; color: var(--blue); }
+
+  /* Process Cards */
+  .process-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+  .process-card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--r); padding: 16px; }
+  .process-card .label { font-size: 0.7rem; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; }
+  .process-card .name { font-size: 1rem; font-weight: 700; margin-bottom: 8px; }
+  .process-card.p5 .name { color: var(--green); }
+  .process-card.main .name { color: var(--blue); }
+  .process-meta { font-size: 0.78rem; color: var(--muted); display: flex; flex-direction: column; gap: 2px; }
+
+  /* Summary Box */
+  .summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 24px; }
+  .stat-card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--r); padding: 16px; text-align: center; }
+  .stat-card .val { font-size: 1.8rem; font-weight: 700; }
+  .stat-card .lbl { font-size: 0.72rem; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-top: 4px; }
+  .stat-card.ok .val   { color: var(--green); }
+  .stat-card.fail .val { color: var(--red); }
+  .stat-card.info .val { color: var(--blue); }
+  .stat-card.warn .val { color: var(--accent); }
+
+  /* Finding Box */
+  .finding { background: var(--bg2); border-left: 3px solid var(--accent); border-radius: 0 var(--r) var(--r) 0; padding: 16px 20px; margin-bottom: 20px; }
+  .finding .title { font-size: 0.8rem; font-weight: 700; color: var(--accent); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+  .finding p { margin-bottom: 0; font-size: 0.85rem; }
+  .finding.ok   { border-color: var(--green); }
+  .finding.ok .title { color: var(--green); }
+  .finding.fail { border-color: var(--red); }
+  .finding.fail .title { color: var(--red); }
+
+  /* Comparison Table */
+  table { width: 100%; border-collapse: collapse; font-size: 0.82rem; margin-bottom: 20px; }
+  th { text-align: left; padding: 8px 12px; background: var(--bg3); color: var(--muted); font-weight: 600; font-size: 0.72rem; text-transform: uppercase; letter-spacing: .5px; border-bottom: 1px solid var(--border); }
+  td { padding: 8px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: var(--bg2); }
+  td.match   { color: var(--green); }
+  td.nomatch { color: var(--red); }
+  td.label   { color: var(--text); font-weight: 600; }
+  td.note    { color: var(--muted); font-style: italic; font-size: 0.78rem; }
+  td.expected { color: var(--accent); }
+
+  /* Math Proof */
+  .math-block { background: var(--bg3); border: 1px solid var(--border); border-radius: var(--r); padding: 16px 20px; font-size: 0.82rem; margin-bottom: 16px; }
+  .math-block .eq { display: flex; justify-content: space-between; align-items: center; padding: 3px 0; }
+  .math-block .eq-label { color: var(--muted); }
+  .math-block .eq-val { font-weight: 700; }
+  .math-block .eq-val.green { color: var(--green); }
+  .math-block .eq-val.accent { color: var(--accent); }
+  .math-block hr { border: none; border-top: 1px dashed var(--border); margin: 8px 0; }
+
+  /* Screenshots */
+  .screenshot-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+  .screenshot-box { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--r); overflow: hidden; }
+  .screenshot-box .scr-label { padding: 8px 12px; font-size: 0.75rem; font-weight: 700; border-bottom: 1px solid var(--border); }
+  .screenshot-box.p5-box .scr-label { color: var(--green); }
+  .screenshot-box.main-box .scr-label { color: var(--blue); }
+  .screenshot-box img { width: 100%; display: block; }
+
+  /* Diff highlight */
+  .diff-tag { display: inline-block; padding: 1px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 700; }
+  .diff-expected { background: #451a03; color: var(--accent); }
+  .diff-ok       { background: #14532d; color: var(--green); }
+  .diff-bug      { background: #450a0a; color: var(--red); }
+
+  /* Legend */
+  .legend { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 20px; font-size: 0.78rem; }
+  .legend-item { display: flex; align-items: center; gap: 6px; }
+  .legend-dot { width: 10px; height: 10px; border-radius: 2px; }
+
+  /* Timeline */
+  .timeline { position: relative; padding-left: 28px; }
+  .timeline::before { content: ''; position: absolute; left: 9px; top: 0; bottom: 0; width: 1px; background: var(--border); }
+  .tl-item { position: relative; margin-bottom: 16px; }
+  .tl-item::before { content: ''; position: absolute; left: -23px; top: 6px; width: 9px; height: 9px; border-radius: 50%; background: var(--accent); }
+  .tl-item.ok::before  { background: var(--green); }
+  .tl-item.err::before { background: var(--red); }
+  .tl-item .tl-time { font-size: 0.7rem; color: var(--muted); }
+  .tl-item .tl-desc { font-size: 0.85rem; }
+
+  .verdict { background: var(--bg2); border: 1px solid var(--green); border-radius: var(--r); padding: 20px 24px; text-align: center; }
+  .verdict h3 { color: var(--green); font-size: 1.2rem; margin-bottom: 8px; }
+  .verdict p { color: var(--muted); font-size: 0.85rem; margin: 0; }
+
+  @media (max-width: 700px) {
+    .process-grid, .summary-grid, .screenshot-pair { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- Header -->
+  <div class="header section">
+    <h1>Moneylytics — Branch-Vergleich</h1>
+    <p class="subtitle">refactoring-phase-5 &nbsp;vs.&nbsp; main &nbsp;·&nbsp; 11. Juli 2026 &nbsp;·&nbsp; Playwright + API-Analyse</p>
+    <div class="badge-row">
+      <span class="badge badge-green">✓ Refactoring korrekt</span>
+      <span class="badge badge-yellow">7 Zahlenunterschiede</span>
+      <span class="badge badge-blue">Ursache: zusätzliche Testdaten</span>
+      <span class="badge badge-green">Kein Logikfehler</span>
+    </div>
+  </div>
+
+  <!-- Setup -->
+  <div class="section">
+    <h2>① Infrastruktur-Setup</h2>
+    <div class="process-grid">
+      <div class="process-card p5">
+        <div class="label">Zu prüfender Branch</div>
+        <div class="name">refactoring-phase-5</div>
+        <div class="process-meta">
+          <span>Backend  → <code>:8080</code> &nbsp; (Spring Boot, H2, Profil=local)</span>
+          <span>Frontend → <code>:5173</code> &nbsp; (Vite dev-server, Proxy → 8080)</span>
+          <span>Commit: <code>9152b79</code></span>
+        </div>
+      </div>
+      <div class="process-card main">
+        <div class="label">Referenz-Branch</div>
+        <div class="name">main</div>
+        <div class="process-meta">
+          <span>Backend  → <code>:8081</code> &nbsp; (git worktree in <code>/tmp/mly-main</code>)</span>
+          <span>Frontend → <code>:5174</code> &nbsp; (Vite dev-server, Proxy → 8081)</span>
+          <span>Commit: <code>af11e61</code></span>
+        </div>
+      </div>
+    </div>
+    <div class="timeline">
+      <div class="tl-item ok">
+        <div class="tl-time">09:04</div>
+        <div class="tl-desc"><code>git worktree add /tmp/mly-main main</code> — erfolgreich</div>
+      </div>
+      <div class="tl-item ok">
+        <div class="tl-time">09:06</div>
+        <div class="tl-desc">Beide Backends parallel gebaut (<code>./gradlew :web:bootJar</code>)</div>
+      </div>
+      <div class="tl-item err">
+        <div class="tl-time">09:15</div>
+        <div class="tl-desc">Konflikt: <code>H2ConsoleConfiguration</code> binder Port 8082 doppelt → Port auf 8083 im Worktree geändert, neu gebaut</div>
+      </div>
+      <div class="tl-item ok">
+        <div class="tl-time">09:21</div>
+        <div class="tl-desc">Alle 4 Prozesse laufen: Backend 8080/8081 + Frontend 5173/5174</div>
+      </div>
+      <div class="tl-item ok">
+        <div class="tl-time">09:22</div>
+        <div class="tl-desc">Playwright-Vergleich gestartet (Zeitraum 2024-01-01 bis 2025-12-31)</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Summary -->
+  <div class="section">
+    <h2>② Ergebnis-Übersicht</h2>
+    <div class="summary-grid">
+      <div class="stat-card info">
+        <div class="val">363</div>
+        <div class="lbl">TXs auf phase-5</div>
+      </div>
+      <div class="stat-card info">
+        <div class="val">355</div>
+        <div class="lbl">TXs auf main</div>
+      </div>
+      <div class="stat-card fail">
+        <div class="val">7</div>
+        <div class="lbl">Zahlendifferenzen</div>
+      </div>
+      <div class="stat-card ok">
+        <div class="val">0</div>
+        <div class="lbl">Logikfehler</div>
+      </div>
+    </div>
+    <div class="finding ok">
+      <div class="title">✓ Kern-Befund</div>
+      <p>Alle 7 Zahlendifferenzen sind <strong>vollständig und mathematisch exakt</strong> durch die 8 festen Transaktionen erklärbar, die als Testdaten-Setup im Plan beschrieben und nur auf <code>refactoring-phase-5</code> implementiert sind. Die Berechnungslogik ist <strong>korrekt</strong>.</p>
+    </div>
+  </div>
+
+  <!-- Root Cause -->
+  <div class="section">
+    <h2>③ Ursachenanalyse: LocalDataInitializer</h2>
+    <p>Der <code>diff</code> zwischen den beiden <code>LocalDataInitializer.kt</code> zeigt: <code>main</code> importiert nur <code>generateMainTransactions() + generateSavingsTransactions()</code>. Auf <code>refactoring-phase-5</code> wurden im Rahmen des Migrations-Plans zusätzliche Testdaten hinzugefügt:</p>
+
+    <table>
+      <thead><tr><th>Feature</th><th>main</th><th>refactoring-phase-5</th></tr></thead>
+      <tbody>
+        <tr><td class="label">generateFixedTransactions()</td><td class="nomatch">✗ fehlt</td><td class="match">✓ 8 feste TXs</td></tr>
+        <tr><td class="label">setupOffsetLinks()</td><td class="nomatch">✗ fehlt</td><td class="match">✓ 2 Offset-Paare</td></tr>
+        <tr><td class="label">setupThresholds()</td><td class="nomatch">✗ fehlt</td><td class="match">✓ 3 Limits</td></tr>
+        <tr><td class="label">setupBudgets()</td><td class="nomatch">✗ fehlt</td><td class="match">✓ 2 Budgets</td></tr>
+        <tr><td class="label">setupCollections()</td><td class="nomatch">✗ fehlt</td><td class="match">✓ 2 Sammlungen</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Die 8 festen Transaktionen (nur auf phase-5)</h3>
+    <table>
+      <thead><tr><th>Datum</th><th>Kategorie / Unterkategorie</th><th>amount</th><th>effectiveAmount</th></tr></thead>
+      <tbody>
+        <tr><td>2025-03-15</td><td>Gesundheit / Arzt</td><td class="nomatch">−180,00 €</td><td>−60,00 € (Offset −120)</td></tr>
+        <tr><td>2025-03-18</td><td>Einnahmen / Erstattung</td><td class="match">+120,00 €</td><td>0,00 € (vollständig offset)</td></tr>
+        <tr><td>2025-06-20</td><td>Lebensmittel / Restaurant</td><td class="nomatch">−95,00 €</td><td>−47,50 € (Offset −47,50)</td></tr>
+        <tr><td>2025-06-21</td><td>Einnahmen / Überweisung</td><td class="match">+47,50 €</td><td>0,00 € (vollständig offset)</td></tr>
+        <tr><td>2025-04-10</td><td>Reise / Flug</td><td class="nomatch">−380,00 €</td><td>−380,00 €</td></tr>
+        <tr><td>2025-05-22</td><td>Reise / Hotel</td><td class="nomatch">−490,00 €</td><td>−490,00 €</td></tr>
+        <tr><td>2025-07-01</td><td>Reise / Aktivitäten</td><td class="nomatch">−200,00 €</td><td>−200,00 €</td></tr>
+        <tr><td>2025-09-05</td><td>Wohnen / Einrichtung</td><td class="nomatch">−800,00 €</td><td>−800,00 €</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Math Proof -->
+  <div class="section">
+    <h2>④ Mathematischer Nachweis: Refactoring-Logik korrekt</h2>
+    <p>Zieht man die Beiträge der 8 festen Transaktionen von den phase-5-Totals ab, erhält man exakt die main-Werte:</p>
+
+    <h3>Cashflow — Einnahmen (gross)</h3>
+    <div class="math-block">
+      <div class="eq"><span class="eq-label">phase-5 incomeGross</span><span class="eq-val accent">71.095,66 €</span></div>
+      <div class="eq"><span class="eq-label">− Erstattung (+120,00) + Überweisung (+47,50)</span><span class="eq-val">− 167,50 €</span></div>
+      <hr>
+      <div class="eq"><span class="eq-label">= Erwarteter main-Wert</span><span class="eq-val green">70.928,16 € ✓</span></div>
+      <div class="eq"><span class="eq-label">main API zurückgegeben</span><span class="eq-val green">70.928,16 € ✓</span></div>
+    </div>
+
+    <h3>Cashflow — Ausgaben (gross)</h3>
+    <div class="math-block">
+      <div class="eq"><span class="eq-label">phase-5 expensesGross</span><span class="eq-val accent">48.420,93 €</span></div>
+      <div class="eq"><span class="eq-label">− Arzt (180) + Restaurant (95) + Flug (380) + Hotel (490) + Aktivitäten (200) + Einrichtung (800)</span><span class="eq-val">− 2.145,00 €</span></div>
+      <hr>
+      <div class="eq"><span class="eq-label">= Erwarteter main-Wert</span><span class="eq-val green">46.275,93 € ✓</span></div>
+      <div class="eq"><span class="eq-label">main API zurückgegeben</span><span class="eq-val green">46.275,93 € ✓</span></div>
+    </div>
+
+    <h3>Kategorien-Summen (Pie-Page)</h3>
+    <div class="math-block">
+      <div class="eq"><span class="eq-label">Wohnen phase-5 − Einrichtung (800)</span><span class="eq-val green">24.559,76 − 800 = 23.759,76 € = main ✓</span></div>
+      <div class="eq"><span class="eq-label">Lebensmittel phase-5 − Restaurant-eff. (47,50)</span><span class="eq-val green">8.502,96 − 47,50 = 8.455,46 € = main ✓</span></div>
+      <div class="eq"><span class="eq-label">Gesundheit phase-5 − Arzt-eff. (60,00)</span><span class="eq-val green">615,89 − 60,00 = 555,89 € = main ✓</span></div>
+      <div class="eq"><span class="eq-label">Sparen, Transport, Shopping, Freizeit</span><span class="eq-val green">unverändert, identisch ✓</span></div>
+    </div>
+  </div>
+
+  <!-- Per-Page Results -->
+  <div class="section">
+    <h2>⑤ Seite-für-Seite-Vergleich</h2>
+    <div class="legend">
+      <div class="legend-item"><div class="legend-dot" style="background:#4ade80"></div> Gleich</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#f59e0b"></div> Unterschied — erwartet (Testdaten)</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#f87171"></div> Unterschied — unerklärt (Logikfehler)</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#60a5fa"></div> Nur auf phase-5 (neues Feature)</div>
+    </div>
+
+    <!-- Cashflow -->
+    <h3>CashflowPage</h3>
+    <table>
+      <thead><tr><th>Kennzahl</th><th>refactoring-phase-5</th><th>main</th><th>Status</th></tr></thead>
+      <tbody>
+        <tr><td class="label">Labels (Einnahmen / Ausgaben / Netto)</td><td>✓ korrekt</td><td>✓ korrekt</td><td><span class="diff-tag diff-ok">✓ gleich</span></td></tr>
+        <tr><td class="label">Einnahmen (Alle Einkünfte)</td><td>71.095 €</td><td>70.927 €</td><td><span class="diff-tag diff-expected">Δ +168 € = Erstattung+Überweisung</span></td></tr>
+        <tr><td class="label">Ausgaben (Alle Ausgaben)</td><td>48.421 €</td><td>46.276 €</td><td><span class="diff-tag diff-expected">Δ +2.145 € = 6 feste TXs</span></td></tr>
+        <tr><td class="label">Netto</td><td>22.674 €</td><td>24.651 €</td><td><span class="diff-tag diff-expected">Δ −1.977 € = erwartet</span></td></tr>
+        <tr><td class="label">Anzahl Balken (24 Monate)</td><td>24</td><td>24</td><td><span class="diff-tag diff-ok">✓ gleich</span></td></tr>
+        <tr><td class="label">Diagramm-Form</td><td colspan="2" class="note">Visuell nahezu identisch — gleicher Verlauf, leicht höhere Säulen auf phase-5 wegen Zusatz-TXs</td><td><span class="diff-tag diff-expected">erwartet</span></td></tr>
+      </tbody>
+    </table>
+    <div class="screenshot-pair">
+      <div class="screenshot-box p5-box">
+        <div class="scr-label">refactoring-phase-5 · :5173</div>
+        <img src="cashflow-phase5.png" alt="Cashflow phase5">
+      </div>
+      <div class="screenshot-box main-box">
+        <div class="scr-label">main · :5174</div>
+        <img src="cashflow-main.png" alt="Cashflow main">
+      </div>
+    </div>
+
+    <!-- BurnRate -->
+    <h3>BurnRatePage</h3>
+    <table>
+      <thead><tr><th>Kennzahl</th><th>refactoring-phase-5</th><th>main</th><th>Status</th></tr></thead>
+      <tbody>
+        <tr><td class="label">Gesamtausgaben</td><td>48.253 €</td><td>46.276 €</td><td><span class="diff-tag diff-expected">Δ +1.977 € = 6 feste TXs (effectiveAmount)</span></td></tr>
+        <tr><td class="label">∅ pro Tag</td><td>66,01 €</td><td>63,30 €</td><td><span class="diff-tag diff-expected">Δ proportional zu Ausgaben</span></td></tr>
+        <tr><td class="label">∅ pro Monat (Hochrechnung)</td><td>1.980 €</td><td>1.899 €</td><td><span class="diff-tag diff-expected">Δ proportional zu Ausgaben</span></td></tr>
+        <tr><td class="label">Runway — Einnahmen</td><td class="match">70.928 €</td><td class="match">70.928 €</td><td><span class="diff-tag diff-ok">✓ gleich</span></td></tr>
+        <tr><td class="label">Runway — Berechnung</td><td>66,01 €/Tag → 1075 Tage</td><td>63,30 €/Tag → 1120 Tage</td><td><span class="diff-tag diff-expected">Δ durch Rate-Differenz</span></td></tr>
+        <tr><td class="label">Kumulativkurven-Form</td><td colspan="2" class="note">Identische Kurvenstruktur, phase-5 insgesamt leicht höher</td><td><span class="diff-tag diff-expected">erwartet</span></td></tr>
+      </tbody>
+    </table>
+    <div class="screenshot-pair">
+      <div class="screenshot-box p5-box">
+        <div class="scr-label">refactoring-phase-5 · :5173</div>
+        <img src="burnrate-phase5.png" alt="BurnRate phase5">
+      </div>
+      <div class="screenshot-box main-box">
+        <div class="scr-label">main · :5174</div>
+        <img src="burnrate-main.png" alt="BurnRate main">
+      </div>
+    </div>
+
+    <!-- Pie -->
+    <h3>PiePage — Kategorie-Totals (API-Vergleich)</h3>
+    <p>Der neue <code>GET /transactions/category-totals</code>-Endpoint auf phase-5 vs. manuelle Berechnung aus <code>/transactions/list</code> auf main:</p>
+    <table>
+      <thead><tr><th>Kategorie</th><th>refactoring-phase-5</th><th>main (berechnet)</th><th>Differenz</th><th>Status</th></tr></thead>
+      <tbody>
+        <tr><td class="label">Wohnen</td><td>24.559,76 €</td><td>23.759,76 €</td><td>+800,00 €</td><td><span class="diff-tag diff-expected">Einrichtung-TX</span></td></tr>
+        <tr><td class="label">Sparen</td><td>8.820,83 €</td><td>8.820,83 €</td><td class="match">0,00 €</td><td><span class="diff-tag diff-ok">✓ gleich</span></td></tr>
+        <tr><td class="label">Lebensmittel</td><td>8.502,96 €</td><td>8.455,46 €</td><td>+47,50 €</td><td><span class="diff-tag diff-expected">Restaurant-TX (eff. Amt.)</span></td></tr>
+        <tr><td class="label">Transport</td><td>2.572,81 €</td><td>2.572,81 €</td><td class="match">0,00 €</td><td><span class="diff-tag diff-ok">✓ gleich</span></td></tr>
+        <tr><td class="label">Shopping</td><td>1.512,42 €</td><td>1.512,42 €</td><td class="match">0,00 €</td><td><span class="diff-tag diff-ok">✓ gleich</span></td></tr>
+        <tr><td class="label">Reise</td><td>1.070,00 €</td><td><em>—</em></td><td>+1.070,00 €</td><td><span class="diff-tag diff-expected">3 neue Reise-TXs</span></td></tr>
+        <tr><td class="label">Gesundheit</td><td>615,89 €</td><td>555,89 €</td><td>+60,00 €</td><td><span class="diff-tag diff-expected">Arzt-TX (eff. Amt.)</span></td></tr>
+        <tr><td class="label">Freizeit</td><td>598,76 €</td><td>598,76 €</td><td class="match">0,00 €</td><td><span class="diff-tag diff-ok">✓ gleich</span></td></tr>
+      </tbody>
+    </table>
+
+    <!-- Budgets -->
+    <h3>BudgetsPage — nur auf refactoring-phase-5</h3>
+    <p>Die <code>LocalDataInitializer</code> auf <code>main</code> enthält kein <code>setupBudgets()</code>. Der Vergleich ist daher N/A. Die Daten auf phase-5 entsprechen exakt den Plan-Vorgaben:</p>
+    <table>
+      <thead><tr><th>Budget</th><th>Ziel</th><th>totalContributions</th><th>Fortschritt</th><th>chartPoints</th><th>Plan-Soll</th></tr></thead>
+      <tbody>
+        <tr>
+          <td class="label">Urlaub 2025</td><td>1.200 €</td>
+          <td class="match">1.070 €</td>
+          <td class="match">89,2 %</td>
+          <td>Apr→380, Mai→870, Jul→1070</td>
+          <td><span class="diff-tag diff-ok">✓ Plan-Soll 89,2 %</span></td>
+        </tr>
+        <tr>
+          <td class="label">Neue Küche</td><td>3.500 €</td>
+          <td class="match">500 €</td>
+          <td class="match">14,3 %</td>
+          <td>Sep→500</td>
+          <td><span class="diff-tag diff-ok">✓ Plan-Soll 14,3 %</span></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- Collections -->
+    <h3>CollectionsPage — nur auf refactoring-phase-5</h3>
+    <table>
+      <thead><tr><th>Sammlung</th><th>Transaktionen</th><th>Status</th></tr></thead>
+      <tbody>
+        <tr><td class="label">Sommer 2025</td><td class="match">5 TXs (3× Restaurant + 2× Sport)</td><td><span class="diff-tag diff-ok">✓ Plan-Soll ≥5</span></td></tr>
+        <tr><td class="label">Haushalt Q1 2025</td><td class="match">4 TXs (2× Miete + 2× Internet)</td><td><span class="diff-tag diff-ok">✓ Plan-Soll ≥4</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Verdicts -->
+  <div class="section">
+    <h2>⑥ Gesamtbewertung</h2>
+
+    <div class="finding ok">
+      <div class="title">✓ CashflowPage — Refactoring korrekt</div>
+      <p>Das neue <code>GET /transactions/cashflow</code>-Backend berechnet <code>incomeGross</code> und <code>expensesGross</code> mit derselben Formel wie die alte Frontend-Aggregation. Identische Zahlen für identische Eingabedaten — mathematisch bewiesen.</p>
+    </div>
+    <div class="finding ok">
+      <div class="title">✓ BurnRatePage — Refactoring korrekt</div>
+      <p>Das neue <code>GET /transactions/burnrate</code>-Backend liefert korrekte Tages-Aggregationen, Rolling Average und Kumulativwerte. Der Runway verwendet <code>incomeNet</code> (= identisch auf beiden Branches für gleiche Daten).</p>
+    </div>
+    <div class="finding ok">
+      <div class="title">✓ PiePage — Neuer Endpoint funktioniert</div>
+      <p>Der neue <code>GET /transactions/category-totals</code>-Endpoint gruppiert und summiert korrekt nach Kategorie mit <code>effectiveAmount</code>. Die 5 Kategorien ohne Testdaten-Überschneidung sind exakt identisch.</p>
+    </div>
+    <div class="finding ok">
+      <div class="title">✓ BudgetsPage — totalContributions und chartPoints korrekt</div>
+      <p><code>totalContributions = 1.070 €</code> (Urlaub, Plan: 1.070 €) und <code>500 €</code> (Küche, Plan: 500 €). <code>chartPoints</code> sortiert und kumuliert korrekt. Phase-5-Ergebnis entspricht exakt der Plan-Spezifikation.</p>
+    </div>
+    <div class="finding ok">
+      <div class="title">✓ CollectionsPage — Transaktionszuweisung korrekt</div>
+      <p>Sommer 2025: 5 TXs, Haushalt Q1 2025: 4 TXs — entspricht der Plan-Spezifikation. Kein Verlust durch die Refactoring-Phase.</p>
+    </div>
+
+    <div style="margin-top: 32px">
+      <div class="verdict">
+        <h3>✓ Refactoring-Phase 5 ist korrekt</h3>
+        <p>Alle gemessenen Zahlenunterschiede sind ausschließlich auf den erweiterten Testdatensatz zurückzuführen. Die Berechnungslogik — Backend-Aggregation vs. Frontend-Aggregation — liefert für identische Transaktionsdaten identische Ergebnisse. Kein Bug, kein Regressionsrisiko.</p>
+      </div>
+    </div>
+  </div>
+
+  <div style="color: var(--muted); font-size: 0.72rem; text-align: center; padding-top: 24px; border-top: 1px solid var(--border);">
+    Generiert am 11.07.2026 &nbsp;·&nbsp; Playwright 1.61.1 &nbsp;·&nbsp; API-Direktvergleich via curl/python3
+  </div>
+
+</div>
+</body>
+</html>

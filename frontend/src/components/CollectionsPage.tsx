@@ -187,8 +187,6 @@ function AddToCollectionModal({
   const [adding, setAdding] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  const assignedIds = new Set(collection.transactions.map(tx => tx.id))
-
   useEffect(() => {
     fetchAccounts().then(setAccounts).catch(() => {})
     fetchCategories().then(r => setCategories(r.categories)).catch(() => {})
@@ -201,8 +199,8 @@ function AddToCollectionModal({
     setTransactions(null)
     setError(null)
     try {
-      const resp = await fetchAllTransactions(from, to, filterIban || undefined, filterCategory || undefined, filterSubcategory || undefined)
-      setTransactions(resp.transactions.filter(tx => !assignedIds.has(tx.id)))
+      const resp = await fetchAllTransactions(from, to, filterIban || undefined, filterCategory || undefined, filterSubcategory || undefined, undefined, undefined, undefined, collection.id ?? undefined)
+      setTransactions(resp.transactions)
     } catch {
       setTransactions([])
     } finally {

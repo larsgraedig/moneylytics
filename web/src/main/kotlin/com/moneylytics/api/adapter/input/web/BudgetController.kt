@@ -7,6 +7,7 @@ import com.moneylytics.api.application.port.input.GetBudgetsUseCase
 import com.moneylytics.api.application.port.input.RemoveTransactionFromBudgetUseCase
 import com.moneylytics.api.application.port.input.ResolveUserUseCase
 import com.moneylytics.api.application.port.input.UpdateBudgetUseCase
+import com.moneylytics.api.application.service.BudgetChartPoint
 import com.moneylytics.api.domain.Budget
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -120,6 +121,8 @@ class BudgetController(
             note = budget.note,
             balance = balance,
             transactionLinks = transactionLinks.map { it.toDto() },
+            totalContributions = totalContributions,
+            chartPoints = chartPoints,
         )
 
     private fun Budget.toDto() =
@@ -130,6 +133,8 @@ class BudgetController(
             note = note,
             balance = BigDecimal.ZERO,
             transactionLinks = emptyList(),
+            totalContributions = BigDecimal.ZERO,
+            chartPoints = emptyList(),
         )
 
     private fun com.moneylytics.api.domain.BudgetTransactionLink.toDto() =
@@ -138,6 +143,7 @@ class BudgetController(
             transactionId = transactionId,
             amount = amount,
             transactionAmount = transactionAmount,
+            effectiveAmount = effectiveAmount(),
             transactionDate = transactionDate.toString(),
             transactionCategory = transactionCategory,
             transactionSubcategory = transactionSubcategory,
@@ -164,6 +170,8 @@ data class BudgetDto(
     val note: String?,
     val balance: BigDecimal,
     val transactionLinks: List<BudgetTransactionLinkDto>,
+    val totalContributions: BigDecimal,
+    val chartPoints: List<BudgetChartPoint>,
 )
 
 data class BudgetTransactionLinkDto(
@@ -171,6 +179,7 @@ data class BudgetTransactionLinkDto(
     val transactionId: Long,
     val amount: BigDecimal?,
     val transactionAmount: BigDecimal,
+    val effectiveAmount: BigDecimal,
     val transactionDate: String,
     val transactionCategory: String?,
     val transactionSubcategory: String?,
