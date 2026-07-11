@@ -1,5 +1,6 @@
 package com.moneylytics.api.adapter.input.web
 
+import com.moneylytics.api.application.port.input.BulkUpdateTransactionCategoryUseCase
 import com.moneylytics.api.application.port.input.GetBurnRateUseCase
 import com.moneylytics.api.application.port.input.GetCashflowUseCase
 import com.moneylytics.api.application.port.input.GetCategoriesUseCase
@@ -39,6 +40,7 @@ class TransactionQueryControllerTest {
     private val updateTransactionCategoryUseCase: UpdateTransactionCategoryUseCase = mock()
     private val updateTransactionCommentUseCase: UpdateTransactionCommentUseCase = mock()
     private val updateTransactionAccountingDateUseCase: UpdateTransactionAccountingDateUseCase = mock()
+    private val bulkUpdateTransactionCategoryUseCase: BulkUpdateTransactionCategoryUseCase = mock()
     private val controller =
         TransactionQueryController(
             getTransactionsUseCase,
@@ -50,6 +52,7 @@ class TransactionQueryControllerTest {
             updateTransactionCategoryUseCase,
             updateTransactionCommentUseCase,
             updateTransactionAccountingDateUseCase,
+            bulkUpdateTransactionCategoryUseCase,
         )
 
     private val from = LocalDate.of(2025, 1, 1)

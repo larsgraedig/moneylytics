@@ -66,3 +66,4 @@ Sample CSV with 98 transactions: `web/src/main/resources/AccountSheet.csv` (used
 - Use trailing commas in multi-line collections/function calls and named arguments
 - All comments in English
 - Prefer suspending functions and coroutine APIs over blocking calls (WebFlux stack)
+- Put business logic into the backend as much as possible; the frontend should be a thin client (React + TypeScript)

@@ -57,7 +57,7 @@ class BudgetService(
         }
     }
 
-    private fun effectiveContrib(link: BudgetTransactionLink): BigDecimal = link.effectiveAmount().abs()
+    private fun effectiveContrib(link: BudgetTransactionLink): BigDecimal = link.effectiveAmount()
 
     override fun createBudget(
         budget: Budget,

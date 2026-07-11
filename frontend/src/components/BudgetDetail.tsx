@@ -59,6 +59,26 @@ export default function BudgetDetail({
   const yMax = Math.max(hasTarget ? budget.targetAmount! : 0, ...yValues)
   const yPad = (yMax - yMin) * 0.1 || 100
 
+  const dataMin = Math.min(...yValues)
+  const dataMax = Math.max(...yValues)
+  const hasGradient = dataMin < 0 && dataMax > 0
+
+  function gradientDefsLayer({ yScale, innerHeight }: { yScale: (v: number) => number; innerHeight: number }) {
+    if (!hasGradient) return null
+    const zeroY = Math.max(0, Math.min(innerHeight, yScale(0)))
+    const pct = `${(zeroY / innerHeight) * 100}%`
+    return (
+      <defs>
+        <linearGradient id="bdg-line-grad" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2={innerHeight}>
+          <stop offset={pct} stopColor="#4ade80" />
+          <stop offset={pct} stopColor="#f87171" />
+        </linearGradient>
+      </defs>
+    )
+  }
+
+  const lineColor = hasGradient ? 'url(#bdg-line-grad)' : total < 0 ? '#f87171' : '#4ade80'
+
   return (
     <div className="bdt-page">
       <div className="bdt-header">
@@ -134,12 +154,13 @@ export default function BudgetDetail({
                   tickValues: 5,
                   format: v => EUR.format(v as number),
                 }}
+                layers={['grid', gradientDefsLayer as any, 'axes', 'areas', 'crosshair', 'lines', 'points', 'slices', 'mesh', 'legends'] as any}
                 enableGridX={false}
                 gridYValues={5}
                 lineWidth={2}
-                colors={['#4ade80']}
+                colors={[lineColor]}
                 pointSize={7}
-                pointColor="#4ade80"
+                pointColor={hasGradient ? '#6b6b78' : lineColor}
                 pointBorderWidth={2}
                 pointBorderColor="var(--bg)"
                 enableArea

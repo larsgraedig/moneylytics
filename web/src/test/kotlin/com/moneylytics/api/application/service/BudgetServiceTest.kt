@@ -31,7 +31,7 @@ class BudgetServiceTest {
         val result = service.getBudgets(userId)
 
         assertThat(result).hasSize(1)
-        assertThat(result[0].totalContributions).isEqualByComparingTo(BigDecimal("870.00"))
+        assertThat(result[0].totalContributions).isEqualByComparingTo(BigDecimal("-870.00"))
     }
 
     @Test
@@ -42,7 +42,7 @@ class BudgetServiceTest {
         val result = service.getBudgets(userId)
 
         assertThat(result).hasSize(1)
-        assertThat(result[0].totalContributions).isEqualByComparingTo(BigDecimal("500.00"))
+        assertThat(result[0].totalContributions).isEqualByComparingTo(BigDecimal("-500.00"))
     }
 
     @Test
@@ -55,9 +55,9 @@ class BudgetServiceTest {
         val points = result[0].chartPoints
         assertThat(points).hasSize(2)
         assertThat(points[0].date).isEqualTo("2025-04-10")
-        assertThat(points[0].cumulative).isEqualByComparingTo(BigDecimal("380.00"))
+        assertThat(points[0].cumulative).isEqualByComparingTo(BigDecimal("-380.00"))
         assertThat(points[1].date).isEqualTo("2025-05-22")
-        assertThat(points[1].cumulative).isEqualByComparingTo(BigDecimal("870.00"))
+        assertThat(points[1].cumulative).isEqualByComparingTo(BigDecimal("-870.00"))
     }
 
     private fun link(

@@ -157,6 +157,19 @@ class LocalDataInitializer(
         findTx(userId, LocalDate.of(2025, 9, 5), "Wohnen", BigDecimal("-800.00"))?.id?.let { txId ->
             assignTransactionToBudgetUseCase.assignTransaction(kueche.id!!, txId, BigDecimal("500"), userId)
         }
+
+        val notfall = createBudgetUseCase.createBudget(Budget(name = "Notfallfonds"), userId)
+        listOf(
+            Triple(LocalDate.of(2025, 1, 20), "Einnahmen", BigDecimal("500.00")),
+            Triple(LocalDate.of(2025, 3, 5), "Einnahmen", BigDecimal("400.00")),
+            Triple(LocalDate.of(2025, 4, 18), "Gesundheit", BigDecimal("-2300.00")),
+            Triple(LocalDate.of(2025, 6, 10), "Einnahmen", BigDecimal("700.00")),
+            Triple(LocalDate.of(2025, 8, 15), "Einnahmen", BigDecimal("900.00")),
+        ).forEach { (date, category, amount) ->
+            findTx(userId, date, category, amount)?.id?.let { txId ->
+                assignTransactionToBudgetUseCase.assignTransaction(notfall.id!!, txId, null, userId)
+            }
+        }
     }
 
     private fun setupCollections(userId: Long) {
@@ -210,6 +223,11 @@ class LocalDataInitializer(
             tx("Reise", "Hotel", LocalDate.of(2025, 5, 22), BigDecimal("-490.00")),
             tx("Reise", "Aktivitäten", LocalDate.of(2025, 7, 1), BigDecimal("-200.00")),
             tx("Wohnen", "Einrichtung", LocalDate.of(2025, 9, 5), BigDecimal("-800.00")),
+            tx("Einnahmen", "Sonstiges", LocalDate.of(2025, 1, 20), BigDecimal("500.00")),
+            tx("Einnahmen", "Sonstiges", LocalDate.of(2025, 3, 5), BigDecimal("400.00")),
+            tx("Gesundheit", "Behandlung", LocalDate.of(2025, 4, 18), BigDecimal("-2300.00")),
+            tx("Einnahmen", "Sonstiges", LocalDate.of(2025, 6, 10), BigDecimal("700.00")),
+            tx("Einnahmen", "Sonstiges", LocalDate.of(2025, 8, 15), BigDecimal("900.00")),
         )
 
     private fun tx(
