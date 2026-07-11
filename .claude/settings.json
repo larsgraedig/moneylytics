@@ -1,5 +1,12 @@
 {
   "enabledPlugins": {
     "frontend-design@claude-plugins-official": true
+  },
+  "permissions": {
+    "allow": [
+      "Bash(npx tsc --noEmit *)",
+      "Bash(jar tf *)",
+      "Bash(./gradlew :web:dependencies *)"
+    ]
   }
 }
