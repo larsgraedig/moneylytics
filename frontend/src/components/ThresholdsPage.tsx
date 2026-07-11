@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { fetchCategories, type CategoryGroup } from '../api/rawImport'
+import type { CategoryGroup } from '../api/rawImport'
 import {
   deleteThreshold,
   fetchThresholds,
@@ -105,9 +105,8 @@ interface BudgetRow {
 
 // ── component ─────────────────────────────────────────────────────────────
 
-export default function ThresholdsPage({ from, to, iban }: { from: string; to: string; iban?: string }) {
+export default function ThresholdsPage({ from, to, iban, categories }: { from: string; to: string; iban?: string; categories: CategoryGroup[] }) {
   const { t } = useTranslation()
-  const [categories, setCategories] = useState<CategoryGroup[]>([])
   const [thresholds, setThresholds] = useState<Threshold[]>([])
   const [statusMap, setStatusMap] = useState<Map<string, ThresholdStatusItem>>(new Map())
   const [statusLoaded, setStatusLoaded] = useState(false)
@@ -120,7 +119,6 @@ export default function ThresholdsPage({ from, to, iban }: { from: string; to: s
   const [drilldown, setDrilldown] = useState<DrilldownState | null>(null)
 
   useEffect(() => {
-    fetchCategories().then(r => setCategories(r.categories)).catch(() => {})
     fetchThresholds().then(setThresholds).catch(() => {})
   }, [])
 

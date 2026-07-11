@@ -8,12 +8,11 @@ import {
   type CollectionDto,
 } from '../api/collections'
 import {
-  fetchAccounts,
   fetchAllTransactions,
   type Account,
   type TransactionItem,
 } from '../api/transactions'
-import { fetchCategories, type CategoryGroup } from '../api/rawImport'
+import type { CategoryGroup } from '../api/rawImport'
 import { getPresetRange, PRESETS, type Preset } from '../utils/datePresets'
 import { CollectionCard } from './CollectionCard'
 
@@ -24,7 +23,7 @@ function formatDate(iso: string): string {
 
 const EUR = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' })
 
-export default function CollectionsPage() {
+export default function CollectionsPage({ accounts, categories }: { accounts: Account[]; categories: CategoryGroup[] }) {
   const { t } = useTranslation()
   const [collections, setCollections] = useState<CollectionDto[]>([])
   const [loading, setLoading] = useState(true)
@@ -153,6 +152,8 @@ export default function CollectionsPage() {
       {assigningCollection && (
         <AddToCollectionModal
           collection={assigningCollection}
+          accounts={accounts}
+          categories={categories}
           onClose={() => setAssigningCollection(null)}
           onAdded={tx => { handleTransactionAdded(assigningCollection.id, tx); setAssigningCollection(null) }}
         />
@@ -163,10 +164,14 @@ export default function CollectionsPage() {
 
 function AddToCollectionModal({
   collection,
+  accounts,
+  categories,
   onClose,
   onAdded,
 }: {
   collection: CollectionDto
+  accounts: Account[]
+  categories: CategoryGroup[]
   onClose: () => void
   onAdded: (tx: TransactionItem) => void
 }) {
@@ -174,8 +179,6 @@ function AddToCollectionModal({
   const today = new Date().toISOString().slice(0, 10)
   const firstOfYear = new Date(new Date().getFullYear(), 0, 1).toISOString().slice(0, 10)
 
-  const [accounts, setAccounts] = useState<Account[]>([])
-  const [categories, setCategories] = useState<CategoryGroup[]>([])
   const [filterFrom, setFilterFrom] = useState(firstOfYear)
   const [filterTo, setFilterTo] = useState(today)
   const [filterIban, setFilterIban] = useState('')
@@ -186,11 +189,6 @@ function AddToCollectionModal({
   const [loadingTx, setLoadingTx] = useState(false)
   const [adding, setAdding] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    fetchAccounts().then(setAccounts).catch(() => {})
-    fetchCategories().then(r => setCategories(r.categories)).catch(() => {})
-  }, [])
 
   const subcategoriesFor = (cat: string) => categories.find(c => c.name === cat)?.subcategories ?? []
 

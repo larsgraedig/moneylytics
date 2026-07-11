@@ -1,11 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { Trans, useTranslation } from 'react-i18next'
-import { fetchCategories, type CategoryGroup } from '../api/rawImport'
+import type { CategoryGroup } from '../api/rawImport'
 import {
   AllocationExceededError,
   bulkUpdateTransactionCategory,
-  computeEffectiveAmount,
   fetchAllTransactions,
   fetchLinkedGroup,
   linkTransactions,
@@ -16,7 +15,6 @@ import {
   type AllocationError,
   type GroupSummary,
   type LinkedGroupItem,
-  type OffsetLinkItem,
   type TransactionItem,
 } from '../api/transactions'
 import { GroupCard } from './GroupCard'
@@ -90,6 +88,7 @@ export default function TransactionsPage({
   to,
   iban,
   accounts,
+  categories,
   columnOrder,
   onColumnOrderChange,
 }: {
@@ -97,6 +96,7 @@ export default function TransactionsPage({
   to: string
   iban?: string
   accounts: Account[]
+  categories: CategoryGroup[]
   columnOrder?: string[]
   onColumnOrderChange?: (order: string[]) => void
 }) {
@@ -104,7 +104,6 @@ export default function TransactionsPage({
   const location = useLocation()
   const [rows, setRows] = useState<RowState[]>([])
   const [page, setPage] = useState<PageState>({ phase: 'idle' })
-  const [categories, setCategories] = useState<CategoryGroup[]>([])
   const [budgets, setBudgets] = useState<Budget[]>([])
   const [allCollections, setAllCollections] = useState<CollectionSummary[]>([])
   const [linkingState, setLinkingState] = useState<LinkingState>(null)
@@ -124,7 +123,6 @@ export default function TransactionsPage({
   const [dragOverCol, setDragOverCol] = useState<ColumnKey | null>(null)
 
   useEffect(() => {
-    fetchCategories().then(r => setCategories(r.categories)).catch(() => {})
     fetchBudgets().then(setBudgets).catch(() => {})
     fetchCollections().then(cols => setAllCollections(cols.map(c => ({ id: c.id, name: c.name })))).catch(() => {})
   }, [])
@@ -328,9 +326,6 @@ export default function TransactionsPage({
     }
   }
 
-  function resolveCommitted(myAmount: number | null, txAmount: number): number {
-    return myAmount !== null ? myAmount : txAmount
-  }
 
   function collectAvailableGroups(sourceIndex: number, targetIndex: number): GroupSummary[] {
     const seen = new Set<number>()
@@ -372,74 +367,13 @@ export default function TransactionsPage({
     const parsedOther = otherAmount !== '' ? parseFloat(otherAmount) : undefined
     setLinkError(null)
     try {
-      const result = await linkTransactions(
+      const { sourceTransaction, otherTransaction } = await linkTransactions(
         sourceRow.original.id, targetRow.original.id, parsedMy, parsedOther, targetGroupId, forceNewGroup,
-      )
-      const sourceIsA = sourceRow.original.id < targetRow.original.id
-      const sourceCommitted = resolveCommitted(
-        sourceIsA ? result.amountA : result.amountB,
-        sourceRow.original.amount,
-      )
-      const targetCommitted = resolveCommitted(
-        sourceIsA ? result.amountB : result.amountA,
-        targetRow.original.amount,
       )
       setRows(prev => {
         const next = [...prev]
-        const newGroup = { id: result.groupId, name: null }
-        const addGroup = (groups: GroupSummary[]) =>
-          groups.some(g => g.id === result.groupId) ? groups : [...groups, newGroup]
-        if (result.id !== null) {
-          const newForSource: OffsetLinkItem = {
-            id: result.id,
-            linkedTransactionId: targetRow.original.id,
-            linkedTransactionAmount: targetRow.original.amount,
-            amountA: result.amountA,
-            amountB: result.amountB,
-            committedAmount: sourceCommitted,
-            comment: null,
-            groupId: result.groupId,
-          }
-          const newForTarget: OffsetLinkItem = {
-            id: result.id,
-            linkedTransactionId: sourceRow.original.id,
-            linkedTransactionAmount: sourceRow.original.amount,
-            amountA: result.amountA,
-            amountB: result.amountB,
-            committedAmount: targetCommitted,
-            comment: null,
-            groupId: result.groupId,
-          }
-          const srcLinks = [...next[sourceIndex].original.offsetLinks, newForSource]
-          const tgtLinks = [...next[targetIndex].original.offsetLinks, newForTarget]
-          next[sourceIndex] = {
-            ...next[sourceIndex],
-            original: {
-              ...next[sourceIndex].original,
-              offsetLinks: srcLinks,
-              effectiveAmount: computeEffectiveAmount(next[sourceIndex].original.amount, srcLinks),
-              groups: addGroup(next[sourceIndex].original.groups),
-            },
-          }
-          next[targetIndex] = {
-            ...next[targetIndex],
-            original: {
-              ...next[targetIndex].original,
-              offsetLinks: tgtLinks,
-              effectiveAmount: computeEffectiveAmount(next[targetIndex].original.amount, tgtLinks),
-              groups: addGroup(next[targetIndex].original.groups),
-            },
-          }
-        } else {
-          next[sourceIndex] = {
-            ...next[sourceIndex],
-            original: { ...next[sourceIndex].original, groups: addGroup(next[sourceIndex].original.groups) },
-          }
-          next[targetIndex] = {
-            ...next[targetIndex],
-            original: { ...next[targetIndex].original, groups: addGroup(next[targetIndex].original.groups) },
-          }
-        }
+        next[sourceIndex] = { ...next[sourceIndex], original: sourceTransaction }
+        next[targetIndex] = { ...next[targetIndex], original: otherTransaction }
         return next
       })
       setLinkingState(null)

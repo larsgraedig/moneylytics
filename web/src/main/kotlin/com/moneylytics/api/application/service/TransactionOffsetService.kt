@@ -3,11 +3,11 @@ package com.moneylytics.api.application.service
 import com.moneylytics.api.application.port.input.AllocationExceededException
 import com.moneylytics.api.application.port.input.ExistingLinkSummary
 import com.moneylytics.api.application.port.input.GetLinkedTransactionsUseCase
+import com.moneylytics.api.application.port.input.LinkTransactionResult
 import com.moneylytics.api.application.port.input.LinkTransactionsCommand
 import com.moneylytics.api.application.port.input.LinkedTransactionGroup
 import com.moneylytics.api.application.port.input.ManageTransactionOffsetUseCase
 import com.moneylytics.api.application.port.output.CreateOffsetLinkCommand
-import com.moneylytics.api.application.port.output.OffsetLinkResult
 import com.moneylytics.api.application.port.output.TransactionGroupRepository
 import com.moneylytics.api.application.port.output.TransactionOffsetRepository
 import com.moneylytics.api.application.port.output.TransactionRepository
@@ -22,7 +22,7 @@ class TransactionOffsetService(
     private val groupRepository: TransactionGroupRepository,
 ) : ManageTransactionOffsetUseCase,
     GetLinkedTransactionsUseCase {
-    override fun linkTransactions(command: LinkTransactionsCommand): OffsetLinkResult {
+    override fun linkTransactions(command: LinkTransactionsCommand): LinkTransactionResult {
         require(command.transactionId != command.otherTransactionId) {
             "A transaction cannot be linked to itself"
         }
@@ -40,7 +40,8 @@ class TransactionOffsetService(
             if (sourceIsA) {
                 command.transactionId to command.otherTransactionId
             } else {
-                command.otherTransactionId to command.transactionId
+                command.otherTransactionId to
+                    command.transactionId
             }
         val (txA, txB) = if (sourceIsA) txSource to txOther else txOther to txSource
         val rawAmountA = if (sourceIsA) command.myAmount else command.otherAmount
@@ -67,17 +68,14 @@ class TransactionOffsetService(
                 targetGroupId = command.targetGroupId,
                 forceNewGroup = command.forceNewGroup,
             )
-        if (noOffset) {
-            return OffsetLinkResult(
-                id = null,
-                transactionAId = aId,
-                transactionBId = bId,
-                amountA = null,
-                amountB = null,
-                groupId = groupId,
-            )
+
+        if (!noOffset) {
+            offsetRepository.create(CreateOffsetLinkCommand(aId, bId, amountA, amountB, groupId))
         }
-        return offsetRepository.create(CreateOffsetLinkCommand(aId, bId, amountA, amountB, groupId))
+
+        val updatedSource = requireNotNull(transactionRepository.findByIdAndUserId(command.transactionId, command.userId))
+        val updatedOther = requireNotNull(transactionRepository.findByIdAndUserId(command.otherTransactionId, command.userId))
+        return LinkTransactionResult(groupId = groupId, sourceTransaction = updatedSource, otherTransaction = updatedOther)
     }
 
     override fun unlinkTransactions(

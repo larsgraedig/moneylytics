@@ -5,7 +5,6 @@ import com.moneylytics.api.application.port.input.GetLinkedTransactionsUseCase
 import com.moneylytics.api.application.port.input.LinkTransactionsCommand
 import com.moneylytics.api.application.port.input.ManageTransactionOffsetUseCase
 import com.moneylytics.api.application.port.input.ResolveUserUseCase
-import com.moneylytics.api.application.port.output.OffsetLinkResult
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.springframework.http.ResponseEntity
@@ -29,13 +28,10 @@ data class LinkTransactionRequest(
     val forceNewGroup: Boolean = false,
 )
 
-data class OffsetLinkResponse(
-    val id: Long?,
-    val transactionAId: Long,
-    val transactionBId: Long,
-    val amountA: BigDecimal?,
-    val amountB: BigDecimal?,
+data class LinkTransactionsResponse(
     val groupId: Long,
+    val sourceTransaction: TransactionItem,
+    val otherTransaction: TransactionItem,
 )
 
 data class AllocationErrorResponse(
@@ -167,7 +163,13 @@ class TransactionOffsetController(
                         else -> throw e
                     }
                 }
-            ResponseEntity.ok(result.toResponse())
+            ResponseEntity.ok(
+                LinkTransactionsResponse(
+                    groupId = result.groupId,
+                    sourceTransaction = result.sourceTransaction.toItem(),
+                    otherTransaction = result.otherTransaction.toItem(),
+                ),
+            )
         }
 
     @PatchMapping("/offsets/{linkId}/comment")
@@ -204,14 +206,4 @@ class TransactionOffsetController(
             val deleted = manageTransactionOffsetUseCase.unlinkTransactions(linkId, userId)
             if (deleted) ResponseEntity.noContent().build() else ResponseEntity.notFound().build()
         }
-
-    private fun OffsetLinkResult.toResponse() =
-        OffsetLinkResponse(
-            id = id,
-            transactionAId = transactionAId,
-            transactionBId = transactionBId,
-            amountA = amountA,
-            amountB = amountB,
-            groupId = groupId,
-        )
 }

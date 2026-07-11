@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { ResponsiveLine } from '@nivo/line'
-import { fetchCamtCategories, type CategoryGroup } from '../api/camtImport'
+import type { CategoryGroup } from '../api/rawImport'
 import {
   fetchTrends,
   type Granularity,
@@ -218,18 +218,16 @@ type ViewState =
   | { phase: 'error'; message: string }
   | { phase: 'ready'; data: TrendsResponse }
 
-export default function TrendsPage({ from, to, iban }: { from: string; to: string; iban?: string }) {
+export default function TrendsPage({ from, to, iban, categories }: { from: string; to: string; iban?: string; categories: CategoryGroup[] }) {
   const { t } = useTranslation()
   const [granularity, setGranularity] = useState<Granularity>('MONTHLY')
   const [series, setSeries] = useState<SeriesConfig[]>([{ id: newId(), category: '', subcategory: '' }])
-  const [categories, setCategories] = useState<CategoryGroup[]>([])
   const [view, setView] = useState<ViewState>({ phase: 'idle' })
   const [drilldown, setDrilldown] = useState<{ nodeKey: string; from: string; to: string } | null>(null)
   const [thresholds, setThresholds] = useState<Threshold[]>([])
   const [hoveredThreshold, setHoveredThreshold] = useState<ThresholdTooltipData | null>(null)
 
   useEffect(() => {
-    fetchCamtCategories().then(r => setCategories(r.categories)).catch(() => {})
     fetchThresholds().then(setThresholds).catch(() => {})
   }, [])
 

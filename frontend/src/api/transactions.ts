@@ -22,13 +22,6 @@ export interface Account {
   name: string
 }
 
-export async function fetchAccounts(): Promise<Account[]> {
-  const res = await fetchWithUser('/accounts')
-  if (!res.ok) throw new Error(`HTTP ${res.status}`)
-  const data = await res.json() as { accounts: Account[] }
-  return data.accounts
-}
-
 export interface GroupSummary {
   id: number
   name: string | null
@@ -102,19 +95,6 @@ export interface TransactionListResponse {
   total: number
 }
 
-export function computeEffectiveAmount(amount: number, offsetLinks: OffsetLinkItem[]): number {
-  if (offsetLinks.length === 0) return amount
-  const totalOffset = offsetLinks.reduce((acc, link) => {
-    const offset = (link.amountA !== null && link.amountB !== null)
-      ? Math.min(Math.abs(link.amountA), Math.abs(link.amountB))
-      : (link.amountA === null && link.amountB === null)
-        ? 0
-        : Math.min(Math.abs(link.committedAmount), Math.abs(link.linkedTransactionAmount))
-    return acc + offset
-  }, 0)
-  return amount >= 0 ? amount - totalOffset : amount + totalOffset
-}
-
 export async function fetchTransactionList(
   from: string,
   to: string,
@@ -172,13 +152,10 @@ export async function updateTransactionCategory(
   return res.json() as Promise<TransactionItem>
 }
 
-export interface OffsetLinkResult {
-  id: number | null
-  transactionAId: number
-  transactionBId: number
-  amountA: number | null
-  amountB: number | null
+export interface LinkTransactionResult {
   groupId: number
+  sourceTransaction: TransactionItem
+  otherTransaction: TransactionItem
 }
 
 export async function linkTransactions(
@@ -188,7 +165,7 @@ export async function linkTransactions(
   otherAmount?: number,
   targetGroupId?: number,
   forceNewGroup?: boolean,
-): Promise<OffsetLinkResult> {
+): Promise<LinkTransactionResult> {
   const res = await fetchWithUser(`/transactions/${transactionId}/offsets`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -205,7 +182,7 @@ export async function linkTransactions(
     throw new AllocationExceededError(data)
   }
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
-  return res.json() as Promise<OffsetLinkResult>
+  return res.json() as Promise<LinkTransactionResult>
 }
 
 export async function updateTransactionComment(
