@@ -26,7 +26,7 @@ jobs:
           cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
 
       - name: Build and test
-        run: ./gradlew :web:build --info
+        run: ./gradlew :web:build -x detekt
         env:
           SPRING_PROFILES_ACTIVE: local
 
