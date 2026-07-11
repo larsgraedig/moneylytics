@@ -62,6 +62,20 @@ export interface CollectionSummary {
   name: string
 }
 
+export interface BudgetLinkSummary {
+  linkId: number
+  budgetId: number
+  budgetName: string
+  amount: number | null
+}
+
+export interface BulkCategoryUpdate {
+  id: number
+  category: string
+  subcategory: string
+  categoryGroup?: string | null
+}
+
 export interface TransactionItem {
   id: number
   bookingDate: string
@@ -76,6 +90,7 @@ export interface TransactionItem {
   offsetLinks: OffsetLinkItem[]
   groups: GroupSummary[]
   collections: CollectionSummary[]
+  budgetLinks: BudgetLinkSummary[]
   comment: string | null
   purpose: string | null
   counterpartyName: string | null
@@ -259,6 +274,16 @@ export async function unlinkTransaction(linkId: number): Promise<void> {
 export async function removeTransactionFromGroup(txId: number, groupId: number): Promise<void> {
   const res = await fetchWithUser(`/transactions/${txId}/groups/${groupId}`, { method: 'DELETE' })
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
+}
+
+export async function bulkUpdateTransactionCategory(updates: BulkCategoryUpdate[]): Promise<TransactionItem[]> {
+  const res = await fetchWithUser('/transactions/bulk', {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ updates }),
+  })
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  return res.json() as Promise<TransactionItem[]>
 }
 
 export async function updateOffsetLinkComment(linkId: number, comment: string | null): Promise<void> {

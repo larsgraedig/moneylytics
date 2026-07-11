@@ -1,13 +1,17 @@
 package com.moneylytics.api.adapter.input.web
 
 import com.moneylytics.api.application.port.input.DeleteThresholdUseCase
+import com.moneylytics.api.application.port.input.GetThresholdStatusQuery
+import com.moneylytics.api.application.port.input.GetThresholdStatusUseCase
 import com.moneylytics.api.application.port.input.GetThresholdsUseCase
 import com.moneylytics.api.application.port.input.ResolveUserUseCase
 import com.moneylytics.api.application.port.input.SaveThresholdUseCase
+import com.moneylytics.api.application.port.input.ThresholdStatusResponse
 import com.moneylytics.api.domain.Threshold
 import com.moneylytics.api.domain.ThresholdPeriod
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import org.springframework.format.annotation.DateTimeFormat
 import org.springframework.http.ResponseEntity
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.security.core.userdetails.UserDetails
@@ -17,8 +21,10 @@ import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import java.math.BigDecimal
+import java.time.LocalDate
 
 @RestController
 @RequestMapping("/thresholds")
@@ -26,6 +32,7 @@ class ThresholdController(
     private val getThresholdsUseCase: GetThresholdsUseCase,
     private val saveThresholdUseCase: SaveThresholdUseCase,
     private val deleteThresholdUseCase: DeleteThresholdUseCase,
+    private val getThresholdStatusUseCase: GetThresholdStatusUseCase,
     private val resolveUserUseCase: ResolveUserUseCase,
 ) {
     @GetMapping
@@ -45,6 +52,20 @@ class ThresholdController(
         withContext(Dispatchers.IO) {
             val userId = resolveUserUseCase.resolveUser(principal.username)
             saveThresholdUseCase.saveThreshold(request.toDomain(), userId).toDto()
+        }
+
+    @GetMapping("/status")
+    suspend fun getThresholdStatus(
+        @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) from: LocalDate,
+        @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) to: LocalDate,
+        @RequestParam(required = false) iban: String? = null,
+        @AuthenticationPrincipal principal: UserDetails,
+    ): ThresholdStatusResponse =
+        withContext(Dispatchers.IO) {
+            val userId = resolveUserUseCase.resolveUser(principal.username)
+            getThresholdStatusUseCase.getThresholdStatus(
+                GetThresholdStatusQuery(from = from, to = to, userId = userId, accountIban = iban),
+            )
         }
 
     @DeleteMapping("/{id}")

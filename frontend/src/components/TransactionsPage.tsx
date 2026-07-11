@@ -4,6 +4,7 @@ import { Trans, useTranslation } from 'react-i18next'
 import { fetchCategories, type CategoryGroup } from '../api/rawImport'
 import {
   AllocationExceededError,
+  bulkUpdateTransactionCategory,
   computeEffectiveAmount,
   fetchAllTransactions,
   fetchLinkedGroup,
@@ -133,20 +134,6 @@ export default function TransactionsPage({
     [accounts],
   )
 
-  const txBudgetMap = useMemo(() => {
-    const map = new Map<number, BudgetAssignment[]>()
-    budgets.forEach(b => {
-      b.transactionLinks.forEach(link => {
-        const existing = map.get(link.transactionId) ?? []
-        map.set(link.transactionId, [
-          ...existing,
-          { linkId: link.id, budgetId: b.id, budgetName: b.name, amount: link.amount },
-        ])
-      })
-    })
-    return map
-  }, [budgets])
-
   const allCategoryNames = useMemo(() => categories.map(c => c.name), [categories])
 
   const allSubcategoryNames = useMemo(() => {
@@ -219,7 +206,7 @@ export default function TransactionsPage({
           savingComment: false,
           savingAccountingDate: false,
           error: null,
-          budgetAssignments: txBudgetMap.get(tx.id) ?? [],
+          budgetAssignments: (tx.budgetLinks ?? []).map(l => ({ linkId: l.linkId, budgetId: l.budgetId, budgetName: l.budgetName, amount: l.amount })),
           addingBudget: null,
           collections: tx.collections ?? [],
           addingCollection: null,
@@ -482,13 +469,6 @@ export default function TransactionsPage({
         budgetName: budget.name,
         amount: link.amount,
       }
-      setBudgets(prev =>
-        prev.map(b =>
-          b.id === budgetId
-            ? { ...b, transactionLinks: [...b.transactionLinks, link], balance: b.balance + (link.amount ?? row.original.amount) }
-            : b,
-        ),
-      )
       setRows(prev => {
         const next = [...prev]
         next[rowIndex] = {
@@ -503,16 +483,9 @@ export default function TransactionsPage({
     }
   }
 
-  async function removeBudgetAssign(rowIndex: number, linkId: number, budgetId: number) {
+  async function removeBudgetAssign(rowIndex: number, linkId: number) {
     try {
       await removeBudgetLink(linkId)
-      setBudgets(prev =>
-        prev.map(b =>
-          b.id === budgetId
-            ? { ...b, transactionLinks: b.transactionLinks.filter(l => l.id !== linkId) }
-            : b,
-        ),
-      )
       setRows(prev => {
         const next = [...prev]
         next[rowIndex] = {
@@ -556,27 +529,31 @@ export default function TransactionsPage({
     const grp = bulkCategoryGroup.trim() || null
     const sub = bulkSubcategory.trim()
     const indices = rows.map((r, i) => ({ r, i })).filter(({ r }) => r.selected).map(({ i }) => i)
-    const results = await Promise.allSettled(
-      indices.map(i => updateTransactionCategory(rows[i].original.id, cat, sub, grp)),
-    )
-    setRows(prev => {
-      const next = [...prev]
-      results.forEach((result, idx) => {
-        const i = indices[idx]
-        if (result.status === 'fulfilled') {
-          const updated = result.value
-          next[i] = {
-            ...next[i],
-            original: updated,
-            category: updated.category,
-            categoryGroup: updated.categoryGroup ?? '',
-            subcategory: updated.subcategory,
-            selected: false,
+    try {
+      const updated = await bulkUpdateTransactionCategory(
+        indices.map(i => ({ id: rows[i].original.id, category: cat, subcategory: sub, categoryGroup: grp })),
+      )
+      const updatedById = new Map(updated.map(tx => [tx.id, tx]))
+      setRows(prev => {
+        const next = [...prev]
+        indices.forEach(i => {
+          const tx = updatedById.get(next[i].original.id)
+          if (tx) {
+            next[i] = {
+              ...next[i],
+              original: tx,
+              category: tx.category ?? '',
+              categoryGroup: tx.categoryGroup ?? '',
+              subcategory: tx.subcategory ?? '',
+              selected: false,
+            }
           }
-        }
+        })
+        return next
       })
-      return next
-    })
+    } catch {
+      // silent — user can retry
+    }
     setBulkApplying(false)
     setBulkCategory('')
     setBulkCategoryGroup('')
@@ -923,7 +900,7 @@ export default function TransactionsPage({
             )}
             <button
               className="txnv-link-chip-remove"
-              onClick={() => removeBudgetAssign(i, a.linkId, a.budgetId)}
+              onClick={() => removeBudgetAssign(i, a.linkId)}
               title={t('budgets.remove')}
             >
               ×

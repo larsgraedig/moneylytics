@@ -3,6 +3,13 @@ package com.moneylytics.api.adapter.input.web
 import com.moneylytics.api.domain.Transaction
 import java.math.BigDecimal
 
+data class BudgetLinkSummaryDto(
+    val linkId: Long,
+    val budgetId: Long,
+    val budgetName: String,
+    val amount: BigDecimal?,
+)
+
 data class TransactionListResponse(
     val transactions: List<TransactionItem>,
     val total: BigDecimal,
@@ -22,6 +29,7 @@ data class TransactionItem(
     val offsetLinks: List<OffsetLinkItem>,
     val groups: List<GroupSummaryDto>,
     val collections: List<CollectionSummaryDto>,
+    val budgetLinks: List<BudgetLinkSummaryDto>,
     val comment: String?,
     val purpose: String?,
     val counterpartyName: String?,
@@ -76,6 +84,7 @@ fun Transaction.toItem() =
             },
         groups = groups.map { GroupSummaryDto(it.id, it.name) },
         collections = collections.map { CollectionSummaryDto(it.id, it.name) },
+        budgetLinks = budgetLinks.map { BudgetLinkSummaryDto(it.linkId, it.budgetId, it.budgetName, it.amount) },
         comment = comment,
         purpose = purpose,
         counterpartyName = counterpartyName,

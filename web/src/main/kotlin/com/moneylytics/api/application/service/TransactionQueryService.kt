@@ -1,5 +1,7 @@
 package com.moneylytics.api.application.service
 
+import com.moneylytics.api.application.port.input.BulkCategoryUpdate
+import com.moneylytics.api.application.port.input.BulkUpdateTransactionCategoryUseCase
 import com.moneylytics.api.application.port.input.BurnRatePoint
 import com.moneylytics.api.application.port.input.BurnRateResponse
 import com.moneylytics.api.application.port.input.CashflowBucket
@@ -22,6 +24,7 @@ import com.moneylytics.api.application.port.input.UpdateTransactionCommentUseCas
 import com.moneylytics.api.application.port.input.bucketKey
 import com.moneylytics.api.application.port.input.generateBuckets
 import com.moneylytics.api.application.port.output.BudgetRepository
+import com.moneylytics.api.application.port.output.CategoryUpdateEntry
 import com.moneylytics.api.application.port.output.TransactionRepository
 import com.moneylytics.api.domain.Transaction
 import org.springframework.stereotype.Service
@@ -41,7 +44,8 @@ class TransactionQueryService(
     UpdateTransactionCategoryUseCase,
     UpdateTransactionCommentUseCase,
     UpdateTransactionAccountingDateUseCase,
-    EnrichTransactionUseCase {
+    EnrichTransactionUseCase,
+    BulkUpdateTransactionCategoryUseCase {
     override fun getTransactions(query: GetTransactionsQuery): List<Transaction> {
         val transactions = transactionRepository.findByAccountingDateBetween(query.from, query.to, query.userId, query.accountIban)
         return transactions
@@ -199,4 +203,13 @@ class TransactionQueryService(
         counterpartyName: String?,
         counterpartyIban: String?,
     ) = transactionRepository.enrichByFingerprint(fingerprint, userId, purpose, counterpartyName, counterpartyIban, null)
+
+    override fun bulkUpdateCategory(
+        updates: List<BulkCategoryUpdate>,
+        userId: Long,
+    ): List<Transaction> =
+        transactionRepository.bulkUpdateCategory(
+            updates.map { CategoryUpdateEntry(it.id, it.category, it.subcategory, it.categoryGroup) },
+            userId,
+        )
 }

@@ -4,10 +4,12 @@ import { fetchCategories, type CategoryGroup } from '../api/rawImport'
 import {
   deleteThreshold,
   fetchThresholds,
+  fetchThresholdStatus,
   saveThreshold,
   type SaveThresholdRequest,
   type Threshold,
   type ThresholdPeriod,
+  type ThresholdStatusItem,
 } from '../api/thresholds'
 import { fetchTransactionList, type TransactionItem } from '../api/transactions'
 
@@ -26,19 +28,6 @@ const EUR2 = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR'
 
 function rowKey(category: string, subcategory: string | null): string {
   return `${category}\0${subcategory ?? ''}`
-}
-
-function periodsInRange(from: string, to: string, period: ThresholdPeriod): number {
-  const f = new Date(from)
-  const t = new Date(to)
-  const months = (t.getFullYear() - f.getFullYear()) * 12 + (t.getMonth() - f.getMonth()) + 1
-  const days = (t.getTime() - f.getTime()) / 86_400_000 + 1
-  switch (period) {
-    case 'WEEKLY': return days / 7
-    case 'MONTHLY': return months
-    case 'QUARTERLY': return months / 3
-    case 'YEARLY': return months / 12
-  }
 }
 
 function pickBest(thresholds: Threshold[], from: string, to: string): Threshold | null {
@@ -60,23 +49,12 @@ interface Progress {
   tickWarning: number | null
 }
 
-function computeProgress(spending: number, t: Threshold, from: string, to: string): Progress | null {
-  const p = periodsInRange(from, to, t.period)
-  const sN = t.notice != null ? t.notice * p : null
-  const sW = t.warning != null ? t.warning * p : null
-  const sC = t.critical != null ? t.critical * p : null
-  const max = sC ?? sW ?? sN
-  if (!max || max <= 0) return null
-  const pct = spending / max
-  let status: Status = 'ok'
-  if (sC != null && spending >= sC) status = 'critical'
-  else if (sW != null && spending >= sW) status = 'warning'
-  else if (sN != null && spending >= sN) status = 'notice'
+function progressFromItem(item: ThresholdStatusItem): Progress {
   return {
-    pct,
-    status,
-    tickNotice: sN != null ? Math.min(sN / max, 1) : null,
-    tickWarning: sW != null ? Math.min(sW / max, 1) : null,
+    pct: item.pct,
+    status: item.status.toLowerCase() as Status,
+    tickNotice: item.tickNotice,
+    tickWarning: item.tickWarning,
   }
 }
 
@@ -131,8 +109,8 @@ export default function ThresholdsPage({ from, to, iban }: { from: string; to: s
   const { t } = useTranslation()
   const [categories, setCategories] = useState<CategoryGroup[]>([])
   const [thresholds, setThresholds] = useState<Threshold[]>([])
-  const [spendingMap, setSpendingMap] = useState<Map<string, number>>(new Map())
-  const [spendingLoaded, setSpendingLoaded] = useState(false)
+  const [statusMap, setStatusMap] = useState<Map<string, ThresholdStatusItem>>(new Map())
+  const [statusLoaded, setStatusLoaded] = useState(false)
   const [loading, setLoading] = useState(false)
   const [editingKey, setEditingKey] = useState<string | null>(null)
   const [editThresholdId, setEditThresholdId] = useState<number | null>(null)
@@ -146,27 +124,17 @@ export default function ThresholdsPage({ from, to, iban }: { from: string; to: s
     fetchThresholds().then(setThresholds).catch(() => {})
   }, [])
 
-  // Reset spending when date range changes
   useEffect(() => {
-    setSpendingLoaded(false)
-    setSpendingMap(new Map())
-  }, [from, to])
+    setStatusLoaded(false)
+    setStatusMap(new Map())
+  }, [from, to, iban])
 
-  async function loadSpending() {
+  async function loadStatus() {
     setLoading(true)
     try {
-      const resp = await fetchTransactionList(from, to, undefined, undefined, iban)
-      const map = new Map<string, number>()
-      for (const tx of resp.transactions) {
-        if (tx.effectiveAmount >= 0) continue
-        const amt = Math.abs(tx.effectiveAmount)
-        const ck = rowKey(tx.category, null)
-        const sk = rowKey(tx.category, tx.subcategory)
-        map.set(ck, (map.get(ck) ?? 0) + amt)
-        map.set(sk, (map.get(sk) ?? 0) + amt)
-      }
-      setSpendingMap(map)
-      setSpendingLoaded(true)
+      const items = await fetchThresholdStatus(from, to, iban)
+      setStatusMap(new Map(items.map(item => [rowKey(item.category, item.subcategory), item])))
+      setStatusLoaded(true)
     } catch {
       // silent — user can retry
     } finally {
@@ -306,12 +274,12 @@ export default function ThresholdsPage({ from, to, iban }: { from: string; to: s
   return (
     <div className="bgt-page">
       <div className="bgt-controls">
-        <button className="load-btn" onClick={loadSpending} disabled={loading}>
+        <button className="load-btn" onClick={loadStatus} disabled={loading}>
           {loading ? '…' : t('limits.load')}
         </button>
-        {spendingLoaded && (
+        {statusLoaded && (
           <span className="bgt-period-badge">
-            {t('limits.spendingLoaded', { from, to })}
+            {t('limits.statusLoaded', { from, to })}
           </span>
         )}
       </div>
@@ -325,30 +293,28 @@ export default function ThresholdsPage({ from, to, iban }: { from: string; to: s
               <tr>
                 <th className="bgt-th-cat">{t('limits.columns.category')}</th>
                 <th className="bgt-th-sub">{t('limits.columns.subcategory')}</th>
-                {spendingLoaded && <th className="bgt-th-spent">{t('limits.columns.spending')}</th>}
+                {statusLoaded && <th className="bgt-th-spent">{t('limits.columns.spending')}</th>}
                 <th className="bgt-th-period">{t('limits.columns.period')}</th>
                 <th className="bgt-th-sev bgt-sev--notice">{t('limits.columns.notice')}</th>
                 <th className="bgt-th-sev bgt-sev--warning">{t('limits.columns.warning')}</th>
                 <th className="bgt-th-sev bgt-sev--critical">{t('limits.columns.critical')}</th>
-                {spendingLoaded && <th className="bgt-th-bar">{t('limits.columns.progress')}</th>}
+                {statusLoaded && <th className="bgt-th-bar">{t('limits.columns.progress')}</th>}
                 <th className="bgt-th-actions" />
               </tr>
             </thead>
             <tbody>
               {rows.map(row => {
                 const isEditing = editingKey === row.key
-                const best = pickBest(row.thresholds, from, to)
-                const spending = spendingMap.get(row.key) ?? 0
-                const progress =
-                  best != null && spendingLoaded
-                    ? computeProgress(spending, best, from, to)
-                    : null
+                const item = statusLoaded ? statusMap.get(row.key) : undefined
+                const best = item ?? pickBest(row.thresholds, from, to)
+                const spending = item?.spending ?? 0
+                const progress = item != null ? progressFromItem(item) : null
 
                 const rowClass = [
                   'bgt-row',
                   row.isFirst ? 'bgt-row--group-start' : '',
                   isEditing ? 'bgt-row--editing' : '',
-                  !isEditing && best == null ? 'bgt-row--no-budget' : '',
+                  !isEditing && row.thresholds.length === 0 ? 'bgt-row--no-budget' : '',
                 ]
                   .filter(Boolean)
                   .join(' ')
@@ -358,7 +324,7 @@ export default function ThresholdsPage({ from, to, iban }: { from: string; to: s
                     <tr key={row.key} className={rowClass}>
                       <td className="bgt-td-cat bgt-cell-cat">{row.category}</td>
                       <td className="bgt-td-sub bgt-cell-muted">{row.subcategory ?? t('limits.totalSubcat')}</td>
-                      {spendingLoaded && (
+                      {statusLoaded && (
                         <td className="bgt-td-spent">
                           {spending > 0 ? EUR2.format(spending) : '—'}
                         </td>
@@ -411,7 +377,7 @@ export default function ThresholdsPage({ from, to, iban }: { from: string; to: s
                           onChange={e => setForm(p => ({ ...p, critical: e.target.value }))}
                         />
                       </td>
-                      {spendingLoaded && <td />}
+                      {statusLoaded && <td />}
                       <td className="bgt-td-edit-actions">
                         <button
                           className="bgt-btn bgt-btn--save"
@@ -446,7 +412,7 @@ export default function ThresholdsPage({ from, to, iban }: { from: string; to: s
                     >
                       {row.subcategory ?? t('limits.totalSubcat')}
                     </td>
-                    {spendingLoaded && (
+                    {statusLoaded && (
                       <td className={`bgt-td-spent${spending === 0 ? ' bgt-cell-muted' : ''}`}>
                         {spending > 0 ? (
                           <button
@@ -482,7 +448,8 @@ export default function ThresholdsPage({ from, to, iban }: { from: string; to: s
                         <span className="bgt-cell-muted">—</span>
                       )}
                     </td>
-                    {spendingLoaded && (
+
+                    {statusLoaded && (
                       <td className="bgt-td-bar">
                         {progress != null ? (
                           <ProgressBar progress={progress} />

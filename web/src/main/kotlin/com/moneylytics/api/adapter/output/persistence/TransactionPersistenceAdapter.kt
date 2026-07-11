@@ -1,6 +1,8 @@
 package com.moneylytics.api.adapter.output.persistence
 
+import com.moneylytics.api.application.port.output.CategoryUpdateEntry
 import com.moneylytics.api.application.port.output.TransactionRepository
+import com.moneylytics.api.domain.BudgetTransactionSummary
 import com.moneylytics.api.domain.CollectionSummary
 import com.moneylytics.api.domain.Transaction
 import com.moneylytics.api.domain.TransactionGroupSummary
@@ -21,6 +23,7 @@ class TransactionPersistenceAdapter(
     private val groupJpaRepository: TransactionGroupJpaRepository,
     private val collectionTransactionJpaRepository: CollectionTransactionJpaRepository,
     private val collectionJpaRepository: CollectionJpaRepository,
+    private val budgetTransactionJpaRepository: BudgetTransactionJpaRepository,
 ) : TransactionRepository {
     @Transactional
     override fun saveAll(
@@ -179,19 +182,59 @@ class TransactionPersistenceAdapter(
     override fun findAssignedTransactionIdsByCollectionId(collectionId: Long): Set<Long> =
         collectionTransactionJpaRepository.findTransactionIdsByCollectionId(collectionId).toHashSet()
 
+    @Transactional
+    override fun bulkUpdateCategory(
+        updates: List<CategoryUpdateEntry>,
+        userId: Long,
+    ): List<Transaction> {
+        if (updates.isEmpty()) return emptyList()
+        val ids = updates.map { it.id }.toSet()
+        val entities = jpaRepository.findByIdsAndUserId(ids, userId).associateBy { requireNotNull(it.id) }
+        val updateMap = updates.associateBy { it.id }
+        val toSave =
+            entities.mapNotNull { (id, entity) ->
+                val u = updateMap[id] ?: return@mapNotNull null
+                entity.category = u.category.takeIf { it.isNotBlank() }
+                entity.subcategory = u.subcategory.takeIf { it.isNotBlank() }
+                entity.categoryGroup = u.categoryGroup?.takeIf { it.isNotBlank() }
+                entity
+            }
+        return enrichWithOffsetLinks(jpaRepository.saveAll(toSave))
+    }
+
     private fun enrichWithOffsetLinks(entities: List<TransactionEntity>): List<Transaction> {
         val ids = entities.mapNotNull { it.id }
         if (ids.isEmpty()) return emptyList()
         val linksByTxId = buildLinkMap(offsetJpaRepository.findByTransactionIds(ids))
         val groupsByTxId = buildGroupMap(ids)
         val collectionsByTxId = buildCollectionMap(ids)
+        val budgetsByTxId = buildBudgetMap(ids)
         return entities.map {
             it.toDomain(
                 linksByTxId[it.id] ?: emptyList(),
                 groupsByTxId[it.id] ?: emptyList(),
                 collectionsByTxId[it.id] ?: emptyList(),
+                budgetsByTxId[it.id] ?: emptyList(),
             )
         }
+    }
+
+    private fun buildBudgetMap(ids: List<Long>): Map<Long, List<BudgetTransactionSummary>> {
+        if (ids.isEmpty()) return emptyMap()
+        val links = budgetTransactionJpaRepository.findByTransactionIds(ids)
+        if (links.isEmpty()) return emptyMap()
+        return links
+            .groupBy { requireNotNull(it.transaction.id) }
+            .mapValues { (_, linkList) ->
+                linkList.map { link ->
+                    BudgetTransactionSummary(
+                        linkId = requireNotNull(link.id),
+                        budgetId = requireNotNull(link.budget.id),
+                        budgetName = link.budget.name,
+                        amount = link.amount,
+                    )
+                }
+            }
     }
 
     private fun buildCollectionMap(ids: List<Long>): Map<Long, List<CollectionSummary>> {
@@ -256,6 +299,7 @@ class TransactionPersistenceAdapter(
         offsetLinks: List<TransactionOffsetLink> = emptyList(),
         groups: List<TransactionGroupSummary> = emptyList(),
         collections: List<CollectionSummary> = emptyList(),
+        budgetLinks: List<BudgetTransactionSummary> = emptyList(),
     ) = Transaction(
         category = category,
         subcategory = subcategory,
@@ -274,6 +318,7 @@ class TransactionPersistenceAdapter(
         purpose = purpose,
         counterpartyName = counterpartyName,
         counterpartyIban = counterpartyIban,
+        budgetLinks = budgetLinks,
     )
 
     private fun Transaction.toEntity(
