@@ -2,11 +2,11 @@ package com.moneylytics.api.adapter.input.web
 
 import com.moneylytics.api.application.port.input.RegisterUserUseCase
 import com.moneylytics.api.application.service.UserAlreadyExistsException
+import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.reactive.awaitFirstOrNull
 import kotlinx.coroutines.reactive.awaitSingle
 import kotlinx.coroutines.withContext
-import org.slf4j.LoggerFactory
 import org.springframework.http.ResponseEntity
 import org.springframework.security.authentication.ReactiveAuthenticationManager
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
@@ -29,7 +29,7 @@ class AuthController(
     private val securityContextRepository: ServerSecurityContextRepository,
     private val registerUserUseCase: RegisterUserUseCase,
 ) {
-    private val logger = LoggerFactory.getLogger(AuthController::class.java)
+    private val logger = KotlinLogging.logger {}
 
     @PostMapping("/login")
     suspend fun login(
@@ -42,7 +42,7 @@ class AuthController(
             securityContextRepository.save(exchange, SecurityContextImpl(auth)).awaitFirstOrNull()
             ResponseEntity.ok(AuthResponse(username = auth.name))
         } catch (e: AuthenticationException) {
-            logger.debug("Authentication failed for user ${request.username}", e)
+            logger.debug(e) { "Authentication failed for user ${request.username}" }
             ResponseEntity.status(401).build()
         }
     }
@@ -64,7 +64,7 @@ class AuthController(
             securityContextRepository.save(exchange, SecurityContextImpl(auth)).awaitFirstOrNull()
             ResponseEntity.ok(AuthResponse(username = auth.name))
         } catch (e: UserAlreadyExistsException) {
-            logger.debug("Registration failed: user ${request.username} already exists", e)
+            logger.debug(e) { "Registration failed: user ${request.username} already exists" }
             ResponseEntity.status(409).build()
         }
 

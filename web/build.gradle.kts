@@ -34,6 +34,7 @@ dependencies {
     implementation(libs.kotlinx.coroutines.reactor)
     implementation(libs.jackson.module.kotlin)
     implementation(libs.commons.csv)
+    implementation(libs.kotlin.logging)
     implementation(libs.h2)
     runtimeOnly(libs.postgresql)
     implementation(libs.spring.session.jdbc)

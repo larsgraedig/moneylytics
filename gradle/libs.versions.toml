@@ -7,6 +7,7 @@ spring-dependency-management = "1.1.7"
 detekt = "2.0.0-alpha.1"
 ktlint = "14.2.0"
 mockito-kotlin = "5.4.0"
+kotlin-logging = "8.0.4"
 springdoc-openapi = "2.8.6"
 
 [libraries]
@@ -30,6 +31,7 @@ kotlin-test-junit5 = { group = "org.jetbrains.kotlin", name = "kotlin-test-junit
 kotlinx-coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test" }
 junit-platform-launcher = { group = "org.junit.platform", name = "junit-platform-launcher" }
 mockito-kotlin = { group = "org.mockito.kotlin", name = "mockito-kotlin", version.ref = "mockito-kotlin" }
+kotlin-logging = { group = "io.github.oshai", name = "kotlin-logging-jvm", version.ref = "kotlin-logging" }
 springdoc-openapi-webflux-ui = { group = "org.springdoc", name = "springdoc-openapi-starter-webflux-ui", version.ref = "springdoc-openapi" }
 
 [plugins]
