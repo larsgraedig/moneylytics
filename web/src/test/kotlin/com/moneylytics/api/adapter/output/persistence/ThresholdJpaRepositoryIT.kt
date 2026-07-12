@@ -30,7 +30,7 @@ class ThresholdJpaRepositoryIT : AbstractJpaRepositoryIT() {
         savedThreshold(category = "Transport")
         savedThreshold(category = "Fremdes", forUser = otherUser)
 
-        val result = thresholdRepo.findByUserId(user.id!!)
+        val result = thresholdRepo.findByUserId(userId)
 
         assertThat(result).hasSize(2)
         assertThat(result.map { it.category }).containsExactlyInAnyOrder("Lebensmittel", "Transport")
@@ -38,7 +38,7 @@ class ThresholdJpaRepositoryIT : AbstractJpaRepositoryIT() {
 
     @Test
     fun `should return empty list when user has no thresholds`() {
-        val result = thresholdRepo.findByUserId(otherUser.id!!)
+        val result = thresholdRepo.findByUserId(otherUserId)
 
         assertThat(result).isEmpty()
     }
@@ -50,13 +50,13 @@ class ThresholdJpaRepositoryIT : AbstractJpaRepositoryIT() {
 
         val result =
             thresholdRepo.findByUserIdAndCategoryAndSubcategoryIsNullAndPeriod(
-                userId = user.id!!,
+                userId = userId,
                 category = "Lebensmittel",
                 period = ThresholdPeriod.MONTHLY,
             )
 
         assertThat(result).isNotNull
-        assertThat(result!!.subcategory).isNull()
+        assertThat(result?.subcategory).isNull()
     }
 
     @Test
@@ -65,7 +65,7 @@ class ThresholdJpaRepositoryIT : AbstractJpaRepositoryIT() {
 
         val result =
             thresholdRepo.findByUserIdAndCategoryAndSubcategoryIsNullAndPeriod(
-                userId = user.id!!,
+                userId = userId,
                 category = "Lebensmittel",
                 period = ThresholdPeriod.YEARLY,
             )
@@ -80,35 +80,37 @@ class ThresholdJpaRepositoryIT : AbstractJpaRepositoryIT() {
 
         val result =
             thresholdRepo.findByUserIdAndCategoryAndSubcategoryAndPeriod(
-                userId = user.id!!,
+                userId = userId,
                 category = "Lebensmittel",
                 subcategory = "Restaurant",
                 period = ThresholdPeriod.MONTHLY,
             )
 
         assertThat(result).isNotNull
-        assertThat(result!!.subcategory).isEqualTo("Restaurant")
+        assertThat(result?.subcategory).isEqualTo("Restaurant")
     }
 
     @Test
     fun `should delete threshold by id and user id`() {
         val threshold = savedThreshold()
+        val thresholdId = checkNotNull(threshold.id)
         flushAndClear()
 
-        thresholdRepo.deleteByIdAndUserId(threshold.id!!, user.id!!)
+        thresholdRepo.deleteByIdAndUserId(thresholdId, userId)
         flushAndClear()
 
-        assertThat(thresholdRepo.findById(threshold.id!!)).isEmpty
+        assertThat(thresholdRepo.findById(thresholdId)).isEmpty
     }
 
     @Test
     fun `should not delete threshold belonging to other user`() {
         val otherThreshold = savedThreshold(forUser = otherUser)
+        val otherThresholdId = checkNotNull(otherThreshold.id)
         flushAndClear()
 
-        thresholdRepo.deleteByIdAndUserId(otherThreshold.id!!, user.id!!)
+        thresholdRepo.deleteByIdAndUserId(otherThresholdId, userId)
         flushAndClear()
 
-        assertThat(thresholdRepo.findById(otherThreshold.id!!)).isPresent
+        assertThat(thresholdRepo.findById(otherThresholdId)).isPresent
     }
 }

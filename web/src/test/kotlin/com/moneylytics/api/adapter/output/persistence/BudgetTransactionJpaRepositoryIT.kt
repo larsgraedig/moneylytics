@@ -7,7 +7,6 @@ import java.math.BigDecimal
 
 class BudgetTransactionJpaRepositoryIT : AbstractJpaRepositoryIT() {
     @Autowired private lateinit var budgetRepo: BudgetJpaRepository
-
     @Autowired private lateinit var budgetTransactionRepo: BudgetTransactionJpaRepository
 
     private fun savedBudget(forUser: UserEntity = user) =
@@ -22,12 +21,13 @@ class BudgetTransactionJpaRepositoryIT : AbstractJpaRepositoryIT() {
     @Test
     fun `should find budget transactions for given budget and user`() {
         val budget = savedBudget()
+        val budgetId = checkNotNull(budget.id)
         val tx1 = savedTransaction("fp-1")
         val tx2 = savedTransaction("fp-2")
         savedLink(budget, tx1)
         savedLink(budget, tx2)
 
-        val result = budgetTransactionRepo.findByBudgetIdAndUserId(budget.id!!, user.id!!)
+        val result = budgetTransactionRepo.findByBudgetIdAndUserId(budgetId, userId)
 
         assertThat(result).hasSize(2)
         assertThat(result.map { it.transaction.fingerprint }).containsExactlyInAnyOrder("fp-1", "fp-2")
@@ -37,13 +37,14 @@ class BudgetTransactionJpaRepositoryIT : AbstractJpaRepositoryIT() {
     fun `should not return links belonging to other user`() {
         val otherAccount = accountRepo.save(AccountEntity(iban = "DE00OTHER00000000002", name = "Fremd", user = otherUser))
         val budget = savedBudget()
+        val budgetId = checkNotNull(budget.id)
         val otherBudget = savedBudget(forUser = otherUser)
         val tx = savedTransaction("fp-mine")
         val otherTx = savedTransaction("fp-theirs", forAccount = otherAccount, forUser = otherUser)
         savedLink(budget, tx)
         savedLink(otherBudget, otherTx)
 
-        val result = budgetTransactionRepo.findByBudgetIdAndUserId(budget.id!!, user.id!!)
+        val result = budgetTransactionRepo.findByBudgetIdAndUserId(budgetId, userId)
 
         assertThat(result).hasSize(1)
         assertThat(result.first().transaction.fingerprint).isEqualTo("fp-mine")
@@ -58,7 +59,7 @@ class BudgetTransactionJpaRepositoryIT : AbstractJpaRepositoryIT() {
         savedLink(budget1, tx1)
         savedLink(budget2, tx2)
 
-        val result = budgetTransactionRepo.findAllByUserId(user.id!!)
+        val result = budgetTransactionRepo.findAllByUserId(userId)
 
         assertThat(result).hasSize(2)
     }
@@ -69,10 +70,12 @@ class BudgetTransactionJpaRepositoryIT : AbstractJpaRepositoryIT() {
         val tx1 = savedTransaction("fp-1")
         val tx2 = savedTransaction("fp-2")
         val tx3 = savedTransaction("fp-3")
+        val tx1Id = checkNotNull(tx1.id)
+        val tx3Id = checkNotNull(tx3.id)
         val link1 = savedLink(budget, tx1)
         savedLink(budget, tx2)
 
-        val result = budgetTransactionRepo.findByTransactionIds(listOf(tx1.id!!, tx3.id!!))
+        val result = budgetTransactionRepo.findByTransactionIds(listOf(tx1Id, tx3Id))
 
         assertThat(result).hasSize(1)
         assertThat(result.first().id).isEqualTo(link1.id)
@@ -81,10 +84,11 @@ class BudgetTransactionJpaRepositoryIT : AbstractJpaRepositoryIT() {
     @Test
     fun `should store and return partial allocation amount`() {
         val budget = savedBudget()
+        val budgetId = checkNotNull(budget.id)
         val tx = savedTransaction("fp-1", amount = BigDecimal("-800.00"))
         savedLink(budget, tx, amount = BigDecimal("300"))
 
-        val result = budgetTransactionRepo.findByBudgetIdAndUserId(budget.id!!, user.id!!)
+        val result = budgetTransactionRepo.findByBudgetIdAndUserId(budgetId, userId)
 
         assertThat(result.first().amount).isEqualByComparingTo(BigDecimal("300"))
     }
@@ -94,12 +98,13 @@ class BudgetTransactionJpaRepositoryIT : AbstractJpaRepositoryIT() {
         val budget = savedBudget()
         val tx = savedTransaction("fp-1")
         val link = savedLink(budget, tx)
+        val linkId = checkNotNull(link.id)
         flushAndClear()
 
-        budgetTransactionRepo.deleteByIdAndUserId(link.id!!, user.id!!)
+        budgetTransactionRepo.deleteByIdAndUserId(linkId, userId)
         flushAndClear()
 
-        assertThat(budgetTransactionRepo.findById(link.id!!)).isEmpty
+        assertThat(budgetTransactionRepo.findById(linkId)).isEmpty
     }
 
     @Test
@@ -108,11 +113,12 @@ class BudgetTransactionJpaRepositoryIT : AbstractJpaRepositoryIT() {
         val otherBudget = savedBudget(forUser = otherUser)
         val otherTx = savedTransaction("fp-theirs", forAccount = otherAccount, forUser = otherUser)
         val otherLink = savedLink(otherBudget, otherTx)
+        val otherLinkId = checkNotNull(otherLink.id)
         flushAndClear()
 
-        budgetTransactionRepo.deleteByIdAndUserId(otherLink.id!!, user.id!!)
+        budgetTransactionRepo.deleteByIdAndUserId(otherLinkId, userId)
         flushAndClear()
 
-        assertThat(budgetTransactionRepo.findById(otherLink.id!!)).isPresent
+        assertThat(budgetTransactionRepo.findById(otherLinkId)).isPresent
     }
 }

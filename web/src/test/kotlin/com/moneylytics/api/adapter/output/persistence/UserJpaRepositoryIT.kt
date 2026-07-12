@@ -9,7 +9,7 @@ class UserJpaRepositoryIT : AbstractJpaRepositoryIT() {
         val result = userRepo.findByExternalId("test-user-1")
 
         assertThat(result).isNotNull
-        assertThat(result!!.id).isEqualTo(user.id)
+        assertThat(result?.id).isEqualTo(user.id)
     }
 
     @Test
@@ -24,6 +24,8 @@ class UserJpaRepositoryIT : AbstractJpaRepositoryIT() {
         val result1 = userRepo.findByExternalId("test-user-1")
         val result2 = userRepo.findByExternalId("test-user-2")
 
-        assertThat(result1!!.id).isNotEqualTo(result2!!.id)
+        assertThat(result1).isNotNull
+        assertThat(result2).isNotNull
+        assertThat(result1?.id).isNotEqualTo(result2?.id)
     }
 }

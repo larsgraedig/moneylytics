@@ -13,7 +13,7 @@ class CategoryJpaRepositoryIT : AbstractJpaRepositoryIT() {
         categoryRepo.save(CategoryEntity(name = "Wohnen", subcategory = "Miete", user = user))
         categoryRepo.save(CategoryEntity(name = "Einnahmen", subcategory = "Gehalt", user = otherUser))
 
-        val result = categoryRepo.findAllByUserId(user.id!!)
+        val result = categoryRepo.findAllByUserId(userId)
 
         assertThat(result).hasSize(2)
         assertThat(result.map { it.name }).containsExactlyInAnyOrder("Lebensmittel", "Wohnen")
@@ -21,7 +21,7 @@ class CategoryJpaRepositoryIT : AbstractJpaRepositoryIT() {
 
     @Test
     fun `should return empty list when user has no categories`() {
-        val result = categoryRepo.findAllByUserId(otherUser.id!!)
+        val result = categoryRepo.findAllByUserId(otherUserId)
 
         assertThat(result).isEmpty()
     }
@@ -30,7 +30,7 @@ class CategoryJpaRepositoryIT : AbstractJpaRepositoryIT() {
     fun `should store and return category group`() {
         categoryRepo.save(CategoryEntity(name = "Lebensmittel", subcategory = "Supermarkt", user = user, categoryGroup = "Konsum"))
 
-        val result = categoryRepo.findAllByUserId(user.id!!)
+        val result = categoryRepo.findAllByUserId(userId)
 
         assertThat(result.first().categoryGroup).isEqualTo("Konsum")
     }

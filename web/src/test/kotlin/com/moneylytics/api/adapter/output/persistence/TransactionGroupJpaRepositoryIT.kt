@@ -7,10 +7,8 @@ import org.springframework.beans.factory.annotation.Autowired
 class TransactionGroupJpaRepositoryIT : AbstractJpaRepositoryIT() {
     @Autowired private lateinit var groupRepo: TransactionGroupJpaRepository
 
-    private fun savedGroup(
-        name: String? = "Test Group",
-        forUser: UserEntity = user,
-    ) = groupRepo.save(TransactionGroupEntity(user = forUser, name = name))
+    private fun savedGroup(name: String? = "Test Group", forUser: UserEntity = user) =
+        groupRepo.save(TransactionGroupEntity(user = forUser, name = name))
 
     @Test
     fun `should find all groups for user`() {
@@ -18,7 +16,7 @@ class TransactionGroupJpaRepositoryIT : AbstractJpaRepositoryIT() {
         savedGroup(name = "Gruppe B")
         savedGroup(name = "Fremde Gruppe", forUser = otherUser)
 
-        val result = groupRepo.findAllByUserId(user.id!!)
+        val result = groupRepo.findAllByUserId(userId)
 
         assertThat(result).hasSize(2)
         assertThat(result.map { it.name }).containsExactlyInAnyOrder("Gruppe A", "Gruppe B")
@@ -26,7 +24,7 @@ class TransactionGroupJpaRepositoryIT : AbstractJpaRepositoryIT() {
 
     @Test
     fun `should return empty list when user has no groups`() {
-        val result = groupRepo.findAllByUserId(otherUser.id!!)
+        val result = groupRepo.findAllByUserId(otherUserId)
 
         assertThat(result).isEmpty()
     }
@@ -34,18 +32,20 @@ class TransactionGroupJpaRepositoryIT : AbstractJpaRepositoryIT() {
     @Test
     fun `should find group by id and user id`() {
         val group = savedGroup(name = "Meine Gruppe")
+        val groupId = checkNotNull(group.id)
 
-        val result = groupRepo.findByIdAndUserId(group.id!!, user.id!!)
+        val result = groupRepo.findByIdAndUserId(groupId, userId)
 
         assertThat(result).isNotNull
-        assertThat(result!!.name).isEqualTo("Meine Gruppe")
+        assertThat(result?.name).isEqualTo("Meine Gruppe")
     }
 
     @Test
     fun `should return null for group belonging to other user`() {
         val otherGroup = savedGroup(forUser = otherUser)
+        val otherGroupId = checkNotNull(otherGroup.id)
 
-        val result = groupRepo.findByIdAndUserId(otherGroup.id!!, user.id!!)
+        val result = groupRepo.findByIdAndUserId(otherGroupId, userId)
 
         assertThat(result).isNull()
     }
@@ -53,9 +53,10 @@ class TransactionGroupJpaRepositoryIT : AbstractJpaRepositoryIT() {
     @Test
     fun `should store and return group comment`() {
         val group = groupRepo.save(TransactionGroupEntity(user = user, comment = "Ein Kommentar"))
+        val groupId = checkNotNull(group.id)
 
-        val found = groupRepo.findByIdAndUserId(group.id!!, user.id!!)
+        val found = groupRepo.findByIdAndUserId(groupId, userId)
 
-        assertThat(found!!.comment).isEqualTo("Ein Kommentar")
+        assertThat(found?.comment).isEqualTo("Ein Kommentar")
     }
 }

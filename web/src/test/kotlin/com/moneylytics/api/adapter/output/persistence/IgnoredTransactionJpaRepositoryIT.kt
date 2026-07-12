@@ -15,7 +15,7 @@ class IgnoredTransactionJpaRepositoryIT : AbstractJpaRepositoryIT() {
         val result =
             ignoredRepo.findExistingFingerprints(
                 fingerprints = listOf("fp-a", "fp-b", "fp-unknown"),
-                userId = user.id!!,
+                userId = userId,
             )
 
         assertThat(result).containsExactlyInAnyOrder("fp-a", "fp-b")
@@ -29,7 +29,7 @@ class IgnoredTransactionJpaRepositoryIT : AbstractJpaRepositoryIT() {
         val result =
             ignoredRepo.findExistingFingerprints(
                 fingerprints = listOf("fp-mine", "fp-theirs"),
-                userId = user.id!!,
+                userId = userId,
             )
 
         assertThat(result).containsExactly("fp-mine")
@@ -42,7 +42,7 @@ class IgnoredTransactionJpaRepositoryIT : AbstractJpaRepositoryIT() {
         val result =
             ignoredRepo.findExistingFingerprints(
                 fingerprints = listOf("fp-not-stored"),
-                userId = user.id!!,
+                userId = userId,
             )
 
         assertThat(result).isEmpty()
@@ -54,10 +54,10 @@ class IgnoredTransactionJpaRepositoryIT : AbstractJpaRepositoryIT() {
         ignoredRepo.save(IgnoredTransactionEntity(fingerprint = "fp-keep", user = user))
         flushAndClear()
 
-        ignoredRepo.deleteByFingerprintInAndUserId(listOf("fp-delete"), user.id!!)
+        ignoredRepo.deleteByFingerprintInAndUserId(listOf("fp-delete"), userId)
         flushAndClear()
 
-        val remaining = ignoredRepo.findExistingFingerprints(listOf("fp-delete", "fp-keep"), user.id!!)
+        val remaining = ignoredRepo.findExistingFingerprints(listOf("fp-delete", "fp-keep"), userId)
         assertThat(remaining).containsExactly("fp-keep")
     }
 
@@ -66,10 +66,10 @@ class IgnoredTransactionJpaRepositoryIT : AbstractJpaRepositoryIT() {
         ignoredRepo.save(IgnoredTransactionEntity(fingerprint = "fp-theirs", user = otherUser))
         flushAndClear()
 
-        ignoredRepo.deleteByFingerprintInAndUserId(listOf("fp-theirs"), user.id!!)
+        ignoredRepo.deleteByFingerprintInAndUserId(listOf("fp-theirs"), userId)
         flushAndClear()
 
-        val remaining = ignoredRepo.findExistingFingerprints(listOf("fp-theirs"), otherUser.id!!)
+        val remaining = ignoredRepo.findExistingFingerprints(listOf("fp-theirs"), otherUserId)
         assertThat(remaining).containsExactly("fp-theirs")
     }
 }

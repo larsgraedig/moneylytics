@@ -19,7 +19,7 @@ class BudgetJpaRepositoryIT : AbstractJpaRepositoryIT() {
         savedBudget(name = "Neue Küche")
         savedBudget(name = "Fremdes Budget", forUser = otherUser)
 
-        val result = budgetRepo.findByUserId(user.id!!)
+        val result = budgetRepo.findByUserId(userId)
 
         assertThat(result).hasSize(2)
         assertThat(result.map { it.name }).containsExactlyInAnyOrder("Urlaub", "Neue Küche")
@@ -27,7 +27,7 @@ class BudgetJpaRepositoryIT : AbstractJpaRepositoryIT() {
 
     @Test
     fun `should return empty list when user has no budgets`() {
-        val result = budgetRepo.findByUserId(otherUser.id!!)
+        val result = budgetRepo.findByUserId(otherUserId)
 
         assertThat(result).isEmpty()
     }
@@ -35,22 +35,24 @@ class BudgetJpaRepositoryIT : AbstractJpaRepositoryIT() {
     @Test
     fun `should delete budget by id and user id`() {
         val budget = savedBudget()
+        val budgetId = checkNotNull(budget.id)
         flushAndClear()
 
-        budgetRepo.deleteByIdAndUserId(budget.id!!, user.id!!)
+        budgetRepo.deleteByIdAndUserId(budgetId, userId)
         flushAndClear()
 
-        assertThat(budgetRepo.findById(budget.id!!)).isEmpty
+        assertThat(budgetRepo.findById(budgetId)).isEmpty
     }
 
     @Test
     fun `should not delete budget belonging to other user`() {
         val otherBudget = savedBudget(forUser = otherUser)
+        val otherBudgetId = checkNotNull(otherBudget.id)
         flushAndClear()
 
-        budgetRepo.deleteByIdAndUserId(otherBudget.id!!, user.id!!)
+        budgetRepo.deleteByIdAndUserId(otherBudgetId, userId)
         flushAndClear()
 
-        assertThat(budgetRepo.findById(otherBudget.id!!)).isPresent
+        assertThat(budgetRepo.findById(otherBudgetId)).isPresent
     }
 }

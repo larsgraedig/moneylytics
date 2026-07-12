@@ -30,9 +30,12 @@ class TransactionOffsetJpaRepositoryIT : AbstractJpaRepositoryIT() {
         val tx2 = savedTransaction("fp-2")
         val tx3 = savedTransaction("fp-3")
         val tx4 = savedTransaction("fp-4")
+        val tx1Id = checkNotNull(tx1.id)
+        val tx3Id = checkNotNull(tx3.id)
+        val tx4Id = checkNotNull(tx4.id)
         savedOffset(tx1, tx2)
 
-        val result = offsetRepo.findByTransactionIds(listOf(tx1.id!!, tx3.id!!, tx4.id!!))
+        val result = offsetRepo.findByTransactionIds(listOf(tx1Id, tx3Id, tx4Id))
 
         assertThat(result).hasSize(1)
         assertThat(result.first().transactionA.fingerprint).isEqualTo("fp-1")
@@ -42,10 +45,12 @@ class TransactionOffsetJpaRepositoryIT : AbstractJpaRepositoryIT() {
     fun `should find offset matching either side of the pair`() {
         val tx1 = savedTransaction("fp-1")
         val tx2 = savedTransaction("fp-2")
+        val tx1Id = checkNotNull(tx1.id)
+        val tx2Id = checkNotNull(tx2.id)
         savedOffset(tx1, tx2)
 
-        val byA = offsetRepo.findByTransactionIds(listOf(tx1.id!!))
-        val byB = offsetRepo.findByTransactionIds(listOf(tx2.id!!))
+        val byA = offsetRepo.findByTransactionIds(listOf(tx1Id))
+        val byB = offsetRepo.findByTransactionIds(listOf(tx2Id))
 
         assertThat(byA).hasSize(1)
         assertThat(byB).hasSize(1)
@@ -56,11 +61,12 @@ class TransactionOffsetJpaRepositoryIT : AbstractJpaRepositoryIT() {
         val tx1 = savedTransaction("fp-1")
         val tx2 = savedTransaction("fp-2")
         val offset = savedOffset(tx1, tx2)
+        val offsetId = checkNotNull(offset.id)
 
-        val result = offsetRepo.findByIdAndUserId(offset.id!!, user.id!!)
+        val result = offsetRepo.findByIdAndUserId(offsetId, userId)
 
         assertThat(result).isNotNull
-        assertThat(result!!.id).isEqualTo(offset.id)
+        assertThat(result?.id).isEqualTo(offsetId)
     }
 
     @Test
@@ -69,8 +75,9 @@ class TransactionOffsetJpaRepositoryIT : AbstractJpaRepositoryIT() {
         val tx1 = savedTransaction("fp-1", forAccount = otherAccount, forUser = otherUser)
         val tx2 = savedTransaction("fp-2", forAccount = otherAccount, forUser = otherUser)
         val offset = savedOffset(tx1, tx2)
+        val offsetId = checkNotNull(offset.id)
 
-        val result = offsetRepo.findByIdAndUserId(offset.id!!, user.id!!)
+        val result = offsetRepo.findByIdAndUserId(offsetId, userId)
 
         assertThat(result).isNull()
     }
@@ -79,17 +86,21 @@ class TransactionOffsetJpaRepositoryIT : AbstractJpaRepositoryIT() {
     fun `should detect existing pair in normalized order`() {
         val tx1 = savedTransaction("fp-1")
         val tx2 = savedTransaction("fp-2")
+        val tx1Id = checkNotNull(tx1.id)
+        val tx2Id = checkNotNull(tx2.id)
         savedOffset(tx1, tx2)
 
-        assertThat(offsetRepo.existsByNormalizedPair(tx1.id!!, tx2.id!!)).isTrue()
+        assertThat(offsetRepo.existsByNormalizedPair(tx1Id, tx2Id)).isTrue()
     }
 
     @Test
     fun `should return false when pair does not exist`() {
         val tx1 = savedTransaction("fp-1")
         val tx2 = savedTransaction("fp-2")
+        val tx1Id = checkNotNull(tx1.id)
+        val tx2Id = checkNotNull(tx2.id)
 
-        assertThat(offsetRepo.existsByNormalizedPair(tx1.id!!, tx2.id!!)).isFalse()
+        assertThat(offsetRepo.existsByNormalizedPair(tx1Id, tx2Id)).isFalse()
     }
 
     @Test
@@ -111,13 +122,16 @@ class TransactionOffsetJpaRepositoryIT : AbstractJpaRepositoryIT() {
     fun `should update group id for offsets`() {
         val tx1 = savedTransaction("fp-1")
         val tx2 = savedTransaction("fp-2")
+        val tx1Id = checkNotNull(tx1.id)
+        val tx2Id = checkNotNull(tx2.id)
         val offset = savedOffset(tx1, tx2, groupId = 1L)
+        val offsetId = checkNotNull(offset.id)
         flushAndClear()
 
-        offsetRepo.updateGroupId(fromGroupId = 1L, toGroupId = 2L, ids = listOf(tx1.id!!, tx2.id!!))
+        offsetRepo.updateGroupId(fromGroupId = 1L, toGroupId = 2L, ids = listOf(tx1Id, tx2Id))
         flushAndClear()
 
-        val updated = offsetRepo.findById(offset.id!!).get()
+        val updated = offsetRepo.findById(offsetId).get()
         assertThat(updated.groupId).isEqualTo(2L)
     }
 
@@ -125,9 +139,10 @@ class TransactionOffsetJpaRepositoryIT : AbstractJpaRepositoryIT() {
     fun `should find offsets by transaction and group id`() {
         val tx1 = savedTransaction("fp-1")
         val tx2 = savedTransaction("fp-2")
+        val tx1Id = checkNotNull(tx1.id)
         savedOffset(tx1, tx2, groupId = 5L)
 
-        val result = offsetRepo.findByTxAndGroupId(txId = tx1.id!!, groupId = 5L, userId = user.id!!)
+        val result = offsetRepo.findByTxAndGroupId(txId = tx1Id, groupId = 5L, userId = userId)
 
         assertThat(result).hasSize(1)
         assertThat(result.first().transactionA.fingerprint).isEqualTo("fp-1")
@@ -138,12 +153,13 @@ class TransactionOffsetJpaRepositoryIT : AbstractJpaRepositoryIT() {
         val tx1 = savedTransaction("fp-1")
         val tx2 = savedTransaction("fp-2")
         val offset = savedOffset(tx1, tx2)
+        val offsetId = checkNotNull(offset.id)
         flushAndClear()
 
-        offsetRepo.updateComment(id = offset.id!!, userId = user.id!!, comment = "Arztkosten erstattet")
+        offsetRepo.updateComment(id = offsetId, userId = userId, comment = "Arztkosten erstattet")
         flushAndClear()
 
-        val updated = offsetRepo.findById(offset.id!!).get()
+        val updated = offsetRepo.findById(offsetId).get()
         assertThat(updated.comment).isEqualTo("Arztkosten erstattet")
     }
 
@@ -153,12 +169,13 @@ class TransactionOffsetJpaRepositoryIT : AbstractJpaRepositoryIT() {
         val tx1 = savedTransaction("fp-1", forAccount = otherAccount, forUser = otherUser)
         val tx2 = savedTransaction("fp-2", forAccount = otherAccount, forUser = otherUser)
         val offset = savedOffset(tx1, tx2)
+        val offsetId = checkNotNull(offset.id)
         flushAndClear()
 
-        offsetRepo.updateComment(id = offset.id!!, userId = user.id!!, comment = "Unerlaubt")
+        offsetRepo.updateComment(id = offsetId, userId = userId, comment = "Unerlaubt")
         flushAndClear()
 
-        val unchanged = offsetRepo.findById(offset.id!!).get()
+        val unchanged = offsetRepo.findById(offsetId).get()
         assertThat(unchanged.comment).isNull()
     }
 }

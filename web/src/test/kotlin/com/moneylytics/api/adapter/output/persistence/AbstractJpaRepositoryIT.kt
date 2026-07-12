@@ -27,6 +27,9 @@ abstract class AbstractJpaRepositoryIT {
     protected lateinit var otherUser: UserEntity
     protected lateinit var account: AccountEntity
 
+    protected val userId: Long get() = checkNotNull(user.id)
+    protected val otherUserId: Long get() = checkNotNull(otherUser.id)
+
     @BeforeEach
     fun setUpBaseEntities() {
         user = userRepo.save(UserEntity(externalId = "test-user-1"))

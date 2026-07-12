@@ -7,10 +7,8 @@ import org.springframework.beans.factory.annotation.Autowired
 class CollectionJpaRepositoryIT : AbstractJpaRepositoryIT() {
     @Autowired private lateinit var collectionRepo: CollectionJpaRepository
 
-    private fun savedCollection(
-        name: String = "Sommer 2025",
-        forUser: UserEntity = user,
-    ) = collectionRepo.save(CollectionEntity(user = forUser, name = name))
+    private fun savedCollection(name: String = "Sommer 2025", forUser: UserEntity = user) =
+        collectionRepo.save(CollectionEntity(user = forUser, name = name))
 
     @Test
     fun `should find all collections for user`() {
@@ -18,7 +16,7 @@ class CollectionJpaRepositoryIT : AbstractJpaRepositoryIT() {
         savedCollection(name = "Haushalt Q1")
         savedCollection(name = "Fremde Sammlung", forUser = otherUser)
 
-        val result = collectionRepo.findByUserId(user.id!!)
+        val result = collectionRepo.findByUserId(userId)
 
         assertThat(result).hasSize(2)
         assertThat(result.map { it.name }).containsExactlyInAnyOrder("Sommer 2025", "Haushalt Q1")
@@ -26,7 +24,7 @@ class CollectionJpaRepositoryIT : AbstractJpaRepositoryIT() {
 
     @Test
     fun `should return empty list when user has no collections`() {
-        val result = collectionRepo.findByUserId(otherUser.id!!)
+        val result = collectionRepo.findByUserId(otherUserId)
 
         assertThat(result).isEmpty()
     }
@@ -34,18 +32,20 @@ class CollectionJpaRepositoryIT : AbstractJpaRepositoryIT() {
     @Test
     fun `should find collection by id and user id`() {
         val collection = savedCollection()
+        val collectionId = checkNotNull(collection.id)
 
-        val result = collectionRepo.findByIdAndUserId(collection.id!!, user.id!!)
+        val result = collectionRepo.findByIdAndUserId(collectionId, userId)
 
         assertThat(result).isNotNull
-        assertThat(result!!.name).isEqualTo("Sommer 2025")
+        assertThat(result?.name).isEqualTo("Sommer 2025")
     }
 
     @Test
     fun `should return null for collection belonging to other user`() {
         val otherCollection = savedCollection(forUser = otherUser)
+        val otherCollectionId = checkNotNull(otherCollection.id)
 
-        val result = collectionRepo.findByIdAndUserId(otherCollection.id!!, user.id!!)
+        val result = collectionRepo.findByIdAndUserId(otherCollectionId, userId)
 
         assertThat(result).isNull()
     }
@@ -53,22 +53,24 @@ class CollectionJpaRepositoryIT : AbstractJpaRepositoryIT() {
     @Test
     fun `should delete collection by id and user id`() {
         val collection = savedCollection()
+        val collectionId = checkNotNull(collection.id)
         flushAndClear()
 
-        collectionRepo.deleteByIdAndUserId(collection.id!!, user.id!!)
+        collectionRepo.deleteByIdAndUserId(collectionId, userId)
         flushAndClear()
 
-        assertThat(collectionRepo.findById(collection.id!!)).isEmpty
+        assertThat(collectionRepo.findById(collectionId)).isEmpty
     }
 
     @Test
     fun `should not delete collection belonging to other user`() {
         val otherCollection = savedCollection(forUser = otherUser)
+        val otherCollectionId = checkNotNull(otherCollection.id)
         flushAndClear()
 
-        collectionRepo.deleteByIdAndUserId(otherCollection.id!!, user.id!!)
+        collectionRepo.deleteByIdAndUserId(otherCollectionId, userId)
         flushAndClear()
 
-        assertThat(collectionRepo.findById(otherCollection.id!!)).isPresent
+        assertThat(collectionRepo.findById(otherCollectionId)).isPresent
     }
 }

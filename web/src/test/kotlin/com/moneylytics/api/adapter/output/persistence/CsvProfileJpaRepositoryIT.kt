@@ -9,25 +9,24 @@ class CsvProfileJpaRepositoryIT : AbstractJpaRepositoryIT() {
 
     @Test
     fun `should find csv profile by user id and fingerprint`() {
-        val profile =
-            csvProfileRepo.save(
-                CsvProfileEntity(userId = user.id!!, fingerprint = "csv-fp-abc123", mappingJson = """{"dateColumn":"Datum"}"""),
-            )
+        val profile = csvProfileRepo.save(
+            CsvProfileEntity(userId = userId, fingerprint = "csv-fp-abc123", mappingJson = """{"dateColumn":"Datum"}"""),
+        )
 
-        val result = csvProfileRepo.findByUserIdAndFingerprint(user.id!!, "csv-fp-abc123")
+        val result = csvProfileRepo.findByUserIdAndFingerprint(userId, "csv-fp-abc123")
 
         assertThat(result).isNotNull
-        assertThat(result!!.id).isEqualTo(profile.id)
-        assertThat(result.mappingJson).isEqualTo("""{"dateColumn":"Datum"}""")
+        assertThat(result?.id).isEqualTo(profile.id)
+        assertThat(result?.mappingJson).isEqualTo("""{"dateColumn":"Datum"}""")
     }
 
     @Test
     fun `should return null when fingerprint does not exist`() {
         csvProfileRepo.save(
-            CsvProfileEntity(userId = user.id!!, fingerprint = "csv-fp-abc123", mappingJson = "{}"),
+            CsvProfileEntity(userId = userId, fingerprint = "csv-fp-abc123", mappingJson = "{}"),
         )
 
-        val result = csvProfileRepo.findByUserIdAndFingerprint(user.id!!, "csv-fp-unknown")
+        val result = csvProfileRepo.findByUserIdAndFingerprint(userId, "csv-fp-unknown")
 
         assertThat(result).isNull()
     }
@@ -35,24 +34,22 @@ class CsvProfileJpaRepositoryIT : AbstractJpaRepositoryIT() {
     @Test
     fun `should return null when profile belongs to different user`() {
         csvProfileRepo.save(
-            CsvProfileEntity(userId = otherUser.id!!, fingerprint = "csv-fp-abc123", mappingJson = "{}"),
+            CsvProfileEntity(userId = otherUserId, fingerprint = "csv-fp-abc123", mappingJson = "{}"),
         )
 
-        val result = csvProfileRepo.findByUserIdAndFingerprint(user.id!!, "csv-fp-abc123")
+        val result = csvProfileRepo.findByUserIdAndFingerprint(userId, "csv-fp-abc123")
 
         assertThat(result).isNull()
     }
 
     @Test
     fun `should allow same fingerprint for different users`() {
-        csvProfileRepo.save(CsvProfileEntity(userId = user.id!!, fingerprint = "csv-fp-shared", mappingJson = """{"dateColumn":"A"}"""))
-        csvProfileRepo.save(
-            CsvProfileEntity(userId = otherUser.id!!, fingerprint = "csv-fp-shared", mappingJson = """{"dateColumn":"B"}"""),
-        )
+        csvProfileRepo.save(CsvProfileEntity(userId = userId, fingerprint = "csv-fp-shared", mappingJson = """{"dateColumn":"A"}"""))
+        csvProfileRepo.save(CsvProfileEntity(userId = otherUserId, fingerprint = "csv-fp-shared", mappingJson = """{"dateColumn":"B"}"""))
 
-        val result = csvProfileRepo.findByUserIdAndFingerprint(user.id!!, "csv-fp-shared")
+        val result = csvProfileRepo.findByUserIdAndFingerprint(userId, "csv-fp-shared")
 
         assertThat(result).isNotNull
-        assertThat(result!!.mappingJson).isEqualTo("""{"dateColumn":"A"}""")
+        assertThat(result?.mappingJson).isEqualTo("""{"dateColumn":"A"}""")
     }
 }
