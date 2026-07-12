@@ -5,8 +5,12 @@ style:
   DataClassShouldBeImmutable:
     active: true
   MagicNumber:
-    # too noisy for typical application code
-    active: false
+    active: true
+    ignoreNumbers:
+      - '-1'
+      - '0'
+      - '1'
+      - '2'
   ReturnCount:
     max: 6
   ThrowsCount:

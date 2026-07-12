@@ -39,6 +39,82 @@ class LocalDataInitializer(
     private val createCollectionUseCase: CreateCollectionUseCase,
     private val manageCollectionMembersUseCase: ManageCollectionMembersUseCase,
 ) : ApplicationRunner {
+    companion object {
+        private const val MAIN_RNG_SEED = 42L
+        private const val SAVINGS_RNG_SEED = 99L
+
+        private val ARZT_DATE = LocalDate.of(2025, 3, 15)
+        private val ERSTATTUNG_DATE = LocalDate.of(2025, 3, 18)
+        private val RESTAURANT_DATE = LocalDate.of(2025, 6, 20)
+        private val UEBERWEISUNG_DATE = LocalDate.of(2025, 6, 21)
+        private val REISE_FLUG_DATE = LocalDate.of(2025, 4, 10)
+        private val REISE_HOTEL_DATE = LocalDate.of(2025, 5, 22)
+        private val REISE_AKTIVITAETEN_DATE = LocalDate.of(2025, 7, 1)
+        private val WOHNEN_EINRICHTUNG_DATE = LocalDate.of(2025, 9, 5)
+        private val EINNAHMEN_JAN_20_DATE = LocalDate.of(2025, 1, 20)
+        private val EINNAHMEN_MAR_5_DATE = LocalDate.of(2025, 3, 5)
+        private val GESUNDHEIT_APR_DATE = LocalDate.of(2025, 4, 18)
+        private val EINNAHMEN_JUN_10_DATE = LocalDate.of(2025, 6, 10)
+        private val EINNAHMEN_AUG_DATE = LocalDate.of(2025, 8, 15)
+
+        private val SOMMER_FROM = LocalDate.of(2025, 6, 1)
+        private val SOMMER_TO = LocalDate.of(2025, 8, 31)
+        private val Q1_FROM = LocalDate.of(2025, 1, 1)
+        private val Q1_TO = LocalDate.of(2025, 3, 31)
+
+        private val GENERATED_START = LocalDate.of(2024, 1, 1)
+        private val GENERATED_END = LocalDate.of(2025, 12, 1)
+
+        private const val SALARY_DAY = 28
+        private const val INTERNET_DAY = 15
+        private const val STREAMING_DAY = 10
+        private const val OPNV_DAY = 3
+        private const val SPAREINZAHLUNG_DAY = 5
+
+        private const val SALARY_MIN = 2700.0
+        private const val SALARY_MAX = 3100.0
+        private const val RENT_AMOUNT = 950.0
+
+        private const val SUPERMARKT_MAX_REPEAT = 4
+        private const val RESTAURANT_MAX_REPEAT = 3
+        private const val SOMMER_RESTAURANT_LIMIT = 3
+
+        private const val SUPERMARKT_MIN = 20.0
+        private const val SUPERMARKT_MAX = 120.0
+        private const val RESTAURANT_MIN = 14.0
+        private const val RESTAURANT_MAX = 65.0
+        private const val APOTHEKE_MIN = 7.0
+        private const val APOTHEKE_MAX = 52.0
+        private const val TANKSTELLE_MIN = 40.0
+        private const val TANKSTELLE_MAX = 78.0
+        private const val KLEIDUNG_MIN = 29.0
+        private const val KLEIDUNG_MAX = 210.0
+        private const val SPORT_MIN = 18.0
+        private const val SPORT_MAX = 85.0
+        private const val ARZT_MIN = 25.0
+        private const val ARZT_MAX = 120.0
+        private const val ELEKTRONIK_MIN = 50.0
+        private const val ELEKTRONIK_MAX = 500.0
+
+        private const val APOTHEKE_PROBABILITY = 0.5
+        private const val TANKSTELLE_PROBABILITY = 0.4
+        private const val KLEIDUNG_PROBABILITY = 0.3
+        private const val SPORT_PROBABILITY = 0.25
+        private const val ARZT_PROBABILITY = 0.15
+        private const val ELEKTRONIK_PROBABILITY = 0.1
+
+        private const val ZINSEN_MAX = 12.0
+        private const val SPAREINZAHLUNG_MIN = 200.0
+        private const val SPAREINZAHLUNG_MAX = 500.0
+        private const val ENTNAHME_MIN = 100.0
+        private const val ENTNAHME_MAX = 300.0
+        private const val JAHRESBEITRAG_MIN = 80.0
+        private const val JAHRESBEITRAG_MAX = 250.0
+
+        private const val ENTNAHME_PROBABILITY = 0.3
+        private const val JAHRESBEITRAG_PROBABILITY = 0.15
+    }
+
     private val mainIban = "DE00LOCAL000000000000"
     private val mainName = "Girokonto"
 
@@ -65,8 +141,8 @@ class LocalDataInitializer(
     }
 
     private fun setupOffsetLinks(userId: Long) {
-        val arztTx = findTx(userId, LocalDate.of(2025, 3, 15), "Gesundheit", BigDecimal("-180.00"))
-        val erstattungTx = findTx(userId, LocalDate.of(2025, 3, 18), "Einnahmen", BigDecimal("120.00"))
+        val arztTx = findTx(userId, ARZT_DATE, "Gesundheit", BigDecimal("-180.00"))
+        val erstattungTx = findTx(userId, ERSTATTUNG_DATE, "Einnahmen", BigDecimal("120.00"))
         if (arztTx != null && erstattungTx != null) {
             manageTransactionOffsetUseCase.linkTransactions(
                 LinkTransactionsCommand(
@@ -79,8 +155,8 @@ class LocalDataInitializer(
             )
         }
 
-        val restaurantTx = findTx(userId, LocalDate.of(2025, 6, 20), "Lebensmittel", BigDecimal("-95.00"))
-        val uberweisungTx = findTx(userId, LocalDate.of(2025, 6, 21), "Einnahmen", BigDecimal("47.50"))
+        val restaurantTx = findTx(userId, RESTAURANT_DATE, "Lebensmittel", BigDecimal("-95.00"))
+        val uberweisungTx = findTx(userId, UEBERWEISUNG_DATE, "Einnahmen", BigDecimal("47.50"))
         if (restaurantTx != null && uberweisungTx != null) {
             manageTransactionOffsetUseCase.linkTransactions(
                 LinkTransactionsCommand(
@@ -140,9 +216,9 @@ class LocalDataInitializer(
                 userId,
             )
         listOf(
-            LocalDate.of(2025, 4, 10) to BigDecimal("-380.00"),
-            LocalDate.of(2025, 5, 22) to BigDecimal("-490.00"),
-            LocalDate.of(2025, 7, 1) to BigDecimal("-200.00"),
+            REISE_FLUG_DATE to BigDecimal("-380.00"),
+            REISE_HOTEL_DATE to BigDecimal("-490.00"),
+            REISE_AKTIVITAETEN_DATE to BigDecimal("-200.00"),
         ).forEach { (date, amount) ->
             findTx(userId, date, "Reise", amount)?.id?.let { txId ->
                 assignTransactionToBudgetUseCase.assignTransaction(urlaub.id!!, txId, null, userId)
@@ -154,17 +230,17 @@ class LocalDataInitializer(
                 Budget(name = "Neue Küche", targetAmount = BigDecimal("3500")),
                 userId,
             )
-        findTx(userId, LocalDate.of(2025, 9, 5), "Wohnen", BigDecimal("-800.00"))?.id?.let { txId ->
+        findTx(userId, WOHNEN_EINRICHTUNG_DATE, "Wohnen", BigDecimal("-800.00"))?.id?.let { txId ->
             assignTransactionToBudgetUseCase.assignTransaction(kueche.id!!, txId, BigDecimal("500"), userId)
         }
 
         val notfall = createBudgetUseCase.createBudget(Budget(name = "Notfallfonds"), userId)
         listOf(
-            Triple(LocalDate.of(2025, 1, 20), "Einnahmen", BigDecimal("500.00")),
-            Triple(LocalDate.of(2025, 3, 5), "Einnahmen", BigDecimal("400.00")),
-            Triple(LocalDate.of(2025, 4, 18), "Gesundheit", BigDecimal("-2300.00")),
-            Triple(LocalDate.of(2025, 6, 10), "Einnahmen", BigDecimal("700.00")),
-            Triple(LocalDate.of(2025, 8, 15), "Einnahmen", BigDecimal("900.00")),
+            Triple(EINNAHMEN_JAN_20_DATE, "Einnahmen", BigDecimal("500.00")),
+            Triple(EINNAHMEN_MAR_5_DATE, "Einnahmen", BigDecimal("400.00")),
+            Triple(GESUNDHEIT_APR_DATE, "Gesundheit", BigDecimal("-2300.00")),
+            Triple(EINNAHMEN_JUN_10_DATE, "Einnahmen", BigDecimal("700.00")),
+            Triple(EINNAHMEN_AUG_DATE, "Einnahmen", BigDecimal("900.00")),
         ).forEach { (date, category, amount) ->
             findTx(userId, date, category, amount)?.id?.let { txId ->
                 assignTransactionToBudgetUseCase.assignTransaction(notfall.id!!, txId, null, userId)
@@ -174,19 +250,15 @@ class LocalDataInitializer(
 
     private fun setupCollections(userId: Long) {
         val sommer = createCollectionUseCase.createCollection(Collection(name = "Sommer 2025"), userId)
-        val sommerFrom = LocalDate.of(2025, 6, 1)
-        val sommerTo = LocalDate.of(2025, 8, 31)
-        val restaurantTxs = queryTxs(userId, sommerFrom, sommerTo, "Lebensmittel", "Restaurant").take(3)
-        val sportTxs = queryTxs(userId, sommerFrom, sommerTo, "Freizeit", "Sport").take(2)
+        val restaurantTxs = queryTxs(userId, SOMMER_FROM, SOMMER_TO, "Lebensmittel", "Restaurant").take(SOMMER_RESTAURANT_LIMIT)
+        val sportTxs = queryTxs(userId, SOMMER_FROM, SOMMER_TO, "Freizeit", "Sport").take(2)
         (restaurantTxs + sportTxs).forEach { tx ->
             tx.id?.let { manageCollectionMembersUseCase.addTransaction(sommer.id!!, it, userId) }
         }
 
         val haushalt = createCollectionUseCase.createCollection(Collection(name = "Haushalt Q1 2025"), userId)
-        val q1From = LocalDate.of(2025, 1, 1)
-        val q1To = LocalDate.of(2025, 3, 31)
-        val mieteTxs = queryTxs(userId, q1From, q1To, "Wohnen", "Miete").take(2)
-        val internetTxs = queryTxs(userId, q1From, q1To, "Wohnen", "Internet").take(2)
+        val mieteTxs = queryTxs(userId, Q1_FROM, Q1_TO, "Wohnen", "Miete").take(2)
+        val internetTxs = queryTxs(userId, Q1_FROM, Q1_TO, "Wohnen", "Internet").take(2)
         (mieteTxs + internetTxs).forEach { tx ->
             tx.id?.let { manageCollectionMembersUseCase.addTransaction(haushalt.id!!, it, userId) }
         }
@@ -215,19 +287,19 @@ class LocalDataInitializer(
 
     private fun generateFixedTransactions(): List<Transaction> =
         listOf(
-            tx("Gesundheit", "Arzt", LocalDate.of(2025, 3, 15), BigDecimal("-180.00")),
-            tx("Einnahmen", "Erstattung", LocalDate.of(2025, 3, 18), BigDecimal("120.00")),
-            tx("Lebensmittel", "Restaurant", LocalDate.of(2025, 6, 20), BigDecimal("-95.00")),
-            tx("Einnahmen", "Überweisung", LocalDate.of(2025, 6, 21), BigDecimal("47.50")),
-            tx("Reise", "Flug", LocalDate.of(2025, 4, 10), BigDecimal("-380.00")),
-            tx("Reise", "Hotel", LocalDate.of(2025, 5, 22), BigDecimal("-490.00")),
-            tx("Reise", "Aktivitäten", LocalDate.of(2025, 7, 1), BigDecimal("-200.00")),
-            tx("Wohnen", "Einrichtung", LocalDate.of(2025, 9, 5), BigDecimal("-800.00")),
-            tx("Einnahmen", "Sonstiges", LocalDate.of(2025, 1, 20), BigDecimal("500.00")),
-            tx("Einnahmen", "Sonstiges", LocalDate.of(2025, 3, 5), BigDecimal("400.00")),
-            tx("Gesundheit", "Behandlung", LocalDate.of(2025, 4, 18), BigDecimal("-2300.00")),
-            tx("Einnahmen", "Sonstiges", LocalDate.of(2025, 6, 10), BigDecimal("700.00")),
-            tx("Einnahmen", "Sonstiges", LocalDate.of(2025, 8, 15), BigDecimal("900.00")),
+            tx("Gesundheit", "Arzt", ARZT_DATE, BigDecimal("-180.00")),
+            tx("Einnahmen", "Erstattung", ERSTATTUNG_DATE, BigDecimal("120.00")),
+            tx("Lebensmittel", "Restaurant", RESTAURANT_DATE, BigDecimal("-95.00")),
+            tx("Einnahmen", "Überweisung", UEBERWEISUNG_DATE, BigDecimal("47.50")),
+            tx("Reise", "Flug", REISE_FLUG_DATE, BigDecimal("-380.00")),
+            tx("Reise", "Hotel", REISE_HOTEL_DATE, BigDecimal("-490.00")),
+            tx("Reise", "Aktivitäten", REISE_AKTIVITAETEN_DATE, BigDecimal("-200.00")),
+            tx("Wohnen", "Einrichtung", WOHNEN_EINRICHTUNG_DATE, BigDecimal("-800.00")),
+            tx("Einnahmen", "Sonstiges", EINNAHMEN_JAN_20_DATE, BigDecimal("500.00")),
+            tx("Einnahmen", "Sonstiges", EINNAHMEN_MAR_5_DATE, BigDecimal("400.00")),
+            tx("Gesundheit", "Behandlung", GESUNDHEIT_APR_DATE, BigDecimal("-2300.00")),
+            tx("Einnahmen", "Sonstiges", EINNAHMEN_JUN_10_DATE, BigDecimal("700.00")),
+            tx("Einnahmen", "Sonstiges", EINNAHMEN_AUG_DATE, BigDecimal("900.00")),
         )
 
     private fun tx(
@@ -247,12 +319,12 @@ class LocalDataInitializer(
     )
 
     private fun generateMainTransactions(): List<Transaction> {
-        val rng = Random(42)
+        val rng = Random(MAIN_RNG_SEED)
         val transactions = mutableListOf<Transaction>()
 
         val months =
-            generateSequence(LocalDate.of(2024, 1, 1)) { it.plusMonths(1) }
-                .takeWhile { !it.isAfter(LocalDate.of(2025, 12, 1)) }
+            generateSequence(GENERATED_START) { it.plusMonths(1) }
+                .takeWhile { !it.isAfter(GENERATED_END) }
                 .toList()
 
         for (month in months) {
@@ -285,37 +357,53 @@ class LocalDataInitializer(
                 accountIban = mainIban,
             )
 
-            transactions += tx("Einnahmen", "Gehalt", day(28), euros(2700.0, 3100.0))
-            transactions += tx("Wohnen", "Miete", day(1), -euros(950.0, 950.0))
-            transactions += tx("Wohnen", "Internet", day(15), BigDecimal("-39.99"))
-            transactions += tx("Freizeit", "Streaming", day(10), BigDecimal("-17.99"))
-            transactions += tx("Transport", "ÖPNV", day(3), BigDecimal("-86.00"))
+            transactions += tx("Einnahmen", "Gehalt", day(SALARY_DAY), euros(SALARY_MIN, SALARY_MAX))
+            transactions += tx("Wohnen", "Miete", day(1), -euros(RENT_AMOUNT, RENT_AMOUNT))
+            transactions += tx("Wohnen", "Internet", day(INTERNET_DAY), BigDecimal("-39.99"))
+            transactions += tx("Freizeit", "Streaming", day(STREAMING_DAY), BigDecimal("-17.99"))
+            transactions += tx("Transport", "ÖPNV", day(OPNV_DAY), BigDecimal("-86.00"))
 
-            repeat(rng.nextInt(4) + 2) {
-                transactions += tx("Lebensmittel", "Supermarkt", randomDay(), -euros(20.0, 120.0))
+            repeat(rng.nextInt(SUPERMARKT_MAX_REPEAT) + 2) {
+                transactions += tx("Lebensmittel", "Supermarkt", randomDay(), -euros(SUPERMARKT_MIN, SUPERMARKT_MAX))
             }
-            repeat(rng.nextInt(3) + 1) {
-                transactions += tx("Lebensmittel", "Restaurant", randomDay(), -euros(14.0, 65.0))
+            repeat(rng.nextInt(RESTAURANT_MAX_REPEAT) + 1) {
+                transactions += tx("Lebensmittel", "Restaurant", randomDay(), -euros(RESTAURANT_MIN, RESTAURANT_MAX))
             }
 
-            if (rng.nextDouble() < 0.5) transactions += tx("Gesundheit", "Apotheke", randomDay(), -euros(7.0, 52.0))
-            if (rng.nextDouble() < 0.4) transactions += tx("Transport", "Tankstelle", randomDay(), -euros(40.0, 78.0))
-            if (rng.nextDouble() < 0.3) transactions += tx("Shopping", "Kleidung", randomDay(), -euros(29.0, 210.0))
-            if (rng.nextDouble() < 0.25) transactions += tx("Freizeit", "Sport", randomDay(), -euros(18.0, 85.0))
-            if (rng.nextDouble() < 0.15) transactions += tx("Gesundheit", "Arzt", randomDay(), -euros(25.0, 120.0))
-            if (rng.nextDouble() < 0.1) transactions += tx("Shopping", "Elektronik", randomDay(), -euros(50.0, 500.0))
+            if (rng.nextDouble() <
+                APOTHEKE_PROBABILITY
+            ) {
+                transactions += tx("Gesundheit", "Apotheke", randomDay(), -euros(APOTHEKE_MIN, APOTHEKE_MAX))
+            }
+            if (rng.nextDouble() <
+                TANKSTELLE_PROBABILITY
+            ) {
+                transactions += tx("Transport", "Tankstelle", randomDay(), -euros(TANKSTELLE_MIN, TANKSTELLE_MAX))
+            }
+            if (rng.nextDouble() <
+                KLEIDUNG_PROBABILITY
+            ) {
+                transactions += tx("Shopping", "Kleidung", randomDay(), -euros(KLEIDUNG_MIN, KLEIDUNG_MAX))
+            }
+            if (rng.nextDouble() < SPORT_PROBABILITY) transactions += tx("Freizeit", "Sport", randomDay(), -euros(SPORT_MIN, SPORT_MAX))
+            if (rng.nextDouble() < ARZT_PROBABILITY) transactions += tx("Gesundheit", "Arzt", randomDay(), -euros(ARZT_MIN, ARZT_MAX))
+            if (rng.nextDouble() <
+                ELEKTRONIK_PROBABILITY
+            ) {
+                transactions += tx("Shopping", "Elektronik", randomDay(), -euros(ELEKTRONIK_MIN, ELEKTRONIK_MAX))
+            }
         }
 
         return transactions.sortedBy { it.bookingDate }
     }
 
     private fun generateSavingsTransactions(): List<Transaction> {
-        val rng = Random(99)
+        val rng = Random(SAVINGS_RNG_SEED)
         val transactions = mutableListOf<Transaction>()
 
         val months =
-            generateSequence(LocalDate.of(2024, 1, 1)) { it.plusMonths(1) }
-                .takeWhile { !it.isAfter(LocalDate.of(2025, 12, 1)) }
+            generateSequence(GENERATED_START) { it.plusMonths(1) }
+                .takeWhile { !it.isAfter(GENERATED_END) }
                 .toList()
 
         for (month in months) {
@@ -348,11 +436,20 @@ class LocalDataInitializer(
                 accountIban = savingsIban,
             )
 
-            transactions += tx("Einnahmen", "Zinsen", day(1), euros(2.0, 12.0))
-            transactions += tx("Sparen", "Einzahlung", day(5), -euros(200.0, 500.0))
+            transactions += tx("Einnahmen", "Zinsen", day(1), euros(2.0, ZINSEN_MAX))
+            transactions += tx("Sparen", "Einzahlung", day(SPAREINZAHLUNG_DAY), -euros(SPAREINZAHLUNG_MIN, SPAREINZAHLUNG_MAX))
 
-            if (rng.nextDouble() < 0.3) transactions += tx("Sparen", "Entnahme", randomDay(), euros(100.0, 300.0))
-            if (rng.nextDouble() < 0.15) transactions += tx("Versicherung", "Jahresbeitrag", randomDay(), -euros(80.0, 250.0))
+            if (rng.nextDouble() <
+                ENTNAHME_PROBABILITY
+            ) {
+                transactions += tx("Sparen", "Entnahme", randomDay(), euros(ENTNAHME_MIN, ENTNAHME_MAX))
+            }
+            if (rng.nextDouble() <
+                JAHRESBEITRAG_PROBABILITY
+            ) {
+                transactions +=
+                    tx("Versicherung", "Jahresbeitrag", randomDay(), -euros(JAHRESBEITRAG_MIN, JAHRESBEITRAG_MAX))
+            }
         }
 
         return transactions.sortedBy { it.bookingDate }

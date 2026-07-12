@@ -7,6 +7,14 @@ import java.time.format.DateTimeFormatter
 @Component
 class GenericCsvDetector {
     companion object {
+        private const val DETECTION_DATA_LINES_LIMIT = 110
+        private const val SAMPLE_ROW_LIMIT = 100
+        private const val DELIMITER_DETECT_LINE_COUNT = 8
+        private const val DELIMITER_VARIANCE_WEIGHT = 0.5
+        private const val DATE_PARSE_PREFIX_LENGTH = 10
+        private const val DATE_MATCH_THRESHOLD_RATIO = 0.6
+        private const val COLUMN_SAMPLE_SIZE = 3
+
         private val DELIMITER_CANDIDATES = listOf(';', ',', '\t', '|')
 
         private val DATE_PATTERNS =
@@ -31,8 +39,8 @@ class GenericCsvDetector {
         if (lines.isEmpty()) return DetectionData(empty(delimiter), fingerprint = "")
 
         val headers = splitLine(lines[0], delimiter)
-        val dataLines = lines.drop(1).take(110)
-        val sampleRows = dataLines.take(100).map { splitLine(it, delimiter) }
+        val dataLines = lines.drop(1).take(DETECTION_DATA_LINES_LIMIT)
+        val sampleRows = dataLines.take(SAMPLE_ROW_LIMIT).map { splitLine(it, delimiter) }
 
         val columnValues: Map<String, List<String>> =
             headers
@@ -71,7 +79,7 @@ class GenericCsvDetector {
     ): String = headers.sorted().joinToString(",") + "|" + delimiter
 
     private fun detectDelimiter(content: String): Char {
-        val lines = content.lines().filter { it.isNotBlank() }.take(8)
+        val lines = content.lines().filter { it.isNotBlank() }.take(DELIMITER_DETECT_LINE_COUNT)
         return DELIMITER_CANDIDATES.maxByOrNull { delimiter ->
             val counts = lines.map { it.split(delimiter).size }
             val avg = counts.average()
@@ -79,7 +87,7 @@ class GenericCsvDetector {
                 0.0
             } else {
                 val variance = counts.sumOf { (it - avg) * (it - avg) } / counts.size
-                avg - variance * 0.5
+                avg - variance * DELIMITER_VARIANCE_WEIGHT
             }
         } ?: ','
     }
@@ -119,13 +127,13 @@ class GenericCsvDetector {
                 val matches =
                     nonBlank.count { value ->
                         try {
-                            LocalDate.parse(value.take(10), formatter)
+                            LocalDate.parse(value.take(DATE_PARSE_PREFIX_LENGTH), formatter)
                             true
                         } catch (_: Exception) {
                             false
                         }
                     }
-                if (matches >= (nonBlank.size * 0.6).toInt() && matches > 0) return pattern
+                if (matches >= (nonBlank.size * DATE_MATCH_THRESHOLD_RATIO).toInt() && matches > 0) return pattern
             }
         }
         return null
@@ -161,9 +169,9 @@ class GenericCsvDetector {
                         } catch (_: Exception) {
                             return@any false
                         }
-                    values.take(3).all { v ->
+                    values.take(COLUMN_SAMPLE_SIZE).all { v ->
                         try {
-                            LocalDate.parse(v.take(10), fmt)
+                            LocalDate.parse(v.take(DATE_PARSE_PREFIX_LENGTH), fmt)
                             true
                         } catch (_: Exception) {
                             false
@@ -175,7 +183,7 @@ class GenericCsvDetector {
         val amountSuggestion =
             headers.firstOrNull { h ->
                 val values = columnValues[h]?.filter { it.isNotBlank() } ?: return@firstOrNull false
-                values.take(3).all { v ->
+                values.take(COLUMN_SAMPLE_SIZE).all { v ->
                     GERMAN_AMOUNT.matches(v.trim()) ||
                         ENGLISH_AMOUNT.matches(v.trim()) ||
                         v.trim().toBigDecimalOrNull() != null

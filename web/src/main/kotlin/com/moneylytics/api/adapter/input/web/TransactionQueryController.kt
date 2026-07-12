@@ -80,6 +80,10 @@ class TransactionQueryController(
     private val updateTransactionAccountingDateUseCase: UpdateTransactionAccountingDateUseCase,
     private val bulkUpdateTransactionCategoryUseCase: BulkUpdateTransactionCategoryUseCase,
 ) {
+    companion object {
+        private const val SERIES_SPEC_PARTS_WITH_GROUP = 3
+    }
+
     @GetMapping("/sankey")
     suspend fun getSankeyData(
         @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) from: LocalDate,
@@ -225,7 +229,7 @@ class TransactionQueryController(
                 val selectedGroup: String?
                 val selectedSub: String?
                 when (parts.size) {
-                    3 -> {
+                    SERIES_SPEC_PARTS_WITH_GROUP -> {
                         selectedGroup = parts[1].ifEmpty { null }
                         selectedSub = parts[2].ifEmpty { null }
                     }

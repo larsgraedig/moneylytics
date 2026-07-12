@@ -27,6 +27,16 @@ class ThresholdService(
     SaveThresholdUseCase,
     DeleteThresholdUseCase,
     GetThresholdStatusUseCase {
+    companion object {
+        private const val DAYS_PER_WEEK = 7L
+        private const val IDEAL_DAYS_MONTHLY = 30L
+        private const val IDEAL_DAYS_QUARTERLY = 91L
+        private const val IDEAL_DAYS_YEARLY = 365L
+        private const val MONTHS_PER_YEAR = 12L
+        private const val MONTHS_PER_QUARTER = 3
+        private const val DIVISION_SCALE = 6
+    }
+
     override fun getThresholds(userId: Long): List<Threshold> = thresholdRepository.findAllByUserId(userId)
 
     override fun saveThreshold(
@@ -84,13 +94,13 @@ class ThresholdService(
                 .between(from, to) + 1L
         val idealDays =
             mapOf(
-                ThresholdPeriod.WEEKLY to 7L,
-                ThresholdPeriod.MONTHLY to 30L,
-                ThresholdPeriod.QUARTERLY to 91L,
-                ThresholdPeriod.YEARLY to 365L,
+                ThresholdPeriod.WEEKLY to DAYS_PER_WEEK,
+                ThresholdPeriod.MONTHLY to IDEAL_DAYS_MONTHLY,
+                ThresholdPeriod.QUARTERLY to IDEAL_DAYS_QUARTERLY,
+                ThresholdPeriod.YEARLY to IDEAL_DAYS_YEARLY,
             )
         return thresholds.minByOrNull { t ->
-            val ideal = idealDays[t.period] ?: 30L
+            val ideal = idealDays[t.period] ?: IDEAL_DAYS_MONTHLY
             abs(ln(days.toDouble() / ideal.toDouble()))
         }
     }
@@ -103,12 +113,12 @@ class ThresholdService(
         val days =
             java.time.temporal.ChronoUnit.DAYS
                 .between(from, to) + 1L
-        val months = (to.year - from.year) * 12L + (to.monthValue - from.monthValue) + 1L
+        val months = (to.year - from.year) * MONTHS_PER_YEAR + (to.monthValue - from.monthValue) + 1L
         return when (period) {
-            ThresholdPeriod.WEEKLY -> BigDecimal(days).divide(BigDecimal(7), 6, RoundingMode.HALF_UP)
+            ThresholdPeriod.WEEKLY -> BigDecimal(days).divide(BigDecimal(DAYS_PER_WEEK), DIVISION_SCALE, RoundingMode.HALF_UP)
             ThresholdPeriod.MONTHLY -> BigDecimal(months)
-            ThresholdPeriod.QUARTERLY -> BigDecimal(months).divide(BigDecimal(3), 6, RoundingMode.HALF_UP)
-            ThresholdPeriod.YEARLY -> BigDecimal(months).divide(BigDecimal(12), 6, RoundingMode.HALF_UP)
+            ThresholdPeriod.QUARTERLY -> BigDecimal(months).divide(BigDecimal(MONTHS_PER_QUARTER), DIVISION_SCALE, RoundingMode.HALF_UP)
+            ThresholdPeriod.YEARLY -> BigDecimal(months).divide(BigDecimal(MONTHS_PER_YEAR), DIVISION_SCALE, RoundingMode.HALF_UP)
         }
     }
 
@@ -125,7 +135,7 @@ class ThresholdService(
         val max = sC ?: sW ?: sN ?: return null
         if (max <= BigDecimal.ZERO) return null
 
-        val pct = spending.divide(max, 6, RoundingMode.HALF_UP)
+        val pct = spending.divide(max, DIVISION_SCALE, RoundingMode.HALF_UP)
         val status =
             when {
                 sC != null && spending >= sC -> ThresholdStatus.CRITICAL
@@ -133,8 +143,8 @@ class ThresholdService(
                 sN != null && spending >= sN -> ThresholdStatus.NOTICE
                 else -> ThresholdStatus.OK
             }
-        val tickNotice = sN?.divide(max, 6, RoundingMode.HALF_UP)?.let { it.min(BigDecimal.ONE) }
-        val tickWarning = sW?.divide(max, 6, RoundingMode.HALF_UP)?.let { it.min(BigDecimal.ONE) }
+        val tickNotice = sN?.divide(max, DIVISION_SCALE, RoundingMode.HALF_UP)?.let { it.min(BigDecimal.ONE) }
+        val tickWarning = sW?.divide(max, DIVISION_SCALE, RoundingMode.HALF_UP)?.let { it.min(BigDecimal.ONE) }
 
         return ThresholdStatusItem(
             thresholdId = threshold.id,

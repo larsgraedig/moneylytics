@@ -16,11 +16,14 @@ import org.springframework.web.server.session.CookieWebSessionIdResolver
 import java.time.Duration
 import javax.sql.DataSource
 
-private val SESSION_DURATION: Duration = Duration.ofDays(7)
-
 @Configuration
 @EnableSpringWebSession
 class SpringSessionConfig {
+    companion object {
+        private const val SESSION_DURATION_DAYS = 7L
+        private val SESSION_DURATION: Duration = Duration.ofDays(SESSION_DURATION_DAYS)
+    }
+
     @Bean
     fun sessionSchemaInitializer(dataSource: DataSource): DataSourceInitializer =
         DataSourceInitializer().apply {

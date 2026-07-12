@@ -73,6 +73,10 @@ class TransactionOffsetController(
     private val getLinkedTransactionsUseCase: GetLinkedTransactionsUseCase,
     private val resolveUserUseCase: ResolveUserUseCase,
 ) {
+    companion object {
+        private const val HTTP_UNPROCESSABLE_ENTITY = 422
+    }
+
     @GetMapping("/linked")
     suspend fun getLinkedTransactions(
         @AuthenticationPrincipal principal: UserDetails,
@@ -150,7 +154,7 @@ class TransactionOffsetController(
                         is IllegalArgumentException -> ResponseEntity.notFound().build<Any>()
                         is IllegalStateException -> ResponseEntity.badRequest().build<Any>()
                         is AllocationExceededException ->
-                            ResponseEntity.status(422).body(
+                            ResponseEntity.status(HTTP_UNPROCESSABLE_ENTITY).body(
                                 AllocationErrorResponse(
                                     transactionId = e.transactionId,
                                     maxRemainingAmount = e.maxRemaining,
