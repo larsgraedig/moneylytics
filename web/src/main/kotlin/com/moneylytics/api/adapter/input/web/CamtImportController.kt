@@ -40,6 +40,10 @@ class CamtImportController(
     private val enrichTransactionUseCase: EnrichTransactionUseCase,
     private val resolveUserUseCase: ResolveUserUseCase,
 ) {
+    companion object {
+        private const val HTTP_UNPROCESSABLE_ENTITY = 422
+    }
+
     @PostMapping("/camt/preview", consumes = [MediaType.MULTIPART_FORM_DATA_VALUE])
     suspend fun preview(
         @AuthenticationPrincipal principal: UserDetails,
@@ -62,7 +66,7 @@ class CamtImportController(
             when (val result = camtParser.parse(bytes)) {
                 is CamtParseResult.FormatError ->
                     return ResponseEntity
-                        .status(422)
+                        .status(HTTP_UNPROCESSABLE_ENTITY)
                         .body(mapOf("error" to "${filePart.filename()}: ${result.message}"))
 
                 is CamtParseResult.Success -> {

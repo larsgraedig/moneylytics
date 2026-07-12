@@ -29,6 +29,11 @@ class AuthController(
     private val securityContextRepository: ServerSecurityContextRepository,
     private val registerUserUseCase: RegisterUserUseCase,
 ) {
+    companion object {
+        private const val HTTP_UNAUTHORIZED = 401
+        private const val HTTP_CONFLICT = 409
+    }
+
     private val logger = KotlinLogging.logger {}
 
     @PostMapping("/login")
@@ -43,7 +48,7 @@ class AuthController(
             ResponseEntity.ok(AuthResponse(username = auth.name))
         } catch (e: AuthenticationException) {
             logger.debug(e) { "Authentication failed for user ${request.username}" }
-            ResponseEntity.status(401).build()
+            ResponseEntity.status(HTTP_UNAUTHORIZED).build()
         }
     }
 
@@ -65,7 +70,7 @@ class AuthController(
             ResponseEntity.ok(AuthResponse(username = auth.name))
         } catch (e: UserAlreadyExistsException) {
             logger.debug(e) { "Registration failed: user ${request.username} already exists" }
-            ResponseEntity.status(409).build()
+            ResponseEntity.status(HTTP_CONFLICT).build()
         }
 
     @PostMapping("/logout")

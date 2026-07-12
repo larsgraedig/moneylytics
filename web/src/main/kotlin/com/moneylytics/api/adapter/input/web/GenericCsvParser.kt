@@ -8,6 +8,10 @@ import java.time.format.DateTimeFormatter
 
 @Component
 class GenericCsvParser {
+    companion object {
+        private const val DATE_PARSE_PREFIX_LENGTH = 10
+    }
+
     fun preview(
         content: String,
         mapping: GenericCsvMapping,
@@ -40,7 +44,7 @@ class GenericCsvParser {
 
             val date =
                 try {
-                    LocalDate.parse(get(dateIdx).take(10), dateFormatter)
+                    LocalDate.parse(get(dateIdx).take(DATE_PARSE_PREFIX_LENGTH), dateFormatter)
                 } catch (_: Exception) {
                     return@mapIndexedNotNull null
                 }
@@ -108,7 +112,7 @@ class GenericCsvParser {
 
             val date =
                 try {
-                    LocalDate.parse(dateStr.take(10), dateFormatter)
+                    LocalDate.parse(dateStr.take(DATE_PARSE_PREFIX_LENGTH), dateFormatter)
                 } catch (_: Exception) {
                     null
                 }
