@@ -7,6 +7,7 @@ import java.math.BigDecimal
 
 class BudgetTransactionJpaRepositoryIT : AbstractJpaRepositoryIT() {
     @Autowired private lateinit var budgetRepo: BudgetJpaRepository
+
     @Autowired private lateinit var budgetTransactionRepo: BudgetTransactionJpaRepository
 
     private fun savedBudget(forUser: UserEntity = user) =

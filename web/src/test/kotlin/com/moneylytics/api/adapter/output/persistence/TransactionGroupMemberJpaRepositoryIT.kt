@@ -6,12 +6,15 @@ import org.springframework.beans.factory.annotation.Autowired
 
 class TransactionGroupMemberJpaRepositoryIT : AbstractJpaRepositoryIT() {
     @Autowired private lateinit var groupRepo: TransactionGroupJpaRepository
+
     @Autowired private lateinit var memberRepo: TransactionGroupMemberJpaRepository
 
     private fun savedGroupId() = checkNotNull(groupRepo.save(TransactionGroupEntity(user = user)).id)
 
-    private fun savedMember(groupId: Long, transactionId: Long) =
-        memberRepo.save(TransactionGroupMemberEntity(groupId = groupId, transactionId = transactionId))
+    private fun savedMember(
+        groupId: Long,
+        transactionId: Long,
+    ) = memberRepo.save(TransactionGroupMemberEntity(groupId = groupId, transactionId = transactionId))
 
     @Test
     fun `should find members by transaction ids`() {

@@ -7,8 +7,10 @@ import org.springframework.beans.factory.annotation.Autowired
 class TransactionGroupJpaRepositoryIT : AbstractJpaRepositoryIT() {
     @Autowired private lateinit var groupRepo: TransactionGroupJpaRepository
 
-    private fun savedGroup(name: String? = "Test Group", forUser: UserEntity = user) =
-        groupRepo.save(TransactionGroupEntity(user = forUser, name = name))
+    private fun savedGroup(
+        name: String? = "Test Group",
+        forUser: UserEntity = user,
+    ) = groupRepo.save(TransactionGroupEntity(user = forUser, name = name))
 
     @Test
     fun `should find all groups for user`() {
