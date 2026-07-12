@@ -6,6 +6,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.reactive.awaitFirstOrNull
 import kotlinx.coroutines.reactive.awaitSingle
 import kotlinx.coroutines.withContext
+import org.slf4j.LoggerFactory
 import org.springframework.http.ResponseEntity
 import org.springframework.security.authentication.ReactiveAuthenticationManager
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
@@ -28,6 +29,8 @@ class AuthController(
     private val securityContextRepository: ServerSecurityContextRepository,
     private val registerUserUseCase: RegisterUserUseCase,
 ) {
+    private val logger = LoggerFactory.getLogger(AuthController::class.java)
+
     @PostMapping("/login")
     suspend fun login(
         @RequestBody request: LoginRequest,
@@ -39,6 +42,7 @@ class AuthController(
             securityContextRepository.save(exchange, SecurityContextImpl(auth)).awaitFirstOrNull()
             ResponseEntity.ok(AuthResponse(username = auth.name))
         } catch (e: AuthenticationException) {
+            logger.debug("Authentication failed for user ${request.username}", e)
             ResponseEntity.status(401).build()
         }
     }
@@ -60,6 +64,7 @@ class AuthController(
             securityContextRepository.save(exchange, SecurityContextImpl(auth)).awaitFirstOrNull()
             ResponseEntity.ok(AuthResponse(username = auth.name))
         } catch (e: UserAlreadyExistsException) {
+            logger.debug("Registration failed: user ${request.username} already exists", e)
             ResponseEntity.status(409).build()
         }
 

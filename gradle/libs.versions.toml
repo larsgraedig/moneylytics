@@ -1,10 +1,10 @@
 [versions]
-kotlin = "2.2.0"
+kotlin = "2.2.20"
 commons-csv = "1.12.0"
 h2 = "2.3.232"
 spring-boot = "4.0.6"
 spring-dependency-management = "1.1.7"
-detekt = "1.23.8"
+detekt = "2.0.0-alpha.1"
 ktlint = "14.2.0"
 mockito-kotlin = "5.4.0"
 springdoc-openapi = "2.8.6"
@@ -37,7 +37,7 @@ kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 kotlin-spring = { id = "org.jetbrains.kotlin.plugin.spring", version.ref = "kotlin" }
 kotlin-jpa = { id = "org.jetbrains.kotlin.plugin.jpa", version.ref = "kotlin" }
 
-detekt = { id = "io.gitlab.arturbosch.detekt", version.ref = "detekt" }
+detekt = { id = "dev.detekt", version.ref = "detekt" }
 ktlint = { id = "org.jlleitschuh.gradle.ktlint", version.ref = "ktlint" }
 
 spring-boot = { id = "org.springframework.boot", version.ref = "spring-boot" }
