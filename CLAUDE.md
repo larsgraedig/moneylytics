@@ -55,8 +55,6 @@ The CSV uses German locale. Non-obvious details for `CsvTransactionParser`:
 - Required columns: `Kategorie`, `Unterkategorie`, `Buchungstag`, `Valutadatum`, `Betrag`, `EUR`
 - Parser collects **all** validation errors before returning (not fail-fast)
 
-Sample CSV with 98 transactions: `web/src/main/resources/AccountSheet.csv` (used in tests)
-
 ## Coding Standards
 
 - **Tests**: AssertJ for assertions, Mockito Kotlin for mocking (**no MockK**), Arrange-Act-Assert pattern, backtick
@@ -67,3 +65,6 @@ Sample CSV with 98 transactions: `web/src/main/resources/AccountSheet.csv` (used
 - All comments in English
 - Prefer suspending functions and coroutine APIs over blocking calls (WebFlux stack)
 - Put business logic into the backend as much as possible; the frontend should be a thin client (React + TypeScript)
+- Integration tests should be suffixed with IT (e.g., `TransactionImportIT`) and live in `src/test/kotlin` (not
+  `src/integrationTest/kotlin`)
+- Do not use Kotlin Double Bangs (`!!`)

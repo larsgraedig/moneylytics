@@ -11,6 +11,8 @@ style:
       - '0'
       - '1'
       - '2'
+    excludes:
+      - '**/test/**'
   ReturnCount:
     max: 6
   ThrowsCount:
