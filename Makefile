@@ -1,4 +1,4 @@
-.PHONY: publish release reset-db run compose docker-build
+.PHONY: publish release deploy reset-db run compose docker-build
 
 publish:
 	./gradlew :web:jib
@@ -12,7 +12,13 @@ docker-build:
 compose: docker-build
 	docker compose up -d
 
-ENV ?= dev
+ENV ?= prod
+
+deploy:
+	helm upgrade moneylytics deployment/api \
+		--namespace moneylytics-$(ENV) \
+		--set image.tag=$$(git rev-parse --short HEAD) \
+		--set frontend.image.tag=$$(git rev-parse --short HEAD)
 
 release:
 	./deployment/release.sh $(ENV)
