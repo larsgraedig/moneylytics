@@ -7,6 +7,7 @@ plugins {
     alias(libs.plugins.jib.conventions)
     alias(libs.plugins.detekt)
     alias(libs.plugins.ktlint)
+    jacoco
     idea
 }
 
@@ -33,6 +34,7 @@ dependencies {
     implementation(libs.kotlinx.coroutines.reactor)
     implementation(libs.jackson.module.kotlin)
     implementation(libs.commons.csv)
+    implementation(libs.kotlin.logging)
     implementation(libs.h2)
     runtimeOnly(libs.postgresql)
     implementation(libs.spring.session.jdbc)
@@ -70,4 +72,13 @@ idea {
 
 tasks.withType<Test> {
     useJUnitPlatform()
+    finalizedBy(tasks.jacocoTestReport)
+}
+
+tasks.jacocoTestReport {
+    dependsOn(tasks.test)
+    reports {
+        xml.required = true
+        html.required = true
+    }
 }

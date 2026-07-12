@@ -2,6 +2,7 @@ package com.moneylytics.api.adapter.input.web
 
 import com.moneylytics.api.application.port.input.RegisterUserUseCase
 import com.moneylytics.api.application.service.UserAlreadyExistsException
+import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.reactive.awaitFirstOrNull
 import kotlinx.coroutines.reactive.awaitSingle
@@ -28,6 +29,8 @@ class AuthController(
     private val securityContextRepository: ServerSecurityContextRepository,
     private val registerUserUseCase: RegisterUserUseCase,
 ) {
+    private val logger = KotlinLogging.logger {}
+
     @PostMapping("/login")
     suspend fun login(
         @RequestBody request: LoginRequest,
@@ -39,6 +42,7 @@ class AuthController(
             securityContextRepository.save(exchange, SecurityContextImpl(auth)).awaitFirstOrNull()
             ResponseEntity.ok(AuthResponse(username = auth.name))
         } catch (e: AuthenticationException) {
+            logger.debug(e) { "Authentication failed for user ${request.username}" }
             ResponseEntity.status(401).build()
         }
     }
@@ -60,6 +64,7 @@ class AuthController(
             securityContextRepository.save(exchange, SecurityContextImpl(auth)).awaitFirstOrNull()
             ResponseEntity.ok(AuthResponse(username = auth.name))
         } catch (e: UserAlreadyExistsException) {
+            logger.debug(e) { "Registration failed: user ${request.username} already exists" }
             ResponseEntity.status(409).build()
         }
 

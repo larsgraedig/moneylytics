@@ -2,10 +2,12 @@ package com.moneylytics.api.adapter.input.web
 
 import org.springframework.stereotype.Component
 import org.w3c.dom.Element
+import org.xml.sax.SAXException
 import java.math.BigDecimal
 import java.time.LocalDate
 import java.time.format.DateTimeParseException
 import javax.xml.parsers.DocumentBuilderFactory
+import javax.xml.parsers.ParserConfigurationException
 
 sealed interface CamtParseResult {
     data class FormatError(
@@ -26,7 +28,11 @@ class CamtParser {
                 factory.isNamespaceAware = true
                 factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true)
                 factory.newDocumentBuilder().parse(bytes.inputStream())
-            } catch (e: Exception) {
+            } catch (e: SAXException) {
+                return CamtParseResult.FormatError("Invalid XML: ${e.message}")
+            } catch (e: ParserConfigurationException) {
+                return CamtParseResult.FormatError("Invalid XML: ${e.message}")
+            } catch (e: java.io.IOException) {
                 return CamtParseResult.FormatError("Invalid XML: ${e.message}")
             }
 

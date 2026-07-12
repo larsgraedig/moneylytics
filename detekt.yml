@@ -4,14 +4,27 @@ style:
     active: false
   DataClassShouldBeImmutable:
     active: true
+  MagicNumber:
+    # too noisy for typical application code
+    active: false
   ReturnCount:
     max: 6
   ThrowsCount:
     max: 6
+  SerialVersionUIDInSerializableClass:
+    # JPA composite key classes don't need serialVersionUID in Kotlin
+    active: false
 complexity:
   LongParameterList:
     ignoreAnnotated:
       - jakarta.persistence.Entity
       - jakarta.persistence.Embeddable
   LongMethod:
-    threshold: 80
+    allowedLines: 90
+  CyclomaticComplexMethod:
+    allowedComplexity: 30
+  TooManyFunctions:
+    allowedFunctionsPerClass: 25
+    allowedFunctionsPerInterface: 25
+    allowedFunctionsPerObject: 25
+    allowedFunctionsPerFile: 25

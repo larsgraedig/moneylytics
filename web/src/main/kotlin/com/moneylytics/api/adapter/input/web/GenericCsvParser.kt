@@ -110,9 +110,11 @@ class GenericCsvParser {
                 try {
                     LocalDate.parse(dateStr.take(10), dateFormatter)
                 } catch (_: Exception) {
-                    continue
+                    null
                 }
-            val amount = parseAmount(amountStr, mapping.amountFormat) ?: continue
+            val amount = parseAmount(amountStr, mapping.amountFormat)
+
+            if (date == null || amount == null) continue
 
             val iban =
                 ibanIdx?.let { get(it).ifBlank { null } }

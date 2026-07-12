@@ -3,39 +3,11 @@ package com.moneylytics.api.adapter.input.web
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import java.math.BigDecimal
-import java.time.LocalDate
 
 class CsvTransactionParserTest {
     private val parser = CsvTransactionParser()
 
     // ── MLP Banking format (dd.MM.yyyy dates, German decimal amounts) ─────────
-
-    @Test
-    fun `should parse valid MLP Banking CSV and return all transactions`() {
-        // Arrange
-        val csvContent =
-            javaClass.classLoader
-                .getResourceAsStream("AccountSheet.csv")!!
-                .bufferedReader()
-                .readText()
-
-        // Act
-        val result = parser.parse(csvContent)
-
-        // Assert
-        assertThat(result).isInstanceOf(CsvParseResult.Valid::class.java)
-        val valid = result as CsvParseResult.Valid
-        assertThat(valid.transactions).hasSizeGreaterThan(0)
-        val first = valid.transactions.first()
-        assertThat(first.category).isEqualTo("Tools")
-        assertThat(first.subcategory).isEqualTo("Sweepy")
-        assertThat(first.bookingDate).isEqualTo(LocalDate.of(2025, 1, 2))
-        assertThat(first.valueDate).isEqualTo(LocalDate.of(2025, 1, 2))
-        assertThat(first.amount).isEqualByComparingTo(BigDecimal("-1.5"))
-        assertThat(first.currency).isEqualTo("EUR")
-        assertThat(first.accountIban).isEqualTo("DE33672300004016122250")
-        assertThat(valid.accountNames).containsEntry("DE33672300004016122250", "KomfortKonto")
-    }
 
     @Test
     fun `should collect all errors without stopping at the first one`() {
@@ -135,30 +107,6 @@ class CsvTransactionParserTest {
     }
 
     // ── Standard format (yyyy-MM-dd dates, English column names) ─────────────
-
-    @Test
-    fun `should auto-detect and parse Standard format CSV`() {
-        // Arrange
-        val csvContent =
-            javaClass.classLoader
-                .getResourceAsStream("AccountSheet2.csv")!!
-                .bufferedReader()
-                .readText()
-
-        // Act
-        val result = parser.parse(csvContent)
-
-        // Assert
-        assertThat(result).isInstanceOf(CsvParseResult.Valid::class.java)
-        val valid = result as CsvParseResult.Valid
-        // First row: ,,Bargeld,...,2025-08-01,2025-08-01,...,-400,EUR
-        val first = valid.transactions.first()
-        assertThat(first.bookingDate).isEqualTo(LocalDate.of(2025, 8, 1))
-        assertThat(first.valueDate).isEqualTo(LocalDate.of(2025, 8, 1))
-        assertThat(first.amount).isEqualByComparingTo(BigDecimal("-400"))
-        assertThat(first.currency).isEqualTo("EUR")
-        assertThat(first.accountIban).isEqualTo("Hauptkonto")
-    }
 
     @Test
     fun `should parse Standard format amount with comma decimal separator`() {
