@@ -4,7 +4,7 @@ import type { LucideIcon } from 'lucide-react'
 import {
   Workflow, TrendingUp, TrendingDown, PieChart, BarChart2,
   List, Landmark, Wallet, Gauge,
-  FileSpreadsheet, FileCode, Link2, FolderOpen,
+  FileSpreadsheet, FileCode, Link2, FolderOpen, Repeat,
 } from 'lucide-react'
 import { getPresetRange, detectPreset, PRESETS, type Preset } from './utils/datePresets'
 import SankeyChart from './components/SankeyChart'
@@ -21,6 +21,7 @@ import BurnRatePage from './components/BurnRatePage'
 import AccountsPage from './components/AccountsPage'
 import LinkedTransactionsPage from './components/LinkedTransactionsPage'
 import CollectionsPage from './components/CollectionsPage'
+import RecurringPage from './components/RecurringPage'
 import LoginPage from './components/LoginPage'
 import SettingsPanel from './components/SettingsPanel'
 import { fetchSankeyData, type SankeyResponse } from './api/transactions'
@@ -37,9 +38,9 @@ function isoDate(d: Date) {
 const today = isoDate(new Date())
 const firstOfYear = isoDate(new Date(new Date().getFullYear(), 0, 1))
 
-type Tab = 'sankey' | 'trends' | 'breakdown' | 'cashflow' | 'burnrate' | 'kontoauszug' | 'verknuepfungen' | 'sammlungen' | 'konten' | 'budgets' | 'limits' | 'csv' | 'camt'
+type Tab = 'sankey' | 'trends' | 'breakdown' | 'cashflow' | 'burnrate' | 'kontoauszug' | 'verknuepfungen' | 'sammlungen' | 'konten' | 'budgets' | 'limits' | 'csv' | 'camt' | 'wiederkehrer'
 
-const VALID_TABS = new Set<string>(['sankey', 'trends', 'breakdown', 'cashflow', 'burnrate', 'kontoauszug', 'verknuepfungen', 'sammlungen', 'konten', 'budgets', 'limits', 'csv', 'camt'])
+const VALID_TABS = new Set<string>(['sankey', 'trends', 'breakdown', 'cashflow', 'burnrate', 'kontoauszug', 'verknuepfungen', 'sammlungen', 'konten', 'budgets', 'limits', 'csv', 'camt', 'wiederkehrer'])
 
 type ViewState =
   | { phase: 'idle' }
@@ -69,6 +70,7 @@ const NAV: NavSection[] = [
       ['konten', 'nav.konten', Landmark],
       ['budgets', 'nav.budgets', Wallet],
       ['limits', 'nav.limits', Gauge],
+      ['wiederkehrer', 'nav.wiederkehrer', Repeat],
     ],
   },
   {
@@ -308,6 +310,7 @@ export default function App() {
           {tab === 'konten' && <AccountsPage key={username} />}
           {tab === 'csv' && <CsvImportPage key={username} categories={categories} />}
           {tab === 'camt' && <CamtImportPage key={username} categories={categories} />}
+          {tab === 'wiederkehrer' && <RecurringPage key={username} />}
         </main>
       </div>
       {settingsOpen && <SettingsPanel accounts={accounts} defaultAccountIban={selectedIban} onClose={() => setSettingsOpen(false)} />}
