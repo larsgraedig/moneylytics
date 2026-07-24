@@ -2,6 +2,8 @@ package com.moneylytics.api.application.service
 
 import com.moneylytics.api.application.port.input.ConfirmRecurringSeriesCommand
 import com.moneylytics.api.application.port.input.CorrectRecurringSeriesTypeCommand
+import com.moneylytics.api.application.port.input.CreateRecurringSeriesCommand
+import com.moneylytics.api.application.port.input.DeleteRecurringSeriesCommand
 import com.moneylytics.api.application.port.input.GetRecurringSeriesQuery
 import com.moneylytics.api.application.port.input.RefreshRecurringSeriesCommand
 import com.moneylytics.api.application.port.output.RecurringFalsePositiveRepository
@@ -301,6 +303,65 @@ class RecurringSeriesServiceTest {
 
         assertThat(result).hasSize(1)
         assertThat(result[0].type).isEqualTo(RecurringType.RENT)
+    }
+
+    @Test
+    fun `should create manual series with MANUAL status and interval derived from cadence`() {
+        val created = series(today.plusDays(30)).copy(status = RecurrenceStatus.MANUAL)
+        whenever(recurringSeriesRepository.save(any(), eq(userId))).thenReturn(created)
+
+        val command =
+            CreateRecurringSeriesCommand(
+                userId = userId,
+                label = "Miete",
+                type = RecurringType.RENT,
+                direction = RecurrenceDirection.EXPENSE,
+                cadence = RecurrenceCadence.MONTHLY,
+                expectedAmount = BigDecimal("850.00"),
+                currency = "EUR",
+                accountIban = "",
+                lastBookingDate = null,
+            )
+        service.create(command)
+
+        val captor = argumentCaptor<RecurringSeries>()
+        verify(recurringSeriesRepository).save(captor.capture(), eq(userId))
+        assertThat(captor.firstValue.status).isEqualTo(RecurrenceStatus.MANUAL)
+        assertThat(captor.firstValue.intervalDays).isEqualTo(30)
+        assertThat(captor.firstValue.fingerprint).startsWith("manual:")
+    }
+
+    @Test
+    fun `should use lastBookingDate for nextExpectedDate when provided`() {
+        val customDate = today.minusDays(5)
+        val created = series(customDate.plusDays(30)).copy(status = RecurrenceStatus.MANUAL)
+        whenever(recurringSeriesRepository.save(any(), eq(userId))).thenReturn(created)
+
+        val command =
+            CreateRecurringSeriesCommand(
+                userId = userId,
+                label = "Gym",
+                type = RecurringType.MEMBERSHIP,
+                direction = RecurrenceDirection.EXPENSE,
+                cadence = RecurrenceCadence.MONTHLY,
+                expectedAmount = BigDecimal("29.99"),
+                currency = "EUR",
+                accountIban = "",
+                lastBookingDate = customDate,
+            )
+        service.create(command)
+
+        val captor = argumentCaptor<RecurringSeries>()
+        verify(recurringSeriesRepository).save(captor.capture(), eq(userId))
+        assertThat(captor.firstValue.nextExpectedDate).isEqualTo(customDate.plusDays(30))
+        assertThat(captor.firstValue.lastSeen).isEqualTo(customDate)
+    }
+
+    @Test
+    fun `should delegate delete to repository`() {
+        service.delete(DeleteRecurringSeriesCommand(userId = userId, seriesId = 99L))
+
+        verify(recurringSeriesRepository).deleteByIdAndUserId(99L, userId)
     }
 
     @Test

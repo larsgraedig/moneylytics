@@ -8,8 +8,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 # Build / test
 ./gradlew build
 ./gradlew :web:test
+./gradlew :web:test --tests "com.moneylytics.api.SomeTest"        # single test class
+./gradlew :web:test --tests "com.moneylytics.api.SomeTest.method" # single test method
 
-# Lint
+# Lint / static analysis
 ./gradlew ktlintCheck    # style check
 ./gradlew ktlintFormat   # auto-fix style
 ./gradlew detekt         # static analysis
@@ -21,6 +23,9 @@ docker compose up -d
 # Run locally with H2 in-memory + dummy data (no Docker needed)
 ./gradlew :web:bootRun --args='--spring.profiles.active=local'
 
+# Frontend dev server (proxies API calls to localhost:8080)
+cd frontend && npm run dev
+
 # Deploy (requires DOCKERHUB_USERNAME, DOCKERHUB_PASSWORD env vars)
 make publish   # build + push image (image tag = COMMIT_HASH)
 make release   # publish + helm upgrade
@@ -28,23 +33,20 @@ make release   # publish + helm upgrade
 
 ## Architecture
 
-The `web` module (the only active subproject — `ingester/` is a placeholder) uses **hexagonal architecture** with these
-layers:
+The `web` module (the only active subproject — `ingester/` is a placeholder) uses **hexagonal architecture**:
 
-- `domain/` — Pure domain models, no framework dependencies. `Transaction` is a plain data class with no JPA
-  annotations.
-- `application/port/input/` — Use case interfaces (e.g., `ImportTransactionsUseCase`)
-- `application/port/output/` — Repository interfaces (e.g., `TransactionRepository`)
+- `domain/` — Pure Kotlin data classes, no framework dependencies
+- `application/port/input/` — Use case interfaces and command/query objects
+- `application/port/output/` — Repository and classifier interfaces
 - `application/service/` — Use case implementations; depend only on domain + output ports
-- `adapter/input/web/` — REST controllers, CSV parser, request/response types
-- `adapter/output/persistence/` — JPA entities and repository implementations
+- `adapter/input/web/` — WebFlux REST controllers, CSV/CAMT parsers, request/response DTOs
+- `adapter/output/persistence/` — JPA entities, Spring Data repositories, persistence adapters
 
-Dependencies flow inward only: adapters → application → domain. Directories are named `input`/`output` rather than `in`/
-`out` because `in` is a reserved keyword in Kotlin.
+Dependencies flow inward only: adapters → application → domain. Directories are named `input`/`output` rather than `in`/`out` because `in` is a reserved keyword in Kotlin.
 
-**Current feature — CSV import flow:** `POST /transactions/import` (multipart) → `TransactionImportController` →
-`CsvTransactionParser` (returns sealed `CsvParseResult`) → `ImportTransactionsUseCase` → `TransactionImportService` →
-`TransactionRepository` port → `TransactionPersistenceAdapter` → JPA → H2
+**Auth pattern:** Every controller receives `@AuthenticationPrincipal principal: UserDetails` and calls `resolveUserUseCase.resolveUser(principal.username)` to obtain the internal `userId: Long`. The `local` profile bypasses OAuth entirely (seeds dummy data via `LocalDataInitializer`).
+
+**Frontend:** React + TypeScript, served by Vite (`frontend/`). All API calls go through `src/api/client.ts` (`fetchWithUser`). Vite proxies `/transactions`, `/accounts`, `/categories`, `/users`, `/thresholds`, `/budgets`, `/collections`, `/auth`, `/oauth2` to `localhost:8080`. Styles live in a single `src/index.css`. Translations in `src/i18n/locales/de.json` and `en.json`.
 
 ## CSV Format
 
@@ -57,20 +59,19 @@ The CSV uses German locale. Non-obvious details for `CsvTransactionParser`:
 
 ## Coding Standards
 
-- **Tests**: AssertJ for assertions, Mockito Kotlin for mocking (**no MockK**), Arrange-Act-Assert pattern, backtick
-  names: `` `should ... when ...` ``
+- **Tests**: AssertJ for assertions, Mockito Kotlin for mocking (**no MockK**), Arrange-Act-Assert pattern, backtick names: `` `should ... when ...` ``
+- Controller unit tests instantiate the controller directly with mocked use cases — no Spring context needed; use `runTest` for coroutine suspension
+- Integration tests extend `AbstractJpaRepositoryIT` (persistence layer) or `AbstractServiceIT` (service + persistence), are suffixed with `IT`, and live in `src/test/kotlin`
 - **Data classes** must be immutable (`DataClassShouldBeImmutable` enforced by Detekt)
 - **Logging**: `private val logger = KotlinLogging.logger {}`
 - Use trailing commas in multi-line collections/function calls and named arguments
 - All comments in English
 - Prefer suspending functions and coroutine APIs over blocking calls (WebFlux stack)
 - Put business logic into the backend as much as possible; the frontend should be a thin client (React + TypeScript)
-- Integration tests should be suffixed with IT (e.g., `TransactionImportIT`) and live in `src/test/kotlin` (not
-  `src/integrationTest/kotlin`)
 - Do not use Kotlin Double Bangs (`!!`)
-- Whenever new code is added it should be covered by unit tests (and integration tests if applicable).
-  If a new feature is added, it should be covered by an integration test.
+- Whenever new code is added it should be covered by unit tests (and integration tests if applicable). If a new feature is added, it should be covered by an integration test.
 
 ## Procedure
 
-- Always run ktlintCheck and detekt before finishing any code changes.
+- Always run `ktlintFormat` after adding new Kotlin files, then verify with `ktlintCheck` and `detekt` before finishing any code changes.
+- Flyway migrations are versioned sequentially (`V1`, `V2`, …). Check the highest existing version in `web/src/main/resources/db/migration/` before creating a new one to avoid conflicts.

@@ -15,4 +15,14 @@ interface RecurringSeriesRepository {
         seriesId: Long,
         type: RecurringType,
     )
+
+    fun save(
+        series: RecurringSeries,
+        userId: Long,
+    ): RecurringSeries
+
+    fun deleteByIdAndUserId(
+        seriesId: Long,
+        userId: Long,
+    )
 }

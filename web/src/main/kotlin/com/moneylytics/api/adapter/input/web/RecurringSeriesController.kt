@@ -4,11 +4,16 @@ import com.moneylytics.api.application.port.input.ConfirmRecurringSeriesCommand
 import com.moneylytics.api.application.port.input.ConfirmRecurringSeriesUseCase
 import com.moneylytics.api.application.port.input.CorrectRecurringSeriesTypeCommand
 import com.moneylytics.api.application.port.input.CorrectRecurringSeriesTypeUseCase
+import com.moneylytics.api.application.port.input.CreateRecurringSeriesCommand
+import com.moneylytics.api.application.port.input.CreateRecurringSeriesUseCase
+import com.moneylytics.api.application.port.input.DeleteRecurringSeriesCommand
+import com.moneylytics.api.application.port.input.DeleteRecurringSeriesUseCase
 import com.moneylytics.api.application.port.input.DetectRecurringSeriesUseCase
 import com.moneylytics.api.application.port.input.GetRecurringSeriesQuery
 import com.moneylytics.api.application.port.input.GetRecurringSeriesUseCase
 import com.moneylytics.api.application.port.input.RefreshRecurringSeriesCommand
 import com.moneylytics.api.application.port.input.ResolveUserUseCase
+import com.moneylytics.api.domain.RecurrenceCadence
 import com.moneylytics.api.domain.RecurrenceDirection
 import com.moneylytics.api.domain.RecurringType
 import kotlinx.coroutines.Dispatchers
@@ -16,6 +21,7 @@ import kotlinx.coroutines.withContext
 import org.springframework.http.HttpStatus
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.security.core.userdetails.UserDetails
+import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PatchMapping
 import org.springframework.web.bind.annotation.PathVariable
@@ -26,6 +32,8 @@ import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.server.ResponseStatusException
+import java.math.BigDecimal
+import java.time.LocalDate
 
 @RestController
 @RequestMapping("/transactions")
@@ -34,6 +42,8 @@ class RecurringSeriesController(
     private val confirmRecurringSeriesUseCase: ConfirmRecurringSeriesUseCase,
     private val getRecurringSeriesUseCase: GetRecurringSeriesUseCase,
     private val correctRecurringSeriesTypeUseCase: CorrectRecurringSeriesTypeUseCase,
+    private val createRecurringSeriesUseCase: CreateRecurringSeriesUseCase,
+    private val deleteRecurringSeriesUseCase: DeleteRecurringSeriesUseCase,
     private val resolveUserUseCase: ResolveUserUseCase,
 ) {
     @GetMapping("/recurring")
@@ -48,6 +58,44 @@ class RecurringSeriesController(
                 .getRecurringSeries(GetRecurringSeriesQuery(userId = userId, direction = direction, type = type))
                 .map { it.toItem() }
         }
+
+    @PostMapping("/recurring")
+    @ResponseStatus(HttpStatus.CREATED)
+    suspend fun createRecurringSeries(
+        @RequestBody body: CreateRecurringSeriesRequest,
+        @AuthenticationPrincipal principal: UserDetails,
+    ): RecurringSeriesItem =
+        withContext(Dispatchers.IO) {
+            val userId = resolveUserUseCase.resolveUser(principal.username)
+            createRecurringSeriesUseCase
+                .create(
+                    CreateRecurringSeriesCommand(
+                        userId = userId,
+                        label = body.label,
+                        type = body.type,
+                        direction = body.direction,
+                        cadence = body.cadence,
+                        expectedAmount = body.expectedAmount,
+                        currency = body.currency,
+                        accountIban = body.accountIban,
+                        lastBookingDate = body.lastBookingDate,
+                    ),
+                ).toItem()
+        }
+
+    @DeleteMapping("/recurring/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    suspend fun deleteRecurringSeries(
+        @PathVariable id: Long,
+        @AuthenticationPrincipal principal: UserDetails,
+    ) = withContext(Dispatchers.IO) {
+        val userId = resolveUserUseCase.resolveUser(principal.username)
+        try {
+            deleteRecurringSeriesUseCase.delete(DeleteRecurringSeriesCommand(userId = userId, seriesId = id))
+        } catch (e: NoSuchElementException) {
+            throw ResponseStatusException(HttpStatus.NOT_FOUND, e.message, e)
+        }
+    }
 
     @PostMapping("/recurring/refresh")
     suspend fun refreshRecurringSeries(
@@ -102,4 +150,15 @@ data class CorrectTypeRequest(
 data class ConfirmRecurringSeriesRequest(
     val confirmedFingerprints: List<String>,
     val falsePositiveFingerprints: List<String>,
+)
+
+data class CreateRecurringSeriesRequest(
+    val label: String,
+    val type: RecurringType,
+    val direction: RecurrenceDirection,
+    val cadence: RecurrenceCadence,
+    val expectedAmount: BigDecimal,
+    val currency: String = "EUR",
+    val accountIban: String = "",
+    val lastBookingDate: LocalDate? = null,
 )

@@ -1,6 +1,7 @@
 package com.moneylytics.api.adapter.output.persistence
 
 import com.moneylytics.api.application.port.output.RecurringSeriesRepository
+import com.moneylytics.api.domain.RecurrenceStatus
 import com.moneylytics.api.domain.RecurringOccurrence
 import com.moneylytics.api.domain.RecurringSeries
 import com.moneylytics.api.domain.RecurringType
@@ -18,51 +19,38 @@ class RecurringSeriesPersistenceAdapter(
         series: List<RecurringSeries>,
         userId: Long,
     ) {
-        val existing = recurringSeriesJpaRepository.findByUserId(userId)
-        if (existing.isNotEmpty()) {
-            val existingIds = existing.mapNotNull { it.id }
-            recurringSeriesMemberJpaRepository.deleteBySeriesIdIn(existingIds)
-            recurringSeriesJpaRepository.deleteByUserId(userId)
+        val detected = recurringSeriesJpaRepository.findByUserId(userId).filter { it.status == RecurrenceStatus.DETECTED }
+        if (detected.isNotEmpty()) {
+            val detectedIds = detected.mapNotNull { it.id }
+            recurringSeriesMemberJpaRepository.deleteBySeriesIdIn(detectedIds)
+            recurringSeriesJpaRepository.deleteByUserIdAndStatus(userId, RecurrenceStatus.DETECTED)
         }
 
         val user = userJpaRepository.getReferenceById(userId)
-        series.forEach { s ->
-            val entity =
-                recurringSeriesJpaRepository.save(
-                    RecurringSeriesEntity(
-                        user = user,
-                        label = s.label,
-                        type = s.type,
-                        direction = s.direction,
-                        cadence = s.cadence,
-                        intervalDays = s.intervalDays,
-                        expectedAmount = s.expectedAmount,
-                        amountVariable = s.amountVariable,
-                        currency = s.currency,
-                        accountIban = s.accountIban,
-                        firstSeen = s.firstSeen,
-                        lastSeen = s.lastSeen,
-                        occurrenceCount = s.occurrenceCount,
-                        nextExpectedDate = s.nextExpectedDate,
-                        status = s.status,
-                        fingerprint = s.fingerprint,
-                    ),
-                )
-            val seriesId = requireNotNull(entity.id)
-            recurringSeriesMemberJpaRepository.saveAll(
-                s.occurrences.map { o ->
-                    RecurringSeriesMemberEntity(
-                        seriesId = seriesId,
-                        transactionId = o.transactionId,
-                        occurredOn = o.date,
-                        amount = o.amount,
-                        purpose = o.purpose,
-                        counterpartyName = o.counterpartyName,
-                        counterpartyIban = o.counterpartyIban,
-                    )
-                },
-            )
-        }
+        series.forEach { s -> persistSeries(s, user) }
+    }
+
+    @Transactional
+    override fun save(
+        series: RecurringSeries,
+        userId: Long,
+    ): RecurringSeries {
+        val user = userJpaRepository.getReferenceById(userId)
+        val entity = persistSeries(series, user)
+        return entity.toDomain(emptyList())
+    }
+
+    @Transactional
+    override fun deleteByIdAndUserId(
+        seriesId: Long,
+        userId: Long,
+    ) {
+        val entity =
+            recurringSeriesJpaRepository.findByIdAndUserId(seriesId, userId)
+                ?: throw NoSuchElementException("Series $seriesId not found for user $userId")
+        val id = requireNotNull(entity.id)
+        recurringSeriesMemberJpaRepository.deleteBySeriesIdIn(listOf(id))
+        recurringSeriesJpaRepository.delete(entity)
     }
 
     @Transactional
@@ -83,6 +71,50 @@ class RecurringSeriesPersistenceAdapter(
         val membersBySeriesId = recurringSeriesMemberJpaRepository.findBySeriesIdIn(entityIds).groupBy { it.seriesId }
 
         return entities.map { entity -> entity.toDomain(membersBySeriesId[entity.id] ?: emptyList()) }
+    }
+
+    private fun persistSeries(
+        s: RecurringSeries,
+        user: UserEntity,
+    ): RecurringSeriesEntity {
+        val entity =
+            recurringSeriesJpaRepository.save(
+                RecurringSeriesEntity(
+                    user = user,
+                    label = s.label,
+                    type = s.type,
+                    direction = s.direction,
+                    cadence = s.cadence,
+                    intervalDays = s.intervalDays,
+                    expectedAmount = s.expectedAmount,
+                    amountVariable = s.amountVariable,
+                    currency = s.currency,
+                    accountIban = s.accountIban,
+                    firstSeen = s.firstSeen,
+                    lastSeen = s.lastSeen,
+                    occurrenceCount = s.occurrenceCount,
+                    nextExpectedDate = s.nextExpectedDate,
+                    status = s.status,
+                    fingerprint = s.fingerprint,
+                ),
+            )
+        val seriesId = requireNotNull(entity.id)
+        if (s.occurrences.isNotEmpty()) {
+            recurringSeriesMemberJpaRepository.saveAll(
+                s.occurrences.map { o ->
+                    RecurringSeriesMemberEntity(
+                        seriesId = seriesId,
+                        transactionId = o.transactionId,
+                        occurredOn = o.date,
+                        amount = o.amount,
+                        purpose = o.purpose,
+                        counterpartyName = o.counterpartyName,
+                        counterpartyIban = o.counterpartyIban,
+                    )
+                },
+            )
+        }
+        return entity
     }
 
     private fun RecurringSeriesEntity.toDomain(members: List<RecurringSeriesMemberEntity>): RecurringSeries =

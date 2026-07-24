@@ -495,6 +495,27 @@
       "counterparty": "Gegenpartei",
       "purpose": "Verwendungszweck"
     },
+    "addManual": "Hinzufügen",
+    "status": {
+      "MANUAL": "Manuell"
+    },
+    "modal": {
+      "title": "Wiederkehrer hinzufügen",
+      "label": "Bezeichnung",
+      "type": "Typ",
+      "direction": "Richtung",
+      "cadence": "Rhythmus",
+      "amount": "Betrag",
+      "currency": "Währung",
+      "lastBookingDate": "Letzte Buchung",
+      "account": "Konto (optional)",
+      "accountPlaceholder": "Kein Konto",
+      "submit": "Hinzufügen",
+      "cancel": "Abbrechen"
+    },
+    "deleteConfirm": "Löschen?",
+    "deleteConfirmYes": "Ja, löschen",
+    "deleteConfirmNo": "Abbrechen",
     "pendingBanner": "{{count}} Serie(n) erkannt — überprüfen und speichern.",
     "save": "Speichern",
     "saving": "Wird gespeichert…",
