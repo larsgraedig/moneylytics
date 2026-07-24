@@ -17,6 +17,24 @@ import kotlin.math.sqrt
 
 @Component
 class RecurringSeriesDetector {
+    private companion object {
+        const val TOLERANCE_FACTOR = 0.25
+        const val MIN_TOLERANCE_DAYS = 5.0
+        const val MIN_REGULARITY_RATIO = 0.6
+        const val AMOUNT_VARIABILITY_THRESHOLD = 0.15
+        const val MAX_LABEL_LENGTH = 60
+        const val MAX_DUPLICATE_PERIOD_RATIO = 0.2
+        const val MEDIAN_SCALE = 4
+        val WEEKLY_RANGE = 5..10
+        val MONTHLY_RANGE = 25..35
+        val QUARTERLY_RANGE = 80..100
+        val SEMIANNUAL_RANGE = 170..195
+        val YEARLY_RANGE = 350..380
+        const val MIN_OCCURRENCES_FREQUENT = 3
+        const val MIN_OCCURRENCES_SPARSE = 2
+        const val MAX_PURPOSE_WORDS = 5
+    }
+
     fun detect(transactions: List<Transaction>): List<RecurringSeries> =
         transactions
             .filter { it.amount != BigDecimal.ZERO }
@@ -69,14 +87,14 @@ class RecurringSeriesDetector {
 
         val minOccurrences =
             when (cadence) {
-                RecurrenceCadence.WEEKLY, RecurrenceCadence.MONTHLY, RecurrenceCadence.QUARTERLY -> MIN_OCCURRENCES_FREQUENT_CADENCE
-                RecurrenceCadence.SEMIANNUAL, RecurrenceCadence.YEARLY -> 2
+                RecurrenceCadence.WEEKLY, RecurrenceCadence.MONTHLY, RecurrenceCadence.QUARTERLY -> MIN_OCCURRENCES_FREQUENT
+                RecurrenceCadence.SEMIANNUAL, RecurrenceCadence.YEARLY -> MIN_OCCURRENCES_SPARSE
             }
         if (sorted.size < minOccurrences) return null
 
-        val tolerance = maxOf(medianInterval * INTERVAL_TOLERANCE_RATIO, MIN_INTERVAL_TOLERANCE_DAYS)
+        val tolerance = maxOf(medianInterval * TOLERANCE_FACTOR, MIN_TOLERANCE_DAYS)
         val regularCount = intervals.count { abs(it - medianInterval).toDouble() <= tolerance }
-        if (regularCount < intervals.size * REGULARITY_THRESHOLD) return null
+        if (regularCount < intervals.size * MIN_REGULARITY_RATIO) return null
 
         if (cadence == RecurrenceCadence.WEEKLY || cadence == RecurrenceCadence.MONTHLY) {
             if (!hasAtMostOnePerPeriod(sorted, cadence)) return null
@@ -84,7 +102,7 @@ class RecurringSeriesDetector {
 
         val amounts = sorted.map { it.amount.abs() }
         val medianAmount = medianBigDecimal(amounts)
-        val amountVariable = amounts.size > 1 && standardDeviation(amounts) / medianAmount.toDouble() > AMOUNT_VARIATION_THRESHOLD
+        val amountVariable = amounts.size > 1 && standardDeviation(amounts) / medianAmount.toDouble() > AMOUNT_VARIABILITY_THRESHOLD
         val direction = if (sorted.first().amount < BigDecimal.ZERO) RecurrenceDirection.EXPENSE else RecurrenceDirection.INCOME
         val label = buildLabel(sorted.first())
         val nextExpectedDate = sorted.last().bookingDate.plusDays(medianInterval.toLong())
@@ -111,11 +129,11 @@ class RecurringSeriesDetector {
 
     private fun classifyCadence(days: Int): RecurrenceCadence? =
         when (days) {
-            in WEEKLY_INTERVAL_MIN..WEEKLY_INTERVAL_MAX -> RecurrenceCadence.WEEKLY
-            in MONTHLY_INTERVAL_MIN..MONTHLY_INTERVAL_MAX -> RecurrenceCadence.MONTHLY
-            in QUARTERLY_INTERVAL_MIN..QUARTERLY_INTERVAL_MAX -> RecurrenceCadence.QUARTERLY
-            in SEMIANNUAL_INTERVAL_MIN..SEMIANNUAL_INTERVAL_MAX -> RecurrenceCadence.SEMIANNUAL
-            in YEARLY_INTERVAL_MIN..YEARLY_INTERVAL_MAX -> RecurrenceCadence.YEARLY
+            in WEEKLY_RANGE -> RecurrenceCadence.WEEKLY
+            in MONTHLY_RANGE -> RecurrenceCadence.MONTHLY
+            in QUARTERLY_RANGE -> RecurrenceCadence.QUARTERLY
+            in SEMIANNUAL_RANGE -> RecurrenceCadence.SEMIANNUAL
+            in YEARLY_RANGE -> RecurrenceCadence.YEARLY
             else -> null
         }
 
@@ -169,27 +187,5 @@ class RecurringSeriesDetector {
         val mean = values.sumOf { it.toDouble() } / values.size
         val variance = values.sumOf { v -> (v.toDouble() - mean).let { d -> d * d } } / (values.size - 1)
         return sqrt(variance)
-    }
-
-    companion object {
-        private const val MAX_PURPOSE_WORDS = 5
-        private const val MIN_OCCURRENCES_FREQUENT_CADENCE = 3
-        private const val INTERVAL_TOLERANCE_RATIO = 0.25
-        private const val MIN_INTERVAL_TOLERANCE_DAYS = 5.0
-        private const val REGULARITY_THRESHOLD = 0.6
-        private const val AMOUNT_VARIATION_THRESHOLD = 0.15
-        private const val WEEKLY_INTERVAL_MIN = 5
-        private const val WEEKLY_INTERVAL_MAX = 10
-        private const val MONTHLY_INTERVAL_MIN = 25
-        private const val MONTHLY_INTERVAL_MAX = 35
-        private const val QUARTERLY_INTERVAL_MIN = 80
-        private const val QUARTERLY_INTERVAL_MAX = 100
-        private const val SEMIANNUAL_INTERVAL_MIN = 170
-        private const val SEMIANNUAL_INTERVAL_MAX = 195
-        private const val YEARLY_INTERVAL_MIN = 350
-        private const val YEARLY_INTERVAL_MAX = 380
-        private const val MAX_LABEL_LENGTH = 60
-        private const val MAX_DUPLICATE_PERIOD_RATIO = 0.2
-        private const val MEDIAN_SCALE = 4
     }
 }
