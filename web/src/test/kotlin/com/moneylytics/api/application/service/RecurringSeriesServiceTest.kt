@@ -1,8 +1,10 @@
 package com.moneylytics.api.application.service
 
+import com.moneylytics.api.application.port.input.ConfirmRecurringSeriesCommand
 import com.moneylytics.api.application.port.input.CorrectRecurringSeriesTypeCommand
 import com.moneylytics.api.application.port.input.GetRecurringSeriesQuery
 import com.moneylytics.api.application.port.input.RefreshRecurringSeriesCommand
+import com.moneylytics.api.application.port.output.RecurringFalsePositiveRepository
 import com.moneylytics.api.application.port.output.RecurringSeriesRepository
 import com.moneylytics.api.application.port.output.RecurringTypeClassifier
 import com.moneylytics.api.application.port.output.TransactionRepository
@@ -10,6 +12,7 @@ import com.moneylytics.api.domain.RecurrenceCadence
 import com.moneylytics.api.domain.RecurrenceDeviation
 import com.moneylytics.api.domain.RecurrenceDirection
 import com.moneylytics.api.domain.RecurrenceStatus
+import com.moneylytics.api.domain.RecurringFalsePositive
 import com.moneylytics.api.domain.RecurringOccurrence
 import com.moneylytics.api.domain.RecurringSeries
 import com.moneylytics.api.domain.RecurringType
@@ -22,6 +25,7 @@ import org.mockito.kotlin.anyOrNull
 import org.mockito.kotlin.argumentCaptor
 import org.mockito.kotlin.eq
 import org.mockito.kotlin.mock
+import org.mockito.kotlin.never
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import java.math.BigDecimal
@@ -30,9 +34,11 @@ import java.time.LocalDate
 class RecurringSeriesServiceTest {
     private val transactionRepository: TransactionRepository = mock()
     private val recurringSeriesRepository: RecurringSeriesRepository = mock()
+    private val falsePositiveRepository: RecurringFalsePositiveRepository = mock()
     private val detector: RecurringSeriesDetector = mock()
     private val classifier: RecurringTypeClassifier = mock()
-    private val service = RecurringSeriesService(transactionRepository, recurringSeriesRepository, detector, classifier)
+    private val service =
+        RecurringSeriesService(transactionRepository, recurringSeriesRepository, falsePositiveRepository, detector, classifier)
 
     private val userId = 1L
     private val today = LocalDate.now()
@@ -46,6 +52,7 @@ class RecurringSeriesServiceTest {
         occurrenceCount: Int = 3,
         type: RecurringType = RecurringType.SUBSCRIPTION,
         amountVariable: Boolean = false,
+        fingerprint: String = "DE01|E|netflix",
     ) = RecurringSeries(
         id = 1L,
         label = "Test",
@@ -62,6 +69,7 @@ class RecurringSeriesServiceTest {
         occurrenceCount = occurrenceCount,
         nextExpectedDate = nextExpectedDate,
         status = RecurrenceStatus.DETECTED,
+        fingerprint = fingerprint,
         occurrences =
             listOf(
                 RecurringOccurrence(1L, lastOccurrenceDate.minusDays(30), BigDecimal("-50.00")),
@@ -74,6 +82,7 @@ class RecurringSeriesServiceTest {
         val command = RefreshRecurringSeriesCommand(userId = userId)
         whenever(transactionRepository.findByAccountingDateBetween(any(), any(), any(), anyOrNull())).thenReturn(emptyList())
         whenever(detector.detect(any())).thenReturn(emptyList())
+        whenever(falsePositiveRepository.findFingerprintsByUserId(userId)).thenReturn(emptySet())
 
         service.detect(command)
 
@@ -90,6 +99,7 @@ class RecurringSeriesServiceTest {
         whenever(transactionRepository.findByAccountingDateBetween(any(), any(), any(), anyOrNull())).thenReturn(emptyList())
         whenever(detector.detect(any())).thenReturn(detectedSeries)
         whenever(classifier.classify(any(), any())).thenReturn(RecurringType.SUBSCRIPTION)
+        whenever(falsePositiveRepository.findFingerprintsByUserId(userId)).thenReturn(emptySet())
 
         service.detect(command)
 
@@ -97,47 +107,134 @@ class RecurringSeriesServiceTest {
     }
 
     @Test
-    fun `should persist detected series after classification`() {
+    fun `should not persist series on detect`() {
         val command = RefreshRecurringSeriesCommand(userId = userId)
         val detectedSeries = listOf(series(today.plusDays(5), type = RecurringType.OTHER))
         whenever(transactionRepository.findByAccountingDateBetween(any(), any(), any(), anyOrNull())).thenReturn(emptyList())
         whenever(detector.detect(any())).thenReturn(detectedSeries)
         whenever(classifier.classify(any(), any())).thenReturn(RecurringType.SUBSCRIPTION)
+        whenever(falsePositiveRepository.findFingerprintsByUserId(userId)).thenReturn(emptySet())
 
         service.detect(command)
 
-        verify(recurringSeriesRepository).replaceAllForUser(any(), eq(userId))
+        verify(recurringSeriesRepository, never()).replaceAllForUser(any(), any())
     }
 
     @Test
-    fun `should filter out variable amount series classified as OTHER`() {
+    fun `should mark series as false positive when fingerprint is known`() {
+        val fp = "DE01|E|netflix"
+        val command = RefreshRecurringSeriesCommand(userId = userId)
+        val detectedSeries = listOf(series(today.plusDays(5), fingerprint = fp))
+        whenever(transactionRepository.findByAccountingDateBetween(any(), any(), any(), anyOrNull())).thenReturn(emptyList())
+        whenever(detector.detect(any())).thenReturn(detectedSeries)
+        whenever(classifier.classify(any(), any())).thenReturn(RecurringType.SUBSCRIPTION)
+        whenever(falsePositiveRepository.findFingerprintsByUserId(userId)).thenReturn(setOf(fp))
+
+        val result = service.detect(command)
+
+        assertThat(result).hasSize(1)
+        assertThat(result[0].isFalsePositive).isTrue()
+    }
+
+    @Test
+    fun `should not mark series as false positive when fingerprint is unknown`() {
+        val command = RefreshRecurringSeriesCommand(userId = userId)
+        val detectedSeries = listOf(series(today.plusDays(5), fingerprint = "DE01|E|netflix"))
+        whenever(transactionRepository.findByAccountingDateBetween(any(), any(), any(), anyOrNull())).thenReturn(emptyList())
+        whenever(detector.detect(any())).thenReturn(detectedSeries)
+        whenever(classifier.classify(any(), any())).thenReturn(RecurringType.SUBSCRIPTION)
+        whenever(falsePositiveRepository.findFingerprintsByUserId(userId)).thenReturn(emptySet())
+
+        val result = service.detect(command)
+
+        assertThat(result).hasSize(1)
+        assertThat(result[0].isFalsePositive).isFalse()
+    }
+
+    @Test
+    fun `should filter out variable amount series classified as OTHER on detect`() {
         val command = RefreshRecurringSeriesCommand(userId = userId)
         val variableOtherSeries = series(today.plusDays(5), type = RecurringType.OTHER, amountVariable = true)
         whenever(transactionRepository.findByAccountingDateBetween(any(), any(), any(), anyOrNull())).thenReturn(emptyList())
         whenever(detector.detect(any())).thenReturn(listOf(variableOtherSeries))
         whenever(classifier.classify(any(), any())).thenReturn(RecurringType.OTHER)
+        whenever(falsePositiveRepository.findFingerprintsByUserId(userId)).thenReturn(emptySet())
 
-        service.detect(command)
+        val result = service.detect(command)
 
-        val captor = argumentCaptor<List<RecurringSeries>>()
-        verify(recurringSeriesRepository).replaceAllForUser(captor.capture(), any())
-        assertThat(captor.firstValue).isEmpty()
+        assertThat(result).isEmpty()
     }
 
     @Test
-    fun `should keep variable amount series when classifier assigns a known type`() {
-        val command = RefreshRecurringSeriesCommand(userId = userId)
-        val variableSeries = series(today.plusDays(5), type = RecurringType.OTHER, amountVariable = true)
+    fun `should persist only confirmed series on confirm`() {
+        val confirmedFp = "DE01|E|netflix"
+        val dismissedFp = "DE01|E|spotify"
+        val command =
+            ConfirmRecurringSeriesCommand(
+                userId = userId,
+                confirmedFingerprints = listOf(confirmedFp),
+                falsePositiveFingerprints = listOf(dismissedFp),
+            )
+        val detectedSeries =
+            listOf(
+                series(today.plusDays(5), fingerprint = confirmedFp),
+                series(today.plusDays(5), fingerprint = dismissedFp).copy(id = 2L),
+            )
         whenever(transactionRepository.findByAccountingDateBetween(any(), any(), any(), anyOrNull())).thenReturn(emptyList())
-        whenever(detector.detect(any())).thenReturn(listOf(variableSeries))
-        whenever(classifier.classify(any(), any())).thenReturn(RecurringType.UTILITY)
+        whenever(detector.detect(any())).thenReturn(detectedSeries)
+        whenever(classifier.classify(any(), any())).thenReturn(RecurringType.SUBSCRIPTION)
+        whenever(falsePositiveRepository.findFingerprintsByUserId(userId)).thenReturn(emptySet())
+        whenever(recurringSeriesRepository.findByUserId(userId)).thenReturn(emptyList())
 
-        service.detect(command)
+        service.confirm(command)
 
         val captor = argumentCaptor<List<RecurringSeries>>()
-        verify(recurringSeriesRepository).replaceAllForUser(captor.capture(), any())
+        verify(recurringSeriesRepository).replaceAllForUser(captor.capture(), eq(userId))
         assertThat(captor.firstValue).hasSize(1)
-        assertThat(captor.firstValue[0].type).isEqualTo(RecurringType.UTILITY)
+        assertThat(captor.firstValue[0].fingerprint).isEqualTo(confirmedFp)
+    }
+
+    @Test
+    fun `should save new false positive entries on confirm`() {
+        val dismissedFp = "DE01|E|spotify"
+        val command =
+            ConfirmRecurringSeriesCommand(
+                userId = userId,
+                confirmedFingerprints = emptyList(),
+                falsePositiveFingerprints = listOf(dismissedFp),
+            )
+        whenever(transactionRepository.findByAccountingDateBetween(any(), any(), any(), anyOrNull())).thenReturn(emptyList())
+        whenever(detector.detect(any())).thenReturn(emptyList())
+        whenever(classifier.classify(any(), any())).thenReturn(RecurringType.SUBSCRIPTION)
+        whenever(falsePositiveRepository.findFingerprintsByUserId(userId)).thenReturn(emptySet())
+        whenever(recurringSeriesRepository.findByUserId(userId)).thenReturn(emptyList())
+
+        service.confirm(command)
+
+        val captor = argumentCaptor<List<RecurringFalsePositive>>()
+        verify(falsePositiveRepository).saveAll(captor.capture())
+        assertThat(captor.firstValue).hasSize(1)
+        assertThat(captor.firstValue[0].fingerprint).isEqualTo(dismissedFp)
+    }
+
+    @Test
+    fun `should not duplicate existing false positive entries on confirm`() {
+        val alreadyFp = "DE01|E|spotify"
+        val command =
+            ConfirmRecurringSeriesCommand(
+                userId = userId,
+                confirmedFingerprints = emptyList(),
+                falsePositiveFingerprints = listOf(alreadyFp),
+            )
+        whenever(transactionRepository.findByAccountingDateBetween(any(), any(), any(), anyOrNull())).thenReturn(emptyList())
+        whenever(detector.detect(any())).thenReturn(emptyList())
+        whenever(classifier.classify(any(), any())).thenReturn(RecurringType.SUBSCRIPTION)
+        whenever(falsePositiveRepository.findFingerprintsByUserId(userId)).thenReturn(setOf(alreadyFp))
+        whenever(recurringSeriesRepository.findByUserId(userId)).thenReturn(emptyList())
+
+        service.confirm(command)
+
+        verify(falsePositiveRepository, never()).saveAll(any())
     }
 
     @Test

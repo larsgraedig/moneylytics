@@ -492,7 +492,14 @@
     "history": {
       "date": "Date",
       "amount": "Amount"
-    }
+    },
+    "pendingBanner": "{{count}} series detected — review and save.",
+    "save": "Save",
+    "saving": "Saving…",
+    "cancelPending": "Cancel",
+    "dismiss": "Mark as false positive",
+    "restore": "Restore",
+    "falsePositive": "False positive"
   },
   "burnrate": {
     "windowBtn": "Ø {{days}} days",

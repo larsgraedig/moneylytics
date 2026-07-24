@@ -15,7 +15,7 @@ data class RecurringOccurrenceItem(
 )
 
 data class RecurringSeriesItem(
-    val id: Long,
+    val id: Long?,
     val label: String,
     val type: RecurringType,
     val direction: RecurrenceDirection,
@@ -30,13 +30,15 @@ data class RecurringSeriesItem(
     val occurrenceCount: Int,
     val nextExpectedDate: String,
     val status: RecurrenceStatus,
+    val fingerprint: String,
+    val isFalsePositive: Boolean,
     val deviation: RecurrenceDeviation,
     val occurrences: List<RecurringOccurrenceItem>,
 )
 
 fun RecurringSeries.toItem() =
     RecurringSeriesItem(
-        id = requireNotNull(id),
+        id = id,
         label = label,
         type = type,
         direction = direction,
@@ -51,6 +53,8 @@ fun RecurringSeries.toItem() =
         occurrenceCount = occurrenceCount,
         nextExpectedDate = nextExpectedDate.toString(),
         status = status,
+        fingerprint = fingerprint,
+        isFalsePositive = isFalsePositive,
         deviation = deviation,
         occurrences = occurrences.map { RecurringOccurrenceItem(it.transactionId, it.date.toString(), it.amount) },
     )

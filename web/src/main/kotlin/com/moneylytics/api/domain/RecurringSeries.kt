@@ -25,6 +25,8 @@ data class RecurringSeries(
     val occurrenceCount: Int,
     val nextExpectedDate: LocalDate,
     val status: RecurrenceStatus,
+    val fingerprint: String = "",
+    val isFalsePositive: Boolean = false,
     val occurrences: List<RecurringOccurrence> = emptyList(),
     val deviation: RecurrenceDeviation = RecurrenceDeviation.ON_TRACK,
 )

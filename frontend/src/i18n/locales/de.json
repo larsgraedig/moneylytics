@@ -492,7 +492,14 @@
     "history": {
       "date": "Datum",
       "amount": "Betrag"
-    }
+    },
+    "pendingBanner": "{{count}} Serie(n) erkannt — überprüfen und speichern.",
+    "save": "Speichern",
+    "saving": "Wird gespeichert…",
+    "cancelPending": "Abbrechen",
+    "dismiss": "Als Fehlererkennung markieren",
+    "restore": "Wiederherstellen",
+    "falsePositive": "Fehlererkennung"
   },
   "burnrate": {
     "windowBtn": "Ø {{days}} Tage",

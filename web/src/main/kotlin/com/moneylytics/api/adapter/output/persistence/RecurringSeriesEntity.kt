@@ -56,6 +56,8 @@ class RecurringSeriesEntity(
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     var status: RecurrenceStatus,
+    @Column(nullable = false, length = 512)
+    var fingerprint: String,
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     var id: Long? = null,
