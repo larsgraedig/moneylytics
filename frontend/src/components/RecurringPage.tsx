@@ -297,6 +297,8 @@ export default function RecurringPage() {
                             <tr>
                               <th>{t('recurring.history.date')}</th>
                               <th>{t('recurring.history.amount')}</th>
+                              <th>{t('recurring.history.counterparty')}</th>
+                              <th>{t('recurring.history.purpose')}</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -305,6 +307,12 @@ export default function RecurringPage() {
                                 <td>{o.date}</td>
                                 <td className={o.amount < 0 ? 'rcr-amount--expense' : 'rcr-amount--income'}>
                                   {formatAmount(o.amount, s.currency)}
+                                </td>
+                                <td className="rcr-history-detail">
+                                  {o.counterpartyName ?? o.counterpartyIban ?? '—'}
+                                </td>
+                                <td className="rcr-history-detail rcr-history-purpose">
+                                  {o.purpose ?? '—'}
                                 </td>
                               </tr>
                             ))}

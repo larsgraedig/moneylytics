@@ -20,6 +20,12 @@ class RecurringSeriesMemberEntity(
     val occurredOn: LocalDate,
     @Column(nullable = false, precision = 19, scale = 4)
     val amount: BigDecimal,
+    @Column
+    val purpose: String?,
+    @Column
+    val counterpartyName: String?,
+    @Column
+    val counterpartyIban: String?,
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     var id: Long? = null,

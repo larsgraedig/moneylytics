@@ -491,7 +491,9 @@
     },
     "history": {
       "date": "Date",
-      "amount": "Amount"
+      "amount": "Amount",
+      "counterparty": "Counterparty",
+      "purpose": "Purpose"
     },
     "pendingBanner": "{{count}} series detected — review and save.",
     "save": "Save",

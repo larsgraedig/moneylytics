@@ -123,7 +123,19 @@ class RecurringSeriesDetector {
             nextExpectedDate = nextExpectedDate,
             status = RecurrenceStatus.DETECTED,
             fingerprint = fingerprint,
-            occurrences = sorted.mapNotNull { tx -> tx.id?.let { id -> RecurringOccurrence(id, tx.bookingDate, tx.amount) } },
+            occurrences =
+                sorted.mapNotNull { tx ->
+                    tx.id?.let { id ->
+                        RecurringOccurrence(
+                            transactionId = id,
+                            date = tx.bookingDate,
+                            amount = tx.amount,
+                            purpose = tx.purpose,
+                            counterpartyName = tx.counterpartyName,
+                            counterpartyIban = tx.counterpartyIban,
+                        )
+                    }
+                },
         )
     }
 

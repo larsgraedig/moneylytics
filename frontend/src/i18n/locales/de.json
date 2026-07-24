@@ -491,7 +491,9 @@
     },
     "history": {
       "date": "Datum",
-      "amount": "Betrag"
+      "amount": "Betrag",
+      "counterparty": "Gegenpartei",
+      "purpose": "Verwendungszweck"
     },
     "pendingBanner": "{{count}} Serie(n) erkannt — überprüfen und speichern.",
     "save": "Speichern",

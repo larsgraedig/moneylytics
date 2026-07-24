@@ -4,6 +4,9 @@ export interface RecurringOccurrenceItem {
   transactionId: number
   date: string
   amount: number
+  purpose: string | null
+  counterpartyName: string | null
+  counterpartyIban: string | null
 }
 
 export type RecurrenceCadence = 'WEEKLY' | 'MONTHLY' | 'QUARTERLY' | 'SEMIANNUAL' | 'YEARLY'

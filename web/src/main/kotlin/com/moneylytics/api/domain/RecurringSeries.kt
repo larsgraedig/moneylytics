@@ -7,6 +7,9 @@ data class RecurringOccurrence(
     val transactionId: Long,
     val date: LocalDate,
     val amount: BigDecimal,
+    val purpose: String? = null,
+    val counterpartyName: String? = null,
+    val counterpartyIban: String? = null,
 )
 
 data class RecurringSeries(

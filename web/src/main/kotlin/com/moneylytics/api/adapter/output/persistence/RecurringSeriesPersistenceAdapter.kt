@@ -56,6 +56,9 @@ class RecurringSeriesPersistenceAdapter(
                         transactionId = o.transactionId,
                         occurredOn = o.date,
                         amount = o.amount,
+                        purpose = o.purpose,
+                        counterpartyName = o.counterpartyName,
+                        counterpartyIban = o.counterpartyIban,
                     )
                 },
             )
@@ -102,7 +105,15 @@ class RecurringSeriesPersistenceAdapter(
             fingerprint = fingerprint,
             occurrences =
                 members
-                    .map { m -> RecurringOccurrence(transactionId = m.transactionId, date = m.occurredOn, amount = m.amount) }
-                    .sortedByDescending { it.date },
+                    .map { m ->
+                        RecurringOccurrence(
+                            transactionId = m.transactionId,
+                            date = m.occurredOn,
+                            amount = m.amount,
+                            purpose = m.purpose,
+                            counterpartyName = m.counterpartyName,
+                            counterpartyIban = m.counterpartyIban,
+                        )
+                    }.sortedByDescending { it.date },
         )
 }

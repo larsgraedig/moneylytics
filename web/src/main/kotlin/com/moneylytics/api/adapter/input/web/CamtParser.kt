@@ -64,72 +64,74 @@ class CamtParser {
             }
 
             val entries = rpt.childNodes.elements().filter { it.localName == "Ntry" }
-
             for (entry in entries) {
-                val errors = mutableListOf<ParsedRawError>()
-
-                val amtEl = entry.firstChildEl("Amt")
-                val amtRaw = amtEl?.textContent?.trim() ?: ""
-                val currency = amtEl?.getAttribute("Ccy") ?: ""
-                val cdtDbt = entry.firstChildEl("CdtDbtInd")?.textContent?.trim() ?: ""
-
-                val amount = parseAmount(amtRaw, cdtDbt, errors)
-
-                val bookingDateRaw =
-                    entry
-                        .firstChildEl("BookgDt")
-                        ?.firstChildEl("Dt")
-                        ?.textContent
-                        ?.trim() ?: ""
-                val valueDateRaw =
-                    entry
-                        .firstChildEl("ValDt")
-                        ?.firstChildEl("Dt")
-                        ?.textContent
-                        ?.trim()
-                        ?: bookingDateRaw
-
-                val bookingDate = parseDate(bookingDateRaw, "BookgDt", errors)
-                val valueDate = parseDate(valueDateRaw, "ValDt", errors)
-
-                val txDtls = entry.firstChildEl("NtryDtls")?.firstChildEl("TxDtls")
-                val rltdPties = txDtls?.firstChildEl("RltdPties")
-                val (counterparty, counterpartyIban) = resolveCounterparty(rltdPties, cdtDbt)
-                val purpose =
-                    txDtls
-                        ?.firstChildEl("RmtInf")
-                        ?.firstChildEl("Ustrd")
-                        ?.textContent
-                        ?.trim()
-                        ?: entry.firstChildEl("AddtlNtryInf")?.textContent?.trim()
-                        ?: ""
-
-                if (acctIban.isBlank()) {
-                    errors.add(ParsedRawError("IBAN", acctIban, "Account IBAN not found in file"))
-                }
-
-                rows.add(
-                    ParsedRawRow(
-                        rowNumber = rowCounter++,
-                        bookingDate = bookingDate,
-                        valueDate = valueDate,
-                        bookingDateRaw = bookingDateRaw,
-                        valueDateRaw = valueDateRaw,
-                        counterparty = counterparty,
-                        counterpartyIban = counterpartyIban,
-                        purpose = purpose,
-                        amount = amount,
-                        amountRaw = amtRaw,
-                        currency = currency,
-                        accountIban = acctIban,
-                        accountName = acctName,
-                        errors = errors,
-                    ),
-                )
+                rows.add(parseEntry(entry, acctIban, acctName, rowCounter++))
             }
         }
 
         return CamtParseResult.Success(rows = rows, accountBalances = accountBalances)
+    }
+
+    private fun parseEntry(
+        entry: Element,
+        acctIban: String,
+        acctName: String,
+        rowNumber: Int,
+    ): ParsedRawRow {
+        val errors = mutableListOf<ParsedRawError>()
+
+        val amtEl = entry.firstChildEl("Amt")
+        val amtRaw = amtEl?.textContent?.trim() ?: ""
+        val currency = amtEl?.getAttribute("Ccy") ?: ""
+        val cdtDbt = entry.firstChildEl("CdtDbtInd")?.textContent?.trim() ?: ""
+
+        val amount = parseAmount(amtRaw, cdtDbt, errors)
+
+        val bookingDateRaw =
+            entry
+                .firstChildEl("BookgDt")
+                ?.firstChildEl("Dt")
+                ?.textContent
+                ?.trim() ?: ""
+        val valueDateRaw =
+            entry
+                .firstChildEl("ValDt")
+                ?.firstChildEl("Dt")
+                ?.textContent
+                ?.trim() ?: bookingDateRaw
+
+        val bookingDate = parseDate(bookingDateRaw, "BookgDt", errors)
+        val valueDate = parseDate(valueDateRaw, "ValDt", errors)
+
+        val txDtls = entry.firstChildEl("NtryDtls")?.firstChildEl("TxDtls")
+        val (counterparty, counterpartyIban) = resolveCounterparty(txDtls?.firstChildEl("RltdPties"), cdtDbt)
+        val purpose =
+            txDtls
+                ?.firstChildEl("RmtInf")
+                ?.firstChildEl("Ustrd")
+                ?.textContent
+                ?.trim()
+                ?: entry.firstChildEl("AddtlNtryInf")?.textContent?.trim()
+                ?: ""
+
+        if (acctIban.isBlank()) errors.add(ParsedRawError("IBAN", acctIban, "Account IBAN not found in file"))
+
+        return ParsedRawRow(
+            rowNumber = rowNumber,
+            bookingDate = bookingDate,
+            valueDate = valueDate,
+            bookingDateRaw = bookingDateRaw,
+            valueDateRaw = valueDateRaw,
+            counterparty = counterparty,
+            counterpartyIban = counterpartyIban,
+            purpose = purpose,
+            amount = amount,
+            amountRaw = amtRaw,
+            currency = currency,
+            accountIban = acctIban,
+            accountName = acctName,
+            errors = errors,
+        )
     }
 
     private fun parseClosingBalance(rpt: Element): AccountBalance? {

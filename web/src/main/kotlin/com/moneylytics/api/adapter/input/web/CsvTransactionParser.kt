@@ -99,16 +99,7 @@ class CsvTransactionParser {
                 )
 
                 if (hasAccountBalanceColumn) {
-                    val balanceRaw = record[config.accountBalance!!]
-                    if (balanceRaw.isNotBlank()) {
-                        val balance = parseBalanceAmount(balanceRaw)
-                        if (balance != null) {
-                            val existing = latestBalanceByIban[accountIban]
-                            if (existing == null || bookingDate >= existing.first) {
-                                latestBalanceByIban[accountIban] = bookingDate to balance
-                            }
-                        }
-                    }
+                    updateLatestBalance(accountIban, bookingDate, record[config.accountBalance!!], latestBalanceByIban)
                 }
             }
         }
@@ -146,6 +137,20 @@ class CsvTransactionParser {
                 ),
             )
             null
+        }
+    }
+
+    private fun updateLatestBalance(
+        accountIban: String,
+        bookingDate: LocalDate,
+        balanceRaw: String,
+        latestBalanceByIban: MutableMap<String, Pair<LocalDate, BigDecimal>>,
+    ) {
+        if (balanceRaw.isBlank()) return
+        val balance = parseBalanceAmount(balanceRaw) ?: return
+        val existing = latestBalanceByIban[accountIban]
+        if (existing == null || bookingDate >= existing.first) {
+            latestBalanceByIban[accountIban] = bookingDate to balance
         }
     }
 
