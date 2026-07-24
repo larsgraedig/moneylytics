@@ -70,3 +70,7 @@ The CSV uses German locale. Non-obvious details for `CsvTransactionParser`:
 - Do not use Kotlin Double Bangs (`!!`)
 - Whenever new code is added it should be covered by unit tests (and integration tests if applicable).
   If a new feature is added, it should be covered by an integration test.
+
+## Procedure
+
+- Always run ktlintCheck and detekt before finishing any code changes.

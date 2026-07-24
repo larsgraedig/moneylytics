@@ -63,11 +63,20 @@ class RecurringSeriesService(
         classifier.train(command.userId, command.type, series.toFeatures())
     }
 
+    companion object {
+        private const val MIN_GRACE_DAYS = 3
+        private const val GRACE_RATIO = 0.15
+        private const val MIN_OCCURRENCES_FOR_DEVIATION = 3
+        private const val AMOUNT_DEVIATION_SCALE = 4
+        private const val MIN_DATE_SHIFT_DAYS = 5.0
+        private const val DATE_SHIFT_RATIO = 0.25
+    }
+
     private fun computeDeviation(
         series: RecurringSeries,
         today: LocalDate,
     ): RecurringSeries {
-        val grace = maxOf(3, (series.intervalDays * 0.15).toInt())
+        val grace = maxOf(MIN_GRACE_DAYS, (series.intervalDays * GRACE_RATIO).toInt())
         val sortedOccurrences = series.occurrences.sortedByDescending { it.date }
         val lastOccurrence = sortedOccurrences.firstOrNull()
         val penultimate = sortedOccurrences.getOrNull(1)
@@ -75,20 +84,21 @@ class RecurringSeriesService(
         val deviation =
             when {
                 today > series.nextExpectedDate.plusDays(grace.toLong()) -> RecurrenceDeviation.OVERDUE
-                lastOccurrence != null && series.occurrenceCount >= 3 -> {
+                lastOccurrence != null && series.occurrenceCount >= MIN_OCCURRENCES_FOR_DEVIATION -> {
                     val lastAmount = lastOccurrence.amount.abs()
                     val expected = series.expectedAmount.abs()
                     val amountChanged =
                         expected > BigDecimal.ZERO &&
                             (lastAmount - expected)
                                 .abs()
-                                .divide(expected, 4, RoundingMode.HALF_UP) > BigDecimal("0.15")
+                                .divide(expected, AMOUNT_DEVIATION_SCALE, RoundingMode.HALF_UP) > BigDecimal("0.15")
 
                     val dateShifted =
                         penultimate != null &&
                             run {
                                 val lastInterval = ChronoUnit.DAYS.between(penultimate.date, lastOccurrence.date).toInt()
-                                abs(lastInterval - series.intervalDays).toDouble() > maxOf(5.0, series.intervalDays * 0.25)
+                                abs(lastInterval - series.intervalDays).toDouble() >
+                                    maxOf(MIN_DATE_SHIFT_DAYS, series.intervalDays * DATE_SHIFT_RATIO)
                             }
 
                     when {
