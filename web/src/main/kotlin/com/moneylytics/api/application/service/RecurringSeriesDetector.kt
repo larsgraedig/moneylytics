@@ -51,7 +51,7 @@ class RecurringSeriesDetector {
         return s
             .split(" ")
             .filter { it.length > 2 }
-            .take(5)
+            .take(MAX_PURPOSE_WORDS)
             .joinToString(" ")
     }
 
@@ -66,14 +66,14 @@ class RecurringSeriesDetector {
 
         val minOccurrences =
             when (cadence) {
-                RecurrenceCadence.WEEKLY, RecurrenceCadence.MONTHLY, RecurrenceCadence.QUARTERLY -> 3
+                RecurrenceCadence.WEEKLY, RecurrenceCadence.MONTHLY, RecurrenceCadence.QUARTERLY -> MIN_OCCURRENCES_FREQUENT_CADENCE
                 RecurrenceCadence.SEMIANNUAL, RecurrenceCadence.YEARLY -> 2
             }
         if (sorted.size < minOccurrences) return null
 
-        val tolerance = maxOf(medianInterval * 0.25, 5.0)
+        val tolerance = maxOf(medianInterval * INTERVAL_TOLERANCE_RATIO, MIN_INTERVAL_TOLERANCE_DAYS)
         val regularCount = intervals.count { abs(it - medianInterval).toDouble() <= tolerance }
-        if (regularCount < intervals.size * 0.6) return null
+        if (regularCount < intervals.size * REGULARITY_THRESHOLD) return null
 
         if (cadence == RecurrenceCadence.WEEKLY || cadence == RecurrenceCadence.MONTHLY) {
             if (!hasAtMostOnePerPeriod(sorted, cadence)) return null
@@ -81,7 +81,7 @@ class RecurringSeriesDetector {
 
         val amounts = sorted.map { it.amount.abs() }
         val medianAmount = medianBigDecimal(amounts)
-        val amountVariable = amounts.size > 1 && standardDeviation(amounts) / medianAmount.toDouble() > 0.15
+        val amountVariable = amounts.size > 1 && standardDeviation(amounts) / medianAmount.toDouble() > AMOUNT_VARIATION_THRESHOLD
         val direction = if (sorted.first().amount < BigDecimal.ZERO) RecurrenceDirection.EXPENSE else RecurrenceDirection.INCOME
         val label = buildLabel(sorted.first())
         val nextExpectedDate = sorted.last().bookingDate.plusDays(medianInterval.toLong())
@@ -107,11 +107,11 @@ class RecurringSeriesDetector {
 
     private fun classifyCadence(days: Int): RecurrenceCadence? =
         when (days) {
-            in 5..10 -> RecurrenceCadence.WEEKLY
-            in 25..35 -> RecurrenceCadence.MONTHLY
-            in 80..100 -> RecurrenceCadence.QUARTERLY
-            in 170..195 -> RecurrenceCadence.SEMIANNUAL
-            in 350..380 -> RecurrenceCadence.YEARLY
+            in WEEKLY_INTERVAL_MIN..WEEKLY_INTERVAL_MAX -> RecurrenceCadence.WEEKLY
+            in MONTHLY_INTERVAL_MIN..MONTHLY_INTERVAL_MAX -> RecurrenceCadence.MONTHLY
+            in QUARTERLY_INTERVAL_MIN..QUARTERLY_INTERVAL_MAX -> RecurrenceCadence.QUARTERLY
+            in SEMIANNUAL_INTERVAL_MIN..SEMIANNUAL_INTERVAL_MAX -> RecurrenceCadence.SEMIANNUAL
+            in YEARLY_INTERVAL_MIN..YEARLY_INTERVAL_MAX -> RecurrenceCadence.YEARLY
             else -> null
         }
 
@@ -119,7 +119,7 @@ class RecurringSeriesDetector {
         first.counterpartyName?.trim()?.takeIf { it.isNotEmpty() }
             ?: first.purpose
                 ?.trim()
-                ?.take(60)
+                ?.take(MAX_LABEL_LENGTH)
                 ?.takeIf { it.isNotEmpty() }
             ?: "Unbekannt"
 
@@ -138,7 +138,7 @@ class RecurringSeriesDetector {
             }
         val periods = sorted.groupBy(key)
         val duplicatePeriods = periods.values.count { it.size > 1 }
-        return duplicatePeriods.toDouble() / periods.size <= 0.2
+        return duplicatePeriods.toDouble() / periods.size <= MAX_DUPLICATE_PERIOD_RATIO
     }
 
     private fun medianInt(values: List<Int>): Int {
@@ -154,7 +154,7 @@ class RecurringSeriesDetector {
         val sorted = values.sorted()
         return if (sorted.size % 2 == 0) {
             (sorted[sorted.size / 2 - 1] + sorted[sorted.size / 2])
-                .divide(BigDecimal("2"), 4, RoundingMode.HALF_UP)
+                .divide(BigDecimal("2"), MEDIAN_SCALE, RoundingMode.HALF_UP)
         } else {
             sorted[sorted.size / 2]
         }
@@ -165,5 +165,27 @@ class RecurringSeriesDetector {
         val mean = values.sumOf { it.toDouble() } / values.size
         val variance = values.sumOf { v -> (v.toDouble() - mean).let { d -> d * d } } / (values.size - 1)
         return sqrt(variance)
+    }
+
+    companion object {
+        private const val MAX_PURPOSE_WORDS = 5
+        private const val MIN_OCCURRENCES_FREQUENT_CADENCE = 3
+        private const val INTERVAL_TOLERANCE_RATIO = 0.25
+        private const val MIN_INTERVAL_TOLERANCE_DAYS = 5.0
+        private const val REGULARITY_THRESHOLD = 0.6
+        private const val AMOUNT_VARIATION_THRESHOLD = 0.15
+        private const val WEEKLY_INTERVAL_MIN = 5
+        private const val WEEKLY_INTERVAL_MAX = 10
+        private const val MONTHLY_INTERVAL_MIN = 25
+        private const val MONTHLY_INTERVAL_MAX = 35
+        private const val QUARTERLY_INTERVAL_MIN = 80
+        private const val QUARTERLY_INTERVAL_MAX = 100
+        private const val SEMIANNUAL_INTERVAL_MIN = 170
+        private const val SEMIANNUAL_INTERVAL_MAX = 195
+        private const val YEARLY_INTERVAL_MIN = 350
+        private const val YEARLY_INTERVAL_MAX = 380
+        private const val MAX_LABEL_LENGTH = 60
+        private const val MAX_DUPLICATE_PERIOD_RATIO = 0.2
+        private const val MEDIAN_SCALE = 4
     }
 }

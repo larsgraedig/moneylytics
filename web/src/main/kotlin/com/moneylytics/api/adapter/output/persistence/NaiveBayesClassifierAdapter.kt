@@ -98,7 +98,7 @@ class NaiveBayesClassifierAdapter(
                 .lowercase()
                 .replace(Regex("[^a-z0-9 ]"), " ")
                 .split(Regex("\\s+"))
-                .filter { it.length >= 3 }
+                .filter { it.length >= MIN_TOKEN_LENGTH }
 
         val cadenceToken = "cadence_${features.cadence.name}"
         val directionToken = "direction_${features.direction.name}"
@@ -114,6 +114,7 @@ class NaiveBayesClassifierAdapter(
 
     companion object {
         private const val SEED_COUNT = 10
+        private const val MIN_TOKEN_LENGTH = 3
 
         val SEED_DATA: Map<RecurringType, List<String>> =
             mapOf(

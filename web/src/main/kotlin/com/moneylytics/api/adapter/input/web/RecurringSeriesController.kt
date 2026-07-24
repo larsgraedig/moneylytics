@@ -70,7 +70,7 @@ class RecurringSeriesController(
                 CorrectRecurringSeriesTypeCommand(seriesId = id, userId = userId, type = body.type),
             )
         } catch (e: NoSuchElementException) {
-            throw ResponseStatusException(HttpStatus.NOT_FOUND, e.message)
+            throw ResponseStatusException(HttpStatus.NOT_FOUND, e.message, e)
         }
     }
 }
