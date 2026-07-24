@@ -21,7 +21,7 @@ class RecurringSeriesDetector {
         transactions
             .filter { it.amount != BigDecimal.ZERO }
             .groupBy { groupKey(it) }
-            .mapNotNull { (_, group) -> analyzeGroup(group) }
+            .mapNotNull { (key, group) -> analyzeGroup(group, key) }
 
     private fun groupKey(tx: Transaction): String {
         val direction = if (tx.amount < BigDecimal.ZERO) "E" else "I"
@@ -55,7 +55,10 @@ class RecurringSeriesDetector {
             .joinToString(" ")
     }
 
-    private fun analyzeGroup(txns: List<Transaction>): RecurringSeries? {
+    private fun analyzeGroup(
+        txns: List<Transaction>,
+        fingerprint: String,
+    ): RecurringSeries? {
         if (txns.size < 2) return null
 
         val sorted = txns.sortedBy { it.bookingDate }
@@ -101,6 +104,7 @@ class RecurringSeriesDetector {
             occurrenceCount = sorted.size,
             nextExpectedDate = nextExpectedDate,
             status = RecurrenceStatus.DETECTED,
+            fingerprint = fingerprint,
             occurrences = sorted.mapNotNull { tx -> tx.id?.let { id -> RecurringOccurrence(id, tx.bookingDate, tx.amount) } },
         )
     }

@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { RefreshCw } from 'lucide-react'
+import { RefreshCw, X, RotateCcw } from 'lucide-react'
 import {
   fetchRecurringSeries,
   refreshRecurringSeries,
+  confirmRecurringSeries,
   correctRecurringSeriesType,
   type RecurringSeriesItem,
   type RecurrenceDirection,
@@ -15,6 +16,7 @@ type PageState =
   | { phase: 'loading' }
   | { phase: 'error'; message: string }
   | { phase: 'ready'; series: RecurringSeriesItem[] }
+  | { phase: 'pending'; series: RecurringSeriesItem[]; dismissed: Set<string> }
 
 const TYPE_COLORS: Record<string, string> = {
   SALARY: '#4ade80',
@@ -46,8 +48,9 @@ export default function RecurringPage() {
   const { t } = useTranslation()
   const [state, setState] = useState<PageState>({ phase: 'idle' })
   const [filterDirection, setFilterDirection] = useState<RecurrenceDirection | undefined>()
-  const [expanded, setExpanded] = useState<Set<number>>(new Set())
+  const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const [refreshing, setRefreshing] = useState(false)
+  const [saving, setSaving] = useState(false)
   const [editingType, setEditingType] = useState<number | null>(null)
 
   useEffect(() => {
@@ -68,7 +71,9 @@ export default function RecurringPage() {
     setRefreshing(true)
     try {
       const series = await refreshRecurringSeries()
-      setState({ phase: 'ready', series })
+      // Pre-dismiss backend-known false positives
+      const initialDismissed = new Set(series.filter(s => s.isFalsePositive).map(s => s.fingerprint))
+      setState({ phase: 'pending', series, dismissed: initialDismissed })
     } catch (e) {
       setState({ phase: 'error', message: e instanceof Error ? e.message : t('common.requestFailed') })
     } finally {
@@ -76,11 +81,43 @@ export default function RecurringPage() {
     }
   }
 
-  function toggleExpand(id: number) {
+  async function save() {
+    if (state.phase !== 'pending') return
+    setSaving(true)
+    try {
+      const confirmed = state.series
+        .filter(s => !state.dismissed.has(s.fingerprint))
+        .map(s => s.fingerprint)
+      const falsePositives = [...state.dismissed]
+      const saved = await confirmRecurringSeries(confirmed, falsePositives)
+      setState({ phase: 'ready', series: saved })
+    } catch (e) {
+      setState({ phase: 'error', message: e instanceof Error ? e.message : t('common.requestFailed') })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  function cancelPending() {
+    load()
+  }
+
+  function toggleDismiss(fingerprint: string) {
+    if (state.phase !== 'pending') return
+    setState(prev => {
+      if (prev.phase !== 'pending') return prev
+      const next = new Set(prev.dismissed)
+      if (next.has(fingerprint)) next.delete(fingerprint)
+      else next.add(fingerprint)
+      return { ...prev, dismissed: next }
+    })
+  }
+
+  function toggleExpand(key: string) {
     setExpanded(prev => {
       const next = new Set(prev)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
       return next
     })
   }
@@ -100,7 +137,8 @@ export default function RecurringPage() {
     }
   }
 
-  const allSeries = state.phase === 'ready' ? state.series : []
+  const isPending = state.phase === 'pending'
+  const allSeries = (state.phase === 'ready' || state.phase === 'pending') ? state.series : []
   const displaySeries = filterDirection
     ? allSeries.filter(s => s.direction === filterDirection)
     : allSeries
@@ -128,19 +166,38 @@ export default function RecurringPage() {
             {t('recurring.filterIncome')}
           </button>
         </div>
-        <button className="rcr-refresh-btn" onClick={refresh} disabled={refreshing}>
-          <RefreshCw size={14} className={refreshing ? 'rcr-spin' : ''} />
-          {refreshing ? t('recurring.refreshing') : t('recurring.refresh')}
-        </button>
+        <div className="rcr-toolbar-actions">
+          {isPending ? (
+            <>
+              <button className="rcr-cancel-btn" onClick={cancelPending} disabled={saving}>
+                {t('recurring.cancelPending')}
+              </button>
+              <button className="rcr-save-btn" onClick={save} disabled={saving}>
+                {saving ? t('recurring.saving') : t('recurring.save')}
+              </button>
+            </>
+          ) : (
+            <button className="rcr-refresh-btn" onClick={refresh} disabled={refreshing}>
+              <RefreshCw size={14} className={refreshing ? 'rcr-spin' : ''} />
+              {refreshing ? t('recurring.refreshing') : t('recurring.refresh')}
+            </button>
+          )}
+        </div>
       </div>
+
+      {isPending && (
+        <div className="rcr-pending-banner">
+          {t('recurring.pendingBanner', { count: allSeries.length })}
+        </div>
+      )}
 
       {state.phase === 'loading' && <p className="hint loading">{t('common.fetching')}</p>}
       {state.phase === 'error' && <p className="hint error">{state.message}</p>}
-      {state.phase === 'ready' && displaySeries.length === 0 && (
+      {(state.phase === 'ready' || state.phase === 'pending') && displaySeries.length === 0 && (
         <p className="hint">{t('recurring.empty')}</p>
       )}
 
-      {state.phase === 'ready' && displaySeries.length > 0 && (
+      {(state.phase === 'ready' || state.phase === 'pending') && displaySeries.length > 0 && (
         <table className="rcr-table">
           <thead>
             <tr>
@@ -150,17 +207,24 @@ export default function RecurringPage() {
               <th>{t('recurring.lastSeen')}</th>
               <th>{t('recurring.occurrences')}</th>
               <th>{t('recurring.account')}</th>
+              {isPending && <th></th>}
             </tr>
           </thead>
           <tbody>
             {displaySeries.map(s => {
-              const isExpanded = expanded.has(s.id)
-              const isEditingThisType = editingType === s.id
+              const rowKey = s.fingerprint || String(s.id)
+              const isDismissed = isPending && state.phase === 'pending' && state.dismissed.has(s.fingerprint)
+              const isExpanded = expanded.has(rowKey)
+              const isEditingThisType = !isPending && s.id !== null && editingType === s.id
               return (
                 <>
-                  <tr key={s.id} className="rcr-row" onClick={() => { if (!isEditingThisType) toggleExpand(s.id) }}>
+                  <tr
+                    key={rowKey}
+                    className={`rcr-row${isDismissed ? ' rcr-row--dismissed' : ''}`}
+                    onClick={() => { if (!isEditingThisType) toggleExpand(rowKey) }}
+                  >
                     <td className="rcr-cell-main">
-                      <div className="rcr-label">{s.label}</div>
+                      <div className={`rcr-label${isDismissed ? ' rcr-label--dismissed' : ''}`}>{s.label}</div>
                       <div className="rcr-badges">
                         {isEditingThisType ? (
                           <select
@@ -169,7 +233,7 @@ export default function RecurringPage() {
                             autoFocus
                             onClick={e => e.stopPropagation()}
                             onBlur={() => setEditingType(null)}
-                            onChange={e => handleTypeChange(s.id, e.target.value as RecurringType)}
+                            onChange={e => s.id !== null && handleTypeChange(s.id, e.target.value as RecurringType)}
                           >
                             {ALL_TYPES.map(type => (
                               <option key={type} value={type}>{t(`recurring.type.${type}`)}</option>
@@ -177,10 +241,10 @@ export default function RecurringPage() {
                           </select>
                         ) : (
                           <span
-                            className="rcr-badge rcr-badge--clickable"
+                            className={`rcr-badge${!isPending ? ' rcr-badge--clickable' : ''}`}
                             style={{ color: TYPE_COLORS[s.type] ?? '#6b7280', borderColor: TYPE_COLORS[s.type] ?? '#6b7280' }}
-                            title={t('recurring.correctType')}
-                            onClick={e => { e.stopPropagation(); setEditingType(s.id) }}
+                            title={!isPending ? t('recurring.correctType') : undefined}
+                            onClick={e => { if (!isPending && s.id !== null) { e.stopPropagation(); setEditingType(s.id) } }}
                           >
                             {t(`recurring.type.${s.type}`)}
                           </span>
@@ -191,12 +255,19 @@ export default function RecurringPage() {
                         {s.amountVariable && (
                           <span className="rcr-badge rcr-badge--variable">~</span>
                         )}
-                        <span
-                          className="rcr-badge"
-                          style={{ color: DEVIATION_COLORS[s.deviation] ?? '#6b7280', borderColor: DEVIATION_COLORS[s.deviation] ?? '#6b7280' }}
-                        >
-                          {t(`recurring.deviation.${s.deviation}`)}
-                        </span>
+                        {!isPending && (
+                          <span
+                            className="rcr-badge"
+                            style={{ color: DEVIATION_COLORS[s.deviation] ?? '#6b7280', borderColor: DEVIATION_COLORS[s.deviation] ?? '#6b7280' }}
+                          >
+                            {t(`recurring.deviation.${s.deviation}`)}
+                          </span>
+                        )}
+                        {isDismissed && (
+                          <span className="rcr-badge rcr-badge--false-positive">
+                            {t('recurring.falsePositive')}
+                          </span>
+                        )}
                       </div>
                     </td>
                     <td className={`rcr-amount ${s.direction === 'EXPENSE' ? 'rcr-amount--expense' : 'rcr-amount--income'}`}>
@@ -206,10 +277,21 @@ export default function RecurringPage() {
                     <td className="rcr-date">{s.lastSeen}</td>
                     <td className="rcr-count">{s.occurrenceCount}×</td>
                     <td className="rcr-iban">{s.accountIban}</td>
+                    {isPending && (
+                      <td className="rcr-cell-actions" onClick={e => e.stopPropagation()}>
+                        <button
+                          className={`rcr-dismiss-btn${isDismissed ? ' rcr-dismiss-btn--restore' : ''}`}
+                          title={isDismissed ? t('recurring.restore') : t('recurring.dismiss')}
+                          onClick={() => toggleDismiss(s.fingerprint)}
+                        >
+                          {isDismissed ? <RotateCcw size={14} /> : <X size={14} />}
+                        </button>
+                      </td>
+                    )}
                   </tr>
                   {isExpanded && (
-                    <tr key={`${s.id}-history`} className="rcr-history-row">
-                      <td colSpan={6}>
+                    <tr key={`${rowKey}-history`} className="rcr-history-row">
+                      <td colSpan={isPending ? 7 : 6}>
                         <table className="rcr-history-table">
                           <thead>
                             <tr>

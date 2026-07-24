@@ -13,7 +13,7 @@ export type RecurrenceStatus = 'DETECTED'
 export type RecurrenceDeviation = 'ON_TRACK' | 'AMOUNT_CHANGED' | 'DATE_SHIFTED' | 'OVERDUE'
 
 export interface RecurringSeriesItem {
-  id: number
+  id: number | null
   label: string
   type: RecurringType
   direction: RecurrenceDirection
@@ -28,6 +28,8 @@ export interface RecurringSeriesItem {
   occurrenceCount: number
   nextExpectedDate: string
   status: RecurrenceStatus
+  fingerprint: string
+  isFalsePositive: boolean
   deviation: RecurrenceDeviation
   occurrences: RecurringOccurrenceItem[]
 }
@@ -47,6 +49,19 @@ export async function fetchRecurringSeries(
 
 export async function refreshRecurringSeries(): Promise<RecurringSeriesItem[]> {
   const res = await fetchWithUser('/transactions/recurring/refresh', { method: 'POST' })
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  return res.json() as Promise<RecurringSeriesItem[]>
+}
+
+export async function confirmRecurringSeries(
+  confirmedFingerprints: string[],
+  falsePositiveFingerprints: string[],
+): Promise<RecurringSeriesItem[]> {
+  const res = await fetchWithUser('/transactions/recurring/confirm', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ confirmedFingerprints, falsePositiveFingerprints }),
+  })
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
   return res.json() as Promise<RecurringSeriesItem[]>
 }

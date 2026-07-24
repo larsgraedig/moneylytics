@@ -45,6 +45,7 @@ class RecurringSeriesPersistenceAdapter(
                         occurrenceCount = s.occurrenceCount,
                         nextExpectedDate = s.nextExpectedDate,
                         status = s.status,
+                        fingerprint = s.fingerprint,
                     ),
                 )
             val seriesId = requireNotNull(entity.id)
@@ -98,6 +99,7 @@ class RecurringSeriesPersistenceAdapter(
             occurrenceCount = occurrenceCount,
             nextExpectedDate = nextExpectedDate,
             status = status,
+            fingerprint = fingerprint,
             occurrences =
                 members
                     .map { m -> RecurringOccurrence(transactionId = m.transactionId, date = m.occurredOn, amount = m.amount) }

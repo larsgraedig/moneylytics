@@ -175,6 +175,21 @@ class RecurringSeriesDetectorTest {
     }
 
     @Test
+    fun `should include fingerprint derived from account iban direction and identifier`() {
+        val transactions =
+            listOf(
+                expense(1L, "-50.00", 0, counterpartyName = "Netflix", iban = "DE01"),
+                expense(2L, "-50.00", 31, counterpartyName = "Netflix", iban = "DE01"),
+                expense(3L, "-50.00", 62, counterpartyName = "Netflix", iban = "DE01"),
+            )
+
+        val result = detector.detect(transactions)
+
+        assertThat(result).hasSize(1)
+        assertThat(result[0].fingerprint).isEqualTo("DE01|E|netflix")
+    }
+
+    @Test
     fun `should mark series with high amount variance as amountVariable`() {
         // The detector marks variable amounts; the service layer decides whether to keep or reject
         val transactions =

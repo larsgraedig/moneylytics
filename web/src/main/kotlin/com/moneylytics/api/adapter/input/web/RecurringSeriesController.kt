@@ -1,5 +1,7 @@
 package com.moneylytics.api.adapter.input.web
 
+import com.moneylytics.api.application.port.input.ConfirmRecurringSeriesCommand
+import com.moneylytics.api.application.port.input.ConfirmRecurringSeriesUseCase
 import com.moneylytics.api.application.port.input.CorrectRecurringSeriesTypeCommand
 import com.moneylytics.api.application.port.input.CorrectRecurringSeriesTypeUseCase
 import com.moneylytics.api.application.port.input.DetectRecurringSeriesUseCase
@@ -29,6 +31,7 @@ import org.springframework.web.server.ResponseStatusException
 @RequestMapping("/transactions")
 class RecurringSeriesController(
     private val detectRecurringSeriesUseCase: DetectRecurringSeriesUseCase,
+    private val confirmRecurringSeriesUseCase: ConfirmRecurringSeriesUseCase,
     private val getRecurringSeriesUseCase: GetRecurringSeriesUseCase,
     private val correctRecurringSeriesTypeUseCase: CorrectRecurringSeriesTypeUseCase,
     private val resolveUserUseCase: ResolveUserUseCase,
@@ -57,6 +60,23 @@ class RecurringSeriesController(
                 .map { it.toItem() }
         }
 
+    @PostMapping("/recurring/confirm")
+    suspend fun confirmRecurringSeries(
+        @RequestBody body: ConfirmRecurringSeriesRequest,
+        @AuthenticationPrincipal principal: UserDetails,
+    ): List<RecurringSeriesItem> =
+        withContext(Dispatchers.IO) {
+            val userId = resolveUserUseCase.resolveUser(principal.username)
+            confirmRecurringSeriesUseCase
+                .confirm(
+                    ConfirmRecurringSeriesCommand(
+                        userId = userId,
+                        confirmedFingerprints = body.confirmedFingerprints,
+                        falsePositiveFingerprints = body.falsePositiveFingerprints,
+                    ),
+                ).map { it.toItem() }
+        }
+
     @PatchMapping("/recurring/{id}/type")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     suspend fun correctType(
@@ -77,4 +97,9 @@ class RecurringSeriesController(
 
 data class CorrectTypeRequest(
     val type: RecurringType,
+)
+
+data class ConfirmRecurringSeriesRequest(
+    val confirmedFingerprints: List<String>,
+    val falsePositiveFingerprints: List<String>,
 )

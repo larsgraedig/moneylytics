@@ -1,15 +1,19 @@
 package com.moneylytics.api.application.service
 
+import com.moneylytics.api.application.port.input.ConfirmRecurringSeriesCommand
+import com.moneylytics.api.application.port.input.ConfirmRecurringSeriesUseCase
 import com.moneylytics.api.application.port.input.CorrectRecurringSeriesTypeCommand
 import com.moneylytics.api.application.port.input.CorrectRecurringSeriesTypeUseCase
 import com.moneylytics.api.application.port.input.DetectRecurringSeriesUseCase
 import com.moneylytics.api.application.port.input.GetRecurringSeriesQuery
 import com.moneylytics.api.application.port.input.GetRecurringSeriesUseCase
 import com.moneylytics.api.application.port.input.RefreshRecurringSeriesCommand
+import com.moneylytics.api.application.port.output.RecurringFalsePositiveRepository
 import com.moneylytics.api.application.port.output.RecurringSeriesRepository
 import com.moneylytics.api.application.port.output.RecurringTypeClassifier
 import com.moneylytics.api.application.port.output.TransactionRepository
 import com.moneylytics.api.domain.RecurrenceDeviation
+import com.moneylytics.api.domain.RecurringFalsePositive
 import com.moneylytics.api.domain.RecurringSeries
 import com.moneylytics.api.domain.RecurringType
 import com.moneylytics.api.domain.toFeatures
@@ -24,11 +28,13 @@ import kotlin.math.abs
 class RecurringSeriesService(
     private val transactionRepository: TransactionRepository,
     private val recurringSeriesRepository: RecurringSeriesRepository,
+    private val falsePositiveRepository: RecurringFalsePositiveRepository,
     private val detector: RecurringSeriesDetector,
     private val classifier: RecurringTypeClassifier,
 ) : DetectRecurringSeriesUseCase,
     GetRecurringSeriesUseCase,
-    CorrectRecurringSeriesTypeUseCase {
+    CorrectRecurringSeriesTypeUseCase,
+    ConfirmRecurringSeriesUseCase {
     override fun detect(command: RefreshRecurringSeriesCommand): List<RecurringSeries> {
         val today = LocalDate.now()
         val from = today.minusMonths(command.lookbackMonths)
@@ -36,13 +42,47 @@ class RecurringSeriesService(
 
         classifier.seedIfEmpty(command.userId)
 
-        val classified =
+        val falsePositiveFingerprints = falsePositiveRepository.findFingerprintsByUserId(command.userId)
+
+        return detector
+            .detect(transactions)
+            .map { s -> s.copy(type = classifier.classify(command.userId, s.toFeatures())) }
+            .filter { s -> !(s.amountVariable && s.type == RecurringType.OTHER) }
+            .map { s -> s.copy(isFalsePositive = s.fingerprint in falsePositiveFingerprints) }
+            .map { s -> computeDeviation(s, today) }
+    }
+
+    override fun confirm(command: ConfirmRecurringSeriesCommand): List<RecurringSeries> {
+        val today = LocalDate.now()
+        val from = today.minusMonths(command.lookbackMonths)
+        val transactions = transactionRepository.findByAccountingDateBetween(from, today, command.userId)
+
+        classifier.seedIfEmpty(command.userId)
+
+        val confirmedSet = command.confirmedFingerprints.toSet()
+
+        val confirmed =
             detector
                 .detect(transactions)
                 .map { s -> s.copy(type = classifier.classify(command.userId, s.toFeatures())) }
                 .filter { s -> !(s.amountVariable && s.type == RecurringType.OTHER) }
+                .filter { s -> s.fingerprint in confirmedSet }
 
-        recurringSeriesRepository.replaceAllForUser(classified, command.userId)
+        recurringSeriesRepository.replaceAllForUser(confirmed, command.userId)
+
+        if (command.falsePositiveFingerprints.isNotEmpty()) {
+            val existing = falsePositiveRepository.findFingerprintsByUserId(command.userId)
+            val newEntries =
+                command.falsePositiveFingerprints
+                    .filter { it !in existing }
+                    .map { RecurringFalsePositive(userId = command.userId, fingerprint = it, createdAt = today) }
+            if (newEntries.isNotEmpty()) falsePositiveRepository.saveAll(newEntries)
+        }
+
+        // If a previously false-positive series is now confirmed, remove it from the false positive list.
+        val toRemove = command.confirmedFingerprints.filter { it in falsePositiveRepository.findFingerprintsByUserId(command.userId) }
+        if (toRemove.isNotEmpty()) falsePositiveRepository.deleteByUserIdAndFingerprints(command.userId, toRemove)
+
         return recurringSeriesRepository.findByUserId(command.userId).map { computeDeviation(it, today) }
     }
 
