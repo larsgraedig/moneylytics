@@ -9,9 +9,10 @@ class CsvProfileJpaRepositoryIT : AbstractJpaRepositoryIT() {
 
     @Test
     fun `should find csv profile by user id and fingerprint`() {
-        val profile = csvProfileRepo.save(
-            CsvProfileEntity(userId = userId, fingerprint = "csv-fp-abc123", mappingJson = """{"dateColumn":"Datum"}"""),
-        )
+        val profile =
+            csvProfileRepo.save(
+                CsvProfileEntity(userId = userId, fingerprint = "csv-fp-abc123", mappingJson = """{"dateColumn":"Datum"}"""),
+            )
 
         val result = csvProfileRepo.findByUserIdAndFingerprint(userId, "csv-fp-abc123")
 

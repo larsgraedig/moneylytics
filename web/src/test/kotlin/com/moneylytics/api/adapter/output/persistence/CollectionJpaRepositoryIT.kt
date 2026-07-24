@@ -7,8 +7,10 @@ import org.springframework.beans.factory.annotation.Autowired
 class CollectionJpaRepositoryIT : AbstractJpaRepositoryIT() {
     @Autowired private lateinit var collectionRepo: CollectionJpaRepository
 
-    private fun savedCollection(name: String = "Sommer 2025", forUser: UserEntity = user) =
-        collectionRepo.save(CollectionEntity(user = forUser, name = name))
+    private fun savedCollection(
+        name: String = "Sommer 2025",
+        forUser: UserEntity = user,
+    ) = collectionRepo.save(CollectionEntity(user = forUser, name = name))
 
     @Test
     fun `should find all collections for user`() {

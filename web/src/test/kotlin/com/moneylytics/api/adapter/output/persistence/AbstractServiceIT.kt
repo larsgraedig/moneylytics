@@ -1,0 +1,40 @@
+package com.moneylytics.api.adapter.output.persistence
+
+import jakarta.persistence.EntityManager
+import jakarta.persistence.PersistenceContext
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.extension.ExtendWith
+import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.test.context.ContextConfiguration
+import org.springframework.test.context.junit.jupiter.SpringExtension
+import org.springframework.transaction.annotation.Transactional
+
+@ExtendWith(SpringExtension::class)
+@ContextConfiguration(classes = [ServiceLayerTestConfig::class])
+@Transactional
+abstract class AbstractServiceIT {
+    @PersistenceContext protected lateinit var em: EntityManager
+
+    @Autowired protected lateinit var userRepo: UserJpaRepository
+
+    @Autowired protected lateinit var accountRepo: AccountJpaRepository
+
+    protected lateinit var user: UserEntity
+    protected lateinit var otherUser: UserEntity
+    protected lateinit var account: AccountEntity
+
+    protected val userId: Long get() = checkNotNull(user.id)
+    protected val otherUserId: Long get() = checkNotNull(otherUser.id)
+
+    @BeforeEach
+    fun setUpBaseEntities() {
+        user = userRepo.save(UserEntity(externalId = "test-user-1"))
+        otherUser = userRepo.save(UserEntity(externalId = "test-user-2"))
+        account = accountRepo.save(AccountEntity(iban = "DE00TEST000000000001", name = "Girokonto", user = user))
+    }
+
+    protected fun flushAndClear() {
+        em.flush()
+        em.clear()
+    }
+}

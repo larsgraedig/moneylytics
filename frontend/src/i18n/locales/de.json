@@ -18,6 +18,7 @@
     "limits": "Limits",
     "csv": "CSV",
     "camt": "CAMT",
+    "wiederkehrer": "Wiederkehrend",
     "collapse": "Menü einklappen",
     "expand": "Menü ausklappen"
   },
@@ -451,6 +452,47 @@
     "language": "Sprache",
     "defaultAccount": "Standardkonto",
     "noDefaultAccount": "Kein Standard"
+  },
+  "recurring": {
+    "title": "Wiederkehrende Transaktionen",
+    "refresh": "Neu erkennen",
+    "refreshing": "Wird erkannt…",
+    "correctType": "Typ korrigieren",
+    "empty": "Keine wiederkehrenden Transaktionen gefunden. Klicke auf «Neu erkennen» um die Historie zu analysieren.",
+    "filterAll": "Alle",
+    "filterExpenses": "Ausgaben",
+    "filterIncome": "Einnahmen",
+    "nextExpected": "Nächste Buchung",
+    "lastSeen": "Zuletzt",
+    "occurrences": "Vorkommen",
+    "account": "Konto",
+    "cadence": {
+      "WEEKLY": "Wöchentlich",
+      "MONTHLY": "Monatlich",
+      "QUARTERLY": "Quartalsweise",
+      "SEMIANNUAL": "Halbjährlich",
+      "YEARLY": "Jährlich"
+    },
+    "type": {
+      "SALARY": "Gehalt",
+      "RENT": "Miete",
+      "INSURANCE": "Versicherung",
+      "SUBSCRIPTION": "Abo",
+      "UTILITY": "Versorger",
+      "LOAN": "Kredit",
+      "MEMBERSHIP": "Mitgliedschaft",
+      "OTHER": "Sonstiges"
+    },
+    "deviation": {
+      "ON_TRACK": "Planmäßig",
+      "AMOUNT_CHANGED": "Betrag geändert",
+      "DATE_SHIFTED": "Zeitpunkt verschoben",
+      "OVERDUE": "Überfällig / ausgeblieben"
+    },
+    "history": {
+      "date": "Datum",
+      "amount": "Betrag"
+    }
   },
   "burnrate": {
     "windowBtn": "Ø {{days}} Tage",

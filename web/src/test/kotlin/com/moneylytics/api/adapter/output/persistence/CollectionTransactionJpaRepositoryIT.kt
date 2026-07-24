@@ -6,13 +6,16 @@ import org.springframework.beans.factory.annotation.Autowired
 
 class CollectionTransactionJpaRepositoryIT : AbstractJpaRepositoryIT() {
     @Autowired private lateinit var collectionRepo: CollectionJpaRepository
+
     @Autowired private lateinit var collectionTransactionRepo: CollectionTransactionJpaRepository
 
     private fun savedCollection(forUser: UserEntity = user) =
         collectionRepo.save(CollectionEntity(user = forUser, name = "Test Collection"))
 
-    private fun savedLink(collectionId: Long, transactionId: Long) =
-        collectionTransactionRepo.save(CollectionTransactionEntity(collectionId = collectionId, transactionId = transactionId))
+    private fun savedLink(
+        collectionId: Long,
+        transactionId: Long,
+    ) = collectionTransactionRepo.save(CollectionTransactionEntity(collectionId = collectionId, transactionId = transactionId))
 
     @Test
     fun `should find collection transaction links by transaction ids`() {

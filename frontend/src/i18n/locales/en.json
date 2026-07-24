@@ -18,6 +18,7 @@
     "limits": "Limits",
     "csv": "CSV",
     "camt": "CAMT",
+    "wiederkehrer": "Recurring",
     "collapse": "Collapse menu",
     "expand": "Expand menu"
   },
@@ -451,6 +452,47 @@
     "language": "Language",
     "defaultAccount": "Default account",
     "noDefaultAccount": "No default"
+  },
+  "recurring": {
+    "title": "Recurring Transactions",
+    "refresh": "Detect",
+    "refreshing": "Detecting…",
+    "correctType": "Correct type",
+    "empty": "No recurring transactions found. Click «Detect» to analyse your history.",
+    "filterAll": "All",
+    "filterExpenses": "Expenses",
+    "filterIncome": "Income",
+    "nextExpected": "Next expected",
+    "lastSeen": "Last seen",
+    "occurrences": "Occurrences",
+    "account": "Account",
+    "cadence": {
+      "WEEKLY": "Weekly",
+      "MONTHLY": "Monthly",
+      "QUARTERLY": "Quarterly",
+      "SEMIANNUAL": "Semi-annual",
+      "YEARLY": "Yearly"
+    },
+    "type": {
+      "SALARY": "Salary",
+      "RENT": "Rent",
+      "INSURANCE": "Insurance",
+      "SUBSCRIPTION": "Subscription",
+      "UTILITY": "Utility",
+      "LOAN": "Loan",
+      "MEMBERSHIP": "Membership",
+      "OTHER": "Other"
+    },
+    "deviation": {
+      "ON_TRACK": "On track",
+      "AMOUNT_CHANGED": "Amount changed",
+      "DATE_SHIFTED": "Date shifted",
+      "OVERDUE": "Overdue / missed"
+    },
+    "history": {
+      "date": "Date",
+      "amount": "Amount"
+    }
   },
   "burnrate": {
     "windowBtn": "Ø {{days}} days",

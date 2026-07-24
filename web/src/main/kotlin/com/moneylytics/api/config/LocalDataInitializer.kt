@@ -4,6 +4,7 @@ import com.moneylytics.api.application.port.input.AssignTransactionToBudgetUseCa
 import com.moneylytics.api.application.port.input.CreateBudgetUseCase
 import com.moneylytics.api.application.port.input.CreateCollectionUseCase
 import com.moneylytics.api.application.port.input.CreateUserUseCase
+import com.moneylytics.api.application.port.input.DetectRecurringSeriesUseCase
 import com.moneylytics.api.application.port.input.GetTransactionsQuery
 import com.moneylytics.api.application.port.input.GetTransactionsUseCase
 import com.moneylytics.api.application.port.input.ImportTransactionsCommand
@@ -11,6 +12,7 @@ import com.moneylytics.api.application.port.input.ImportTransactionsUseCase
 import com.moneylytics.api.application.port.input.LinkTransactionsCommand
 import com.moneylytics.api.application.port.input.ManageCollectionMembersUseCase
 import com.moneylytics.api.application.port.input.ManageTransactionOffsetUseCase
+import com.moneylytics.api.application.port.input.RefreshRecurringSeriesCommand
 import com.moneylytics.api.application.port.input.SaveThresholdUseCase
 import com.moneylytics.api.domain.Budget
 import com.moneylytics.api.domain.Collection
@@ -38,6 +40,7 @@ class LocalDataInitializer(
     private val assignTransactionToBudgetUseCase: AssignTransactionToBudgetUseCase,
     private val createCollectionUseCase: CreateCollectionUseCase,
     private val manageCollectionMembersUseCase: ManageCollectionMembersUseCase,
+    private val detectRecurringSeriesUseCase: DetectRecurringSeriesUseCase,
 ) : ApplicationRunner {
     companion object {
         private const val MAIN_RNG_SEED = 42L
@@ -70,6 +73,9 @@ class LocalDataInitializer(
         private const val STREAMING_DAY = 10
         private const val OPNV_DAY = 3
         private const val SPAREINZAHLUNG_DAY = 5
+        private const val INSURANCE_DAY = 2
+        private const val GYM_DAY = 1
+        private const val MUSIC_DAY = 12
 
         private const val SALARY_MIN = 2700.0
         private const val SALARY_MAX = 3100.0
@@ -138,6 +144,7 @@ class LocalDataInitializer(
         setupThresholds(userId)
         setupBudgets(userId)
         setupCollections(userId)
+        detectRecurringSeriesUseCase.detect(RefreshRecurringSeriesCommand(userId = userId))
     }
 
     private fun setupOffsetLinks(userId: Long) {
@@ -346,6 +353,7 @@ class LocalDataInitializer(
                 subcategory: String,
                 date: LocalDate,
                 amount: BigDecimal,
+                counterpartyName: String? = null,
             ) = Transaction(
                 category = category,
                 subcategory = subcategory,
@@ -355,13 +363,18 @@ class LocalDataInitializer(
                 amount = amount,
                 currency = "EUR",
                 accountIban = mainIban,
+                counterpartyName = counterpartyName,
             )
 
-            transactions += tx("Einnahmen", "Gehalt", day(SALARY_DAY), euros(SALARY_MIN, SALARY_MAX))
-            transactions += tx("Wohnen", "Miete", day(1), -euros(RENT_AMOUNT, RENT_AMOUNT))
-            transactions += tx("Wohnen", "Internet", day(INTERNET_DAY), BigDecimal("-39.99"))
-            transactions += tx("Freizeit", "Streaming", day(STREAMING_DAY), BigDecimal("-17.99"))
-            transactions += tx("Transport", "ÖPNV", day(OPNV_DAY), BigDecimal("-86.00"))
+            transactions += tx("Einnahmen", "Gehalt", day(SALARY_DAY), euros(SALARY_MIN, SALARY_MAX), counterpartyName = "Arbeitgeber GmbH")
+            transactions += tx("Wohnen", "Miete", day(1), -euros(RENT_AMOUNT, RENT_AMOUNT), counterpartyName = "Vermieter")
+            transactions += tx("Wohnen", "Internet", day(INTERNET_DAY), BigDecimal("-39.99"), counterpartyName = "Telekom")
+            transactions += tx("Freizeit", "Streaming", day(STREAMING_DAY), BigDecimal("-17.99"), counterpartyName = "Netflix")
+            transactions += tx("Transport", "ÖPNV", day(OPNV_DAY), BigDecimal("-86.00"), counterpartyName = "MVG")
+            transactions +=
+                tx("Versicherung", "Krankenversicherung", day(INSURANCE_DAY), BigDecimal("-189.50"), counterpartyName = "Allianz")
+            transactions += tx("Freizeit", "Sport", day(GYM_DAY), BigDecimal("-29.90"), counterpartyName = "FitnessFabrik")
+            transactions += tx("Freizeit", "Streaming", day(MUSIC_DAY), BigDecimal("-10.99"), counterpartyName = "Spotify")
 
             repeat(rng.nextInt(SUPERMARKT_MAX_REPEAT) + 2) {
                 transactions += tx("Lebensmittel", "Supermarkt", randomDay(), -euros(SUPERMARKT_MIN, SUPERMARKT_MAX))
