@@ -11,6 +11,7 @@ import org.springframework.stereotype.Component
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.time.temporal.ChronoUnit
+import java.time.temporal.WeekFields
 import kotlin.math.abs
 import kotlin.math.sqrt
 
@@ -74,18 +75,20 @@ class RecurringSeriesDetector {
         val regularCount = intervals.count { abs(it - medianInterval).toDouble() <= tolerance }
         if (regularCount < intervals.size * 0.6) return null
 
+        if (cadence == RecurrenceCadence.WEEKLY || cadence == RecurrenceCadence.MONTHLY) {
+            if (!hasAtMostOnePerPeriod(sorted, cadence)) return null
+        }
+
         val amounts = sorted.map { it.amount.abs() }
         val medianAmount = medianBigDecimal(amounts)
         val amountVariable = amounts.size > 1 && standardDeviation(amounts) / medianAmount.toDouble() > 0.15
-
         val direction = if (sorted.first().amount < BigDecimal.ZERO) RecurrenceDirection.EXPENSE else RecurrenceDirection.INCOME
-        val type = classify(direction, cadence, medianAmount, sorted)
         val label = buildLabel(sorted.first())
         val nextExpectedDate = sorted.last().bookingDate.plusDays(medianInterval.toLong())
 
         return RecurringSeries(
             label = label,
-            type = type,
+            type = RecurringType.OTHER,
             direction = direction,
             cadence = cadence,
             intervalDays = medianInterval,
@@ -112,63 +115,6 @@ class RecurringSeriesDetector {
             else -> null
         }
 
-    private fun classify(
-        direction: RecurrenceDirection,
-        cadence: RecurrenceCadence,
-        amount: BigDecimal,
-        txns: List<Transaction>,
-    ): RecurringType {
-        val text = txns.mapNotNull { it.counterpartyName ?: it.purpose }.joinToString(" ").lowercase()
-
-        if (direction == RecurrenceDirection.INCOME) {
-            if (text.containsAny("gehalt", "lohn", "bezüge", "salary", "payroll", "entgelt")) return RecurringType.SALARY
-            return RecurringType.OTHER
-        }
-
-        if (text.containsAny("miete", "rent", "vermieter", "wohnungsgeld", "hausgeld", "pacht")) return RecurringType.RENT
-        if (text.containsAny(
-                "versicherung",
-                "insurance",
-                "allianz",
-                "axa",
-                "generali",
-                "huk",
-                "ergo",
-                "signal iduna",
-                "zurich",
-            )
-        ) {
-            return RecurringType.INSURANCE
-        }
-        if (text.containsAny("kredit", "darlehen", "tilgung", "finanzierung", "hypothek")) return RecurringType.LOAN
-        if (text.containsAny(
-                "strom",
-                "gas",
-                "wasser",
-                "fernwärme",
-                "stadtwerke",
-                "enbw",
-                "e.on",
-                "rwe",
-                "telekom",
-                "vodafone",
-                "internet",
-                "o2",
-                "1&1",
-            )
-        ) {
-            return RecurringType.UTILITY
-        }
-        if (text.containsAny("netflix", "spotify", "amazon prime", "disney", "apple", "abo", "subscription", "mitglied") ||
-            (cadence == RecurrenceCadence.MONTHLY && amount < BigDecimal("50"))
-        ) {
-            return RecurringType.SUBSCRIPTION
-        }
-        if (text.containsAny("verein", "mitgliedschaft", "club", "beitrag")) return RecurringType.MEMBERSHIP
-
-        return RecurringType.OTHER
-    }
-
     private fun buildLabel(first: Transaction): String =
         first.counterpartyName?.trim()?.takeIf { it.isNotEmpty() }
             ?: first.purpose
@@ -177,7 +123,23 @@ class RecurringSeriesDetector {
                 ?.takeIf { it.isNotEmpty() }
             ?: "Unbekannt"
 
-    private fun String.containsAny(vararg keywords: String): Boolean = keywords.any { this.contains(it) }
+    private fun hasAtMostOnePerPeriod(
+        sorted: List<Transaction>,
+        cadence: RecurrenceCadence,
+    ): Boolean {
+        val key: (Transaction) -> String =
+            when (cadence) {
+                RecurrenceCadence.WEEKLY -> { tx ->
+                    val woy = tx.bookingDate.get(WeekFields.ISO.weekOfWeekBasedYear())
+                    "${tx.bookingDate.year}-$woy"
+                }
+                RecurrenceCadence.MONTHLY -> { tx -> "${tx.bookingDate.year}-${tx.bookingDate.monthValue}" }
+                else -> return true
+            }
+        val periods = sorted.groupBy(key)
+        val duplicatePeriods = periods.values.count { it.size > 1 }
+        return duplicatePeriods.toDouble() / periods.size <= 0.2
+    }
 
     private fun medianInt(values: List<Int>): Int {
         val sorted = values.sorted()

@@ -4,8 +4,10 @@ import { RefreshCw } from 'lucide-react'
 import {
   fetchRecurringSeries,
   refreshRecurringSeries,
+  correctRecurringSeriesType,
   type RecurringSeriesItem,
   type RecurrenceDirection,
+  type RecurringType,
 } from '../api/recurring'
 
 type PageState =
@@ -32,6 +34,10 @@ const DEVIATION_COLORS: Record<string, string> = {
   OVERDUE: '#f87171',
 }
 
+const ALL_TYPES: RecurringType[] = [
+  'SALARY', 'RENT', 'INSURANCE', 'SUBSCRIPTION', 'UTILITY', 'LOAN', 'MEMBERSHIP', 'OTHER',
+]
+
 function formatAmount(amount: number, currency: string): string {
   return new Intl.NumberFormat('de-DE', { style: 'currency', currency }).format(Math.abs(amount))
 }
@@ -42,6 +48,7 @@ export default function RecurringPage() {
   const [filterDirection, setFilterDirection] = useState<RecurrenceDirection | undefined>()
   const [expanded, setExpanded] = useState<Set<number>>(new Set())
   const [refreshing, setRefreshing] = useState(false)
+  const [editingType, setEditingType] = useState<number | null>(null)
 
   useEffect(() => {
     load()
@@ -76,6 +83,21 @@ export default function RecurringPage() {
       else next.add(id)
       return next
     })
+  }
+
+  async function handleTypeChange(id: number, newType: RecurringType) {
+    setEditingType(null)
+    if (state.phase !== 'ready') return
+    const prev = state.series
+    setState({
+      phase: 'ready',
+      series: prev.map(s => s.id === id ? { ...s, type: newType } : s),
+    })
+    try {
+      await correctRecurringSeriesType(id, newType)
+    } catch {
+      setState({ phase: 'ready', series: prev })
+    }
   }
 
   const allSeries = state.phase === 'ready' ? state.series : []
@@ -133,18 +155,36 @@ export default function RecurringPage() {
           <tbody>
             {displaySeries.map(s => {
               const isExpanded = expanded.has(s.id)
+              const isEditingThisType = editingType === s.id
               return (
                 <>
-                  <tr key={s.id} className="rcr-row" onClick={() => toggleExpand(s.id)}>
+                  <tr key={s.id} className="rcr-row" onClick={() => { if (!isEditingThisType) toggleExpand(s.id) }}>
                     <td className="rcr-cell-main">
                       <div className="rcr-label">{s.label}</div>
                       <div className="rcr-badges">
-                        <span
-                          className="rcr-badge"
-                          style={{ color: TYPE_COLORS[s.type] ?? '#6b7280', borderColor: TYPE_COLORS[s.type] ?? '#6b7280' }}
-                        >
-                          {t(`recurring.type.${s.type}`)}
-                        </span>
+                        {isEditingThisType ? (
+                          <select
+                            className="rcr-type-select"
+                            value={s.type}
+                            autoFocus
+                            onClick={e => e.stopPropagation()}
+                            onBlur={() => setEditingType(null)}
+                            onChange={e => handleTypeChange(s.id, e.target.value as RecurringType)}
+                          >
+                            {ALL_TYPES.map(type => (
+                              <option key={type} value={type}>{t(`recurring.type.${type}`)}</option>
+                            ))}
+                          </select>
+                        ) : (
+                          <span
+                            className="rcr-badge rcr-badge--clickable"
+                            style={{ color: TYPE_COLORS[s.type] ?? '#6b7280', borderColor: TYPE_COLORS[s.type] ?? '#6b7280' }}
+                            title={t('recurring.correctType')}
+                            onClick={e => { e.stopPropagation(); setEditingType(s.id) }}
+                          >
+                            {t(`recurring.type.${s.type}`)}
+                          </span>
+                        )}
                         <span className="rcr-badge rcr-badge--cadence">
                           {t(`recurring.cadence.${s.cadence}`)}
                         </span>

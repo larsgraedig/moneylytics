@@ -3,6 +3,7 @@ package com.moneylytics.api.adapter.output.persistence
 import com.moneylytics.api.application.port.output.RecurringSeriesRepository
 import com.moneylytics.api.domain.RecurringOccurrence
 import com.moneylytics.api.domain.RecurringSeries
+import com.moneylytics.api.domain.RecurringType
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
 
@@ -58,6 +59,16 @@ class RecurringSeriesPersistenceAdapter(
                 },
             )
         }
+    }
+
+    @Transactional
+    override fun updateType(
+        seriesId: Long,
+        type: RecurringType,
+    ) {
+        val entity = recurringSeriesJpaRepository.findById(seriesId).orElseThrow()
+        entity.type = type
+        recurringSeriesJpaRepository.save(entity)
     }
 
     override fun findByUserId(userId: Long): List<RecurringSeries> {

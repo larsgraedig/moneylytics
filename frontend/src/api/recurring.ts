@@ -50,3 +50,12 @@ export async function refreshRecurringSeries(): Promise<RecurringSeriesItem[]> {
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
   return res.json() as Promise<RecurringSeriesItem[]>
 }
+
+export async function correctRecurringSeriesType(id: number, type: RecurringType): Promise<void> {
+  const res = await fetchWithUser(`/transactions/recurring/${id}/type`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ type }),
+  })
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+}

@@ -457,6 +457,7 @@
     "title": "Wiederkehrende Transaktionen",
     "refresh": "Neu erkennen",
     "refreshing": "Wird erkannt…",
+    "correctType": "Typ korrigieren",
     "empty": "Keine wiederkehrenden Transaktionen gefunden. Klicke auf «Neu erkennen» um die Historie zu analysieren.",
     "filterAll": "Alle",
     "filterExpenses": "Ausgaben",

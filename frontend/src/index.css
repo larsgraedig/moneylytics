@@ -4722,6 +4722,24 @@ body {
   font-family: var(--mono);
 }
 
+.rcr-badge--clickable {
+  cursor: pointer;
+}
+
+.rcr-badge--clickable:hover {
+  opacity: 0.75;
+}
+
+.rcr-type-select {
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 11px;
+  padding: 1px 4px;
+  cursor: pointer;
+}
+
 .rcr-amount {
   font-family: var(--mono);
   font-size: 13px;

@@ -1,6 +1,7 @@
 package com.moneylytics.api.application.port.output
 
 import com.moneylytics.api.domain.RecurringSeries
+import com.moneylytics.api.domain.RecurringType
 
 interface RecurringSeriesRepository {
     fun replaceAllForUser(
@@ -9,4 +10,9 @@ interface RecurringSeriesRepository {
     )
 
     fun findByUserId(userId: Long): List<RecurringSeries>
+
+    fun updateType(
+        seriesId: Long,
+        type: RecurringType,
+    )
 }

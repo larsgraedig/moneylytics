@@ -1,8 +1,10 @@
 package com.moneylytics.api.application.service
 
+import com.moneylytics.api.application.port.input.CorrectRecurringSeriesTypeCommand
 import com.moneylytics.api.application.port.input.GetRecurringSeriesQuery
 import com.moneylytics.api.application.port.input.RefreshRecurringSeriesCommand
 import com.moneylytics.api.application.port.output.RecurringSeriesRepository
+import com.moneylytics.api.application.port.output.RecurringTypeClassifier
 import com.moneylytics.api.application.port.output.TransactionRepository
 import com.moneylytics.api.domain.RecurrenceCadence
 import com.moneylytics.api.domain.RecurrenceDeviation
@@ -12,11 +14,13 @@ import com.moneylytics.api.domain.RecurringOccurrence
 import com.moneylytics.api.domain.RecurringSeries
 import com.moneylytics.api.domain.RecurringType
 import com.moneylytics.api.domain.Transaction
+import com.moneylytics.api.domain.toFeatures
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.any
 import org.mockito.kotlin.anyOrNull
 import org.mockito.kotlin.argumentCaptor
+import org.mockito.kotlin.eq
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
@@ -27,7 +31,8 @@ class RecurringSeriesServiceTest {
     private val transactionRepository: TransactionRepository = mock()
     private val recurringSeriesRepository: RecurringSeriesRepository = mock()
     private val detector: RecurringSeriesDetector = mock()
-    private val service = RecurringSeriesService(transactionRepository, recurringSeriesRepository, detector)
+    private val classifier: RecurringTypeClassifier = mock()
+    private val service = RecurringSeriesService(transactionRepository, recurringSeriesRepository, detector, classifier)
 
     private val userId = 1L
     private val today = LocalDate.now()
@@ -39,15 +44,17 @@ class RecurringSeriesServiceTest {
         expectedAmount: BigDecimal = BigDecimal("-50.00"),
         intervalDays: Int = 30,
         occurrenceCount: Int = 3,
+        type: RecurringType = RecurringType.SUBSCRIPTION,
+        amountVariable: Boolean = false,
     ) = RecurringSeries(
         id = 1L,
         label = "Test",
-        type = RecurringType.SUBSCRIPTION,
+        type = type,
         direction = RecurrenceDirection.EXPENSE,
         cadence = RecurrenceCadence.MONTHLY,
         intervalDays = intervalDays,
         expectedAmount = expectedAmount,
-        amountVariable = false,
+        amountVariable = amountVariable,
         currency = "EUR",
         accountIban = "DE01",
         firstSeen = lastOccurrenceDate.minusMonths(2),
@@ -77,15 +84,60 @@ class RecurringSeriesServiceTest {
     }
 
     @Test
-    fun `should persist detected series for user`() {
+    fun `should classify each detected series using the ML classifier`() {
         val command = RefreshRecurringSeriesCommand(userId = userId)
-        val detectedSeries = listOf(series(today.plusDays(5)))
+        val detectedSeries = listOf(series(today.plusDays(5), type = RecurringType.OTHER))
         whenever(transactionRepository.findByAccountingDateBetween(any(), any(), any(), anyOrNull())).thenReturn(emptyList())
         whenever(detector.detect(any())).thenReturn(detectedSeries)
+        whenever(classifier.classify(any(), any())).thenReturn(RecurringType.SUBSCRIPTION)
 
         service.detect(command)
 
-        verify(recurringSeriesRepository).replaceAllForUser(detectedSeries, userId)
+        verify(classifier).classify(eq(userId), any())
+    }
+
+    @Test
+    fun `should persist detected series after classification`() {
+        val command = RefreshRecurringSeriesCommand(userId = userId)
+        val detectedSeries = listOf(series(today.plusDays(5), type = RecurringType.OTHER))
+        whenever(transactionRepository.findByAccountingDateBetween(any(), any(), any(), anyOrNull())).thenReturn(emptyList())
+        whenever(detector.detect(any())).thenReturn(detectedSeries)
+        whenever(classifier.classify(any(), any())).thenReturn(RecurringType.SUBSCRIPTION)
+
+        service.detect(command)
+
+        verify(recurringSeriesRepository).replaceAllForUser(any(), eq(userId))
+    }
+
+    @Test
+    fun `should filter out variable amount series classified as OTHER`() {
+        val command = RefreshRecurringSeriesCommand(userId = userId)
+        val variableOtherSeries = series(today.plusDays(5), type = RecurringType.OTHER, amountVariable = true)
+        whenever(transactionRepository.findByAccountingDateBetween(any(), any(), any(), anyOrNull())).thenReturn(emptyList())
+        whenever(detector.detect(any())).thenReturn(listOf(variableOtherSeries))
+        whenever(classifier.classify(any(), any())).thenReturn(RecurringType.OTHER)
+
+        service.detect(command)
+
+        val captor = argumentCaptor<List<RecurringSeries>>()
+        verify(recurringSeriesRepository).replaceAllForUser(captor.capture(), any())
+        assertThat(captor.firstValue).isEmpty()
+    }
+
+    @Test
+    fun `should keep variable amount series when classifier assigns a known type`() {
+        val command = RefreshRecurringSeriesCommand(userId = userId)
+        val variableSeries = series(today.plusDays(5), type = RecurringType.OTHER, amountVariable = true)
+        whenever(transactionRepository.findByAccountingDateBetween(any(), any(), any(), anyOrNull())).thenReturn(emptyList())
+        whenever(detector.detect(any())).thenReturn(listOf(variableSeries))
+        whenever(classifier.classify(any(), any())).thenReturn(RecurringType.UTILITY)
+
+        service.detect(command)
+
+        val captor = argumentCaptor<List<RecurringSeries>>()
+        verify(recurringSeriesRepository).replaceAllForUser(captor.capture(), any())
+        assertThat(captor.firstValue).hasSize(1)
+        assertThat(captor.firstValue[0].type).isEqualTo(RecurringType.UTILITY)
     }
 
     @Test
@@ -152,6 +204,17 @@ class RecurringSeriesServiceTest {
 
         assertThat(result).hasSize(1)
         assertThat(result[0].type).isEqualTo(RecurringType.RENT)
+    }
+
+    @Test
+    fun `should update type in repository and train classifier when type is corrected`() {
+        val existingSeries = series(today.plusDays(5)).copy(id = 42L, type = RecurringType.OTHER)
+        whenever(recurringSeriesRepository.findByUserId(userId)).thenReturn(listOf(existingSeries))
+
+        service.correctType(CorrectRecurringSeriesTypeCommand(seriesId = 42L, userId = userId, type = RecurringType.RENT))
+
+        verify(recurringSeriesRepository).updateType(42L, RecurringType.RENT)
+        verify(classifier).train(eq(userId), eq(RecurringType.RENT), eq(existingSeries.toFeatures()))
     }
 
     private fun tx(iban: String = "DE01") =

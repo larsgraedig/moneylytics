@@ -457,6 +457,7 @@
     "title": "Recurring Transactions",
     "refresh": "Detect",
     "refreshing": "Detecting…",
+    "correctType": "Correct type",
     "empty": "No recurring transactions found. Click «Detect» to analyse your history.",
     "filterAll": "All",
     "filterExpenses": "Expenses",
