@@ -190,6 +190,46 @@ class CsvTransactionParserTest {
     }
 
     @Test
+    fun `should parse Kontostand column and return balance for the most recent booking date`() {
+        // Arrange — two rows; second has later date
+        val csv =
+            """
+            Buchungstag,Valutadatum,Betrag,EUR,IBAN Auftragskonto,Kontostand
+            01.01.2025,01.01.2025,-100,EUR,DE33000000000000000000,"1.000,00"
+            15.01.2025,15.01.2025,-50,EUR,DE33000000000000000000,"950,00"
+            """.trimIndent()
+
+        // Act
+        val result = parser.parse(csv)
+
+        // Assert
+        assertThat(result).isInstanceOf(CsvParseResult.Valid::class.java)
+        val valid = result as CsvParseResult.Valid
+        assertThat(valid.accountBalances).containsKey("DE33000000000000000000")
+        val balance = valid.accountBalances["DE33000000000000000000"]!!
+        assertThat(balance.amount).isEqualByComparingTo(BigDecimal("950.00"))
+        assertThat(balance.date).isEqualTo(java.time.LocalDate.of(2025, 1, 15))
+    }
+
+    @Test
+    fun `should return empty accountBalances when Kontostand column is absent`() {
+        // Arrange — MLP format without Kontostand column
+        val csv =
+            """
+            Buchungstag,Valutadatum,Betrag,EUR,IBAN Auftragskonto
+            02.01.2025,02.01.2025,-1.5,EUR,DE33000000000000000000
+            """.trimIndent()
+
+        // Act
+        val result = parser.parse(csv)
+
+        // Assert
+        assertThat(result).isInstanceOf(CsvParseResult.Valid::class.java)
+        val valid = result as CsvParseResult.Valid
+        assertThat(valid.accountBalances).isEmpty()
+    }
+
+    @Test
     fun `should return error for completely unrecognized CSV format`() {
         // Arrange — none of the known formats can match these headers
         val csv =

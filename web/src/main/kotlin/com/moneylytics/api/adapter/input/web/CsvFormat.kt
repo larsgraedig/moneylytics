@@ -28,6 +28,7 @@ enum class CsvFormat(
             accountIban = "IBAN Auftragskonto",
             accountName = "Bezeichnung Auftragskonto",
             purpose = "Verwendungszweck",
+            accountBalance = "Kontostand",
         ),
     ),
 

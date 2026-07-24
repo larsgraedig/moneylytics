@@ -31,6 +31,12 @@ data class RawPreviewError(
 data class CamtPreviewResponse(
     val rows: List<RawPreviewRow>,
     val accounts: List<CamtAccountInfo>,
+    val accountBalances: Map<String, CamtAccountBalance> = emptyMap(),
+)
+
+data class CamtAccountBalance(
+    val amount: BigDecimal,
+    val date: String,
 )
 
 data class CamtAccountInfo(
@@ -50,6 +56,7 @@ data class CamtImportRequest(
     val toImport: List<CamtTransactionImport>,
     val toIgnore: List<String>,
     val toEnrich: List<TransactionEnrichRequest> = emptyList(),
+    val accountBalances: Map<String, CamtAccountBalance> = emptyMap(),
 )
 
 data class CamtTransactionImport(

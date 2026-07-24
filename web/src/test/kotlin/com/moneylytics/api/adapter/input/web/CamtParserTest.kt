@@ -203,6 +203,54 @@ class CamtParserTest {
         assertThat(success.rows[1].rowNumber).isEqualTo(2)
     }
 
+    @Test
+    fun `should extract CLBD closing balance from Bal element`() {
+        val xml =
+            """<Document><BkToCstmrAcctRpt><Rpt>
+            <Acct><Id><IBAN>DE00TEST</IBAN></Id></Acct>
+            <Bal>
+              <Tp><CdOrPrtry><Cd>CLBD</Cd></CdOrPrtry></Tp>
+              <Amt Ccy="EUR">3500.00</Amt>
+              <CdtDbtInd>CRDT</CdtDbtInd>
+              <Dt><Dt>2025-01-31</Dt></Dt>
+            </Bal>
+            ${entry()}
+            </Rpt></BkToCstmrAcctRpt></Document>"""
+
+        val success = parser.parse(xml.toByteArray()) as CamtParseResult.Success
+
+        assertThat(success.accountBalances).containsKey("DE00TEST")
+        val balance = success.accountBalances["DE00TEST"]!!
+        assertThat(balance.amount).isEqualByComparingTo(BigDecimal("3500.00"))
+        assertThat(balance.date).isEqualTo(LocalDate.of(2025, 1, 31))
+    }
+
+    @Test
+    fun `should negate CLBD balance when CdtDbtInd is DBIT`() {
+        val xml =
+            """<Document><BkToCstmrAcctRpt><Rpt>
+            <Acct><Id><IBAN>DE00TEST</IBAN></Id></Acct>
+            <Bal>
+              <Tp><CdOrPrtry><Cd>CLBD</Cd></CdOrPrtry></Tp>
+              <Amt Ccy="EUR">200.00</Amt>
+              <CdtDbtInd>DBIT</CdtDbtInd>
+              <Dt><Dt>2025-02-28</Dt></Dt>
+            </Bal>
+            ${entry()}
+            </Rpt></BkToCstmrAcctRpt></Document>"""
+
+        val success = parser.parse(xml.toByteArray()) as CamtParseResult.Success
+
+        assertThat(success.accountBalances["DE00TEST"]!!.amount).isEqualByComparingTo(BigDecimal("-200.00"))
+    }
+
+    @Test
+    fun `should return empty accountBalances when no Bal element is present`() {
+        val result = parser.parse(camt(entry()))
+
+        assertThat((result as CamtParseResult.Success).accountBalances).isEmpty()
+    }
+
     private fun camt(
         vararg entries: String,
         iban: String = "DE00TEST123",

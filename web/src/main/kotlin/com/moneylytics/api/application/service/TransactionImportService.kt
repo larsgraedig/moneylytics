@@ -18,6 +18,10 @@ class TransactionImportService(
                 accountRepository.save(Account(iban = iban, name = name), command.userId)
             }
         }
-        return transactionRepository.saveAll(command.transactions, command.userId)
+        val count = transactionRepository.saveAll(command.transactions, command.userId)
+        command.accountBalances.forEach { (iban, balance) ->
+            accountRepository.updateBalance(iban, command.userId, balance.amount, balance.date)
+        }
+        return count
     }
 }

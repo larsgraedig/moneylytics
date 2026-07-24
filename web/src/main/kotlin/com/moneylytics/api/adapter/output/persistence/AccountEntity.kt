@@ -10,6 +10,8 @@ import jakarta.persistence.JoinColumn
 import jakarta.persistence.ManyToOne
 import jakarta.persistence.Table
 import jakarta.persistence.UniqueConstraint
+import java.math.BigDecimal
+import java.time.LocalDate
 
 @Entity
 @Table(
@@ -24,6 +26,10 @@ class AccountEntity(
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "user_id", nullable = false)
     val user: UserEntity,
+    @Column(precision = 19, scale = 4)
+    var balance: BigDecimal? = null,
+    @Column(name = "balance_date")
+    var balanceDate: LocalDate? = null,
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     var id: Long? = null,

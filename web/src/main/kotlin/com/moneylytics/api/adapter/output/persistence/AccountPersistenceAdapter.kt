@@ -3,6 +3,8 @@ package com.moneylytics.api.adapter.output.persistence
 import com.moneylytics.api.application.port.output.AccountRepository
 import com.moneylytics.api.domain.Account
 import org.springframework.stereotype.Component
+import java.math.BigDecimal
+import java.time.LocalDate
 
 @Component
 class AccountPersistenceAdapter(
@@ -26,6 +28,18 @@ class AccountPersistenceAdapter(
         userId: Long,
     ) = jpaRepository.deleteByIbanAndUserId(iban, userId)
 
+    override fun updateBalance(
+        iban: String,
+        userId: Long,
+        balance: BigDecimal,
+        balanceDate: LocalDate,
+    ) {
+        val entity = jpaRepository.findByIbanAndUserId(iban, userId) ?: return
+        entity.balance = balance
+        entity.balanceDate = balanceDate
+        jpaRepository.save(entity)
+    }
+
     private fun Account.toEntity(userId: Long) =
         AccountEntity(
             iban = iban,
@@ -33,5 +47,11 @@ class AccountPersistenceAdapter(
             user = userJpaRepository.getReferenceById(userId),
         )
 
-    private fun AccountEntity.toDomain() = Account(iban = iban, name = name)
+    private fun AccountEntity.toDomain() =
+        Account(
+            iban = iban,
+            name = name,
+            balance = balance,
+            balanceDate = balanceDate,
+        )
 }

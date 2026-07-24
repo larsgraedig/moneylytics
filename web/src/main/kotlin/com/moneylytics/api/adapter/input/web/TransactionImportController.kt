@@ -55,6 +55,7 @@ class TransactionImportController(
                         ImportTransactionsCommand(
                             transactions = result.transactions,
                             accountNames = result.accountNames,
+                            accountBalances = result.accountBalances,
                             userId = userId,
                         ),
                     )
