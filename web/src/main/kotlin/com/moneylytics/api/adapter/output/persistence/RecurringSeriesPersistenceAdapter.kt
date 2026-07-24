@@ -7,12 +7,14 @@ import com.moneylytics.api.domain.RecurringSeries
 import com.moneylytics.api.domain.RecurringType
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
+import java.time.LocalDate
 
 @Component
 class RecurringSeriesPersistenceAdapter(
     private val recurringSeriesJpaRepository: RecurringSeriesJpaRepository,
     private val recurringSeriesMemberJpaRepository: RecurringSeriesMemberJpaRepository,
     private val userJpaRepository: UserJpaRepository,
+    private val transactionJpaRepository: TransactionJpaRepository,
 ) : RecurringSeriesRepository {
     @Transactional
     override fun replaceAllForUser(
@@ -37,7 +39,7 @@ class RecurringSeriesPersistenceAdapter(
     ): RecurringSeries {
         val user = userJpaRepository.getReferenceById(userId)
         val entity = persistSeries(series, user)
-        return entity.toDomain(emptyList())
+        return entity.toDomain(emptyList(), emptyMap())
     }
 
     @Transactional
@@ -68,9 +70,50 @@ class RecurringSeriesPersistenceAdapter(
         if (entities.isEmpty()) return emptyList()
 
         val entityIds = entities.mapNotNull { it.id }
-        val membersBySeriesId = recurringSeriesMemberJpaRepository.findBySeriesIdIn(entityIds).groupBy { it.seriesId }
+        val members = recurringSeriesMemberJpaRepository.findBySeriesIdIn(entityIds)
+        val membersBySeriesId = members.groupBy { it.seriesId }
 
-        return entities.map { entity -> entity.toDomain(membersBySeriesId[entity.id] ?: emptyList()) }
+        val allTransactionIds = members.map { it.transactionId }
+        val transactionsById =
+            if (allTransactionIds.isEmpty()) {
+                emptyMap()
+            } else {
+                transactionJpaRepository.findAllById(allTransactionIds).associateBy { requireNotNull(it.id) }
+            }
+
+        return entities.map { entity -> entity.toDomain(membersBySeriesId[entity.id] ?: emptyList(), transactionsById) }
+    }
+
+    override fun findAllUserIds(): Set<Long> = recurringSeriesJpaRepository.findDistinctUserIds().toHashSet()
+
+    override fun findMemberTransactionIds(seriesId: Long): Set<Long> =
+        recurringSeriesMemberJpaRepository
+            .findBySeriesIdIn(listOf(seriesId))
+            .map { it.transactionId }
+            .toHashSet()
+
+    @Transactional
+    override fun addMembers(
+        seriesId: Long,
+        transactionIds: List<Long>,
+    ) {
+        recurringSeriesMemberJpaRepository.saveAll(
+            transactionIds.map { txId -> RecurringSeriesMemberEntity(seriesId = seriesId, transactionId = txId) },
+        )
+    }
+
+    @Transactional
+    override fun updateSeriesMetadata(
+        seriesId: Long,
+        lastSeen: LocalDate,
+        nextExpectedDate: LocalDate,
+        occurrenceCount: Int,
+    ) {
+        val entity = recurringSeriesJpaRepository.findById(seriesId).orElseThrow()
+        entity.lastSeen = lastSeen
+        entity.nextExpectedDate = nextExpectedDate
+        entity.occurrenceCount = occurrenceCount
+        recurringSeriesJpaRepository.save(entity)
     }
 
     private fun persistSeries(
@@ -105,11 +148,6 @@ class RecurringSeriesPersistenceAdapter(
                     RecurringSeriesMemberEntity(
                         seriesId = seriesId,
                         transactionId = o.transactionId,
-                        occurredOn = o.date,
-                        amount = o.amount,
-                        purpose = o.purpose,
-                        counterpartyName = o.counterpartyName,
-                        counterpartyIban = o.counterpartyIban,
                     )
                 },
             )
@@ -117,7 +155,10 @@ class RecurringSeriesPersistenceAdapter(
         return entity
     }
 
-    private fun RecurringSeriesEntity.toDomain(members: List<RecurringSeriesMemberEntity>): RecurringSeries =
+    private fun RecurringSeriesEntity.toDomain(
+        members: List<RecurringSeriesMemberEntity>,
+        transactionsById: Map<Long, TransactionEntity>,
+    ): RecurringSeries =
         RecurringSeries(
             id = id,
             label = label,
@@ -137,14 +178,15 @@ class RecurringSeriesPersistenceAdapter(
             fingerprint = fingerprint,
             occurrences =
                 members
-                    .map { m ->
+                    .mapNotNull { m ->
+                        val tx = transactionsById[m.transactionId] ?: return@mapNotNull null
                         RecurringOccurrence(
                             transactionId = m.transactionId,
-                            date = m.occurredOn,
-                            amount = m.amount,
-                            purpose = m.purpose,
-                            counterpartyName = m.counterpartyName,
-                            counterpartyIban = m.counterpartyIban,
+                            date = tx.bookingDate,
+                            amount = tx.amount,
+                            purpose = tx.purpose,
+                            counterpartyName = tx.counterpartyName,
+                            counterpartyIban = tx.counterpartyIban,
                         )
                     }.sortedByDescending { it.date },
         )

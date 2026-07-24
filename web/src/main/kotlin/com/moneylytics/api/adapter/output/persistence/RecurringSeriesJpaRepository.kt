@@ -8,6 +8,9 @@ import org.springframework.data.jpa.repository.Query
 interface RecurringSeriesJpaRepository : JpaRepository<RecurringSeriesEntity, Long> {
     fun findByUserId(userId: Long): List<RecurringSeriesEntity>
 
+    @Query("SELECT DISTINCT e.user.id FROM RecurringSeriesEntity e")
+    fun findDistinctUserIds(): List<Long>
+
     fun findByIdAndUserId(
         id: Long,
         userId: Long,
