@@ -1,5 +1,6 @@
 package com.moneylytics.api.adapter.input.web
 
+import com.moneylytics.api.domain.AccountBalance
 import org.springframework.stereotype.Component
 import org.w3c.dom.Element
 import org.xml.sax.SAXException
@@ -16,6 +17,7 @@ sealed interface CamtParseResult {
 
     data class Success(
         val rows: List<ParsedRawRow>,
+        val accountBalances: Map<String, AccountBalance> = emptyMap(),
     ) : CamtParseResult
 }
 
@@ -42,6 +44,7 @@ class CamtParser {
         }
 
         val rows = mutableListOf<ParsedRawRow>()
+        val accountBalances = mutableMapOf<String, AccountBalance>()
         var rowCounter = 1
 
         for (rptIdx in 0 until reports.length) {
@@ -55,6 +58,10 @@ class CamtParser {
                     ?.textContent
                     ?.trim() ?: ""
             val acctName = acctEl?.firstChildEl("Nm")?.textContent?.trim() ?: ""
+
+            if (acctIban.isNotBlank()) {
+                parseClosingBalance(rpt)?.let { accountBalances[acctIban] = it }
+            }
 
             val entries = rpt.childNodes.elements().filter { it.localName == "Ntry" }
 
@@ -122,8 +129,51 @@ class CamtParser {
             }
         }
 
-        return CamtParseResult.Success(rows)
+        return CamtParseResult.Success(rows = rows, accountBalances = accountBalances)
     }
+
+    private fun parseClosingBalance(rpt: Element): AccountBalance? {
+        val balElements = rpt.childNodes.elements().filter { it.localName == "Bal" }
+        // Prefer CLBD (closing booked), fall back to OPBD (opening booked)
+        val preferred =
+            balElements.firstOrNull { it.balanceTypeCode() == "CLBD" }
+                ?: balElements.firstOrNull { it.balanceTypeCode() == "OPBD" }
+                ?: return null
+
+        val amtEl = preferred.firstChildEl("Amt") ?: return null
+        val amtRaw = amtEl.textContent.trim()
+        val cdtDbt = preferred.firstChildEl("CdtDbtInd")?.textContent?.trim() ?: ""
+        val dateRaw =
+            preferred
+                .firstChildEl("Dt")
+                ?.firstChildEl("Dt")
+                ?.textContent
+                ?.trim() ?: return null
+
+        val amount =
+            try {
+                val abs = BigDecimal(amtRaw)
+                if (cdtDbt == "DBIT") abs.negate() else abs
+            } catch (_: NumberFormatException) {
+                return null
+            }
+
+        val date =
+            try {
+                LocalDate.parse(dateRaw)
+            } catch (_: DateTimeParseException) {
+                return null
+            }
+
+        return AccountBalance(amount = amount, date = date)
+    }
+
+    private fun Element.balanceTypeCode(): String? =
+        firstChildEl("Tp")
+            ?.firstChildEl("CdOrPrtry")
+            ?.firstChildEl("Cd")
+            ?.textContent
+            ?.trim()
 
     private fun resolveCounterparty(
         rltdPties: Element?,

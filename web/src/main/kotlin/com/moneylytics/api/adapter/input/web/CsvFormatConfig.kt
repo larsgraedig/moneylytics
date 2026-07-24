@@ -24,6 +24,8 @@ data class CsvFormatConfig(
     val accountName: String? = null,
     /** Column whose value is used as the transaction purpose (Verwendungszweck), or null if absent. */
     val purpose: String? = null,
+    /** Column whose value is the account balance after the transaction, or null if absent. */
+    val accountBalance: String? = null,
 ) {
     val requiredColumns: Set<String> =
         setOf(

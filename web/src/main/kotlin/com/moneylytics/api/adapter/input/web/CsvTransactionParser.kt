@@ -1,5 +1,6 @@
 package com.moneylytics.api.adapter.input.web
 
+import com.moneylytics.api.domain.AccountBalance
 import com.moneylytics.api.domain.Transaction
 import org.apache.commons.csv.CSVFormat
 import org.apache.commons.csv.CSVParser
@@ -66,6 +67,9 @@ class CsvTransactionParser {
         val hasPurposeColumn = config.purpose != null && config.purpose in headers
         val hasCategoryColumn = config.category != null && config.category in headers
         val hasSubcategoryColumn = config.subcategory != null && config.subcategory in headers
+        val hasAccountBalanceColumn = config.accountBalance != null && config.accountBalance in headers
+        // tracks the latest balance seen per IBAN: iban → (bookingDate, balance)
+        val latestBalanceByIban = mutableMapOf<String, Pair<LocalDate, BigDecimal>>()
 
         for ((index, record) in csvParser.withIndex()) {
             val rowNumber = index + 2 // header is row 1, data starts at row 2
@@ -93,11 +97,26 @@ class CsvTransactionParser {
                         purpose = purpose,
                     ),
                 )
+
+                if (hasAccountBalanceColumn) {
+                    val balanceRaw = record[config.accountBalance!!]
+                    if (balanceRaw.isNotBlank()) {
+                        val balance = parseBalanceAmount(balanceRaw)
+                        if (balance != null) {
+                            val existing = latestBalanceByIban[accountIban]
+                            if (existing == null || bookingDate >= existing.first) {
+                                latestBalanceByIban[accountIban] = bookingDate to balance
+                            }
+                        }
+                    }
+                }
             }
         }
 
         return if (errors.isEmpty()) {
-            CsvParseResult.Valid(transactions, accountNames)
+            val accountBalances =
+                latestBalanceByIban.mapValues { (_, pair) -> AccountBalance(amount = pair.second, date = pair.first) }
+            CsvParseResult.Valid(transactions, accountNames, accountBalances)
         } else {
             CsvParseResult.Invalid(errors)
         }
@@ -129,6 +148,13 @@ class CsvTransactionParser {
             null
         }
     }
+
+    private fun parseBalanceAmount(value: String): BigDecimal? =
+        try {
+            BigDecimal(value.replace(".", "").replace(",", "."))
+        } catch (_: NumberFormatException) {
+            null
+        }
 
     private fun parseAmount(
         value: String,

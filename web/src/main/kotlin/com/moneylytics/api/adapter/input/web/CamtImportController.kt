@@ -9,6 +9,7 @@ import com.moneylytics.api.application.port.input.ImportTransactionsUseCase
 import com.moneylytics.api.application.port.input.ResolveUserUseCase
 import com.moneylytics.api.application.port.input.SaveCategoriesUseCase
 import com.moneylytics.api.application.port.input.UpdateIgnoredTransactionsUseCase
+import com.moneylytics.api.domain.AccountBalance
 import com.moneylytics.api.domain.Category
 import com.moneylytics.api.domain.Transaction
 import kotlinx.coroutines.Dispatchers
@@ -59,6 +60,7 @@ class CamtImportController(
         }
 
         val allRows = mutableListOf<ParsedRawRow>()
+        val mergedBalances = mutableMapOf<String, CamtAccountBalance>()
         var nextRowNumber = 1
 
         for (filePart in fileParts) {
@@ -73,6 +75,9 @@ class CamtImportController(
                     val renumbered = result.rows.mapIndexed { idx, row -> row.copy(rowNumber = nextRowNumber + idx) }
                     allRows += renumbered
                     nextRowNumber += result.rows.size
+                    result.accountBalances.forEach { (iban, balance) ->
+                        mergedBalances[iban] = CamtAccountBalance(amount = balance.amount, date = balance.date.toString())
+                    }
                 }
             }
         }
@@ -113,6 +118,7 @@ class CamtImportController(
                         )
                     },
                 accounts = accounts,
+                accountBalances = mergedBalances,
             )
 
         return ResponseEntity.ok(response)
@@ -167,11 +173,17 @@ class CamtImportController(
                 )
             }
 
+        val accountBalances =
+            safeRequest.accountBalances.mapValues { (_, b) ->
+                AccountBalance(amount = b.amount, date = java.time.LocalDate.parse(b.date))
+            }
+
         val importedCount =
             importTransactionsUseCase.importTransactions(
                 ImportTransactionsCommand(
                     transactions = transactions,
                     accountNames = safeRequest.accountNames,
+                    accountBalances = accountBalances,
                     userId = userId,
                 ),
             )

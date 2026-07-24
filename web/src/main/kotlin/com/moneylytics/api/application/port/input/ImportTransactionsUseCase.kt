@@ -1,5 +1,6 @@
 package com.moneylytics.api.application.port.input
 
+import com.moneylytics.api.domain.AccountBalance
 import com.moneylytics.api.domain.Transaction
 
 fun interface ImportTransactionsUseCase {
@@ -10,4 +11,5 @@ data class ImportTransactionsCommand(
     val transactions: List<Transaction>,
     val accountNames: Map<String, String>,
     val userId: Long,
+    val accountBalances: Map<String, AccountBalance> = emptyMap(),
 )

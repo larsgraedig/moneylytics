@@ -4,6 +4,7 @@ import com.moneylytics.api.application.port.input.ImportTransactionsCommand
 import com.moneylytics.api.application.port.output.AccountRepository
 import com.moneylytics.api.application.port.output.TransactionRepository
 import com.moneylytics.api.domain.Account
+import com.moneylytics.api.domain.AccountBalance
 import com.moneylytics.api.domain.Transaction
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
@@ -73,6 +74,42 @@ class TransactionImportServiceTest {
         val count = service.importTransactions(command)
 
         assertThat(count).isEqualTo(2)
+    }
+
+    @Test
+    fun `should update account balance when accountBalances is provided`() {
+        val tx = tx("DE01")
+        val balance = AccountBalance(amount = BigDecimal("1500.00"), date = date)
+        val command =
+            ImportTransactionsCommand(
+                transactions = listOf(tx),
+                accountNames = mapOf("DE01" to "Giro"),
+                accountBalances = mapOf("DE01" to balance),
+                userId = userId,
+            )
+        whenever(accountRepository.findByIban("DE01", userId)).thenReturn(Account(iban = "DE01", name = "Giro"))
+        whenever(transactionRepository.saveAll(listOf(tx), userId)).thenReturn(1)
+
+        service.importTransactions(command)
+
+        verify(accountRepository).updateBalance("DE01", userId, balance.amount, balance.date)
+    }
+
+    @Test
+    fun `should not call updateBalance when no accountBalances provided`() {
+        val tx = tx("DE01")
+        val command =
+            ImportTransactionsCommand(
+                transactions = listOf(tx),
+                accountNames = mapOf("DE01" to "Giro"),
+                userId = userId,
+            )
+        whenever(accountRepository.findByIban("DE01", userId)).thenReturn(Account(iban = "DE01", name = "Giro"))
+        whenever(transactionRepository.saveAll(listOf(tx), userId)).thenReturn(1)
+
+        service.importTransactions(command)
+
+        verify(accountRepository, never()).updateBalance(any(), any(), any(), any())
     }
 
     private fun tx(iban: String) =
