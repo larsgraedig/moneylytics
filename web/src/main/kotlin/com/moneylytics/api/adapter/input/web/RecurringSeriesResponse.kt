@@ -12,6 +12,9 @@ data class RecurringOccurrenceItem(
     val transactionId: Long,
     val date: String,
     val amount: BigDecimal,
+    val purpose: String?,
+    val counterpartyName: String?,
+    val counterpartyIban: String?,
 )
 
 data class RecurringSeriesItem(
@@ -56,5 +59,15 @@ fun RecurringSeries.toItem() =
         fingerprint = fingerprint,
         isFalsePositive = isFalsePositive,
         deviation = deviation,
-        occurrences = occurrences.map { RecurringOccurrenceItem(it.transactionId, it.date.toString(), it.amount) },
+        occurrences =
+            occurrences.map {
+                RecurringOccurrenceItem(
+                    transactionId = it.transactionId,
+                    date = it.date.toString(),
+                    amount = it.amount,
+                    purpose = it.purpose,
+                    counterpartyName = it.counterpartyName,
+                    counterpartyIban = it.counterpartyIban,
+                )
+            },
     )

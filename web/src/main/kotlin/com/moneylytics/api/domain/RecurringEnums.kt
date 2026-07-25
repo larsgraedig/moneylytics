@@ -6,6 +6,6 @@ enum class RecurringType { SALARY, RENT, INSURANCE, SUBSCRIPTION, UTILITY, LOAN,
 
 enum class RecurrenceDirection { EXPENSE, INCOME }
 
-enum class RecurrenceStatus { DETECTED }
+enum class RecurrenceStatus { DETECTED, MANUAL }
 
 enum class RecurrenceDeviation { ON_TRACK, AMOUNT_CHANGED, DATE_SHIFTED, OVERDUE }

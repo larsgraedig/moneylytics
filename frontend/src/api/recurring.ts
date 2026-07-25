@@ -4,12 +4,15 @@ export interface RecurringOccurrenceItem {
   transactionId: number
   date: string
   amount: number
+  purpose: string | null
+  counterpartyName: string | null
+  counterpartyIban: string | null
 }
 
 export type RecurrenceCadence = 'WEEKLY' | 'MONTHLY' | 'QUARTERLY' | 'SEMIANNUAL' | 'YEARLY'
 export type RecurringType = 'SALARY' | 'RENT' | 'INSURANCE' | 'SUBSCRIPTION' | 'UTILITY' | 'LOAN' | 'MEMBERSHIP' | 'OTHER'
 export type RecurrenceDirection = 'EXPENSE' | 'INCOME'
-export type RecurrenceStatus = 'DETECTED'
+export type RecurrenceStatus = 'DETECTED' | 'MANUAL'
 export type RecurrenceDeviation = 'ON_TRACK' | 'AMOUNT_CHANGED' | 'DATE_SHIFTED' | 'OVERDUE'
 
 export interface RecurringSeriesItem {
@@ -66,6 +69,32 @@ export async function confirmRecurringSeries(
   return res.json() as Promise<RecurringSeriesItem[]>
 }
 
+export interface CreateRecurringSeriesBody {
+  label: string
+  type: RecurringType
+  direction: RecurrenceDirection
+  cadence: RecurrenceCadence
+  expectedAmount: number
+  currency: string
+  accountIban: string
+  lastBookingDate: string | null
+}
+
+export async function createRecurringSeries(body: CreateRecurringSeriesBody): Promise<RecurringSeriesItem> {
+  const res = await fetchWithUser('/transactions/recurring', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  return res.json() as Promise<RecurringSeriesItem>
+}
+
+export async function deleteRecurringSeries(id: number): Promise<void> {
+  const res = await fetchWithUser(`/transactions/recurring/${id}`, { method: 'DELETE' })
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+}
+
 export async function correctRecurringSeriesType(id: number, type: RecurringType): Promise<void> {
   const res = await fetchWithUser(`/transactions/recurring/${id}/type`, {
     method: 'PATCH',
@@ -73,4 +102,30 @@ export async function correctRecurringSeriesType(id: number, type: RecurringType
     body: JSON.stringify({ type }),
   })
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
+}
+
+export interface RecurringSyncLogEntry {
+  seriesId: number | null
+  seriesLabel: string
+  transactionId: number
+  bookingDate: string
+  amount: number
+  counterpartyName: string | null
+}
+
+export type RecurringSyncTrigger = 'SCHEDULED' | 'MANUAL'
+
+export interface RecurringSyncLog {
+  id: number | null
+  ranAt: string
+  triggeredBy: RecurringSyncTrigger
+  seriesUpdatedCount: number
+  transactionsLinkedCount: number
+  entries: RecurringSyncLogEntry[]
+}
+
+export async function fetchRecurringSyncLogs(): Promise<RecurringSyncLog[]> {
+  const res = await fetchWithUser('/transactions/recurring/sync-log')
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  return res.json() as Promise<RecurringSyncLog[]>
 }

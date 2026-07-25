@@ -32,7 +32,6 @@ class RecurringSeriesDetector {
         val YEARLY_RANGE = 350..380
         const val MIN_OCCURRENCES_FREQUENT = 3
         const val MIN_OCCURRENCES_SPARSE = 2
-        const val MAX_PURPOSE_WORDS = 5
     }
 
     fun detect(transactions: List<Transaction>): List<RecurringSeries> =
@@ -40,38 +39,6 @@ class RecurringSeriesDetector {
             .filter { it.amount != BigDecimal.ZERO }
             .groupBy { groupKey(it) }
             .mapNotNull { (key, group) -> analyzeGroup(group, key) }
-
-    private fun groupKey(tx: Transaction): String {
-        val direction = if (tx.amount < BigDecimal.ZERO) "E" else "I"
-        val identifier =
-            tx.counterpartyIban
-                ?: tx.counterpartyName?.let { normalizeName(it) }
-                ?: tx.purpose?.let { normalizePurpose(it) }
-                ?: "unknown"
-        return "${tx.accountIban}|$direction|$identifier"
-    }
-
-    private fun normalizeName(name: String): String =
-        name
-            .trim()
-            .lowercase()
-            .replace(Regex("[^a-z0-9 ]"), " ")
-            .replace(Regex("\\s+"), " ")
-            .trim()
-
-    private fun normalizePurpose(purpose: String): String {
-        var s = purpose.trim().lowercase()
-        s = s.replace(Regex("\\b\\d{1,2}[./-]\\d{1,2}[./-]\\d{2,4}\\b"), "")
-        s = s.replace(Regex("\\b\\d+[.,]\\d+\\b"), "")
-        s = s.replace(Regex("\\b[a-z]{0,2}\\d{4,}\\b"), "")
-        s = s.replace(Regex("[^a-z0-9 ]"), " ")
-        s = s.replace(Regex("\\s+"), " ").trim()
-        return s
-            .split(" ")
-            .filter { it.length > 2 }
-            .take(MAX_PURPOSE_WORDS)
-            .joinToString(" ")
-    }
 
     private fun analyzeGroup(
         txns: List<Transaction>,
@@ -123,7 +90,19 @@ class RecurringSeriesDetector {
             nextExpectedDate = nextExpectedDate,
             status = RecurrenceStatus.DETECTED,
             fingerprint = fingerprint,
-            occurrences = sorted.mapNotNull { tx -> tx.id?.let { id -> RecurringOccurrence(id, tx.bookingDate, tx.amount) } },
+            occurrences =
+                sorted.mapNotNull { tx ->
+                    tx.id?.let { id ->
+                        RecurringOccurrence(
+                            transactionId = id,
+                            date = tx.bookingDate,
+                            amount = tx.amount,
+                            purpose = tx.purpose,
+                            counterpartyName = tx.counterpartyName,
+                            counterpartyIban = tx.counterpartyIban,
+                        )
+                    }
+                },
         )
     }
 

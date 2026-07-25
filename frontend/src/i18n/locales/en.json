@@ -3,7 +3,8 @@
     "sections": {
       "analytics": "Analytics",
       "accounts": "Accounts",
-      "imports": "Imports"
+      "imports": "Imports",
+      "admin": "Admin"
     },
     "sankey": "Sankey",
     "trends": "Trends",
@@ -19,6 +20,7 @@
     "csv": "CSV",
     "camt": "CAMT",
     "wiederkehrer": "Recurring",
+    "admin": "Technical",
     "collapse": "Collapse menu",
     "expand": "Expand menu"
   },
@@ -491,15 +493,52 @@
     },
     "history": {
       "date": "Date",
-      "amount": "Amount"
+      "amount": "Amount",
+      "counterparty": "Counterparty",
+      "purpose": "Purpose"
     },
+    "addManual": "Add",
+    "status": {
+      "MANUAL": "Manual"
+    },
+    "modal": {
+      "title": "Add recurring series",
+      "label": "Label",
+      "type": "Type",
+      "direction": "Direction",
+      "cadence": "Cadence",
+      "amount": "Amount",
+      "currency": "Currency",
+      "lastBookingDate": "Last booking date",
+      "account": "Account (optional)",
+      "accountPlaceholder": "No account",
+      "submit": "Add",
+      "cancel": "Cancel"
+    },
+    "deleteConfirm": "Delete?",
+    "deleteConfirmYes": "Yes, delete",
+    "deleteConfirmNo": "Cancel",
     "pendingBanner": "{{count}} series detected — review and save.",
     "save": "Save",
     "saving": "Saving…",
     "cancelPending": "Cancel",
     "dismiss": "Mark as false positive",
     "restore": "Restore",
-    "falsePositive": "False positive"
+    "falsePositive": "False positive",
+    "syncLog": {
+      "button": "Log",
+      "title": "Sync Log",
+      "empty": "No syncs have run yet.",
+      "noChanges": "No changes",
+      "summary": "{{series}} series, {{count}} transaction(s) linked",
+      "date": "Date",
+      "amount": "Amount",
+      "counterparty": "Counterparty",
+      "trigger": {
+        "SCHEDULED": "Automatic",
+        "MANUAL": "Manual"
+      }
+    }
   },
   "burnrate": {
     "windowBtn": "Ø {{days}} days",
@@ -536,5 +575,14 @@
     "legendSollRate": "Target daily rate",
     "legendIst": "IST forecast",
     "legendSoll": "Target forecast"
+  },
+  "admin": {
+    "recurring": {
+      "title": "Recurring Transactions",
+      "triggerSync": "Run scheduler now",
+      "triggering": "Running…",
+      "success": "Scheduler executed successfully.",
+      "description": "Triggers the matching of new transactions against existing recurring series — identical to the daily scheduled run (log entry: Automatic)."
+    }
   }
 }

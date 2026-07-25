@@ -3,7 +3,8 @@
     "sections": {
       "analytics": "Analytics",
       "accounts": "Accounts",
-      "imports": "Importe"
+      "imports": "Importe",
+      "admin": "Admin"
     },
     "sankey": "Sankey",
     "trends": "Trends",
@@ -19,6 +20,7 @@
     "csv": "CSV",
     "camt": "CAMT",
     "wiederkehrer": "Wiederkehrend",
+    "admin": "Technisches",
     "collapse": "Menü einklappen",
     "expand": "Menü ausklappen"
   },
@@ -491,15 +493,52 @@
     },
     "history": {
       "date": "Datum",
-      "amount": "Betrag"
+      "amount": "Betrag",
+      "counterparty": "Gegenpartei",
+      "purpose": "Verwendungszweck"
     },
+    "addManual": "Hinzufügen",
+    "status": {
+      "MANUAL": "Manuell"
+    },
+    "modal": {
+      "title": "Wiederkehrer hinzufügen",
+      "label": "Bezeichnung",
+      "type": "Typ",
+      "direction": "Richtung",
+      "cadence": "Rhythmus",
+      "amount": "Betrag",
+      "currency": "Währung",
+      "lastBookingDate": "Letzte Buchung",
+      "account": "Konto (optional)",
+      "accountPlaceholder": "Kein Konto",
+      "submit": "Hinzufügen",
+      "cancel": "Abbrechen"
+    },
+    "deleteConfirm": "Löschen?",
+    "deleteConfirmYes": "Ja, löschen",
+    "deleteConfirmNo": "Abbrechen",
     "pendingBanner": "{{count}} Serie(n) erkannt — überprüfen und speichern.",
     "save": "Speichern",
     "saving": "Wird gespeichert…",
     "cancelPending": "Abbrechen",
     "dismiss": "Als Fehlererkennung markieren",
     "restore": "Wiederherstellen",
-    "falsePositive": "Fehlererkennung"
+    "falsePositive": "Fehlererkennung",
+    "syncLog": {
+      "button": "Protokoll",
+      "title": "Synchronisations-Protokoll",
+      "empty": "Noch keine Synchronisierungen gelaufen.",
+      "noChanges": "Keine Änderungen",
+      "summary": "{{series}} Serie(n), {{count}} Transaktion(en) verknüpft",
+      "date": "Datum",
+      "amount": "Betrag",
+      "counterparty": "Gegenpartei",
+      "trigger": {
+        "SCHEDULED": "Automatisch",
+        "MANUAL": "Manuell"
+      }
+    }
   },
   "burnrate": {
     "windowBtn": "Ø {{days}} Tage",
@@ -536,5 +575,14 @@
     "legendSollRate": "Soll-Tagesrate",
     "legendIst": "IST-Prognose",
     "legendSoll": "Soll-Prognose"
+  },
+  "admin": {
+    "recurring": {
+      "title": "Wiederkehrende Transaktionen",
+      "triggerSync": "Scheduler jetzt ausführen",
+      "triggering": "Wird ausgeführt…",
+      "success": "Scheduler erfolgreich ausgeführt.",
+      "description": "Startet den Abgleich neuer Transaktionen mit bestehenden Wiederkehrer-Definitionen — identisch zum täglichen Scheduler-Lauf (Protokolleintrag: Automatisch)."
+    }
   }
 }
