@@ -1,6 +1,7 @@
 package com.moneylytics.api.config
 
 import com.moneylytics.api.application.port.output.UserRepository
+import com.moneylytics.api.domain.Role
 import com.moneylytics.api.domain.User
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
@@ -43,6 +44,19 @@ class UserDetailsServiceImplTest {
             .assertNext { details ->
                 assertThat(details.username).isEqualTo("oauth|abc123")
                 assertThat(details.password).isEqualTo("")
+            }.verifyComplete()
+    }
+
+    @Test
+    fun `should return UserDetails with ADMIN role when user has ADMIN role`() {
+        val domainUser = User(id = 3L, externalId = "admin@test.de", passwordHash = "hash", role = Role.ADMIN)
+        whenever(userRepository.findByExternalId("admin@test.de")).thenReturn(domainUser)
+
+        StepVerifier
+            .create(service.findByUsername("admin@test.de"))
+            .assertNext { details ->
+                assertThat(details.authorities.map { it.authority }).contains("ROLE_ADMIN")
+                assertThat(details.authorities.map { it.authority }).doesNotContain("ROLE_USER")
             }.verifyComplete()
     }
 }

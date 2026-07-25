@@ -1,6 +1,7 @@
 package com.moneylytics.api.adapter.output.persistence
 
 import com.moneylytics.api.application.port.output.UserRepository
+import com.moneylytics.api.domain.Role
 import com.moneylytics.api.domain.User
 import com.moneylytics.api.domain.UserSettings
 import org.springframework.stereotype.Component
@@ -47,7 +48,12 @@ class UserPersistenceAdapter(
         return jpaRepository.save(entity).toSettings()
     }
 
-    private fun UserEntity.toDomain() = User(id = id!!, externalId = externalId, passwordHash = passwordHash)
+    @Transactional
+    override fun promoteToAdmin(userId: Long) {
+        jpaRepository.getReferenceById(userId).role = Role.ADMIN
+    }
+
+    private fun UserEntity.toDomain() = User(id = id!!, externalId = externalId, passwordHash = passwordHash, role = role)
 
     private fun UserEntity.toSettings() =
         UserSettings(

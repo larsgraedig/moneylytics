@@ -21,4 +21,6 @@ interface UserRepository {
         language: String?,
         transactionsColumnOrder: List<String>?,
     ): UserSettings
+
+    fun promoteToAdmin(userId: Long)
 }

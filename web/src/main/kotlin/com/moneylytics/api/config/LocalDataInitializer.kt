@@ -14,6 +14,7 @@ import com.moneylytics.api.application.port.input.ManageCollectionMembersUseCase
 import com.moneylytics.api.application.port.input.ManageTransactionOffsetUseCase
 import com.moneylytics.api.application.port.input.RefreshRecurringSeriesCommand
 import com.moneylytics.api.application.port.input.SaveThresholdUseCase
+import com.moneylytics.api.application.port.output.UserRepository
 import com.moneylytics.api.domain.Budget
 import com.moneylytics.api.domain.Collection
 import com.moneylytics.api.domain.Threshold
@@ -33,6 +34,7 @@ import java.util.Random
 class LocalDataInitializer(
     private val importTransactionsUseCase: ImportTransactionsUseCase,
     private val createUserUseCase: CreateUserUseCase,
+    private val userRepository: UserRepository,
     private val getTransactionsUseCase: GetTransactionsUseCase,
     private val manageTransactionOffsetUseCase: ManageTransactionOffsetUseCase,
     private val saveThresholdUseCase: SaveThresholdUseCase,
@@ -128,6 +130,9 @@ class LocalDataInitializer(
     private val savingsName = "Sparkonto"
 
     override fun run(args: ApplicationArguments) {
+        val adminId = createUserUseCase.createUser("local-admin", "admin")
+        userRepository.promoteToAdmin(adminId)
+
         val userId = createUserUseCase.createUser("local-dev-user", "local")
         importTransactionsUseCase.importTransactions(
             ImportTransactionsCommand(

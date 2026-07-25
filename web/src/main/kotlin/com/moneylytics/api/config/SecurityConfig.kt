@@ -37,6 +37,8 @@ class SecurityConfig(
                 auth
                     .pathMatchers("/auth/login", "/auth/register", "/oauth2/authorization/**", "/login/oauth2/code/**")
                     .permitAll()
+                    .pathMatchers("/admin/**")
+                    .hasRole("ADMIN")
                     .anyExchange()
                     .authenticated()
             }.httpBasic { it.disable() }

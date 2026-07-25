@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import type { LucideIcon } from 'lucide-react'
 import {
@@ -51,7 +51,7 @@ type ViewState =
 
 type NavSection = { sectionKey: string; items: [Tab, string, LucideIcon][] }
 
-const NAV: NavSection[] = [
+const BASE_NAV: NavSection[] = [
   {
     sectionKey: 'analytics',
     items: [
@@ -81,16 +81,14 @@ const NAV: NavSection[] = [
       ['camt', 'nav.camt', FileCode],
     ],
   },
-  {
-    sectionKey: 'admin',
-    items: [
-      ['admin', 'nav.admin', Wrench],
-    ],
-  },
 ]
 
 export default function App() {
-  const { username, isLoading, logout } = useAuth()
+  const { username, isAdmin, isLoading, logout } = useAuth()
+  const NAV = useMemo((): NavSection[] => {
+    if (!isAdmin) return BASE_NAV
+    return [...BASE_NAV, { sectionKey: 'admin', items: [['admin', 'nav.admin', Wrench]] }]
+  }, [isAdmin])
   const { t, i18n } = useTranslation()
   const navigate = useNavigate()
   const location = useLocation()
@@ -318,7 +316,7 @@ export default function App() {
           {tab === 'csv' && <CsvImportPage key={username} categories={categories} />}
           {tab === 'camt' && <CamtImportPage key={username} categories={categories} />}
           {tab === 'wiederkehrer' && <RecurringPage key={username} />}
-          {tab === 'admin' && <AdminPage key={username} />}
+          {tab === 'admin' && isAdmin && <AdminPage key={username} />}
         </main>
       </div>
       {settingsOpen && <SettingsPanel accounts={accounts} defaultAccountIban={selectedIban} onClose={() => setSettingsOpen(false)} />}

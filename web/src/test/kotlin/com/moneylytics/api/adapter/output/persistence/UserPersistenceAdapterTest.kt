@@ -1,10 +1,12 @@
 package com.moneylytics.api.adapter.output.persistence
 
+import com.moneylytics.api.domain.Role
 import com.moneylytics.api.domain.User
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.any
 import org.mockito.kotlin.mock
+import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 
 class UserPersistenceAdapterTest {
@@ -30,7 +32,7 @@ class UserPersistenceAdapterTest {
 
         val result = adapter.findByExternalId("test@test.de")
 
-        assertThat(result).isEqualTo(User(id = userId, externalId = "test@test.de", passwordHash = null))
+        assertThat(result).isEqualTo(User(id = userId, externalId = "test@test.de", passwordHash = null, role = Role.USER))
     }
 
     @Test
@@ -109,5 +111,26 @@ class UserPersistenceAdapterTest {
         val settings = adapter.updateSettings(userId, defaultAccountIban = null, language = null, transactionsColumnOrder = null)
 
         assertThat(settings.defaultAccountIban).isNull()
+    }
+
+    @Test
+    fun `should map ADMIN role from entity to domain user`() {
+        val adminEntity = UserEntity(externalId = "admin@test.de", role = Role.ADMIN, id = userId)
+        whenever(jpaRepository.findByExternalId("admin@test.de")).thenReturn(adminEntity)
+
+        val result = adapter.findByExternalId("admin@test.de")
+
+        assertThat(result?.role).isEqualTo(Role.ADMIN)
+    }
+
+    @Test
+    fun `should set role to ADMIN when promoteToAdmin is called`() {
+        val entity = UserEntity(externalId = "test@test.de", id = userId)
+        whenever(jpaRepository.getReferenceById(userId)).thenReturn(entity)
+
+        adapter.promoteToAdmin(userId)
+
+        assertThat(entity.role).isEqualTo(Role.ADMIN)
+        verify(jpaRepository).getReferenceById(userId)
     }
 }

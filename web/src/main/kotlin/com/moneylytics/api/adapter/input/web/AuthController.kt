@@ -11,6 +11,7 @@ import org.springframework.http.ResponseEntity
 import org.springframework.security.authentication.ReactiveAuthenticationManager
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 import org.springframework.security.core.AuthenticationException
+import org.springframework.security.core.GrantedAuthority
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.security.core.context.SecurityContextImpl
 import org.springframework.security.core.userdetails.UserDetails
@@ -36,6 +37,8 @@ class AuthController(
 
     private val logger = KotlinLogging.logger {}
 
+    private fun Collection<GrantedAuthority>.isAdmin() = any { it.authority == "ROLE_ADMIN" }
+
     @PostMapping("/login")
     suspend fun login(
         @RequestBody request: LoginRequest,
@@ -45,7 +48,7 @@ class AuthController(
         return try {
             val auth = authManager.authenticate(token).awaitSingle()
             securityContextRepository.save(exchange, SecurityContextImpl(auth)).awaitFirstOrNull()
-            ResponseEntity.ok(AuthResponse(username = auth.name))
+            ResponseEntity.ok(AuthResponse(username = auth.name, isAdmin = auth.authorities.isAdmin()))
         } catch (e: AuthenticationException) {
             logger.debug(e) { "Authentication failed for user ${request.username}" }
             ResponseEntity.status(HTTP_UNAUTHORIZED).build()
@@ -55,7 +58,7 @@ class AuthController(
     @GetMapping("/me")
     suspend fun me(
         @AuthenticationPrincipal principal: UserDetails,
-    ): AuthResponse = AuthResponse(username = principal.username)
+    ): AuthResponse = AuthResponse(username = principal.username, isAdmin = principal.authorities.isAdmin())
 
     @PostMapping("/register")
     suspend fun register(
@@ -67,7 +70,7 @@ class AuthController(
             val token = UsernamePasswordAuthenticationToken(request.username, request.password)
             val auth = authManager.authenticate(token).awaitSingle()
             securityContextRepository.save(exchange, SecurityContextImpl(auth)).awaitFirstOrNull()
-            ResponseEntity.ok(AuthResponse(username = auth.name))
+            ResponseEntity.ok(AuthResponse(username = auth.name, isAdmin = auth.authorities.isAdmin()))
         } catch (e: UserAlreadyExistsException) {
             logger.debug(e) { "Registration failed: user ${request.username} already exists" }
             ResponseEntity.status(HTTP_CONFLICT).build()
@@ -92,4 +95,5 @@ data class RegisterRequest(
 
 data class AuthResponse(
     val username: String,
+    val isAdmin: Boolean = false,
 )
