@@ -15,7 +15,6 @@ import {
   type RecurringType,
   type CreateRecurringSeriesBody,
   type RecurringSyncLog,
-  type RecurringSyncTrigger,
 } from '../api/recurring'
 import { fetchAccounts, type Account } from '../api/accounts'
 

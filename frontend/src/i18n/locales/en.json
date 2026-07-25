@@ -3,7 +3,8 @@
     "sections": {
       "analytics": "Analytics",
       "accounts": "Accounts",
-      "imports": "Imports"
+      "imports": "Imports",
+      "admin": "Admin"
     },
     "sankey": "Sankey",
     "trends": "Trends",
@@ -19,6 +20,7 @@
     "csv": "CSV",
     "camt": "CAMT",
     "wiederkehrer": "Recurring",
+    "admin": "Technical",
     "collapse": "Collapse menu",
     "expand": "Expand menu"
   },
@@ -573,5 +575,14 @@
     "legendSollRate": "Target daily rate",
     "legendIst": "IST forecast",
     "legendSoll": "Target forecast"
+  },
+  "admin": {
+    "recurring": {
+      "title": "Recurring Transactions",
+      "triggerSync": "Run scheduler now",
+      "triggering": "Running…",
+      "success": "Scheduler executed successfully.",
+      "description": "Triggers the matching of new transactions against existing recurring series — identical to the daily scheduled run (log entry: Automatic)."
+    }
   }
 }

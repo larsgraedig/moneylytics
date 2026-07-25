@@ -14,6 +14,7 @@ export default defineConfig({
       '/thresholds': 'http://localhost:8080',
       '/budgets': 'http://localhost:8080',
       '/collections': 'http://localhost:8080',
+      '/admin': 'http://localhost:8080',
     },
   },
 })

@@ -4,7 +4,7 @@ import type { LucideIcon } from 'lucide-react'
 import {
   Workflow, TrendingUp, TrendingDown, PieChart, BarChart2,
   List, Landmark, Wallet, Gauge,
-  FileSpreadsheet, FileCode, Link2, FolderOpen, Repeat,
+  FileSpreadsheet, FileCode, Link2, FolderOpen, Repeat, Wrench,
 } from 'lucide-react'
 import { getPresetRange, detectPreset, PRESETS, type Preset } from './utils/datePresets'
 import SankeyChart from './components/SankeyChart'
@@ -22,6 +22,7 @@ import AccountsPage from './components/AccountsPage'
 import LinkedTransactionsPage from './components/LinkedTransactionsPage'
 import CollectionsPage from './components/CollectionsPage'
 import RecurringPage from './components/RecurringPage'
+import AdminPage from './components/AdminPage'
 import LoginPage from './components/LoginPage'
 import SettingsPanel from './components/SettingsPanel'
 import { fetchSankeyData, type SankeyResponse } from './api/transactions'
@@ -38,9 +39,9 @@ function isoDate(d: Date) {
 const today = isoDate(new Date())
 const firstOfYear = isoDate(new Date(new Date().getFullYear(), 0, 1))
 
-type Tab = 'sankey' | 'trends' | 'breakdown' | 'cashflow' | 'burnrate' | 'kontoauszug' | 'verknuepfungen' | 'sammlungen' | 'konten' | 'budgets' | 'limits' | 'csv' | 'camt' | 'wiederkehrer'
+type Tab = 'sankey' | 'trends' | 'breakdown' | 'cashflow' | 'burnrate' | 'kontoauszug' | 'verknuepfungen' | 'sammlungen' | 'konten' | 'budgets' | 'limits' | 'csv' | 'camt' | 'wiederkehrer' | 'admin'
 
-const VALID_TABS = new Set<string>(['sankey', 'trends', 'breakdown', 'cashflow', 'burnrate', 'kontoauszug', 'verknuepfungen', 'sammlungen', 'konten', 'budgets', 'limits', 'csv', 'camt', 'wiederkehrer'])
+const VALID_TABS = new Set<string>(['sankey', 'trends', 'breakdown', 'cashflow', 'burnrate', 'kontoauszug', 'verknuepfungen', 'sammlungen', 'konten', 'budgets', 'limits', 'csv', 'camt', 'wiederkehrer', 'admin'])
 
 type ViewState =
   | { phase: 'idle' }
@@ -78,6 +79,12 @@ const NAV: NavSection[] = [
     items: [
       ['csv', 'nav.csv', FileSpreadsheet],
       ['camt', 'nav.camt', FileCode],
+    ],
+  },
+  {
+    sectionKey: 'admin',
+    items: [
+      ['admin', 'nav.admin', Wrench],
     ],
   },
 ]
@@ -311,6 +318,7 @@ export default function App() {
           {tab === 'csv' && <CsvImportPage key={username} categories={categories} />}
           {tab === 'camt' && <CamtImportPage key={username} categories={categories} />}
           {tab === 'wiederkehrer' && <RecurringPage key={username} />}
+          {tab === 'admin' && <AdminPage key={username} />}
         </main>
       </div>
       {settingsOpen && <SettingsPanel accounts={accounts} defaultAccountIban={selectedIban} onClose={() => setSettingsOpen(false)} />}
