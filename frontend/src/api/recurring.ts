@@ -103,3 +103,29 @@ export async function correctRecurringSeriesType(id: number, type: RecurringType
   })
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
 }
+
+export interface RecurringSyncLogEntry {
+  seriesId: number | null
+  seriesLabel: string
+  transactionId: number
+  bookingDate: string
+  amount: number
+  counterpartyName: string | null
+}
+
+export type RecurringSyncTrigger = 'SCHEDULED' | 'MANUAL'
+
+export interface RecurringSyncLog {
+  id: number | null
+  ranAt: string
+  triggeredBy: RecurringSyncTrigger
+  seriesUpdatedCount: number
+  transactionsLinkedCount: number
+  entries: RecurringSyncLogEntry[]
+}
+
+export async function fetchRecurringSyncLogs(): Promise<RecurringSyncLog[]> {
+  const res = await fetchWithUser('/transactions/recurring/sync-log')
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  return res.json() as Promise<RecurringSyncLog[]>
+}

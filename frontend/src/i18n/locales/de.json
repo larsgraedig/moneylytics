@@ -522,7 +522,21 @@
     "cancelPending": "Abbrechen",
     "dismiss": "Als Fehlererkennung markieren",
     "restore": "Wiederherstellen",
-    "falsePositive": "Fehlererkennung"
+    "falsePositive": "Fehlererkennung",
+    "syncLog": {
+      "button": "Protokoll",
+      "title": "Synchronisations-Protokoll",
+      "empty": "Noch keine Synchronisierungen gelaufen.",
+      "noChanges": "Keine Änderungen",
+      "summary": "{{series}} Serie(n), {{count}} Transaktion(en) verknüpft",
+      "date": "Datum",
+      "amount": "Betrag",
+      "counterparty": "Gegenpartei",
+      "trigger": {
+        "SCHEDULED": "Automatisch",
+        "MANUAL": "Manuell"
+      }
+    }
   },
   "burnrate": {
     "windowBtn": "Ø {{days}} Tage",

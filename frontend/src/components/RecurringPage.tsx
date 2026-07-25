@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { RefreshCw, X, RotateCcw, Plus, Trash2 } from 'lucide-react'
+import { RefreshCw, X, RotateCcw, Plus, Trash2, ClipboardList } from 'lucide-react'
 import {
   fetchRecurringSeries,
   refreshRecurringSeries,
@@ -8,11 +8,14 @@ import {
   createRecurringSeries,
   deleteRecurringSeries,
   correctRecurringSeriesType,
+  fetchRecurringSyncLogs,
   type RecurringSeriesItem,
   type RecurrenceDirection,
   type RecurrenceCadence,
   type RecurringType,
   type CreateRecurringSeriesBody,
+  type RecurringSyncLog,
+  type RecurringSyncTrigger,
 } from '../api/recurring'
 import { fetchAccounts, type Account } from '../api/accounts'
 
@@ -73,6 +76,10 @@ function formatAmount(amount: number, currency: string): string {
   return new Intl.NumberFormat('de-DE', { style: 'currency', currency }).format(Math.abs(amount))
 }
 
+function formatDateTime(iso: string): string {
+  return new Intl.DateTimeFormat('de-DE', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(iso))
+}
+
 export default function RecurringPage() {
   const { t } = useTranslation()
   const [state, setState] = useState<PageState>({ phase: 'idle' })
@@ -86,6 +93,9 @@ export default function RecurringPage() {
   const [addForm, setAddForm] = useState<AddForm>(DEFAULT_FORM)
   const [addSubmitting, setAddSubmitting] = useState(false)
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null)
+  const [showSyncLog, setShowSyncLog] = useState(false)
+  const [syncLogs, setSyncLogs] = useState<RecurringSyncLog[]>([])
+  const [syncLogLoading, setSyncLogLoading] = useState(false)
 
   useEffect(() => {
     load()
@@ -219,6 +229,19 @@ export default function RecurringPage() {
     }
   }
 
+  async function openSyncLog() {
+    setShowSyncLog(true)
+    setSyncLogLoading(true)
+    try {
+      const logs = await fetchRecurringSyncLogs()
+      setSyncLogs(logs)
+    } catch {
+      setSyncLogs([])
+    } finally {
+      setSyncLogLoading(false)
+    }
+  }
+
   const isPending = state.phase === 'pending'
   const allSeries = (state.phase === 'ready' || state.phase === 'pending') ? state.series : []
   const displaySeries = filterDirection ? allSeries.filter(s => s.direction === filterDirection) : allSeries
@@ -258,6 +281,9 @@ export default function RecurringPage() {
             </>
           ) : (
             <>
+              <button className="rcr-log-btn" onClick={openSyncLog} title={t('recurring.syncLog.button')}>
+                <ClipboardList size={14} />
+              </button>
               <button className="rcr-add-btn" onClick={openAddModal}>
                 <Plus size={14} />
                 {t('recurring.addManual')}
@@ -561,6 +587,77 @@ export default function RecurringPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {showSyncLog && (
+        <div className="rcr-modal-overlay" onClick={() => setShowSyncLog(false)}>
+          <div className="rcr-modal rcr-modal--wide" onClick={e => e.stopPropagation()}>
+            <div className="rcr-modal-header">
+              <span className="rcr-modal-title">{t('recurring.syncLog.title')}</span>
+              <button className="rcr-modal-close" onClick={() => setShowSyncLog(false)}>
+                <X size={16} />
+              </button>
+            </div>
+            <div className="rcr-modal-body rcr-synclog-body">
+              {syncLogLoading && <p className="hint loading">{t('common.fetching')}</p>}
+              {!syncLogLoading && syncLogs.length === 0 && (
+                <p className="hint">{t('recurring.syncLog.empty')}</p>
+              )}
+              {!syncLogLoading && syncLogs.map(log => {
+                const hasChanges = log.seriesUpdatedCount > 0
+                const byLabel = log.entries.reduce<Record<string, typeof log.entries>>((acc, e) => {
+                  const key = e.seriesLabel
+                  if (!acc[key]) acc[key] = []
+                  acc[key].push(e)
+                  return acc
+                }, {})
+                return (
+                  <div key={log.id} className="rcr-synclog-run">
+                    <div className="rcr-synclog-run-header">
+                      <span className="rcr-synclog-run-time">{formatDateTime(log.ranAt)}</span>
+                      <span className={`rcr-synclog-trigger rcr-synclog-trigger--${log.triggeredBy.toLowerCase()}`}>
+                        {t(`recurring.syncLog.trigger.${log.triggeredBy}` as Parameters<typeof t>[0])}
+                      </span>
+                      <span className="rcr-synclog-run-summary">
+                        {hasChanges
+                          ? t('recurring.syncLog.summary', {
+                              series: log.seriesUpdatedCount,
+                              count: log.transactionsLinkedCount,
+                            })
+                          : t('recurring.syncLog.noChanges')}
+                      </span>
+                    </div>
+                    {hasChanges && Object.entries(byLabel).map(([label, entries]) => (
+                      <div key={label} className="rcr-synclog-series">
+                        <div className="rcr-synclog-series-label">{label}</div>
+                        <table className="rcr-history-table">
+                          <thead>
+                            <tr>
+                              <th>{t('recurring.syncLog.date')}</th>
+                              <th>{t('recurring.syncLog.amount')}</th>
+                              <th>{t('recurring.syncLog.counterparty')}</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {entries.map(e => (
+                              <tr key={e.transactionId}>
+                                <td>{e.bookingDate}</td>
+                                <td className={e.amount < 0 ? 'rcr-amount--expense' : 'rcr-amount--income'}>
+                                  {formatAmount(e.amount, 'EUR')}
+                                </td>
+                                <td className="rcr-history-detail">{e.counterpartyName ?? '—'}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    ))}
+                  </div>
+                )
+              })}
+            </div>
           </div>
         </div>
       )}

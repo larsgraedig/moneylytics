@@ -1,24 +1,71 @@
 package com.moneylytics.api.application.service
 
+import com.moneylytics.api.application.port.input.GetRecurringSyncLogUseCase
 import com.moneylytics.api.application.port.input.SyncRecurringSeriesUseCase
 import com.moneylytics.api.application.port.output.RecurringSeriesRepository
+import com.moneylytics.api.application.port.output.RecurringSyncLogRepository
 import com.moneylytics.api.application.port.output.TransactionRepository
+import com.moneylytics.api.domain.RecurringSyncLog
+import com.moneylytics.api.domain.RecurringSyncLogEntry
+import com.moneylytics.api.domain.RecurringSyncTrigger
+import com.moneylytics.api.domain.Transaction
 import org.springframework.stereotype.Service
+import java.time.Instant
 import java.time.LocalDate
 
 @Service
 class RecurringMatcherService(
     private val recurringSeriesRepository: RecurringSeriesRepository,
     private val transactionRepository: TransactionRepository,
-) : SyncRecurringSeriesUseCase {
+    private val syncLogRepository: RecurringSyncLogRepository,
+) : SyncRecurringSeriesUseCase,
+    GetRecurringSyncLogUseCase {
+    private data class SeriesMatchResult(
+        val seriesId: Long,
+        val seriesLabel: String,
+        val newTransactions: List<Transaction>,
+    )
+
     override fun syncForAllUsers() {
         val userIds = recurringSeriesRepository.findAllUserIds()
-        userIds.forEach { userId -> syncForUser(userId) }
+        userIds.forEach { userId -> syncAndLogForUser(userId) }
     }
 
-    private fun syncForUser(userId: Long) {
+    override fun getRecentSyncLogs(userId: Long): List<RecurringSyncLog> = syncLogRepository.findRecentByUserId(userId)
+
+    private fun syncAndLogForUser(userId: Long) {
+        val results = syncForUser(userId)
+        val entries =
+            results.flatMap { r ->
+                r.newTransactions.mapNotNull { tx ->
+                    tx.id?.let { txId ->
+                        RecurringSyncLogEntry(
+                            seriesId = r.seriesId,
+                            seriesLabel = r.seriesLabel,
+                            transactionId = txId,
+                            bookingDate = tx.bookingDate,
+                            amount = tx.amount,
+                            counterpartyName = tx.counterpartyName,
+                        )
+                    }
+                }
+            }
+        syncLogRepository.save(
+            RecurringSyncLog(
+                ranAt = Instant.now(),
+                triggeredBy = RecurringSyncTrigger.SCHEDULED,
+                seriesUpdatedCount = results.size,
+                transactionsLinkedCount = entries.size,
+                entries = entries,
+            ),
+            userId,
+        )
+    }
+
+    private fun syncForUser(userId: Long): List<SeriesMatchResult> {
         val today = LocalDate.now()
         val allSeries = recurringSeriesRepository.findByUserId(userId)
+        val results = mutableListOf<SeriesMatchResult>()
 
         allSeries
             .filter { series -> !series.fingerprint.startsWith("manual:") }
@@ -56,7 +103,10 @@ class RecurringMatcherService(
                         nextExpectedDate = newLastSeen.plusDays(series.intervalDays.toLong()),
                         occurrenceCount = series.occurrenceCount + newIds.size,
                     )
+                    results.add(SeriesMatchResult(seriesId, series.label, newMatches))
                 }
             }
+
+        return results
     }
 }

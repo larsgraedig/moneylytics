@@ -1,6 +1,7 @@
 package com.moneylytics.api.application.service
 
 import com.moneylytics.api.application.port.output.RecurringSeriesRepository
+import com.moneylytics.api.application.port.output.RecurringSyncLogRepository
 import com.moneylytics.api.application.port.output.TransactionRepository
 import com.moneylytics.api.domain.RecurrenceCadence
 import com.moneylytics.api.domain.RecurrenceDirection
@@ -24,7 +25,8 @@ import java.time.LocalDate
 class RecurringMatcherServiceTest {
     private val recurringSeriesRepository: RecurringSeriesRepository = mock()
     private val transactionRepository: TransactionRepository = mock()
-    private val service = RecurringMatcherService(recurringSeriesRepository, transactionRepository)
+    private val syncLogRepository: RecurringSyncLogRepository = mock()
+    private val service = RecurringMatcherService(recurringSeriesRepository, transactionRepository, syncLogRepository)
 
     private val userId = 1L
     private val baseDate = LocalDate.of(2024, 1, 1)

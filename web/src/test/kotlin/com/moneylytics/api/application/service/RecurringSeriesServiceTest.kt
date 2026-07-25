@@ -8,6 +8,7 @@ import com.moneylytics.api.application.port.input.GetRecurringSeriesQuery
 import com.moneylytics.api.application.port.input.RefreshRecurringSeriesCommand
 import com.moneylytics.api.application.port.output.RecurringFalsePositiveRepository
 import com.moneylytics.api.application.port.output.RecurringSeriesRepository
+import com.moneylytics.api.application.port.output.RecurringSyncLogRepository
 import com.moneylytics.api.application.port.output.RecurringTypeClassifier
 import com.moneylytics.api.application.port.output.TransactionRepository
 import com.moneylytics.api.domain.RecurrenceCadence
@@ -39,8 +40,16 @@ class RecurringSeriesServiceTest {
     private val falsePositiveRepository: RecurringFalsePositiveRepository = mock()
     private val detector: RecurringSeriesDetector = mock()
     private val classifier: RecurringTypeClassifier = mock()
+    private val syncLogRepository: RecurringSyncLogRepository = mock()
     private val service =
-        RecurringSeriesService(transactionRepository, recurringSeriesRepository, falsePositiveRepository, detector, classifier)
+        RecurringSeriesService(
+            transactionRepository,
+            recurringSeriesRepository,
+            falsePositiveRepository,
+            detector,
+            classifier,
+            syncLogRepository,
+        )
 
     private val userId = 1L
     private val today = LocalDate.now()

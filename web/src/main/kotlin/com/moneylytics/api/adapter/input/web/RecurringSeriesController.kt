@@ -11,6 +11,7 @@ import com.moneylytics.api.application.port.input.DeleteRecurringSeriesUseCase
 import com.moneylytics.api.application.port.input.DetectRecurringSeriesUseCase
 import com.moneylytics.api.application.port.input.GetRecurringSeriesQuery
 import com.moneylytics.api.application.port.input.GetRecurringSeriesUseCase
+import com.moneylytics.api.application.port.input.GetRecurringSyncLogUseCase
 import com.moneylytics.api.application.port.input.RefreshRecurringSeriesCommand
 import com.moneylytics.api.application.port.input.ResolveUserUseCase
 import com.moneylytics.api.domain.RecurrenceCadence
@@ -44,6 +45,7 @@ class RecurringSeriesController(
     private val correctRecurringSeriesTypeUseCase: CorrectRecurringSeriesTypeUseCase,
     private val createRecurringSeriesUseCase: CreateRecurringSeriesUseCase,
     private val deleteRecurringSeriesUseCase: DeleteRecurringSeriesUseCase,
+    private val getRecurringSyncLogUseCase: GetRecurringSyncLogUseCase,
     private val resolveUserUseCase: ResolveUserUseCase,
 ) {
     @GetMapping("/recurring")
@@ -123,6 +125,15 @@ class RecurringSeriesController(
                         falsePositiveFingerprints = body.falsePositiveFingerprints,
                     ),
                 ).map { it.toItem() }
+        }
+
+    @GetMapping("/recurring/sync-log")
+    suspend fun getSyncLog(
+        @AuthenticationPrincipal principal: UserDetails,
+    ): List<RecurringSyncLogItem> =
+        withContext(Dispatchers.IO) {
+            val userId = resolveUserUseCase.resolveUser(principal.username)
+            getRecurringSyncLogUseCase.getRecentSyncLogs(userId).map { it.toItem() }
         }
 
     @PatchMapping("/recurring/{id}/type")

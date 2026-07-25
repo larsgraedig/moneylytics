@@ -14,6 +14,7 @@ import com.moneylytics.api.application.port.input.GetRecurringSeriesUseCase
 import com.moneylytics.api.application.port.input.RefreshRecurringSeriesCommand
 import com.moneylytics.api.application.port.output.RecurringFalsePositiveRepository
 import com.moneylytics.api.application.port.output.RecurringSeriesRepository
+import com.moneylytics.api.application.port.output.RecurringSyncLogRepository
 import com.moneylytics.api.application.port.output.RecurringTypeClassifier
 import com.moneylytics.api.application.port.output.TransactionRepository
 import com.moneylytics.api.domain.RecurrenceCadence
@@ -21,11 +22,15 @@ import com.moneylytics.api.domain.RecurrenceDeviation
 import com.moneylytics.api.domain.RecurrenceStatus
 import com.moneylytics.api.domain.RecurringFalsePositive
 import com.moneylytics.api.domain.RecurringSeries
+import com.moneylytics.api.domain.RecurringSyncLog
+import com.moneylytics.api.domain.RecurringSyncLogEntry
+import com.moneylytics.api.domain.RecurringSyncTrigger
 import com.moneylytics.api.domain.RecurringType
 import com.moneylytics.api.domain.toFeatures
 import org.springframework.stereotype.Service
 import java.math.BigDecimal
 import java.math.RoundingMode
+import java.time.Instant
 import java.time.LocalDate
 import java.time.temporal.ChronoUnit
 import java.util.UUID
@@ -38,6 +43,7 @@ class RecurringSeriesService(
     private val falsePositiveRepository: RecurringFalsePositiveRepository,
     private val detector: RecurringSeriesDetector,
     private val classifier: RecurringTypeClassifier,
+    private val syncLogRepository: RecurringSyncLogRepository,
 ) : DetectRecurringSeriesUseCase,
     GetRecurringSeriesUseCase,
     CorrectRecurringSeriesTypeUseCase,
@@ -111,7 +117,41 @@ class RecurringSeriesService(
         val toRemove = command.confirmedFingerprints.filter { it in falsePositiveRepository.findFingerprintsByUserId(command.userId) }
         if (toRemove.isNotEmpty()) falsePositiveRepository.deleteByUserIdAndFingerprints(command.userId, toRemove)
 
-        return recurringSeriesRepository.findByUserId(command.userId).map { computeDeviation(it, today) }
+        val saved = recurringSeriesRepository.findByUserId(command.userId).map { computeDeviation(it, today) }
+        writeConfirmLog(confirmed, saved, command.userId)
+        return saved
+    }
+
+    private fun writeConfirmLog(
+        confirmed: List<RecurringSeries>,
+        saved: List<RecurringSeries>,
+        userId: Long,
+    ) {
+        val savedById = saved.associateBy { it.fingerprint }
+        val entries =
+            confirmed.flatMap { series ->
+                val savedId = savedById[series.fingerprint]?.id
+                series.occurrences.map { occ ->
+                    RecurringSyncLogEntry(
+                        seriesId = savedId,
+                        seriesLabel = series.label,
+                        transactionId = occ.transactionId,
+                        bookingDate = occ.date,
+                        amount = occ.amount,
+                        counterpartyName = occ.counterpartyName,
+                    )
+                }
+            }
+        syncLogRepository.save(
+            RecurringSyncLog(
+                ranAt = Instant.now(),
+                triggeredBy = RecurringSyncTrigger.MANUAL,
+                seriesUpdatedCount = confirmed.size,
+                transactionsLinkedCount = entries.size,
+                entries = entries,
+            ),
+            userId,
+        )
     }
 
     override fun getRecurringSeries(query: GetRecurringSeriesQuery): List<RecurringSeries> {
