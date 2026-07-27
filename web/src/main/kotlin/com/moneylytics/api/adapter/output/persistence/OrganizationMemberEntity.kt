@@ -20,7 +20,7 @@ data class OrganizationMemberId(
 ) : Serializable
 
 @Entity
-@Table(name = "organization_members")
+@Table(name = "organization_member")
 @IdClass(OrganizationMemberId::class)
 class OrganizationMemberEntity(
     @Id

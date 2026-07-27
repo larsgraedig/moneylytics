@@ -11,7 +11,7 @@ import jakarta.persistence.ManyToOne
 import jakarta.persistence.Table
 
 @Entity
-@Table(name = "categories")
+@Table(name = "category")
 class CategoryEntity(
     @Column(nullable = false)
     val name: String,

@@ -13,7 +13,7 @@ import jakarta.persistence.UniqueConstraint
 
 @Entity
 @Table(
-    name = "ignored_transactions",
+    name = "ignored_transaction",
     uniqueConstraints = [UniqueConstraint(columnNames = ["fingerprint", "organization_id"])],
 )
 class IgnoredTransactionEntity(

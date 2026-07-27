@@ -15,7 +15,7 @@ import java.time.LocalDate
 
 @Entity
 @Table(
-    name = "accounts",
+    name = "account",
     uniqueConstraints = [UniqueConstraint(columnNames = ["iban", "organization_id"])],
 )
 class AccountEntity(

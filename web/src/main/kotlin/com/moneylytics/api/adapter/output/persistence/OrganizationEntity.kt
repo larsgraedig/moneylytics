@@ -9,7 +9,7 @@ import jakarta.persistence.Table
 import java.time.Instant
 
 @Entity
-@Table(name = "organizations")
+@Table(name = "organization")
 class OrganizationEntity(
     @Column(nullable = false)
     val name: String,

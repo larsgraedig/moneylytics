@@ -8,7 +8,7 @@ import jakarta.persistence.Id
 import jakarta.persistence.Table
 
 @Entity
-@Table(name = "recurring_classifier_class_counts")
+@Table(name = "recurring_classifier_class_count")
 class RecurringClassifierClassCountEntity(
     @Column(name = "organization_id", nullable = false)
     val organizationId: Long,

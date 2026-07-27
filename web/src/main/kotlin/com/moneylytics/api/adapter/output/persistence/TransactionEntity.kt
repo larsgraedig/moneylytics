@@ -13,7 +13,7 @@ import java.math.BigDecimal
 import java.time.LocalDate
 
 @Entity
-@Table(name = "transactions")
+@Table(name = "transaction")
 class TransactionEntity(
     @Column(nullable = true)
     var category: String?,

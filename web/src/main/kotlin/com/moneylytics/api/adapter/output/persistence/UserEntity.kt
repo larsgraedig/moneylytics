@@ -14,7 +14,7 @@ import jakarta.persistence.ManyToOne
 import jakarta.persistence.Table
 
 @Entity
-@Table(name = "users")
+@Table(name = "`user`")
 class UserEntity(
     @Column(nullable = false, unique = true)
     val externalId: String,

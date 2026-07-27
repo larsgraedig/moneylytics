@@ -16,7 +16,7 @@ import java.math.BigDecimal
 
 @Entity
 @Table(
-    name = "transaction_offsets",
+    name = "transaction_offset",
     uniqueConstraints = [UniqueConstraint(columnNames = ["transaction_a_id", "transaction_b_id"])],
 )
 class TransactionOffsetEntity(
