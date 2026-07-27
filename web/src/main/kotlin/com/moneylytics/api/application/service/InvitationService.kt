@@ -32,7 +32,7 @@ class InvitationService(
         email: String,
         role: OrgRole,
         createdByUserId: Long,
-    ): Invitation = invitationRepository.create(organizationId, email, role, createdByUserId)
+    ): Invitation = invitationRepository.create(organizationId, email.trim().lowercase(), role, createdByUserId)
 
     override fun getInvitation(token: String): Invitation? = invitationRepository.findByToken(token)
 
@@ -53,7 +53,7 @@ class InvitationService(
         val user =
             userRepository.findById(userId)
                 ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "User not found")
-        if (!user.externalId.equals(invitation.email, ignoreCase = true)) {
+        if (user.externalId.trim().lowercase() != invitation.email.trim().lowercase()) {
             throw ResponseStatusException(HttpStatus.FORBIDDEN, "Email does not match invitation")
         }
         if (!organizationRepository.isMember(invitation.organizationId, userId)) {

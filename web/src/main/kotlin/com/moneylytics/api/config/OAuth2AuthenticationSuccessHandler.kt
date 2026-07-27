@@ -37,10 +37,11 @@ class OAuth2AuthenticationSuccessHandler(
                 else -> null
             } ?: return Mono.error(IllegalStateException("No email claim in OAuth2 token"))
 
+        val normalizedEmail = email.trim().lowercase()
         return Mono
-            .fromCallable { loginOAuthUserUseCase.loginOAuthUser(email) }
+            .fromCallable { loginOAuthUserUseCase.loginOAuthUser(normalizedEmail) }
             .subscribeOn(Schedulers.boundedElastic())
-            .then(userDetailsService.findByUsername(email))
+            .then(userDetailsService.findByUsername(normalizedEmail))
             .flatMap { userDetails ->
                 val newAuth = UsernamePasswordAuthenticationToken(userDetails, null, userDetails.authorities)
                 securityContextRepository
