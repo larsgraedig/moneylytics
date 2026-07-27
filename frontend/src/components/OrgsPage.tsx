@@ -55,7 +55,18 @@ export default function OrgsPage() {
 
   async function handleCopy(token: string) {
     const link = `${window.location.origin}/invite/${token}`
-    await navigator.clipboard.writeText(link)
+    if (navigator.clipboard) {
+      await navigator.clipboard.writeText(link)
+    } else {
+      const el = document.createElement('textarea')
+      el.value = link
+      el.style.position = 'fixed'
+      el.style.opacity = '0'
+      document.body.appendChild(el)
+      el.select()
+      document.execCommand('copy')
+      document.body.removeChild(el)
+    }
     setCopiedToken(token)
     setTimeout(() => setCopiedToken(null), 2000)
   }
