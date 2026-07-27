@@ -112,7 +112,15 @@ class AuthController(
     ): AuthResponse {
         val userId = resolveUserUseCase.resolveUser(username)
         val memberships = getOrganizationsUseCase.getOrganizations(userId)
-        val orgs = memberships.map { OrganizationInfo(id = it.organization.id, name = it.organization.name, role = it.role.name) }
+        val orgs =
+            memberships.map {
+                OrganizationInfo(
+                    id = it.organization.id,
+                    name = it.organization.name,
+                    role = it.role.name,
+                    logoUrl = it.organization.logoUrl,
+                )
+            }
         val activeOrgId = activeOrganizationId ?: orgs.firstOrNull()?.id
         return AuthResponse(
             username = username,
@@ -138,6 +146,7 @@ data class OrganizationInfo(
     val id: Long,
     val name: String,
     val role: String,
+    val logoUrl: String? = null,
 )
 
 data class AuthResponse(

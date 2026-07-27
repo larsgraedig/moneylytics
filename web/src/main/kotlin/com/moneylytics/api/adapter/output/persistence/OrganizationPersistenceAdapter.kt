@@ -66,7 +66,31 @@ class OrganizationPersistenceAdapter(
 
     override fun findAll(): List<Organization> = organizationJpaRepository.findAll().map { it.toDomain() }
 
-    private fun OrganizationEntity.toDomain() = Organization(id = id!!, name = name)
+    @Transactional
+    override fun updateLogo(
+        orgId: Long,
+        logoData: ByteArray?,
+        contentType: String?,
+    ) {
+        val entity = organizationJpaRepository.findById(orgId).orElse(null) ?: return
+        entity.logoData = logoData
+        entity.logoContentType = contentType
+        organizationJpaRepository.save(entity)
+    }
+
+    override fun getLogo(orgId: Long): Pair<ByteArray, String>? {
+        val entity = organizationJpaRepository.findById(orgId).orElse(null) ?: return null
+        val data = entity.logoData ?: return null
+        val contentType = entity.logoContentType ?: return null
+        return Pair(data, contentType)
+    }
+
+    private fun OrganizationEntity.toDomain() =
+        Organization(
+            id = id!!,
+            name = name,
+            logoUrl = if (logoData != null) "/organizations/$id/logo" else null,
+        )
 
     private fun OrganizationMemberEntity.toMembership() =
         OrganizationMembership(

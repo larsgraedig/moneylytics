@@ -46,3 +46,15 @@ export async function updateMemberRole(orgId: number, userId: number, role: stri
   })
   if (!res.ok) throw new Error('Failed to update member role')
 }
+
+export async function uploadOrgLogo(orgId: number, file: File): Promise<void> {
+  const form = new FormData()
+  form.append('file', file)
+  const res = await fetchWithUser(`/organizations/${orgId}/logo`, { method: 'POST', body: form })
+  if (!res.ok) throw new Error('Failed to upload logo')
+}
+
+export async function deleteOrgLogo(orgId: number): Promise<void> {
+  const res = await fetchWithUser(`/organizations/${orgId}/logo`, { method: 'DELETE' })
+  if (!res.ok) throw new Error('Failed to delete logo')
+}

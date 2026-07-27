@@ -29,6 +29,7 @@ import SettingsPanel from './components/SettingsPanel'
 import InvitePage from './components/InvitePage'
 import OnboardingModal from './components/OnboardingModal'
 import OrgSelectModal from './components/OrgSelectModal'
+import OrgAvatar from './components/OrgAvatar'
 import { fetchSankeyData, type SankeyResponse } from './api/transactions'
 import { fetchAccounts, type Account } from './api/accounts'
 import { fetchCategories, type CategoryGroup } from './api/rawImport'
@@ -175,7 +176,7 @@ export default function App() {
         }
       }).catch(() => {})
     })
-  }, [username])
+  }, [username, activeOrganization?.id])
 
   if (location.pathname.startsWith('/invite/')) {
     const token = location.pathname.split('/')[2]
@@ -246,20 +247,11 @@ export default function App() {
                 </button>
               </>
             )}
-            {organizations.length > 1 && (
-              <select
-                className="org-select"
-                value={activeOrganization?.id ?? ''}
-                onChange={e => activateOrganization(Number(e.target.value))}
-              >
-                {organizations.map(org => (
-                  <option key={org.id} value={org.id}>{org.name}</option>
-                ))}
-              </select>
-            )}
-            {organizations.length === 1 && activeOrganization && (
-              <span className="org-name">{activeOrganization.name}</span>
-            )}
+            <OrgAvatar
+              organizations={organizations}
+              activeOrganization={activeOrganization}
+              onSwitch={activateOrganization}
+            />
             <button className="session-user-btn" onClick={() => setSettingsOpen(true)}>
               {username}
             </button>
@@ -350,21 +342,21 @@ export default function App() {
             </>
           )}
 
-          {tab === 'cashflow' && <CashflowPage key={username} from={from} to={to} iban={iban} />}
-          {tab === 'burnrate' && <BurnRatePage key={username} from={from} to={to} iban={iban} />}
-          {tab === 'trends' && <TrendsPage key={username} from={from} to={to} iban={iban} categories={categories} />}
-          {tab === 'breakdown' && <PiePage key={username} from={from} to={to} iban={iban} />}
-          {tab === 'kontoauszug' && <TransactionsPage key={username} from={from} to={to} iban={iban} accounts={accounts} categories={categories} columnOrder={txColumnOrder ?? undefined} onColumnOrderChange={order => setTxColumnOrder(order)} />}
-          {tab === 'verknuepfungen' && <LinkedTransactionsPage key={username} />}
-          {tab === 'sammlungen' && <CollectionsPage key={username} accounts={accounts} categories={categories} />}
-          {tab === 'budgets' && <BudgetsPage key={username} from={from} to={to} iban={iban} accounts={accounts} categories={categories} />}
-          {tab === 'limits' && <ThresholdsPage key={username} from={from} to={to} iban={iban} categories={categories} />}
-          {tab === 'konten' && <AccountsPage key={username} />}
-          {tab === 'csv' && <CsvImportPage key={username} categories={categories} />}
-          {tab === 'camt' && <CamtImportPage key={username} categories={categories} />}
-          {tab === 'wiederkehrer' && <RecurringPage key={username} />}
+          {tab === 'cashflow' && <CashflowPage key={`${username}-${activeOrganization?.id}`} from={from} to={to} iban={iban} />}
+          {tab === 'burnrate' && <BurnRatePage key={`${username}-${activeOrganization?.id}`} from={from} to={to} iban={iban} />}
+          {tab === 'trends' && <TrendsPage key={`${username}-${activeOrganization?.id}`} from={from} to={to} iban={iban} categories={categories} />}
+          {tab === 'breakdown' && <PiePage key={`${username}-${activeOrganization?.id}`} from={from} to={to} iban={iban} />}
+          {tab === 'kontoauszug' && <TransactionsPage key={`${username}-${activeOrganization?.id}`} from={from} to={to} iban={iban} accounts={accounts} categories={categories} columnOrder={txColumnOrder ?? undefined} onColumnOrderChange={order => setTxColumnOrder(order)} />}
+          {tab === 'verknuepfungen' && <LinkedTransactionsPage key={`${username}-${activeOrganization?.id}`} />}
+          {tab === 'sammlungen' && <CollectionsPage key={`${username}-${activeOrganization?.id}`} accounts={accounts} categories={categories} />}
+          {tab === 'budgets' && <BudgetsPage key={`${username}-${activeOrganization?.id}`} from={from} to={to} iban={iban} accounts={accounts} categories={categories} />}
+          {tab === 'limits' && <ThresholdsPage key={`${username}-${activeOrganization?.id}`} from={from} to={to} iban={iban} categories={categories} />}
+          {tab === 'konten' && <AccountsPage key={`${username}-${activeOrganization?.id}`} />}
+          {tab === 'csv' && <CsvImportPage key={`${username}-${activeOrganization?.id}`} categories={categories} />}
+          {tab === 'camt' && <CamtImportPage key={`${username}-${activeOrganization?.id}`} categories={categories} />}
+          {tab === 'wiederkehrer' && <RecurringPage key={`${username}-${activeOrganization?.id}`} />}
           {tab === 'orgs' && isOrgAdminOrOwner && <OrgsPage key={activeOrganization?.id} />}
-          {tab === 'admin' && isSystemAdmin && <AdminPage key={username} />}
+          {tab === 'admin' && isSystemAdmin && <AdminPage key={`${username}-${activeOrganization?.id}`} />}
         </main>
       </div>
       {settingsOpen && <SettingsPanel accounts={accounts} defaultAccountIban={selectedIban} onClose={() => setSettingsOpen(false)} />}

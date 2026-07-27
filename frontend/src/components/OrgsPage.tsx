@@ -1,13 +1,16 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { UserMinus, Copy, Check } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
-import { getMembers, removeMember, updateMemberRole, type OrgMember } from '../api/organizations'
+import { getMembers, removeMember, updateMemberRole, uploadOrgLogo, deleteOrgLogo, type OrgMember } from '../api/organizations'
 import { createInvitation, listPendingInvitations, type PendingInvitation } from '../api/invitations'
 
 export default function OrgsPage() {
   const { t } = useTranslation()
-  const { username, activeOrganization } = useAuth()
+  const { username, activeOrganization, refreshAuth } = useAuth()
+  const [logoFile, setLogoFile] = useState<File | null>(null)
+  const [logoLoading, setLogoLoading] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const [members, setMembers] = useState<OrgMember[]>([])
   const [loading, setLoading] = useState(false)
   const [inviteEmail, setInviteEmail] = useState('')
@@ -81,12 +84,92 @@ export default function OrgsPage() {
     }
   }
 
+  async function handleUploadLogo() {
+    if (!activeOrganization || !logoFile) return
+    setError(null)
+    setSuccess(null)
+    setLogoLoading(true)
+    try {
+      await uploadOrgLogo(activeOrganization.id, logoFile)
+      setLogoFile(null)
+      if (fileInputRef.current) fileInputRef.current.value = ''
+      await refreshAuth()
+      setSuccess(t('orgs.logo.uploadSuccess'))
+    } catch {
+      setError(t('orgs.logo.uploadError'))
+    } finally {
+      setLogoLoading(false)
+    }
+  }
+
+  async function handleRemoveLogo() {
+    if (!activeOrganization) return
+    setError(null)
+    setSuccess(null)
+    setLogoLoading(true)
+    try {
+      await deleteOrgLogo(activeOrganization.id)
+      await refreshAuth()
+      setSuccess(t('orgs.logo.removeSuccess'))
+    } catch {
+      setError(t('orgs.logo.removeError'))
+    } finally {
+      setLogoLoading(false)
+    }
+  }
+
+  const isAdminOrOwner = activeOrganization?.role === 'ADMIN' || activeOrganization?.role === 'OWNER'
+
   if (!activeOrganization) return null
 
   return (
     <div className="adm-page">
       {error && <p className="adm-feedback adm-feedback--error">{error}</p>}
       {success && <p className="adm-feedback adm-feedback--ok">{success}</p>}
+
+      {isAdminOrOwner && (
+        <section className="adm-section org-section--wide">
+          <h2 className="adm-section-title">{t('orgs.logo.title')}</h2>
+          <div className="org-logo-row">
+            {activeOrganization.logoUrl ? (
+              <img
+                className="org-logo-preview"
+                src={activeOrganization.logoUrl}
+                alt={activeOrganization.name}
+              />
+            ) : (
+              <div className="org-logo-placeholder">
+                {activeOrganization.name.trim().split(/\s+/).slice(0, 2).map(w => w.charAt(0).toUpperCase()).join('')}
+              </div>
+            )}
+            <div className="org-logo-actions">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="org-logo-file-input"
+                onChange={e => setLogoFile(e.target.files?.[0] ?? null)}
+              />
+              <button
+                className="adm-trigger-btn"
+                onClick={handleUploadLogo}
+                disabled={!logoFile || logoLoading}
+              >
+                {t('orgs.logo.upload')}
+              </button>
+              {activeOrganization.logoUrl && (
+                <button
+                  className="org-remove-btn"
+                  onClick={handleRemoveLogo}
+                  disabled={logoLoading}
+                >
+                  {t('orgs.logo.remove')}
+                </button>
+              )}
+            </div>
+          </div>
+        </section>
+      )}
 
       <section className="adm-section org-section--wide">
         <h2 className="adm-section-title">{t('orgs.members.title')} — {activeOrganization.name}</h2>

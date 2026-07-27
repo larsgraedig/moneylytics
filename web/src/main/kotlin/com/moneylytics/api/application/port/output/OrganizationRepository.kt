@@ -43,4 +43,12 @@ interface OrganizationRepository {
     fun findAllOrganizationIds(): Set<Long>
 
     fun findAll(): List<Organization>
+
+    fun updateLogo(
+        orgId: Long,
+        logoData: ByteArray?,
+        contentType: String?,
+    )
+
+    fun getLogo(orgId: Long): Pair<ByteArray, String>?
 }

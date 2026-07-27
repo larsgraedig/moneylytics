@@ -7,6 +7,7 @@ import com.moneylytics.api.application.port.input.GetOrganizationsUseCase
 import com.moneylytics.api.application.port.input.ListUsersWithOrgsUseCase
 import com.moneylytics.api.application.port.input.ManageOrganizationMembersUseCase
 import com.moneylytics.api.application.port.input.OnboardOrganizationUseCase
+import com.moneylytics.api.application.port.input.OrganizationLogoUseCase
 import com.moneylytics.api.application.port.input.RequireOrgRoleUseCase
 import com.moneylytics.api.application.port.input.ResolveOrganizationUseCase
 import com.moneylytics.api.application.port.output.OrganizationRepository
@@ -38,7 +39,8 @@ class OrganizationService(
     RequireOrgRoleUseCase,
     ListUsersWithOrgsUseCase,
     OnboardOrganizationUseCase,
-    AdminManageOrgMembersUseCase {
+    AdminManageOrgMembersUseCase,
+    OrganizationLogoUseCase {
     override suspend fun resolveOrganization(
         principal: UserDetails,
         exchange: ServerWebExchange,
@@ -150,6 +152,26 @@ class OrganizationService(
                 ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "User not found: $externalId")
         organizationRepository.removeMember(orgId, userId)
     }
+
+    override fun uploadLogo(
+        orgId: Long,
+        logoData: ByteArray,
+        contentType: String,
+        requestingUserId: Long,
+    ) {
+        requireOrgRole(orgId, requestingUserId, OrgRole.ADMIN)
+        organizationRepository.updateLogo(orgId, logoData, contentType)
+    }
+
+    override fun deleteLogo(
+        orgId: Long,
+        requestingUserId: Long,
+    ) {
+        requireOrgRole(orgId, requestingUserId, OrgRole.ADMIN)
+        organizationRepository.updateLogo(orgId, null, null)
+    }
+
+    override fun getLogo(orgId: Long): Pair<ByteArray, String>? = organizationRepository.getLogo(orgId)
 
     override fun requireOrgRole(
         organizationId: Long,

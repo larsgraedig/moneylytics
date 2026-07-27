@@ -15,6 +15,10 @@ class OrganizationEntity(
     val name: String,
     @Column(nullable = false)
     val createdAt: Instant = Instant.now(),
+    @Column(nullable = true, name = "logo_data")
+    var logoData: ByteArray? = null,
+    @Column(nullable = true, name = "logo_content_type", length = 100)
+    var logoContentType: String? = null,
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     var id: Long? = null,

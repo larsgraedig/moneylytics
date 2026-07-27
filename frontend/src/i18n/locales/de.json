@@ -644,6 +644,15 @@
       "expires": "Läuft ab",
       "linkGenerated": "Einladungslink wurde erstellt.",
       "error": "Einladung fehlgeschlagen."
+    },
+    "logo": {
+      "title": "Organisationslogo",
+      "upload": "Logo hochladen",
+      "remove": "Logo entfernen",
+      "uploadSuccess": "Logo erfolgreich hochgeladen.",
+      "removeSuccess": "Logo erfolgreich entfernt.",
+      "uploadError": "Logo hochladen fehlgeschlagen.",
+      "removeError": "Logo entfernen fehlgeschlagen."
     }
   },
   "invite": {

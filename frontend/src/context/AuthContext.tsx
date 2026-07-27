@@ -4,6 +4,7 @@ export interface Organization {
   id: number
   name: string
   role: string
+  logoUrl?: string
 }
 
 interface AuthResponse {

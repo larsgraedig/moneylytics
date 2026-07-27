@@ -644,6 +644,15 @@
       "expires": "Expires",
       "linkGenerated": "Invitation link created.",
       "error": "Failed to create invitation."
+    },
+    "logo": {
+      "title": "Organization logo",
+      "upload": "Upload logo",
+      "remove": "Remove logo",
+      "uploadSuccess": "Logo uploaded successfully.",
+      "removeSuccess": "Logo removed successfully.",
+      "uploadError": "Failed to upload logo.",
+      "removeError": "Failed to remove logo."
     }
   },
   "invite": {

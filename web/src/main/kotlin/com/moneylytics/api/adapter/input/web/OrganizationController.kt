@@ -6,14 +6,18 @@ import com.moneylytics.api.application.port.input.GetOrganizationsUseCase
 import com.moneylytics.api.application.port.input.ListPendingInvitationsUseCase
 import com.moneylytics.api.application.port.input.ManageOrganizationMembersUseCase
 import com.moneylytics.api.application.port.input.OnboardOrganizationUseCase
+import com.moneylytics.api.application.port.input.OrganizationLogoUseCase
 import com.moneylytics.api.application.port.input.RequireOrgRoleUseCase
 import com.moneylytics.api.application.port.input.ResolveUserUseCase
 import com.moneylytics.api.domain.OrgRole
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.reactive.awaitSingle
 import kotlinx.coroutines.withContext
+import org.springframework.core.io.buffer.DataBufferUtils
 import org.springframework.http.HttpStatus
+import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
+import org.springframework.http.codec.multipart.FilePart
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.security.core.userdetails.UserDetails
 import org.springframework.web.bind.annotation.DeleteMapping
@@ -29,6 +33,9 @@ import org.springframework.web.server.ResponseStatusException
 import org.springframework.web.server.ServerWebExchange
 import java.time.Instant
 
+private val ALLOWED_LOGO_CONTENT_TYPES = setOf("image/jpeg", "image/png", "image/webp", "image/gif")
+private const val MAX_LOGO_SIZE_BYTES = 2 * 1024 * 1024
+
 @RestController
 @RequestMapping("/organizations")
 class OrganizationController(
@@ -40,6 +47,7 @@ class OrganizationController(
     private val listPendingInvitationsUseCase: ListPendingInvitationsUseCase,
     private val onboardOrganizationUseCase: OnboardOrganizationUseCase,
     private val resolveUserUseCase: ResolveUserUseCase,
+    private val organizationLogoUseCase: OrganizationLogoUseCase,
 ) {
     @GetMapping
     suspend fun getOrganizations(
@@ -48,9 +56,66 @@ class OrganizationController(
         val userId = withContext(Dispatchers.IO) { resolveUserUseCase.resolveUser(principal.username) }
         return withContext(Dispatchers.IO) {
             getOrganizationsUseCase.getOrganizations(userId).map {
-                OrganizationResponse(id = it.organization.id, name = it.organization.name, role = it.role.name)
+                OrganizationResponse(
+                    id = it.organization.id,
+                    name = it.organization.name,
+                    role = it.role.name,
+                    logoUrl = it.organization.logoUrl,
+                )
             }
         }
+    }
+
+    @GetMapping("/{id}/logo", produces = [MediaType.APPLICATION_OCTET_STREAM_VALUE])
+    suspend fun getLogo(
+        @PathVariable id: Long,
+    ): ResponseEntity<ByteArray> {
+        val logo =
+            withContext(Dispatchers.IO) { organizationLogoUseCase.getLogo(id) }
+                ?: return ResponseEntity.notFound().build()
+        val (data, contentType) = logo
+        return ResponseEntity
+            .ok()
+            .contentType(MediaType.parseMediaType(contentType))
+            .body(data)
+    }
+
+    @PostMapping("/{id}/logo")
+    suspend fun uploadLogo(
+        @PathVariable id: Long,
+        @AuthenticationPrincipal principal: UserDetails,
+        exchange: ServerWebExchange,
+    ): ResponseEntity<Void> {
+        val multipart = exchange.multipartData.awaitSingle()
+        val filePart =
+            multipart["file"]?.firstOrNull() as? FilePart
+                ?: return ResponseEntity.badRequest().build()
+        val contentType =
+            filePart.headers().contentType?.toString()
+                ?: throw ResponseStatusException(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "Content-Type required")
+        if (contentType !in ALLOWED_LOGO_CONTENT_TYPES) {
+            throw ResponseStatusException(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "Unsupported content type: $contentType")
+        }
+        val buffer = DataBufferUtils.join(filePart.content()).awaitSingle()
+        val bytes = ByteArray(buffer.readableByteCount())
+        buffer.read(bytes)
+        DataBufferUtils.release(buffer)
+        if (bytes.size > MAX_LOGO_SIZE_BYTES) {
+            throw ResponseStatusException(HttpStatus.PAYLOAD_TOO_LARGE, "Logo must be at most 2 MB")
+        }
+        val userId = withContext(Dispatchers.IO) { resolveUserUseCase.resolveUser(principal.username) }
+        withContext(Dispatchers.IO) { organizationLogoUseCase.uploadLogo(id, bytes, contentType, userId) }
+        return ResponseEntity.noContent().build()
+    }
+
+    @DeleteMapping("/{id}/logo")
+    suspend fun deleteLogo(
+        @PathVariable id: Long,
+        @AuthenticationPrincipal principal: UserDetails,
+    ): ResponseEntity<Void> {
+        val userId = withContext(Dispatchers.IO) { resolveUserUseCase.resolveUser(principal.username) }
+        withContext(Dispatchers.IO) { organizationLogoUseCase.deleteLogo(id, userId) }
+        return ResponseEntity.noContent().build()
     }
 
     @PostMapping("/onboard")
@@ -179,6 +244,7 @@ data class OrganizationResponse(
     val id: Long,
     val name: String,
     val role: String,
+    val logoUrl: String? = null,
 )
 
 data class CreateOrganizationRequest(
