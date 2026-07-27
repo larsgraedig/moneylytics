@@ -28,9 +28,9 @@ class TransactionOffsetServiceTest {
     private val groupRepository: TransactionGroupRepository = mock()
     private val service = TransactionOffsetService(offsetRepository, transactionRepository, groupRepository)
 
-    private val userId = 1L
+    private val organizationId = 1L
     private val date = LocalDate.of(2025, 1, 15)
-    private val newGroup = TransactionGroup(id = 10L, userId = userId, name = null, comment = null)
+    private val newGroup = TransactionGroup(id = 10L, organizationId = organizationId, name = null, comment = null)
 
     @Test
     fun `should throw when linking transaction to itself`() {
@@ -43,7 +43,7 @@ class TransactionOffsetServiceTest {
     @Test
     fun `should throw when source transaction not found`() {
         val command = command(transactionId = 1L, otherTransactionId = 2L)
-        whenever(transactionRepository.findByIdAndUserId(1L, userId)).thenReturn(null)
+        whenever(transactionRepository.findByIdAndOrganizationId(1L, organizationId)).thenReturn(null)
 
         assertThatThrownBy { service.linkTransactions(command) }
             .isInstanceOf(IllegalArgumentException::class.java)
@@ -52,8 +52,8 @@ class TransactionOffsetServiceTest {
     @Test
     fun `should throw when other transaction not found`() {
         val command = command(transactionId = 1L, otherTransactionId = 2L)
-        whenever(transactionRepository.findByIdAndUserId(1L, userId)).thenReturn(expense(1L))
-        whenever(transactionRepository.findByIdAndUserId(2L, userId)).thenReturn(null)
+        whenever(transactionRepository.findByIdAndOrganizationId(1L, organizationId)).thenReturn(expense(1L))
+        whenever(transactionRepository.findByIdAndOrganizationId(2L, organizationId)).thenReturn(null)
 
         assertThatThrownBy { service.linkTransactions(command) }
             .isInstanceOf(IllegalArgumentException::class.java)
@@ -62,8 +62,8 @@ class TransactionOffsetServiceTest {
     @Test
     fun `should throw when transactions are already linked`() {
         val command = command(transactionId = 1L, otherTransactionId = 2L)
-        whenever(transactionRepository.findByIdAndUserId(1L, userId)).thenReturn(expense(1L))
-        whenever(transactionRepository.findByIdAndUserId(2L, userId)).thenReturn(expense(2L))
+        whenever(transactionRepository.findByIdAndOrganizationId(1L, organizationId)).thenReturn(expense(1L))
+        whenever(transactionRepository.findByIdAndOrganizationId(2L, organizationId)).thenReturn(expense(2L))
         whenever(offsetRepository.existsByPair(1L, 2L)).thenReturn(true)
 
         assertThatThrownBy { service.linkTransactions(command) }
@@ -78,7 +78,7 @@ class TransactionOffsetServiceTest {
         stubSuccessfulLink(1L, 2L, txA, txB)
         whenever(groupRepository.findGroupIdsForTransaction(1L)).thenReturn(emptyList())
         whenever(groupRepository.findGroupIdsForTransaction(2L)).thenReturn(emptyList())
-        whenever(groupRepository.create(userId)).thenReturn(newGroup)
+        whenever(groupRepository.create(organizationId)).thenReturn(newGroup)
 
         service.linkTransactions(command)
 
@@ -93,7 +93,7 @@ class TransactionOffsetServiceTest {
         stubSuccessfulLink(1L, 2L, txA, txB)
         whenever(groupRepository.findGroupIdsForTransaction(1L)).thenReturn(emptyList())
         whenever(groupRepository.findGroupIdsForTransaction(2L)).thenReturn(emptyList())
-        whenever(groupRepository.create(userId)).thenReturn(newGroup)
+        whenever(groupRepository.create(organizationId)).thenReturn(newGroup)
         whenever(offsetRepository.create(any())).thenReturn(OffsetLinkResult(1L, 1L, 2L, BigDecimal("-100"), BigDecimal("50"), 10L))
 
         service.linkTransactions(command)
@@ -141,11 +141,11 @@ class TransactionOffsetServiceTest {
         val txB = expense(2L)
         val command = command(1L, 2L, forceNewGroup = true)
         stubSuccessfulLink(1L, 2L, txA, txB)
-        whenever(groupRepository.create(userId)).thenReturn(newGroup)
+        whenever(groupRepository.create(organizationId)).thenReturn(newGroup)
 
         service.linkTransactions(command)
 
-        verify(groupRepository).create(userId)
+        verify(groupRepository).create(organizationId)
     }
 
     @Test
@@ -154,8 +154,8 @@ class TransactionOffsetServiceTest {
         val txA = expense(1L, amount = BigDecimal("-100"), offsetLinks = listOf(existingLink))
         val txB = income(2L, amount = BigDecimal("50"))
         val command = command(1L, 2L, myAmount = null, otherAmount = null)
-        whenever(transactionRepository.findByIdAndUserId(1L, userId)).thenReturn(txA)
-        whenever(transactionRepository.findByIdAndUserId(2L, userId)).thenReturn(txB)
+        whenever(transactionRepository.findByIdAndOrganizationId(1L, organizationId)).thenReturn(txA)
+        whenever(transactionRepository.findByIdAndOrganizationId(2L, organizationId)).thenReturn(txB)
         whenever(offsetRepository.existsByPair(1L, 2L)).thenReturn(false)
 
         assertThatThrownBy { service.linkTransactions(command) }
@@ -164,51 +164,51 @@ class TransactionOffsetServiceTest {
 
     @Test
     fun `should return true when unlinking existing link`() {
-        whenever(offsetRepository.delete(5L, userId)).thenReturn(DeletedOffsetLink(groupId = null))
+        whenever(offsetRepository.delete(5L, organizationId)).thenReturn(DeletedOffsetLink(groupId = null))
 
-        val result = service.unlinkTransactions(5L, userId)
+        val result = service.unlinkTransactions(5L, organizationId)
 
         assertThat(result).isTrue()
     }
 
     @Test
     fun `should return false when link not found`() {
-        whenever(offsetRepository.delete(99L, userId)).thenReturn(null)
+        whenever(offsetRepository.delete(99L, organizationId)).thenReturn(null)
 
-        val result = service.unlinkTransactions(99L, userId)
+        val result = service.unlinkTransactions(99L, organizationId)
 
         assertThat(result).isFalse()
     }
 
     @Test
     fun `should delete group when it becomes empty after unlink`() {
-        whenever(offsetRepository.delete(5L, userId)).thenReturn(DeletedOffsetLink(groupId = 10L))
+        whenever(offsetRepository.delete(5L, organizationId)).thenReturn(DeletedOffsetLink(groupId = 10L))
         whenever(groupRepository.findMemberIds(10L)).thenReturn(emptyList())
 
-        service.unlinkTransactions(5L, userId)
+        service.unlinkTransactions(5L, organizationId)
 
         verify(groupRepository).delete(10L)
     }
 
     @Test
     fun `should return empty list when no groups exist`() {
-        whenever(groupRepository.findAllByUserId(userId)).thenReturn(emptyList())
+        whenever(groupRepository.findAllByOrganizationId(organizationId)).thenReturn(emptyList())
 
-        val result = service.getLinkedGroups(userId)
+        val result = service.getLinkedGroups(organizationId)
 
         assertThat(result).isEmpty()
     }
 
     @Test
     fun `should return linked groups with their transactions`() {
-        val group = TransactionGroup(id = 10L, userId = userId, name = "Rückerstattung", comment = null)
+        val group = TransactionGroup(id = 10L, organizationId = organizationId, name = "Rückerstattung", comment = null)
         val txA = expense(1L)
         val txB = income(2L)
-        whenever(groupRepository.findAllByUserId(userId)).thenReturn(listOf(group))
+        whenever(groupRepository.findAllByOrganizationId(organizationId)).thenReturn(listOf(group))
         whenever(groupRepository.findMemberIds(10L)).thenReturn(listOf(1L, 2L))
-        whenever(transactionRepository.findByIdsAndUserId(setOf(1L, 2L), userId)).thenReturn(listOf(txA, txB))
+        whenever(transactionRepository.findByIdsAndOrganizationId(setOf(1L, 2L), organizationId)).thenReturn(listOf(txA, txB))
 
-        val result = service.getLinkedGroups(userId)
+        val result = service.getLinkedGroups(organizationId)
 
         assertThat(result).hasSize(1)
         assertThat(result[0].groupId).isEqualTo(10L)
@@ -218,9 +218,9 @@ class TransactionOffsetServiceTest {
 
     @Test
     fun `should return null when group not found in getLinkedGroup`() {
-        whenever(groupRepository.findById(99L, userId)).thenReturn(null)
+        whenever(groupRepository.findById(99L, organizationId)).thenReturn(null)
 
-        val result = service.getLinkedGroup(99L, userId)
+        val result = service.getLinkedGroup(99L, organizationId)
 
         assertThat(result).isNull()
     }
@@ -231,8 +231,8 @@ class TransactionOffsetServiceTest {
         txA: Transaction,
         txB: Transaction,
     ) {
-        whenever(transactionRepository.findByIdAndUserId(idA, userId)).thenReturn(txA)
-        whenever(transactionRepository.findByIdAndUserId(idB, userId)).thenReturn(txB)
+        whenever(transactionRepository.findByIdAndOrganizationId(idA, organizationId)).thenReturn(txA)
+        whenever(transactionRepository.findByIdAndOrganizationId(idB, organizationId)).thenReturn(txB)
         whenever(offsetRepository.existsByPair(idA, idB)).thenReturn(false)
     }
 
@@ -248,7 +248,7 @@ class TransactionOffsetServiceTest {
         otherTransactionId = otherTransactionId,
         myAmount = myAmount,
         otherAmount = otherAmount,
-        userId = userId,
+        organizationId = organizationId,
         targetGroupId = targetGroupId,
         forceNewGroup = forceNewGroup,
     )

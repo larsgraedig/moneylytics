@@ -18,7 +18,7 @@ class CashflowServiceTest {
     private val budgetRepository: BudgetRepository = mock()
     private val service = TransactionQueryService(transactionRepository, budgetRepository)
 
-    private val userId = 1L
+    private val organizationId = 1L
     private val march = LocalDate.of(2025, 3, 1)
     private val marchEnd = LocalDate.of(2025, 3, 31)
 
@@ -32,10 +32,10 @@ class CashflowServiceTest {
 
     @Test
     fun `should bucket transactions by month with correct gross and net income`() {
-        whenever(transactionRepository.findByAccountingDateBetween(march, marchEnd, userId, null))
+        whenever(transactionRepository.findByAccountingDateBetween(march, marchEnd, organizationId, null))
             .thenReturn(listOf(miete, arzt, erstattung, gehalt))
 
-        val response = service.getCashflow(GetCashflowQuery(march, marchEnd, userId, Granularity.MONTHLY))
+        val response = service.getCashflow(GetCashflowQuery(march, marchEnd, organizationId, Granularity.MONTHLY))
 
         val bucket = response.buckets.single { it.key == "2025-03" }
         assertThat(bucket.incomeGross).isEqualByComparingTo(BigDecimal("2970.00"))
@@ -44,10 +44,10 @@ class CashflowServiceTest {
 
     @Test
     fun `should bucket transactions by month with correct gross and net expenses`() {
-        whenever(transactionRepository.findByAccountingDateBetween(march, marchEnd, userId, null))
+        whenever(transactionRepository.findByAccountingDateBetween(march, marchEnd, organizationId, null))
             .thenReturn(listOf(miete, arzt, erstattung, gehalt))
 
-        val response = service.getCashflow(GetCashflowQuery(march, marchEnd, userId, Granularity.MONTHLY))
+        val response = service.getCashflow(GetCashflowQuery(march, marchEnd, organizationId, Granularity.MONTHLY))
 
         val bucket = response.buckets.single { it.key == "2025-03" }
         assertThat(bucket.expensesGross).isEqualByComparingTo(BigDecimal("1130.00"))
@@ -59,10 +59,10 @@ class CashflowServiceTest {
     fun `should fill empty months with zero values`() {
         val from = LocalDate.of(2025, 1, 1)
         val to = LocalDate.of(2025, 3, 31)
-        whenever(transactionRepository.findByAccountingDateBetween(from, to, userId, null))
+        whenever(transactionRepository.findByAccountingDateBetween(from, to, organizationId, null))
             .thenReturn(listOf(gehalt))
 
-        val response = service.getCashflow(GetCashflowQuery(from, to, userId, Granularity.MONTHLY))
+        val response = service.getCashflow(GetCashflowQuery(from, to, organizationId, Granularity.MONTHLY))
 
         assertThat(response.buckets).hasSize(3)
         val jan = response.buckets.single { it.key == "2025-01" }
@@ -77,10 +77,10 @@ class CashflowServiceTest {
     fun `should aggregate by year when granularity is YEARLY`() {
         val from = LocalDate.of(2025, 1, 1)
         val to = LocalDate.of(2025, 12, 31)
-        whenever(transactionRepository.findByAccountingDateBetween(from, to, userId, null))
+        whenever(transactionRepository.findByAccountingDateBetween(from, to, organizationId, null))
             .thenReturn(listOf(miete, arzt, erstattung, gehalt))
 
-        val response = service.getCashflow(GetCashflowQuery(from, to, userId, Granularity.YEARLY))
+        val response = service.getCashflow(GetCashflowQuery(from, to, organizationId, Granularity.YEARLY))
 
         assertThat(response.buckets).hasSize(1)
         val bucket = response.buckets.single { it.key == "2025" }

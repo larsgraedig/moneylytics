@@ -9,16 +9,17 @@ import org.springframework.transaction.annotation.Transactional
 @Component
 class ThresholdPersistenceAdapter(
     private val jpaRepository: ThresholdJpaRepository,
-    private val userJpaRepository: UserJpaRepository,
+    private val organizationJpaRepository: OrganizationJpaRepository,
 ) : ThresholdRepository {
-    override fun findAllByUserId(userId: Long): List<Threshold> = jpaRepository.findByUserId(userId).map { it.toDomain() }
+    override fun findAllByOrganizationId(organizationId: Long): List<Threshold> =
+        jpaRepository.findByOrganizationId(organizationId).map { it.toDomain() }
 
     @Transactional
     override fun upsert(
         threshold: Threshold,
-        userId: Long,
+        organizationId: Long,
     ): Threshold {
-        val existing = findExisting(userId, threshold.category, threshold.subcategory, threshold.period)
+        val existing = findExisting(organizationId, threshold.category, threshold.subcategory, threshold.period)
         return if (existing != null) {
             existing.notice = threshold.notice
             existing.warning = threshold.warning
@@ -28,7 +29,7 @@ class ThresholdPersistenceAdapter(
             jpaRepository
                 .save(
                     ThresholdEntity(
-                        user = userJpaRepository.getReferenceById(userId),
+                        organization = organizationJpaRepository.getReferenceById(organizationId),
                         category = threshold.category,
                         subcategory = threshold.subcategory,
                         categoryGroup = threshold.categoryGroup,
@@ -42,21 +43,21 @@ class ThresholdPersistenceAdapter(
     }
 
     @Transactional
-    override fun deleteByIdAndUserId(
+    override fun deleteByIdAndOrganizationId(
         id: Long,
-        userId: Long,
-    ) = jpaRepository.deleteByIdAndUserId(id, userId)
+        organizationId: Long,
+    ) = jpaRepository.deleteByIdAndOrganizationId(id, organizationId)
 
     private fun findExisting(
-        userId: Long,
+        organizationId: Long,
         category: String,
         subcategory: String?,
         period: ThresholdPeriod,
     ): ThresholdEntity? =
         if (subcategory == null) {
-            jpaRepository.findByUserIdAndCategoryAndSubcategoryIsNullAndPeriod(userId, category, period)
+            jpaRepository.findByOrganizationIdAndCategoryAndSubcategoryIsNullAndPeriod(organizationId, category, period)
         } else {
-            jpaRepository.findByUserIdAndCategoryAndSubcategoryAndPeriod(userId, category, subcategory, period)
+            jpaRepository.findByOrganizationIdAndCategoryAndSubcategoryAndPeriod(organizationId, category, subcategory, period)
         }
 
     private fun ThresholdEntity.toDomain() =

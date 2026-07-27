@@ -18,7 +18,7 @@ class TransactionJpaRepositoryIT : AbstractJpaRepositoryIT() {
         savedTransaction("fp-2", accountingDate = dec31)
         savedTransaction("fp-3", accountingDate = feb1)
 
-        val result = transactionRepo.findByUserIdAndAccountingDateBetween(userId, jan1, jan31)
+        val result = transactionRepo.findByOrganizationIdAndAccountingDateBetween(organizationId, jan1, jan31)
 
         assertThat(result).hasSize(1)
         assertThat(result.first().fingerprint).isEqualTo("fp-1")
@@ -26,11 +26,11 @@ class TransactionJpaRepositoryIT : AbstractJpaRepositoryIT() {
 
     @Test
     fun `should not return transactions of other user in date range`() {
-        val otherAccount = accountRepo.save(AccountEntity(iban = "DE00OTHER00000000002", name = "Fremd", user = otherUser))
+        val otherAccount = accountRepo.save(AccountEntity(iban = "DE00OTHER00000000002", name = "Fremd", organization = otherOrganization))
         savedTransaction("fp-1", accountingDate = jan15)
-        savedTransaction("fp-2", accountingDate = jan15, forAccount = otherAccount, forUser = otherUser)
+        savedTransaction("fp-2", accountingDate = jan15, forAccount = otherAccount, forOrganization = otherOrganization)
 
-        val result = transactionRepo.findByUserIdAndAccountingDateBetween(userId, jan1, jan31)
+        val result = transactionRepo.findByOrganizationIdAndAccountingDateBetween(organizationId, jan1, jan31)
 
         assertThat(result).hasSize(1)
         assertThat(result.first().fingerprint).isEqualTo("fp-1")
@@ -42,8 +42,8 @@ class TransactionJpaRepositoryIT : AbstractJpaRepositoryIT() {
         savedTransaction("fp-income", accountingDate = jan15, amount = BigDecimal("1000.00"))
 
         val result =
-            transactionRepo.findByUserIdAndAccountingDateBetweenAndAmountLessThan(
-                userId = userId,
+            transactionRepo.findByOrganizationIdAndAccountingDateBetweenAndAmountLessThan(
+                organizationId = organizationId,
                 from = jan1,
                 to = jan31,
                 amount = BigDecimal.ZERO,
@@ -55,13 +55,13 @@ class TransactionJpaRepositoryIT : AbstractJpaRepositoryIT() {
 
     @Test
     fun `should find transactions by iban and date range`() {
-        val secondAccount = accountRepo.save(AccountEntity(iban = "DE00TEST000000000002", name = "Sparkonto", user = user))
+        val secondAccount = accountRepo.save(AccountEntity(iban = "DE00TEST000000000002", name = "Sparkonto", organization = organization))
         savedTransaction("fp-1", accountingDate = jan15, forAccount = account)
         savedTransaction("fp-2", accountingDate = jan15, forAccount = secondAccount)
 
         val result =
-            transactionRepo.findByUserIdAndAccountIbanAndAccountingDateBetween(
-                userId = userId,
+            transactionRepo.findByOrganizationIdAndAccountIbanAndAccountingDateBetween(
+                organizationId = organizationId,
                 iban = account.iban,
                 from = jan1,
                 to = jan31,
@@ -73,14 +73,14 @@ class TransactionJpaRepositoryIT : AbstractJpaRepositoryIT() {
 
     @Test
     fun `should find negative transactions by iban and date range`() {
-        val secondAccount = accountRepo.save(AccountEntity(iban = "DE00TEST000000000002", name = "Sparkonto", user = user))
+        val secondAccount = accountRepo.save(AccountEntity(iban = "DE00TEST000000000002", name = "Sparkonto", organization = organization))
         savedTransaction("fp-expense", accountingDate = jan15, amount = BigDecimal("-25.00"), forAccount = account)
         savedTransaction("fp-income", accountingDate = jan15, amount = BigDecimal("500.00"), forAccount = account)
         savedTransaction("fp-other", accountingDate = jan15, amount = BigDecimal("-25.00"), forAccount = secondAccount)
 
         val result =
-            transactionRepo.findByUserIdAndAccountIbanAndAccountingDateBetweenAndAmountLessThan(
-                userId = userId,
+            transactionRepo.findByOrganizationIdAndAccountIbanAndAccountingDateBetweenAndAmountLessThan(
+                organizationId = organizationId,
                 iban = account.iban,
                 from = jan1,
                 to = jan31,
@@ -96,7 +96,7 @@ class TransactionJpaRepositoryIT : AbstractJpaRepositoryIT() {
         val tx = savedTransaction("fp-1")
         val txId = checkNotNull(tx.id)
 
-        val result = transactionRepo.findByIdAndUserId(txId, userId)
+        val result = transactionRepo.findByIdAndOrganizationId(txId, organizationId)
 
         assertThat(result).isNotNull
         assertThat(result?.fingerprint).isEqualTo("fp-1")
@@ -107,7 +107,7 @@ class TransactionJpaRepositoryIT : AbstractJpaRepositoryIT() {
         val tx = savedTransaction("fp-1")
         val txId = checkNotNull(tx.id)
 
-        val result = transactionRepo.findByIdAndUserId(txId, otherUserId)
+        val result = transactionRepo.findByIdAndOrganizationId(txId, otherOrganizationId)
 
         assertThat(result).isNull()
     }
@@ -120,7 +120,7 @@ class TransactionJpaRepositoryIT : AbstractJpaRepositoryIT() {
         val result =
             transactionRepo.findExistingFingerprints(
                 fingerprints = listOf("fp-exists-1", "fp-exists-2", "fp-not-stored"),
-                userId = userId,
+                organizationId = organizationId,
             )
 
         assertThat(result).containsExactlyInAnyOrder("fp-exists-1", "fp-exists-2")
@@ -128,14 +128,14 @@ class TransactionJpaRepositoryIT : AbstractJpaRepositoryIT() {
 
     @Test
     fun `should not return fingerprints belonging to other user`() {
-        val otherAccount = accountRepo.save(AccountEntity(iban = "DE00OTHER00000000002", name = "Fremd", user = otherUser))
+        val otherAccount = accountRepo.save(AccountEntity(iban = "DE00OTHER00000000002", name = "Fremd", organization = otherOrganization))
         savedTransaction("fp-mine")
-        savedTransaction("fp-theirs", forAccount = otherAccount, forUser = otherUser)
+        savedTransaction("fp-theirs", forAccount = otherAccount, forOrganization = otherOrganization)
 
         val result =
             transactionRepo.findExistingFingerprints(
                 fingerprints = listOf("fp-mine", "fp-theirs"),
-                userId = userId,
+                organizationId = organizationId,
             )
 
         assertThat(result).containsExactly("fp-mine")
@@ -148,7 +148,7 @@ class TransactionJpaRepositoryIT : AbstractJpaRepositoryIT() {
         val tx1Id = checkNotNull(tx1.id)
         val tx2Id = checkNotNull(tx2.id)
 
-        val result = transactionRepo.findByIdsAndUserId(listOf(tx1Id, tx2Id), userId)
+        val result = transactionRepo.findByIdsAndOrganizationId(listOf(tx1Id, tx2Id), organizationId)
 
         assertThat(result).hasSize(2)
         assertThat(result.map { it.fingerprint }).containsExactlyInAnyOrder("fp-1", "fp-2")
@@ -156,11 +156,11 @@ class TransactionJpaRepositoryIT : AbstractJpaRepositoryIT() {
 
     @Test
     fun `should not return transaction by ids belonging to other user`() {
-        val otherAccount = accountRepo.save(AccountEntity(iban = "DE00OTHER00000000002", name = "Fremd", user = otherUser))
-        val tx = savedTransaction("fp-theirs", forAccount = otherAccount, forUser = otherUser)
+        val otherAccount = accountRepo.save(AccountEntity(iban = "DE00OTHER00000000002", name = "Fremd", organization = otherOrganization))
+        val tx = savedTransaction("fp-theirs", forAccount = otherAccount, forOrganization = otherOrganization)
         val txId = checkNotNull(tx.id)
 
-        val result = transactionRepo.findByIdsAndUserId(listOf(txId), userId)
+        val result = transactionRepo.findByIdsAndOrganizationId(listOf(txId), organizationId)
 
         assertThat(result).isEmpty()
     }
@@ -169,7 +169,7 @@ class TransactionJpaRepositoryIT : AbstractJpaRepositoryIT() {
     fun `should find transaction by fingerprint and user id`() {
         savedTransaction("fp-target")
 
-        val result = transactionRepo.findByFingerprintAndUserId("fp-target", userId)
+        val result = transactionRepo.findByFingerprintAndOrganizationId("fp-target", organizationId)
 
         assertThat(result).isNotNull
         assertThat(result?.fingerprint).isEqualTo("fp-target")
@@ -177,22 +177,22 @@ class TransactionJpaRepositoryIT : AbstractJpaRepositoryIT() {
 
     @Test
     fun `should return null for fingerprint belonging to other user`() {
-        val otherAccount = accountRepo.save(AccountEntity(iban = "DE00OTHER00000000002", name = "Fremd", user = otherUser))
-        savedTransaction("fp-theirs", forAccount = otherAccount, forUser = otherUser)
+        val otherAccount = accountRepo.save(AccountEntity(iban = "DE00OTHER00000000002", name = "Fremd", organization = otherOrganization))
+        savedTransaction("fp-theirs", forAccount = otherAccount, forOrganization = otherOrganization)
 
-        val result = transactionRepo.findByFingerprintAndUserId("fp-theirs", userId)
+        val result = transactionRepo.findByFingerprintAndOrganizationId("fp-theirs", organizationId)
 
         assertThat(result).isNull()
     }
 
     @Test
     fun `should return latest accounting date per iban`() {
-        val secondAccount = accountRepo.save(AccountEntity(iban = "DE00TEST000000000002", name = "Sparkonto", user = user))
+        val secondAccount = accountRepo.save(AccountEntity(iban = "DE00TEST000000000002", name = "Sparkonto", organization = organization))
         savedTransaction("fp-a-early", accountingDate = LocalDate.of(2025, 1, 5), forAccount = account)
         savedTransaction("fp-a-late", accountingDate = LocalDate.of(2025, 3, 20), forAccount = account)
         savedTransaction("fp-b", accountingDate = LocalDate.of(2025, 2, 10), forAccount = secondAccount)
 
-        val result = transactionRepo.findLatestDatePerIban(userId)
+        val result = transactionRepo.findLatestDatePerIban(organizationId)
 
         assertThat(result).hasSize(2)
         val resultMap = result.associate { row -> (row[0] as String) to (row[1] as LocalDate) }

@@ -37,20 +37,21 @@ class UserPersistenceAdapter(
     @Transactional
     override fun updateSettings(
         userId: Long,
+        organizationId: Long,
         defaultAccountIban: String?,
         language: String?,
         transactionsColumnOrder: List<String>?,
     ): UserSettings {
         val entity = jpaRepository.getReferenceById(userId)
-        entity.defaultAccount = defaultAccountIban?.let { accountJpaRepository.findByIbanAndUserId(it, userId) }
+        entity.defaultAccount = defaultAccountIban?.let { accountJpaRepository.findByIbanAndOrganizationId(it, organizationId) }
         entity.language = language
         entity.transactionsColumnOrder = transactionsColumnOrder?.joinToString(",")
         return jpaRepository.save(entity).toSettings()
     }
 
     @Transactional
-    override fun promoteToAdmin(userId: Long) {
-        jpaRepository.getReferenceById(userId).role = Role.ADMIN
+    override fun promoteToSystemAdmin(userId: Long) {
+        jpaRepository.getReferenceById(userId).role = Role.SYSTEM_ADMIN
     }
 
     private fun UserEntity.toDomain() = User(id = id!!, externalId = externalId, passwordHash = passwordHash, role = role)

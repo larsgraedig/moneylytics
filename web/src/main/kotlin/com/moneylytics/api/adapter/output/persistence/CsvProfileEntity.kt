@@ -11,7 +11,7 @@ import jakarta.persistence.Table
 @Table(name = "csv_profiles")
 class CsvProfileEntity(
     @Column(nullable = false)
-    val userId: Long,
+    val organizationId: Long,
     @Column(nullable = false)
     val fingerprint: String,
     @Column(nullable = false, columnDefinition = "TEXT")

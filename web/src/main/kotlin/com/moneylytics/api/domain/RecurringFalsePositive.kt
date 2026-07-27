@@ -4,7 +4,7 @@ import java.time.LocalDate
 
 data class RecurringFalsePositive(
     val id: Long? = null,
-    val userId: Long,
+    val organizationId: Long,
     val fingerprint: String,
     val createdAt: LocalDate,
 )

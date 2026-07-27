@@ -16,14 +16,14 @@ class NaiveBayesClassifierAdapter(
 ) : RecurringTypeClassifier {
     @Transactional(readOnly = true)
     override fun classify(
-        userId: Long,
+        organizationId: Long,
         features: ClassifierFeatures,
     ): RecurringType {
-        val classCounts = classCountRepo.findByUserId(userId).associate { it.type to it.count.toLong() }
+        val classCounts = classCountRepo.findByOrganizationId(organizationId).associate { it.type to it.count.toLong() }
         val totalExamples = classCounts.values.sum()
         if (totalExamples == 0L) return RecurringType.OTHER
 
-        val tokenCountRows = tokenCountRepo.findByUserId(userId)
+        val tokenCountRows = tokenCountRepo.findByOrganizationId(organizationId)
         val tokenCounts: Map<String, Map<String, Long>> =
             tokenCountRows
                 .groupBy { it.type }
@@ -60,34 +60,46 @@ class NaiveBayesClassifierAdapter(
 
     @Transactional
     override fun train(
-        userId: Long,
+        organizationId: Long,
         type: RecurringType,
         features: ClassifierFeatures,
     ) {
         val classEntity =
-            classCountRepo.findByUserIdAndType(userId, type.name)
-                ?: RecurringClassifierClassCountEntity(userId = userId, type = type.name, count = 0)
+            classCountRepo.findByOrganizationIdAndType(organizationId, type.name)
+                ?: RecurringClassifierClassCountEntity(organizationId = organizationId, type = type.name, count = 0)
         classEntity.count += 1
         classCountRepo.save(classEntity)
 
         extractTokens(features).forEach { token ->
             val tokenEntity =
-                tokenCountRepo.findByUserIdAndTypeAndToken(userId, type.name, token)
-                    ?: RecurringClassifierTokenCountEntity(userId = userId, type = type.name, token = token, count = 0)
+                tokenCountRepo.findByOrganizationIdAndTypeAndToken(organizationId, type.name, token)
+                    ?: RecurringClassifierTokenCountEntity(organizationId = organizationId, type = type.name, token = token, count = 0)
             tokenEntity.count += 1
             tokenCountRepo.save(tokenEntity)
         }
     }
 
     @Transactional
-    override fun seedIfEmpty(userId: Long) {
-        if (tokenCountRepo.existsByUserId(userId)) return
+    override fun seedIfEmpty(organizationId: Long) {
+        if (tokenCountRepo.existsByOrganizationId(organizationId)) return
         SEED_DATA.forEach { (type, tokens) ->
             tokens.forEach { token ->
-                val entity = RecurringClassifierTokenCountEntity(userId = userId, type = type.name, token = token, count = SEED_COUNT)
+                val entity =
+                    RecurringClassifierTokenCountEntity(
+                        organizationId = organizationId,
+                        type = type.name,
+                        token = token,
+                        count = SEED_COUNT,
+                    )
                 tokenCountRepo.save(entity)
             }
-            val classEntity = RecurringClassifierClassCountEntity(userId = userId, type = type.name, count = tokens.size * SEED_COUNT)
+            val classEntity =
+                RecurringClassifierClassCountEntity(
+                    organizationId = organizationId,
+                    type = type.name,
+                    count =
+                        tokens.size * SEED_COUNT,
+                )
             classCountRepo.save(classEntity)
         }
     }

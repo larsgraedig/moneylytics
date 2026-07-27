@@ -9,5 +9,5 @@ class RecurringMatcherScheduler(
     private val syncRecurringSeriesUseCase: SyncRecurringSeriesUseCase,
 ) {
     @Scheduled(cron = "0 0 3 * * *")
-    fun sync() = syncRecurringSeriesUseCase.syncForAllUsers()
+    fun sync() = syncRecurringSeriesUseCase.syncForAllOrganizations()
 }

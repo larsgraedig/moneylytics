@@ -13,42 +13,42 @@ data class CategoryUpdateEntry(
 interface TransactionRepository {
     fun saveAll(
         transactions: List<Transaction>,
-        userId: Long,
+        organizationId: Long,
     ): Int
 
     fun findByAccountingDateBetween(
         from: LocalDate,
         to: LocalDate,
-        userId: Long,
+        organizationId: Long,
         accountIban: String? = null,
     ): List<Transaction>
 
     fun findNegativeByAccountingDateBetween(
         from: LocalDate,
         to: LocalDate,
-        userId: Long,
+        organizationId: Long,
         accountIban: String? = null,
     ): List<Transaction>
 
     fun updateAccountingDate(
         id: Long,
-        userId: Long,
+        organizationId: Long,
         accountingDate: LocalDate,
     ): Transaction?
 
     fun findExistingFingerprints(
         fingerprints: Collection<String>,
-        userId: Long,
+        organizationId: Long,
     ): Set<String>
 
-    fun findByIdAndUserId(
+    fun findByIdAndOrganizationId(
         id: Long,
-        userId: Long,
+        organizationId: Long,
     ): Transaction?
 
     fun updateCategory(
         id: Long,
-        userId: Long,
+        organizationId: Long,
         category: String,
         subcategory: String,
         categoryGroup: String? = null,
@@ -56,30 +56,30 @@ interface TransactionRepository {
 
     fun updateComment(
         id: Long,
-        userId: Long,
+        organizationId: Long,
         comment: String?,
     ): Transaction?
 
-    fun findByIdsAndUserId(
+    fun findByIdsAndOrganizationId(
         ids: Set<Long>,
-        userId: Long,
+        organizationId: Long,
     ): List<Transaction>
 
     fun enrichByFingerprint(
         fingerprint: String,
-        userId: Long,
+        organizationId: Long,
         purpose: String?,
         counterpartyName: String?,
         counterpartyIban: String?,
         categoryGroup: String? = null,
     )
 
-    fun latestTransactionDatesByUserId(userId: Long): Map<String, LocalDate>
+    fun latestTransactionDatesByOrganizationId(organizationId: Long): Map<String, LocalDate>
 
     fun findAssignedTransactionIdsByCollectionId(collectionId: Long): Set<Long>
 
     fun bulkUpdateCategory(
         updates: List<CategoryUpdateEntry>,
-        userId: Long,
+        organizationId: Long,
     ): List<Transaction>
 }

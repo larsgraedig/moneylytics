@@ -1,7 +1,11 @@
 package com.moneylytics.api.adapter.input.web
 
+import com.moneylytics.api.application.port.input.GetOrganizationsUseCase
 import com.moneylytics.api.application.port.input.RegisterUserUseCase
+import com.moneylytics.api.application.port.input.ResolveUserUseCase
+import com.moneylytics.api.application.service.SESSION_KEY_ACTIVE_ORG
 import com.moneylytics.api.application.service.UserAlreadyExistsException
+import com.moneylytics.api.config.ImpersonationWebFilter.Companion.IMPERSONATED_USER_ID_KEY
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.reactive.awaitFirstOrNull
@@ -29,6 +33,8 @@ class AuthController(
     private val authManager: ReactiveAuthenticationManager,
     private val securityContextRepository: ServerSecurityContextRepository,
     private val registerUserUseCase: RegisterUserUseCase,
+    private val resolveUserUseCase: ResolveUserUseCase,
+    private val getOrganizationsUseCase: GetOrganizationsUseCase,
 ) {
     companion object {
         private const val HTTP_UNAUTHORIZED = 401
@@ -37,7 +43,7 @@ class AuthController(
 
     private val logger = KotlinLogging.logger {}
 
-    private fun Collection<GrantedAuthority>.isAdmin() = any { it.authority == "ROLE_ADMIN" }
+    private fun Collection<GrantedAuthority>.isSystemAdmin() = any { it.authority == "ROLE_SYSTEM_ADMIN" }
 
     @PostMapping("/login")
     suspend fun login(
@@ -48,7 +54,8 @@ class AuthController(
         return try {
             val auth = authManager.authenticate(token).awaitSingle()
             securityContextRepository.save(exchange, SecurityContextImpl(auth)).awaitFirstOrNull()
-            ResponseEntity.ok(AuthResponse(username = auth.name, isAdmin = auth.authorities.isAdmin()))
+            val response = withContext(Dispatchers.IO) { buildAuthResponse(auth.name, auth.authorities.isSystemAdmin()) }
+            ResponseEntity.ok(response)
         } catch (e: AuthenticationException) {
             logger.debug(e) { "Authentication failed for user ${request.username}" }
             ResponseEntity.status(HTTP_UNAUTHORIZED).build()
@@ -58,7 +65,20 @@ class AuthController(
     @GetMapping("/me")
     suspend fun me(
         @AuthenticationPrincipal principal: UserDetails,
-    ): AuthResponse = AuthResponse(username = principal.username, isAdmin = principal.authorities.isAdmin())
+        exchange: ServerWebExchange,
+    ): AuthResponse {
+        val session = exchange.session.awaitSingle()
+        val activeOrgId = session.attributes[SESSION_KEY_ACTIVE_ORG] as? Long
+        val impersonating = session.attributes[IMPERSONATED_USER_ID_KEY] as? String
+        return withContext(Dispatchers.IO) {
+            buildAuthResponse(
+                username = principal.username,
+                isSystemAdmin = principal.authorities.isSystemAdmin(),
+                activeOrganizationId = activeOrgId,
+                impersonating = impersonating,
+            )
+        }
+    }
 
     @PostMapping("/register")
     suspend fun register(
@@ -70,7 +90,8 @@ class AuthController(
             val token = UsernamePasswordAuthenticationToken(request.username, request.password)
             val auth = authManager.authenticate(token).awaitSingle()
             securityContextRepository.save(exchange, SecurityContextImpl(auth)).awaitFirstOrNull()
-            ResponseEntity.ok(AuthResponse(username = auth.name, isAdmin = auth.authorities.isAdmin()))
+            val response = withContext(Dispatchers.IO) { buildAuthResponse(auth.name, auth.authorities.isSystemAdmin()) }
+            ResponseEntity.ok(response)
         } catch (e: UserAlreadyExistsException) {
             logger.debug(e) { "Registration failed: user ${request.username} already exists" }
             ResponseEntity.status(HTTP_CONFLICT).build()
@@ -80,6 +101,25 @@ class AuthController(
     suspend fun logout(exchange: ServerWebExchange): ResponseEntity<Void> {
         exchange.session.awaitSingle().invalidate()
         return ResponseEntity.noContent().build()
+    }
+
+    private fun buildAuthResponse(
+        username: String,
+        isSystemAdmin: Boolean,
+        activeOrganizationId: Long? = null,
+        impersonating: String? = null,
+    ): AuthResponse {
+        val userId = resolveUserUseCase.resolveUser(username)
+        val memberships = getOrganizationsUseCase.getOrganizations(userId)
+        val orgs = memberships.map { OrganizationInfo(id = it.organization.id, name = it.organization.name, role = it.role.name) }
+        val activeOrgId = activeOrganizationId ?: orgs.firstOrNull()?.id
+        return AuthResponse(
+            username = username,
+            isSystemAdmin = isSystemAdmin,
+            activeOrganizationId = activeOrgId,
+            organizations = orgs,
+            impersonating = impersonating,
+        )
     }
 }
 
@@ -93,7 +133,16 @@ data class RegisterRequest(
     val password: String,
 )
 
+data class OrganizationInfo(
+    val id: Long,
+    val name: String,
+    val role: String,
+)
+
 data class AuthResponse(
     val username: String,
-    val isAdmin: Boolean = false,
+    val isSystemAdmin: Boolean = false,
+    val activeOrganizationId: Long? = null,
+    val organizations: List<OrganizationInfo> = emptyList(),
+    val impersonating: String? = null,
 )

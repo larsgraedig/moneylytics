@@ -21,6 +21,7 @@
     "camt": "CAMT",
     "wiederkehrer": "Wiederkehrend",
     "admin": "Technisches",
+    "orgs": "Organisation",
     "collapse": "Menü einklappen",
     "expand": "Menü ausklappen"
   },
@@ -497,6 +498,9 @@
       "counterparty": "Gegenpartei",
       "purpose": "Verwendungszweck"
     },
+    "sync": "Sync",
+    "syncing": "Wird synchronisiert…",
+    "syncSuccess": "Synchronisiert",
     "addManual": "Hinzufügen",
     "status": {
       "MANUAL": "Manuell"
@@ -577,6 +581,14 @@
     "legendSoll": "Soll-Prognose"
   },
   "admin": {
+    "impersonation": {
+      "title": "Nutzer impersonieren",
+      "description": "Als ein anderer Nutzer handeln, um Support leisten zu können. Admin-Aktionen bleiben weiterhin als du selbst ausgeführt.",
+      "selectUser": "Nutzer auswählen…",
+      "button": "Als Nutzer handeln",
+      "active": "Du agierst als {{username}}",
+      "stop": "Impersonation beenden"
+    },
     "recurring": {
       "title": "Wiederkehrende Transaktionen",
       "triggerSync": "Scheduler jetzt ausführen",

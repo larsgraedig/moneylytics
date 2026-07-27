@@ -37,8 +37,8 @@ class TransactionEntity(
     @Column(nullable = false, unique = true, length = 64)
     val fingerprint: String,
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "user_id", nullable = false)
-    val user: UserEntity,
+    @JoinColumn(name = "organization_id", nullable = false)
+    val organization: OrganizationEntity,
     @Column(nullable = true, length = 1000)
     var comment: String? = null,
     @Column(nullable = true, length = 2000)

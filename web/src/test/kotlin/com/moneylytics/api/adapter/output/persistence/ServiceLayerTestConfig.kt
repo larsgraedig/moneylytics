@@ -17,14 +17,14 @@ class ServiceLayerTestConfig {
     @Bean
     fun accountPersistenceAdapter(
         jpaRepository: AccountJpaRepository,
-        userJpaRepository: UserJpaRepository,
-    ): AccountPersistenceAdapter = AccountPersistenceAdapter(jpaRepository, userJpaRepository)
+        organizationJpaRepository: OrganizationJpaRepository,
+    ): AccountPersistenceAdapter = AccountPersistenceAdapter(jpaRepository, organizationJpaRepository)
 
     @Bean
     fun transactionPersistenceAdapter(
         jpaRepository: TransactionJpaRepository,
         accountJpaRepository: AccountJpaRepository,
-        userJpaRepository: UserJpaRepository,
+        organizationJpaRepository: OrganizationJpaRepository,
         offsetJpaRepository: TransactionOffsetJpaRepository,
         groupMemberJpaRepository: TransactionGroupMemberJpaRepository,
         groupJpaRepository: TransactionGroupJpaRepository,
@@ -35,7 +35,7 @@ class ServiceLayerTestConfig {
         TransactionPersistenceAdapter(
             jpaRepository,
             accountJpaRepository,
-            userJpaRepository,
+            organizationJpaRepository,
             offsetJpaRepository,
             groupMemberJpaRepository,
             groupJpaRepository,
@@ -47,14 +47,14 @@ class ServiceLayerTestConfig {
     @Bean
     fun ignoredTransactionPersistenceAdapter(
         jpaRepository: IgnoredTransactionJpaRepository,
-        userJpaRepository: UserJpaRepository,
-    ): IgnoredTransactionPersistenceAdapter = IgnoredTransactionPersistenceAdapter(jpaRepository, userJpaRepository)
+        organizationJpaRepository: OrganizationJpaRepository,
+    ): IgnoredTransactionPersistenceAdapter = IgnoredTransactionPersistenceAdapter(jpaRepository, organizationJpaRepository)
 
     @Bean
     fun categoryPersistenceAdapter(
         jpaRepository: CategoryJpaRepository,
-        userJpaRepository: UserJpaRepository,
-    ): CategoryPersistenceAdapter = CategoryPersistenceAdapter(jpaRepository, userJpaRepository)
+        organizationJpaRepository: OrganizationJpaRepository,
+    ): CategoryPersistenceAdapter = CategoryPersistenceAdapter(jpaRepository, organizationJpaRepository)
 
     @Bean
     fun transactionImportService(

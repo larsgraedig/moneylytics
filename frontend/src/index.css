@@ -5209,3 +5209,40 @@ body {
 }
 .adm-feedback--ok { color: #4ade80; }
 .adm-feedback--error { color: #f87171; }
+
+.adm-impersonation-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  border-radius: 6px;
+  margin-bottom: 20px;
+  font-size: 13px;
+  color: #f87171;
+}
+.adm-deimpersonate-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  background: transparent;
+  border: 1px solid #f87171;
+  border-radius: 4px;
+  color: #f87171;
+  font-size: 12px;
+  cursor: pointer;
+  margin-left: auto;
+}
+.adm-deimpersonate-btn:hover { background: rgba(239, 68, 68, 0.15); }
+
+.adm-user-select {
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--fg);
+  font-size: 13px;
+  padding: 6px 10px;
+  min-width: 220px;
+}

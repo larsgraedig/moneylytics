@@ -8,6 +8,6 @@ interface AssignTransactionToBudgetUseCase {
         budgetId: Long,
         transactionId: Long,
         amount: BigDecimal?,
-        userId: Long,
+        organizationId: Long,
     ): BudgetTransactionLink
 }

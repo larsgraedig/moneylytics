@@ -19,16 +19,16 @@ class ThresholdServiceTest {
     private val transactionRepository: TransactionRepository = mock()
     private val service = ThresholdService(thresholdRepository, transactionRepository)
 
-    private val userId = 1L
+    private val organizationId = 1L
     private val jan1 = LocalDate.of(2025, 1, 1)
     private val jan31 = LocalDate.of(2025, 1, 31)
     private val feb28 = LocalDate.of(2025, 2, 28)
 
     @Test
     fun `should return empty response when no thresholds exist`() {
-        whenever(thresholdRepository.findAllByUserId(userId)).thenReturn(emptyList())
+        whenever(thresholdRepository.findAllByOrganizationId(organizationId)).thenReturn(emptyList())
 
-        val result = service.getThresholdStatus(GetThresholdStatusQuery(jan1, jan31, userId))
+        val result = service.getThresholdStatus(GetThresholdStatusQuery(jan1, jan31, organizationId))
 
         assertThat(result.items).isEmpty()
     }
@@ -36,11 +36,11 @@ class ThresholdServiceTest {
     @Test
     fun `should skip transactions without category`() {
         val threshold = threshold(id = 1L, category = "Lebensmittel", subcategory = null, notice = "80", critical = "200")
-        whenever(thresholdRepository.findAllByUserId(userId)).thenReturn(listOf(threshold))
-        whenever(transactionRepository.findNegativeByAccountingDateBetween(jan1, jan31, userId, null))
+        whenever(thresholdRepository.findAllByOrganizationId(organizationId)).thenReturn(listOf(threshold))
+        whenever(transactionRepository.findNegativeByAccountingDateBetween(jan1, jan31, organizationId, null))
             .thenReturn(listOf(tx(null, null, "-50.00")))
 
-        val result = service.getThresholdStatus(GetThresholdStatusQuery(jan1, jan31, userId))
+        val result = service.getThresholdStatus(GetThresholdStatusQuery(jan1, jan31, organizationId))
 
         assertThat(result.items[0].spending).isEqualByComparingTo(BigDecimal.ZERO)
     }
@@ -48,8 +48,8 @@ class ThresholdServiceTest {
     @Test
     fun `should aggregate category spending across all subcategories`() {
         val threshold = threshold(id = 1L, category = "Lebensmittel", subcategory = null, critical = "200")
-        whenever(thresholdRepository.findAllByUserId(userId)).thenReturn(listOf(threshold))
-        whenever(transactionRepository.findNegativeByAccountingDateBetween(jan1, jan31, userId, null))
+        whenever(thresholdRepository.findAllByOrganizationId(organizationId)).thenReturn(listOf(threshold))
+        whenever(transactionRepository.findNegativeByAccountingDateBetween(jan1, jan31, organizationId, null))
             .thenReturn(
                 listOf(
                     tx("Lebensmittel", "Supermarkt", "-80.00"),
@@ -57,7 +57,7 @@ class ThresholdServiceTest {
                 ),
             )
 
-        val result = service.getThresholdStatus(GetThresholdStatusQuery(jan1, jan31, userId))
+        val result = service.getThresholdStatus(GetThresholdStatusQuery(jan1, jan31, organizationId))
 
         assertThat(result.items[0].spending).isEqualByComparingTo(BigDecimal("125.00"))
     }
@@ -65,11 +65,11 @@ class ThresholdServiceTest {
     @Test
     fun `should set status OK when spending is below notice threshold`() {
         val threshold = threshold(id = 1L, category = "Lebensmittel", subcategory = null, notice = "100", warning = "150", critical = "200")
-        whenever(thresholdRepository.findAllByUserId(userId)).thenReturn(listOf(threshold))
-        whenever(transactionRepository.findNegativeByAccountingDateBetween(jan1, jan31, userId, null))
+        whenever(thresholdRepository.findAllByOrganizationId(organizationId)).thenReturn(listOf(threshold))
+        whenever(transactionRepository.findNegativeByAccountingDateBetween(jan1, jan31, organizationId, null))
             .thenReturn(listOf(tx("Lebensmittel", null, "-50.00")))
 
-        val result = service.getThresholdStatus(GetThresholdStatusQuery(jan1, jan31, userId))
+        val result = service.getThresholdStatus(GetThresholdStatusQuery(jan1, jan31, organizationId))
 
         assertThat(result.items[0].status).isEqualTo(ThresholdStatus.OK)
     }
@@ -77,11 +77,11 @@ class ThresholdServiceTest {
     @Test
     fun `should set status NOTICE when spending reaches notice but not warning`() {
         val threshold = threshold(id = 1L, category = "Lebensmittel", subcategory = null, notice = "100", warning = "150", critical = "200")
-        whenever(thresholdRepository.findAllByUserId(userId)).thenReturn(listOf(threshold))
-        whenever(transactionRepository.findNegativeByAccountingDateBetween(jan1, jan31, userId, null))
+        whenever(thresholdRepository.findAllByOrganizationId(organizationId)).thenReturn(listOf(threshold))
+        whenever(transactionRepository.findNegativeByAccountingDateBetween(jan1, jan31, organizationId, null))
             .thenReturn(listOf(tx("Lebensmittel", null, "-110.00")))
 
-        val result = service.getThresholdStatus(GetThresholdStatusQuery(jan1, jan31, userId))
+        val result = service.getThresholdStatus(GetThresholdStatusQuery(jan1, jan31, organizationId))
 
         assertThat(result.items[0].status).isEqualTo(ThresholdStatus.NOTICE)
     }
@@ -89,11 +89,11 @@ class ThresholdServiceTest {
     @Test
     fun `should set status WARNING when spending reaches warning but not critical`() {
         val threshold = threshold(id = 1L, category = "Lebensmittel", subcategory = null, notice = "100", warning = "150", critical = "200")
-        whenever(thresholdRepository.findAllByUserId(userId)).thenReturn(listOf(threshold))
-        whenever(transactionRepository.findNegativeByAccountingDateBetween(jan1, jan31, userId, null))
+        whenever(thresholdRepository.findAllByOrganizationId(organizationId)).thenReturn(listOf(threshold))
+        whenever(transactionRepository.findNegativeByAccountingDateBetween(jan1, jan31, organizationId, null))
             .thenReturn(listOf(tx("Lebensmittel", null, "-160.00")))
 
-        val result = service.getThresholdStatus(GetThresholdStatusQuery(jan1, jan31, userId))
+        val result = service.getThresholdStatus(GetThresholdStatusQuery(jan1, jan31, organizationId))
 
         assertThat(result.items[0].status).isEqualTo(ThresholdStatus.WARNING)
     }
@@ -101,11 +101,11 @@ class ThresholdServiceTest {
     @Test
     fun `should set status CRITICAL when spending reaches critical threshold`() {
         val threshold = threshold(id = 1L, category = "Lebensmittel", subcategory = null, notice = "100", warning = "150", critical = "200")
-        whenever(thresholdRepository.findAllByUserId(userId)).thenReturn(listOf(threshold))
-        whenever(transactionRepository.findNegativeByAccountingDateBetween(jan1, jan31, userId, null))
+        whenever(thresholdRepository.findAllByOrganizationId(organizationId)).thenReturn(listOf(threshold))
+        whenever(transactionRepository.findNegativeByAccountingDateBetween(jan1, jan31, organizationId, null))
             .thenReturn(listOf(tx("Lebensmittel", null, "-210.00")))
 
-        val result = service.getThresholdStatus(GetThresholdStatusQuery(jan1, jan31, userId))
+        val result = service.getThresholdStatus(GetThresholdStatusQuery(jan1, jan31, organizationId))
 
         assertThat(result.items[0].status).isEqualTo(ThresholdStatus.CRITICAL)
     }
@@ -113,11 +113,11 @@ class ThresholdServiceTest {
     @Test
     fun `should scale monthly threshold by number of months in range`() {
         val threshold = threshold(id = 1L, category = "Lebensmittel", subcategory = null, notice = "100", critical = "200")
-        whenever(thresholdRepository.findAllByUserId(userId)).thenReturn(listOf(threshold))
-        whenever(transactionRepository.findNegativeByAccountingDateBetween(jan1, feb28, userId, null))
+        whenever(thresholdRepository.findAllByOrganizationId(organizationId)).thenReturn(listOf(threshold))
+        whenever(transactionRepository.findNegativeByAccountingDateBetween(jan1, feb28, organizationId, null))
             .thenReturn(listOf(tx("Lebensmittel", null, "-180.00")))
 
-        val result = service.getThresholdStatus(GetThresholdStatusQuery(jan1, feb28, userId))
+        val result = service.getThresholdStatus(GetThresholdStatusQuery(jan1, feb28, organizationId))
 
         // 2 months: notice = 200, critical = 400 → spending 180 < 200 → OK
         assertThat(result.items[0].status).isEqualTo(ThresholdStatus.OK)
@@ -130,11 +130,11 @@ class ThresholdServiceTest {
         val monthly = threshold(id = 2L, category = "Transport", subcategory = null, critical = "200", period = ThresholdPeriod.MONTHLY)
         val from = LocalDate.of(2025, 1, 1)
         val to = LocalDate.of(2025, 1, 7)
-        whenever(thresholdRepository.findAllByUserId(userId)).thenReturn(listOf(weekly, monthly))
-        whenever(transactionRepository.findNegativeByAccountingDateBetween(from, to, userId, null))
+        whenever(thresholdRepository.findAllByOrganizationId(organizationId)).thenReturn(listOf(weekly, monthly))
+        whenever(transactionRepository.findNegativeByAccountingDateBetween(from, to, organizationId, null))
             .thenReturn(emptyList())
 
-        val result = service.getThresholdStatus(GetThresholdStatusQuery(from, to, userId))
+        val result = service.getThresholdStatus(GetThresholdStatusQuery(from, to, organizationId))
 
         assertThat(result.items).hasSize(1)
         assertThat(result.items[0].period).isEqualTo(ThresholdPeriod.WEEKLY)
@@ -143,11 +143,11 @@ class ThresholdServiceTest {
     @Test
     fun `should compute tick positions for notice and warning levels`() {
         val threshold = threshold(id = 1L, category = "Lebensmittel", subcategory = null, notice = "80", warning = "120", critical = "200")
-        whenever(thresholdRepository.findAllByUserId(userId)).thenReturn(listOf(threshold))
-        whenever(transactionRepository.findNegativeByAccountingDateBetween(jan1, jan31, userId, null))
+        whenever(thresholdRepository.findAllByOrganizationId(organizationId)).thenReturn(listOf(threshold))
+        whenever(transactionRepository.findNegativeByAccountingDateBetween(jan1, jan31, organizationId, null))
             .thenReturn(listOf(tx("Lebensmittel", null, "-50.00")))
 
-        val result = service.getThresholdStatus(GetThresholdStatusQuery(jan1, jan31, userId))
+        val result = service.getThresholdStatus(GetThresholdStatusQuery(jan1, jan31, organizationId))
 
         val item = result.items[0]
         assertThat(item.tickNotice).isEqualByComparingTo(BigDecimal("0.4")) // 80/200

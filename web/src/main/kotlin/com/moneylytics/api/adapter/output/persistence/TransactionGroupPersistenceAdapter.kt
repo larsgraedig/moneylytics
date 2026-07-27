@@ -8,23 +8,24 @@ import org.springframework.transaction.annotation.Transactional
 @Component
 class TransactionGroupPersistenceAdapter(
     private val groupJpaRepository: TransactionGroupJpaRepository,
-    private val userJpaRepository: UserJpaRepository,
+    private val organizationJpaRepository: OrganizationJpaRepository,
     private val memberJpaRepository: TransactionGroupMemberJpaRepository,
 ) : TransactionGroupRepository {
     @Transactional(readOnly = true)
-    override fun findAllByUserId(userId: Long): List<TransactionGroup> = groupJpaRepository.findAllByUserId(userId).map { it.toDomain() }
+    override fun findAllByOrganizationId(organizationId: Long): List<TransactionGroup> =
+        groupJpaRepository.findAllByOrganizationId(organizationId).map { it.toDomain() }
 
     @Transactional(readOnly = true)
     override fun findById(
         id: Long,
-        userId: Long,
-    ): TransactionGroup? = groupJpaRepository.findByIdAndUserId(id, userId)?.toDomain()
+        organizationId: Long,
+    ): TransactionGroup? = groupJpaRepository.findByIdAndOrganizationId(id, organizationId)?.toDomain()
 
     @Transactional
-    override fun create(userId: Long): TransactionGroup {
+    override fun create(organizationId: Long): TransactionGroup {
         val entity =
             groupJpaRepository.save(
-                TransactionGroupEntity(user = userJpaRepository.getReferenceById(userId)),
+                TransactionGroupEntity(organization = organizationJpaRepository.getReferenceById(organizationId)),
             )
         return entity.toDomain()
     }
@@ -32,11 +33,11 @@ class TransactionGroupPersistenceAdapter(
     @Transactional
     override fun update(
         id: Long,
-        userId: Long,
+        organizationId: Long,
         name: String?,
         comment: String?,
     ) {
-        val entity = groupJpaRepository.findByIdAndUserId(id, userId) ?: return
+        val entity = groupJpaRepository.findByIdAndOrganizationId(id, organizationId) ?: return
         entity.name = name?.takeIf { it.isNotBlank() }
         entity.comment = comment?.takeIf { it.isNotBlank() }
         groupJpaRepository.save(entity)
@@ -84,7 +85,7 @@ class TransactionGroupPersistenceAdapter(
     private fun TransactionGroupEntity.toDomain() =
         TransactionGroup(
             id = requireNotNull(id),
-            userId = user.id!!,
+            organizationId = organization.id!!,
             name = name,
             comment = comment,
         )

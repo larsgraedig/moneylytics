@@ -19,7 +19,7 @@ class NaiveBayesClassifierAdapterTest {
     private val classCountRepo: RecurringClassifierClassCountJpaRepository = mock()
     private val adapter = NaiveBayesClassifierAdapter(tokenCountRepo, classCountRepo)
 
-    private val userId = 1L
+    private val organizationId = 1L
 
     @Test
     fun `should classify using trained token weights`() {
@@ -27,19 +27,19 @@ class NaiveBayesClassifierAdapterTest {
         val allTypes = RecurringType.entries
         val tokenRows =
             allTypes.map { type ->
-                RecurringClassifierTokenCountEntity(userId, type.name, "baseline_token", 10)
+                RecurringClassifierTokenCountEntity(organizationId, type.name, "baseline_token", 10)
             } +
                 listOf(
-                    RecurringClassifierTokenCountEntity(userId, "SALARY", "gehalt", 50),
-                    RecurringClassifierTokenCountEntity(userId, "SALARY", "direction_INCOME", 50),
+                    RecurringClassifierTokenCountEntity(organizationId, "SALARY", "gehalt", 50),
+                    RecurringClassifierTokenCountEntity(organizationId, "SALARY", "direction_INCOME", 50),
                 )
         val classRows =
             allTypes.map { type ->
                 val extra = if (type == RecurringType.SALARY) 100 else 0
-                RecurringClassifierClassCountEntity(userId, type.name, 10 + extra)
+                RecurringClassifierClassCountEntity(organizationId, type.name, 10 + extra)
             }
-        whenever(tokenCountRepo.findByUserId(userId)).thenReturn(tokenRows)
-        whenever(classCountRepo.findByUserId(userId)).thenReturn(classRows)
+        whenever(tokenCountRepo.findByOrganizationId(organizationId)).thenReturn(tokenRows)
+        whenever(classCountRepo.findByOrganizationId(organizationId)).thenReturn(classRows)
 
         val features =
             ClassifierFeatures(
@@ -49,15 +49,15 @@ class NaiveBayesClassifierAdapterTest {
                 expectedAmount = BigDecimal("3500"),
             )
 
-        val result = adapter.classify(userId, features)
+        val result = adapter.classify(organizationId, features)
 
         assertThat(result).isEqualTo(RecurringType.SALARY)
     }
 
     @Test
     fun `should return OTHER when no training data exists`() {
-        whenever(tokenCountRepo.findByUserId(userId)).thenReturn(emptyList())
-        whenever(classCountRepo.findByUserId(userId)).thenReturn(emptyList())
+        whenever(tokenCountRepo.findByOrganizationId(organizationId)).thenReturn(emptyList())
+        whenever(classCountRepo.findByOrganizationId(organizationId)).thenReturn(emptyList())
 
         val features =
             ClassifierFeatures(
@@ -67,7 +67,7 @@ class NaiveBayesClassifierAdapterTest {
                 expectedAmount = BigDecimal("25"),
             )
 
-        val result = adapter.classify(userId, features)
+        val result = adapter.classify(organizationId, features)
 
         assertThat(result).isEqualTo(RecurringType.OTHER)
     }
@@ -81,12 +81,12 @@ class NaiveBayesClassifierAdapterTest {
                 direction = RecurrenceDirection.EXPENSE,
                 expectedAmount = BigDecimal("15"),
             )
-        whenever(classCountRepo.findByUserIdAndType(userId, "SUBSCRIPTION")).thenReturn(null)
-        whenever(tokenCountRepo.findByUserIdAndTypeAndToken(any(), any(), any())).thenReturn(null)
+        whenever(classCountRepo.findByOrganizationIdAndType(organizationId, "SUBSCRIPTION")).thenReturn(null)
+        whenever(tokenCountRepo.findByOrganizationIdAndTypeAndToken(any(), any(), any())).thenReturn(null)
         whenever(classCountRepo.save(any())).thenAnswer { it.arguments[0] }
         whenever(tokenCountRepo.save(any())).thenAnswer { it.arguments[0] }
 
-        adapter.train(userId, RecurringType.SUBSCRIPTION, features)
+        adapter.train(organizationId, RecurringType.SUBSCRIPTION, features)
 
         val classCaptor = argumentCaptor<RecurringClassifierClassCountEntity>()
         verify(classCountRepo).save(classCaptor.capture())
@@ -96,20 +96,20 @@ class NaiveBayesClassifierAdapterTest {
 
     @Test
     fun `should skip seeding when model already has data for user`() {
-        whenever(tokenCountRepo.existsByUserId(userId)).thenReturn(true)
+        whenever(tokenCountRepo.existsByOrganizationId(organizationId)).thenReturn(true)
 
-        adapter.seedIfEmpty(userId)
+        adapter.seedIfEmpty(organizationId)
 
         verify(tokenCountRepo, never()).save(any())
     }
 
     @Test
     fun `should insert seed tokens for all known types when model is empty`() {
-        whenever(tokenCountRepo.existsByUserId(userId)).thenReturn(false)
+        whenever(tokenCountRepo.existsByOrganizationId(organizationId)).thenReturn(false)
         whenever(tokenCountRepo.save(any())).thenAnswer { it.arguments[0] }
         whenever(classCountRepo.save(any())).thenAnswer { it.arguments[0] }
 
-        adapter.seedIfEmpty(userId)
+        adapter.seedIfEmpty(organizationId)
 
         val tokenCaptor = argumentCaptor<RecurringClassifierTokenCountEntity>()
         verify(tokenCountRepo, org.mockito.kotlin.atLeast(1)).save(tokenCaptor.capture())

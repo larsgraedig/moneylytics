@@ -4,44 +4,44 @@ import com.moneylytics.api.domain.Budget
 import com.moneylytics.api.domain.BudgetTransactionLink
 
 interface BudgetRepository {
-    fun findAllByUserId(userId: Long): List<Budget>
+    fun findAllByOrganizationId(organizationId: Long): List<Budget>
 
     fun findTransactionLinksByBudgetId(
         budgetId: Long,
-        userId: Long,
+        organizationId: Long,
     ): List<BudgetTransactionLink>
 
-    fun findAllTransactionLinksByUserId(userId: Long): List<BudgetTransactionLink>
+    fun findAllTransactionLinksByOrganizationId(organizationId: Long): List<BudgetTransactionLink>
 
     fun create(
         budget: Budget,
-        userId: Long,
+        organizationId: Long,
     ): Budget
 
     fun update(
         budget: Budget,
-        userId: Long,
+        organizationId: Long,
     ): Budget
 
-    fun deleteByIdAndUserId(
+    fun deleteByIdAndOrganizationId(
         id: Long,
-        userId: Long,
+        organizationId: Long,
     )
 
     fun assignTransaction(
         budgetId: Long,
         transactionId: Long,
         amount: java.math.BigDecimal?,
-        userId: Long,
+        organizationId: Long,
     ): BudgetTransactionLink
 
     fun removeTransactionLink(
         linkId: Long,
-        userId: Long,
+        organizationId: Long,
     )
 
     fun findAssignedTransactionIdsByBudgetId(
         budgetId: Long,
-        userId: Long,
+        organizationId: Long,
     ): Set<Long>
 }

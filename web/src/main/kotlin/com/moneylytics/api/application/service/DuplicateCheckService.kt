@@ -10,6 +10,6 @@ class DuplicateCheckService(
 ) : CheckDuplicatesUseCase {
     override fun findExistingFingerprints(
         fingerprints: Collection<String>,
-        userId: Long,
-    ): Set<String> = transactionRepository.findExistingFingerprints(fingerprints, userId)
+        organizationId: Long,
+    ): Set<String> = transactionRepository.findExistingFingerprints(fingerprints, organizationId)
 }

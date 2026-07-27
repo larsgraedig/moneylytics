@@ -6,7 +6,7 @@ import com.moneylytics.api.application.port.input.EnrichTransactionUseCase
 import com.moneylytics.api.application.port.input.GetAccountsUseCase
 import com.moneylytics.api.application.port.input.ImportTransactionsCommand
 import com.moneylytics.api.application.port.input.ImportTransactionsUseCase
-import com.moneylytics.api.application.port.input.ResolveUserUseCase
+import com.moneylytics.api.application.port.input.ResolveOrganizationUseCase
 import com.moneylytics.api.domain.Transaction
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.reactive.awaitSingle
@@ -22,6 +22,7 @@ import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestPart
 import org.springframework.web.bind.annotation.RestController
+import org.springframework.web.server.ServerWebExchange
 import java.math.BigDecimal
 import java.time.LocalDate
 
@@ -39,20 +40,21 @@ class GenericCsvController(
     private val checkDuplicatesUseCase: CheckDuplicatesUseCase,
     private val getAccountsUseCase: GetAccountsUseCase,
     private val enrichTransactionUseCase: EnrichTransactionUseCase,
-    private val resolveUserUseCase: ResolveUserUseCase,
+    private val resolveOrganizationUseCase: ResolveOrganizationUseCase,
     private val csvProfileAdapter: CsvProfilePersistenceAdapter,
 ) {
     @PostMapping("/detect", consumes = [MediaType.MULTIPART_FORM_DATA_VALUE])
     suspend fun detect(
         @RequestPart("file") filePart: FilePart,
         @AuthenticationPrincipal principal: UserDetails,
+        exchange: ServerWebExchange,
     ): CsvDetectionResult {
         val content = filePart.readUtf8()
         val detection = withContext(Dispatchers.Default) { detector.detect(content) }
-        val userId = withContext(Dispatchers.IO) { resolveUserUseCase.resolveUser(principal.username) }
+        val organizationId = resolveOrganizationUseCase.resolveOrganization(principal, exchange)
         val savedMapping =
             withContext(Dispatchers.IO) {
-                csvProfileAdapter.findMapping(userId, detection.fingerprint)
+                csvProfileAdapter.findMapping(organizationId, detection.fingerprint)
             }
         return detection.result.copy(savedMapping = savedMapping)
     }
@@ -62,18 +64,21 @@ class GenericCsvController(
         @RequestPart("file") filePart: FilePart,
         @RequestPart("mapping") mapping: GenericCsvMapping,
         @AuthenticationPrincipal principal: UserDetails,
+        exchange: ServerWebExchange,
     ): ResponseEntity<ImportSuccessResponse> {
         val content = filePart.readUtf8()
         val (transactions, accountNames) = withContext(Dispatchers.Default) { parser.parse(content, mapping) }
-        val userId = withContext(Dispatchers.IO) { resolveUserUseCase.resolveUser(principal.username) }
+        val organizationId = resolveOrganizationUseCase.resolveOrganization(principal, exchange)
         val count =
-            importTransactionsUseCase.importTransactions(
-                ImportTransactionsCommand(
-                    transactions = transactions,
-                    accountNames = accountNames,
-                    userId = userId,
-                ),
-            )
+            withContext(Dispatchers.IO) {
+                importTransactionsUseCase.importTransactions(
+                    ImportTransactionsCommand(
+                        transactions = transactions,
+                        accountNames = accountNames,
+                        organizationId = organizationId,
+                    ),
+                )
+            }
         val fingerprint =
             withContext(Dispatchers.Default) {
                 detector.computeFingerprint(
@@ -88,7 +93,7 @@ class GenericCsvController(
                     delimiter = mapping.delimiter.firstOrNull() ?: ',',
                 )
             }
-        withContext(Dispatchers.IO) { csvProfileAdapter.saveMapping(userId, fingerprint, mapping) }
+        withContext(Dispatchers.IO) { csvProfileAdapter.saveMapping(organizationId, fingerprint, mapping) }
         return ResponseEntity.ok(ImportSuccessResponse(importedCount = count))
     }
 
@@ -97,17 +102,18 @@ class GenericCsvController(
         @RequestPart("file") filePart: FilePart,
         @RequestPart("mapping") mapping: GenericCsvMapping,
         @AuthenticationPrincipal principal: UserDetails,
+        exchange: ServerWebExchange,
     ): List<GenericCsvPreviewRow> {
         val content = filePart.readUtf8()
         val rows = withContext(Dispatchers.Default) { parser.preview(content, mapping) }
         if (rows.isEmpty()) return rows
 
-        val userId = withContext(Dispatchers.IO) { resolveUserUseCase.resolveUser(principal.username) }
+        val organizationId = resolveOrganizationUseCase.resolveOrganization(principal, exchange)
         val allFingerprints = rows.map { it.fingerprint }.toSet()
         val (existingFingerprints, knownIbans) =
             withContext(Dispatchers.IO) {
-                checkDuplicatesUseCase.findExistingFingerprints(allFingerprints, userId) to
-                    getAccountsUseCase.getAccounts(userId).map { it.iban }.toSet()
+                checkDuplicatesUseCase.findExistingFingerprints(allFingerprints, organizationId) to
+                    getAccountsUseCase.getAccounts(organizationId).map { it.iban }.toSet()
             }
         return rows.map { row ->
             row.copy(
@@ -121,10 +127,11 @@ class GenericCsvController(
     suspend fun importRows(
         @RequestBody request: GenericCsvImportRequest,
         @AuthenticationPrincipal principal: UserDetails,
+        exchange: ServerWebExchange,
     ): ResponseEntity<ImportSuccessResponse> {
-        val userId = withContext(Dispatchers.IO) { resolveUserUseCase.resolveUser(principal.username) }
+        val organizationId = resolveOrganizationUseCase.resolveOrganization(principal, exchange)
         val knownIbans =
-            withContext(Dispatchers.IO) { getAccountsUseCase.getAccounts(userId) }
+            withContext(Dispatchers.IO) { getAccountsUseCase.getAccounts(organizationId) }
                 .map { it.iban }
                 .toSet()
         val rows = request.toImport
@@ -148,15 +155,25 @@ class GenericCsvController(
             }
         val accountNames = safeRows.associate { it.accountIban to it.accountIban }
         val count =
-            importTransactionsUseCase.importTransactions(
-                ImportTransactionsCommand(
-                    transactions = transactions,
-                    accountNames = accountNames,
-                    userId = userId,
-                ),
-            )
+            withContext(Dispatchers.IO) {
+                importTransactionsUseCase.importTransactions(
+                    ImportTransactionsCommand(
+                        transactions = transactions,
+                        accountNames = accountNames,
+                        organizationId = organizationId,
+                    ),
+                )
+            }
         request.toEnrich.forEach { e ->
-            enrichTransactionUseCase.enrichByFingerprint(e.fingerprint, userId, e.purpose, e.counterpartyName, e.counterpartyIban)
+            withContext(Dispatchers.IO) {
+                enrichTransactionUseCase.enrichByFingerprint(
+                    e.fingerprint,
+                    organizationId,
+                    e.purpose,
+                    e.counterpartyName,
+                    e.counterpartyIban,
+                )
+            }
         }
         return ResponseEntity.ok(ImportSuccessResponse(importedCount = count))
     }

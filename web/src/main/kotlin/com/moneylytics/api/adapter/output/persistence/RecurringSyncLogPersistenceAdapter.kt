@@ -11,18 +11,18 @@ import org.springframework.transaction.annotation.Transactional
 class RecurringSyncLogPersistenceAdapter(
     private val syncLogJpaRepository: RecurringSyncLogJpaRepository,
     private val syncLogEntryJpaRepository: RecurringSyncLogEntryJpaRepository,
-    private val userJpaRepository: UserJpaRepository,
+    private val organizationJpaRepository: OrganizationJpaRepository,
 ) : RecurringSyncLogRepository {
     @Transactional
     override fun save(
         log: RecurringSyncLog,
-        userId: Long,
+        organizationId: Long,
     ) {
-        val user = userJpaRepository.getReferenceById(userId)
+        val organization = organizationJpaRepository.getReferenceById(organizationId)
         val entity =
             syncLogJpaRepository.save(
                 RecurringSyncLogEntity(
-                    user = user,
+                    organization = organization,
                     ranAt = log.ranAt,
                     triggeredBy = log.triggeredBy,
                     seriesUpdatedCount = log.seriesUpdatedCount,
@@ -47,12 +47,12 @@ class RecurringSyncLogPersistenceAdapter(
         }
     }
 
-    override fun findRecentByUserId(
-        userId: Long,
+    override fun findRecentByOrganizationId(
+        organizationId: Long,
         limit: Int,
     ): List<RecurringSyncLog> {
         val entities =
-            syncLogJpaRepository.findByUserIdOrderByRanAtDesc(userId, PageRequest.of(0, limit))
+            syncLogJpaRepository.findByOrganizationIdOrderByRanAtDesc(organizationId, PageRequest.of(0, limit))
         if (entities.isEmpty()) return emptyList()
 
         val ids = entities.mapNotNull { it.id }

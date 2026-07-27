@@ -27,11 +27,11 @@ class TransactionOffsetService(
             "A transaction cannot be linked to itself"
         }
         val txSource =
-            requireNotNull(transactionRepository.findByIdAndUserId(command.transactionId, command.userId)) {
+            requireNotNull(transactionRepository.findByIdAndOrganizationId(command.transactionId, command.organizationId)) {
                 "Transaction ${command.transactionId} not found"
             }
         val txOther =
-            requireNotNull(transactionRepository.findByIdAndUserId(command.otherTransactionId, command.userId)) {
+            requireNotNull(transactionRepository.findByIdAndOrganizationId(command.otherTransactionId, command.organizationId)) {
                 "Transaction ${command.otherTransactionId} not found"
             }
 
@@ -64,7 +64,7 @@ class TransactionOffsetService(
             resolveGroupForLink(
                 txAId = aId,
                 txBId = bId,
-                userId = command.userId,
+                organizationId = command.organizationId,
                 targetGroupId = command.targetGroupId,
                 forceNewGroup = command.forceNewGroup,
             )
@@ -73,29 +73,30 @@ class TransactionOffsetService(
             offsetRepository.create(CreateOffsetLinkCommand(aId, bId, amountA, amountB, groupId))
         }
 
-        val updatedSource = requireNotNull(transactionRepository.findByIdAndUserId(command.transactionId, command.userId))
-        val updatedOther = requireNotNull(transactionRepository.findByIdAndUserId(command.otherTransactionId, command.userId))
+        val updatedSource = requireNotNull(transactionRepository.findByIdAndOrganizationId(command.transactionId, command.organizationId))
+        val updatedOther =
+            requireNotNull(transactionRepository.findByIdAndOrganizationId(command.otherTransactionId, command.organizationId))
         return LinkTransactionResult(groupId = groupId, sourceTransaction = updatedSource, otherTransaction = updatedOther)
     }
 
     override fun unlinkTransactions(
         linkId: Long,
-        userId: Long,
+        organizationId: Long,
     ): Boolean {
-        val deleted = offsetRepository.delete(linkId, userId) ?: return false
-        deleted.groupId?.let { cleanupGroup(it, userId, fromUnlink = true) }
+        val deleted = offsetRepository.delete(linkId, organizationId) ?: return false
+        deleted.groupId?.let { cleanupGroup(it, organizationId, fromUnlink = true) }
         return true
     }
 
-    override fun getLinkedGroups(userId: Long): List<LinkedTransactionGroup> {
-        val groups = groupRepository.findAllByUserId(userId)
+    override fun getLinkedGroups(organizationId: Long): List<LinkedTransactionGroup> {
+        val groups = groupRepository.findAllByOrganizationId(organizationId)
         if (groups.isEmpty()) return emptyList()
 
         val groupMemberIds = groups.associate { it.id to groupRepository.findMemberIds(it.id) }
         val allTxIds = groupMemberIds.values.flatten().toSet()
         if (allTxIds.isEmpty()) return emptyList()
 
-        val txById = transactionRepository.findByIdsAndUserId(allTxIds, userId).associateBy { it.id!! }
+        val txById = transactionRepository.findByIdsAndOrganizationId(allTxIds, organizationId).associateBy { it.id!! }
 
         return groups
             .mapNotNull { group ->
@@ -118,12 +119,12 @@ class TransactionOffsetService(
 
     override fun getLinkedGroup(
         groupId: Long,
-        userId: Long,
+        organizationId: Long,
     ): LinkedTransactionGroup? {
-        val group = groupRepository.findById(groupId, userId) ?: return null
+        val group = groupRepository.findById(groupId, organizationId) ?: return null
         val memberIds = groupRepository.findMemberIds(groupId)
         if (memberIds.isEmpty()) return null
-        val txById = transactionRepository.findByIdsAndUserId(memberIds.toSet(), userId).associateBy { it.id!! }
+        val txById = transactionRepository.findByIdsAndOrganizationId(memberIds.toSet(), organizationId).associateBy { it.id!! }
         val transactions =
             memberIds
                 .mapNotNull { txById[it] }
@@ -140,29 +141,29 @@ class TransactionOffsetService(
 
     override fun updateGroupMeta(
         groupId: Long,
-        userId: Long,
+        organizationId: Long,
         name: String?,
         comment: String?,
     ) {
-        groupRepository.update(groupId, userId, name, comment)
+        groupRepository.update(groupId, organizationId, name, comment)
     }
 
     override fun updateOffsetComment(
         linkId: Long,
-        userId: Long,
+        organizationId: Long,
         comment: String?,
     ) {
-        offsetRepository.updateComment(linkId, userId, comment)
+        offsetRepository.updateComment(linkId, organizationId, comment)
     }
 
     override fun removeTransactionFromGroup(
         txId: Long,
         groupId: Long,
-        userId: Long,
+        organizationId: Long,
     ) {
-        offsetRepository.deleteByTxAndGroupId(txId, groupId, userId)
+        offsetRepository.deleteByTxAndGroupId(txId, groupId, organizationId)
         groupRepository.removeMember(groupId, txId)
-        cleanupGroup(groupId, userId)
+        cleanupGroup(groupId, organizationId)
     }
 
     private fun normalizeSign(
@@ -216,7 +217,7 @@ class TransactionOffsetService(
     private fun resolveGroupForLink(
         txAId: Long,
         txBId: Long,
-        userId: Long,
+        organizationId: Long,
         targetGroupId: Long?,
         forceNewGroup: Boolean,
     ): Long {
@@ -226,7 +227,7 @@ class TransactionOffsetService(
             return targetGroupId
         }
         if (forceNewGroup) {
-            val newGroup = groupRepository.create(userId)
+            val newGroup = groupRepository.create(organizationId)
             groupRepository.addMember(newGroup.id, txAId)
             groupRepository.addMember(newGroup.id, txBId)
             return newGroup.id
@@ -243,7 +244,7 @@ class TransactionOffsetService(
                 groupB
             }
             else -> {
-                val newGroup = groupRepository.create(userId)
+                val newGroup = groupRepository.create(organizationId)
                 groupRepository.addMember(newGroup.id, txAId)
                 groupRepository.addMember(newGroup.id, txBId)
                 newGroup.id
@@ -253,7 +254,7 @@ class TransactionOffsetService(
 
     private fun cleanupGroup(
         groupId: Long,
-        userId: Long,
+        organizationId: Long,
         fromUnlink: Boolean = false,
     ) {
         val memberIds = groupRepository.findMemberIds(groupId)
@@ -293,7 +294,7 @@ class TransactionOffsetService(
 
         for (component in sorted.drop(1)) {
             if (component.size >= 2) {
-                val newGroup = groupRepository.create(userId)
+                val newGroup = groupRepository.create(organizationId)
                 component.forEach { groupRepository.addMember(newGroup.id, it) }
                 offsetRepository.updateLinksGroupId(groupId, newGroup.id, component)
             }

@@ -9,8 +9,8 @@ class CollectionTransactionJpaRepositoryIT : AbstractJpaRepositoryIT() {
 
     @Autowired private lateinit var collectionTransactionRepo: CollectionTransactionJpaRepository
 
-    private fun savedCollection(forUser: UserEntity = user) =
-        collectionRepo.save(CollectionEntity(user = forUser, name = "Test Collection"))
+    private fun savedCollection(forOrganization: OrganizationEntity = organization) =
+        collectionRepo.save(CollectionEntity(organization = forOrganization, name = "Test Collection"))
 
     private fun savedLink(
         collectionId: Long,

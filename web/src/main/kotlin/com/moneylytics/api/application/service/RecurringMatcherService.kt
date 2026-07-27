@@ -26,15 +26,21 @@ class RecurringMatcherService(
         val newTransactions: List<Transaction>,
     )
 
-    override fun syncForAllUsers() {
-        val userIds = recurringSeriesRepository.findAllUserIds()
-        userIds.forEach { userId -> syncAndLogForUser(userId) }
+    override fun syncForAllOrganizations() {
+        val organizationIds = recurringSeriesRepository.findAllOrganizationIds()
+        organizationIds.forEach { organizationId -> syncAndLogForOrganization(organizationId) }
     }
 
-    override fun getRecentSyncLogs(userId: Long): List<RecurringSyncLog> = syncLogRepository.findRecentByUserId(userId)
+    override fun syncForOrganization(organizationId: Long) = syncAndLogForOrganization(organizationId, RecurringSyncTrigger.MANUAL)
 
-    private fun syncAndLogForUser(userId: Long) {
-        val results = syncForUser(userId)
+    override fun getRecentSyncLogs(organizationId: Long): List<RecurringSyncLog> =
+        syncLogRepository.findRecentByOrganizationId(organizationId)
+
+    private fun syncAndLogForOrganization(
+        organizationId: Long,
+        trigger: RecurringSyncTrigger = RecurringSyncTrigger.SCHEDULED,
+    ) {
+        val results = matchSeriesForOrganization(organizationId)
         val entries =
             results.flatMap { r ->
                 r.newTransactions.mapNotNull { tx ->
@@ -53,18 +59,18 @@ class RecurringMatcherService(
         syncLogRepository.save(
             RecurringSyncLog(
                 ranAt = Instant.now(),
-                triggeredBy = RecurringSyncTrigger.SCHEDULED,
+                triggeredBy = trigger,
                 seriesUpdatedCount = results.size,
                 transactionsLinkedCount = entries.size,
                 entries = entries,
             ),
-            userId,
+            organizationId,
         )
     }
 
-    private fun syncForUser(userId: Long): List<SeriesMatchResult> {
+    private fun matchSeriesForOrganization(organizationId: Long): List<SeriesMatchResult> {
         val today = LocalDate.now()
-        val allSeries = recurringSeriesRepository.findByUserId(userId)
+        val allSeries = recurringSeriesRepository.findByOrganizationId(organizationId)
         val results = mutableListOf<SeriesMatchResult>()
 
         allSeries
@@ -81,7 +87,7 @@ class RecurringMatcherService(
                     transactionRepository.findByAccountingDateBetween(
                         from = series.firstSeen,
                         to = today,
-                        userId = userId,
+                        organizationId = organizationId,
                         accountIban = accountIban,
                     )
 

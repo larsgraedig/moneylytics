@@ -3,6 +3,7 @@ package com.moneylytics.api.config
 import com.moneylytics.api.application.port.input.AssignTransactionToBudgetUseCase
 import com.moneylytics.api.application.port.input.CreateBudgetUseCase
 import com.moneylytics.api.application.port.input.CreateCollectionUseCase
+import com.moneylytics.api.application.port.input.CreateOrganizationUseCase
 import com.moneylytics.api.application.port.input.CreateUserUseCase
 import com.moneylytics.api.application.port.input.DetectRecurringSeriesUseCase
 import com.moneylytics.api.application.port.input.GetTransactionsQuery
@@ -34,6 +35,7 @@ import java.util.Random
 class LocalDataInitializer(
     private val importTransactionsUseCase: ImportTransactionsUseCase,
     private val createUserUseCase: CreateUserUseCase,
+    private val createOrganizationUseCase: CreateOrganizationUseCase,
     private val userRepository: UserRepository,
     private val getTransactionsUseCase: GetTransactionsUseCase,
     private val manageTransactionOffsetUseCase: ManageTransactionOffsetUseCase,
@@ -131,9 +133,12 @@ class LocalDataInitializer(
 
     override fun run(args: ApplicationArguments) {
         val adminId = createUserUseCase.createUser("local-admin", "admin")
-        userRepository.promoteToAdmin(adminId)
+        userRepository.promoteToSystemAdmin(adminId)
+        createOrganizationUseCase.createOrganization("Admin Org", adminId)
 
-        val userId = createUserUseCase.createUser("local-dev-user", "local")
+        val devUserId = createUserUseCase.createUser("local-dev-user", "local")
+        val orgId = createOrganizationUseCase.createOrganization("Persönlich", devUserId).id
+
         importTransactionsUseCase.importTransactions(
             ImportTransactionsCommand(
                 transactions = generateMainTransactions() + generateSavingsTransactions() + generateFixedTransactions(),
@@ -142,19 +147,19 @@ class LocalDataInitializer(
                         mainIban to mainName,
                         savingsIban to savingsName,
                     ),
-                userId = userId,
+                organizationId = orgId,
             ),
         )
-        setupOffsetLinks(userId)
-        setupThresholds(userId)
-        setupBudgets(userId)
-        setupCollections(userId)
-        detectRecurringSeriesUseCase.detect(RefreshRecurringSeriesCommand(userId = userId))
+        setupOffsetLinks(orgId)
+        setupThresholds(orgId)
+        setupBudgets(orgId)
+        setupCollections(orgId)
+        detectRecurringSeriesUseCase.detect(RefreshRecurringSeriesCommand(organizationId = orgId))
     }
 
-    private fun setupOffsetLinks(userId: Long) {
-        val arztTx = findTx(userId, ARZT_DATE, "Gesundheit", BigDecimal("-180.00"))
-        val erstattungTx = findTx(userId, ERSTATTUNG_DATE, "Einnahmen", BigDecimal("120.00"))
+    private fun setupOffsetLinks(orgId: Long) {
+        val arztTx = findTx(orgId, ARZT_DATE, "Gesundheit", BigDecimal("-180.00"))
+        val erstattungTx = findTx(orgId, ERSTATTUNG_DATE, "Einnahmen", BigDecimal("120.00"))
         if (arztTx != null && erstattungTx != null) {
             manageTransactionOffsetUseCase.linkTransactions(
                 LinkTransactionsCommand(
@@ -162,13 +167,13 @@ class LocalDataInitializer(
                     otherTransactionId = erstattungTx.id!!,
                     myAmount = BigDecimal("120"),
                     otherAmount = BigDecimal("120"),
-                    userId = userId,
+                    organizationId = orgId,
                 ),
             )
         }
 
-        val restaurantTx = findTx(userId, RESTAURANT_DATE, "Lebensmittel", BigDecimal("-95.00"))
-        val uberweisungTx = findTx(userId, UEBERWEISUNG_DATE, "Einnahmen", BigDecimal("47.50"))
+        val restaurantTx = findTx(orgId, RESTAURANT_DATE, "Lebensmittel", BigDecimal("-95.00"))
+        val uberweisungTx = findTx(orgId, UEBERWEISUNG_DATE, "Einnahmen", BigDecimal("47.50"))
         if (restaurantTx != null && uberweisungTx != null) {
             manageTransactionOffsetUseCase.linkTransactions(
                 LinkTransactionsCommand(
@@ -176,13 +181,13 @@ class LocalDataInitializer(
                     otherTransactionId = uberweisungTx.id!!,
                     myAmount = BigDecimal("47.50"),
                     otherAmount = BigDecimal("47.50"),
-                    userId = userId,
+                    organizationId = orgId,
                 ),
             )
         }
     }
 
-    private fun setupThresholds(userId: Long) {
+    private fun setupThresholds(orgId: Long) {
         saveThresholdUseCase.saveThreshold(
             Threshold(
                 id = 0,
@@ -193,7 +198,7 @@ class LocalDataInitializer(
                 warning = BigDecimal("600"),
                 critical = BigDecimal("800"),
             ),
-            userId,
+            orgId,
         )
         saveThresholdUseCase.saveThreshold(
             Threshold(
@@ -205,7 +210,7 @@ class LocalDataInitializer(
                 warning = BigDecimal("250"),
                 critical = null,
             ),
-            userId,
+            orgId,
         )
         saveThresholdUseCase.saveThreshold(
             Threshold(
@@ -217,36 +222,36 @@ class LocalDataInitializer(
                 warning = null,
                 critical = null,
             ),
-            userId,
+            orgId,
         )
     }
 
-    private fun setupBudgets(userId: Long) {
+    private fun setupBudgets(orgId: Long) {
         val urlaub =
             createBudgetUseCase.createBudget(
                 Budget(name = "Urlaub 2025", targetAmount = BigDecimal("1200")),
-                userId,
+                orgId,
             )
         listOf(
             REISE_FLUG_DATE to BigDecimal("-380.00"),
             REISE_HOTEL_DATE to BigDecimal("-490.00"),
             REISE_AKTIVITAETEN_DATE to BigDecimal("-200.00"),
         ).forEach { (date, amount) ->
-            findTx(userId, date, "Reise", amount)?.id?.let { txId ->
-                assignTransactionToBudgetUseCase.assignTransaction(urlaub.id!!, txId, null, userId)
+            findTx(orgId, date, "Reise", amount)?.id?.let { txId ->
+                assignTransactionToBudgetUseCase.assignTransaction(urlaub.id!!, txId, null, orgId)
             }
         }
 
         val kueche =
             createBudgetUseCase.createBudget(
                 Budget(name = "Neue Küche", targetAmount = BigDecimal("3500")),
-                userId,
+                orgId,
             )
-        findTx(userId, WOHNEN_EINRICHTUNG_DATE, "Wohnen", BigDecimal("-800.00"))?.id?.let { txId ->
-            assignTransactionToBudgetUseCase.assignTransaction(kueche.id!!, txId, BigDecimal("500"), userId)
+        findTx(orgId, WOHNEN_EINRICHTUNG_DATE, "Wohnen", BigDecimal("-800.00"))?.id?.let { txId ->
+            assignTransactionToBudgetUseCase.assignTransaction(kueche.id!!, txId, BigDecimal("500"), orgId)
         }
 
-        val notfall = createBudgetUseCase.createBudget(Budget(name = "Notfallfonds"), userId)
+        val notfall = createBudgetUseCase.createBudget(Budget(name = "Notfallfonds"), orgId)
         listOf(
             Triple(EINNAHMEN_JAN_20_DATE, "Einnahmen", BigDecimal("500.00")),
             Triple(EINNAHMEN_MAR_5_DATE, "Einnahmen", BigDecimal("400.00")),
@@ -254,47 +259,47 @@ class LocalDataInitializer(
             Triple(EINNAHMEN_JUN_10_DATE, "Einnahmen", BigDecimal("700.00")),
             Triple(EINNAHMEN_AUG_DATE, "Einnahmen", BigDecimal("900.00")),
         ).forEach { (date, category, amount) ->
-            findTx(userId, date, category, amount)?.id?.let { txId ->
-                assignTransactionToBudgetUseCase.assignTransaction(notfall.id!!, txId, null, userId)
+            findTx(orgId, date, category, amount)?.id?.let { txId ->
+                assignTransactionToBudgetUseCase.assignTransaction(notfall.id!!, txId, null, orgId)
             }
         }
     }
 
-    private fun setupCollections(userId: Long) {
-        val sommer = createCollectionUseCase.createCollection(Collection(name = "Sommer 2025"), userId)
-        val restaurantTxs = queryTxs(userId, SOMMER_FROM, SOMMER_TO, "Lebensmittel", "Restaurant").take(SOMMER_RESTAURANT_LIMIT)
-        val sportTxs = queryTxs(userId, SOMMER_FROM, SOMMER_TO, "Freizeit", "Sport").take(2)
+    private fun setupCollections(orgId: Long) {
+        val sommer = createCollectionUseCase.createCollection(Collection(name = "Sommer 2025"), orgId)
+        val restaurantTxs = queryTxs(orgId, SOMMER_FROM, SOMMER_TO, "Lebensmittel", "Restaurant").take(SOMMER_RESTAURANT_LIMIT)
+        val sportTxs = queryTxs(orgId, SOMMER_FROM, SOMMER_TO, "Freizeit", "Sport").take(2)
         (restaurantTxs + sportTxs).forEach { tx ->
-            tx.id?.let { manageCollectionMembersUseCase.addTransaction(sommer.id!!, it, userId) }
+            tx.id?.let { manageCollectionMembersUseCase.addTransaction(sommer.id!!, it, orgId) }
         }
 
-        val haushalt = createCollectionUseCase.createCollection(Collection(name = "Haushalt Q1 2025"), userId)
-        val mieteTxs = queryTxs(userId, Q1_FROM, Q1_TO, "Wohnen", "Miete").take(2)
-        val internetTxs = queryTxs(userId, Q1_FROM, Q1_TO, "Wohnen", "Internet").take(2)
+        val haushalt = createCollectionUseCase.createCollection(Collection(name = "Haushalt Q1 2025"), orgId)
+        val mieteTxs = queryTxs(orgId, Q1_FROM, Q1_TO, "Wohnen", "Miete").take(2)
+        val internetTxs = queryTxs(orgId, Q1_FROM, Q1_TO, "Wohnen", "Internet").take(2)
         (mieteTxs + internetTxs).forEach { tx ->
-            tx.id?.let { manageCollectionMembersUseCase.addTransaction(haushalt.id!!, it, userId) }
+            tx.id?.let { manageCollectionMembersUseCase.addTransaction(haushalt.id!!, it, orgId) }
         }
     }
 
     private fun findTx(
-        userId: Long,
+        orgId: Long,
         date: LocalDate,
         category: String,
         amount: BigDecimal,
     ): Transaction? =
         getTransactionsUseCase
-            .getTransactions(GetTransactionsQuery(from = date, to = date, userId = userId, category = category))
+            .getTransactions(GetTransactionsQuery(from = date, to = date, organizationId = orgId, category = category))
             .find { it.amount.compareTo(amount) == 0 }
 
     private fun queryTxs(
-        userId: Long,
+        orgId: Long,
         from: LocalDate,
         to: LocalDate,
         category: String,
         subcategory: String,
     ): List<Transaction> =
         getTransactionsUseCase.getTransactions(
-            GetTransactionsQuery(from = from, to = to, userId = userId, category = category, subcategory = subcategory),
+            GetTransactionsQuery(from = from, to = to, organizationId = orgId, category = category, subcategory = subcategory),
         )
 
     private fun generateFixedTransactions(): List<Transaction> =

@@ -8,7 +8,7 @@ import com.moneylytics.api.application.port.input.GetCategoriesUseCase
 import com.moneylytics.api.application.port.input.GetCategoryTotalsUseCase
 import com.moneylytics.api.application.port.input.GetTransactionsQuery
 import com.moneylytics.api.application.port.input.GetTransactionsUseCase
-import com.moneylytics.api.application.port.input.ResolveUserUseCase
+import com.moneylytics.api.application.port.input.ResolveOrganizationUseCase
 import com.moneylytics.api.application.port.input.UpdateTransactionAccountingDateUseCase
 import com.moneylytics.api.application.port.input.UpdateTransactionCategoryUseCase
 import com.moneylytics.api.application.port.input.UpdateTransactionCommentUseCase
@@ -26,12 +26,14 @@ import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import org.springframework.http.HttpStatus
 import org.springframework.security.core.userdetails.User
+import org.springframework.web.server.ServerWebExchange
 import java.math.BigDecimal
 import java.time.LocalDate
 
 class TransactionQueryControllerListTest {
-    private val userId = 1L
-    private val resolveUserUseCase: ResolveUserUseCase = mock { on { resolveUser(any()) } doReturn userId }
+    private val organizationId = 1L
+    private val exchange: ServerWebExchange = mock()
+    private val resolveOrganizationUseCase: ResolveOrganizationUseCase = ResolveOrganizationUseCase { _, _ -> organizationId }
     private val getTransactionsUseCase: GetTransactionsUseCase = mock()
     private val getCashflowUseCase: GetCashflowUseCase = mock()
     private val getBurnRateUseCase: GetBurnRateUseCase = mock()
@@ -48,7 +50,7 @@ class TransactionQueryControllerListTest {
             getBurnRateUseCase,
             getCategoriesUseCase,
             getCategoryTotalsUseCase,
-            resolveUserUseCase,
+            resolveOrganizationUseCase,
             updateTransactionCategoryUseCase,
             updateTransactionCommentUseCase,
             updateTransactionAccountingDateUseCase,
@@ -63,8 +65,6 @@ class TransactionQueryControllerListTest {
     private val from = LocalDate.of(2025, 1, 1)
     private val to = LocalDate.of(2025, 1, 31)
 
-    // ── listTransactions ─────────────────────────────────────────────────────
-
     @Test
     fun `should sort transactions by accountingDate descending`() =
         runTest {
@@ -73,7 +73,7 @@ class TransactionQueryControllerListTest {
             val jan10 = tx(id = 3L, accountingDate = LocalDate.of(2025, 1, 10))
             whenever(getTransactionsUseCase.getTransactions(any())).thenReturn(listOf(jan5, jan20, jan10))
 
-            val response = controller.listTransactions(from, to, principal = principal)
+            val response = controller.listTransactions(from, to, principal = principal, exchange = exchange)
 
             assertThat(response.transactions.map { it.id }).containsExactly(2L, 3L, 1L)
         }
@@ -90,9 +90,8 @@ class TransactionQueryControllerListTest {
             val txPlain = tx(id = 2L, amount = BigDecimal("-50"))
             whenever(getTransactionsUseCase.getTransactions(any())).thenReturn(listOf(txWithOffset, txPlain))
 
-            val response = controller.listTransactions(from, to, principal = principal)
+            val response = controller.listTransactions(from, to, principal = principal, exchange = exchange)
 
-            // effectiveAmount: -100 + 60 = -40 (offset reduces expense), -50 → total = -90
             assertThat(response.total).isEqualByComparingTo(BigDecimal("-90"))
         }
 
@@ -112,6 +111,7 @@ class TransactionQueryControllerListTest {
                 excludeCollectionId = 5L,
                 excludeBudgetId = 7L,
                 principal = principal,
+                exchange = exchange,
             )
 
             val captor = argumentCaptor<GetTransactionsQuery>()
@@ -126,14 +126,12 @@ class TransactionQueryControllerListTest {
             assertThat(query.excludeBudgetId).isEqualTo(7L)
         }
 
-    // ── updateTransactionCategory ────────────────────────────────────────────
-
     @Test
     fun `should return 404 when updateTransactionCategory returns null`() =
         runTest {
             whenever(updateTransactionCategoryUseCase.updateCategory(any(), any(), any(), any(), anyOrNull())).thenReturn(null)
 
-            val response = controller.updateTransactionCategory(99L, UpdateCategoryRequest("Kat", "Sub"), principal)
+            val response = controller.updateTransactionCategory(99L, UpdateCategoryRequest("Kat", "Sub"), principal, exchange)
 
             assertThat(response.statusCode).isEqualTo(HttpStatus.NOT_FOUND)
         }
@@ -144,36 +142,36 @@ class TransactionQueryControllerListTest {
             val updated = tx(id = 1L)
             whenever(updateTransactionCategoryUseCase.updateCategory(any(), any(), any(), any(), anyOrNull())).thenReturn(updated)
 
-            val response = controller.updateTransactionCategory(1L, UpdateCategoryRequest("Lebensmittel", "Supermarkt"), principal)
+            val response =
+                controller.updateTransactionCategory(
+                    1L,
+                    UpdateCategoryRequest("Lebensmittel", "Supermarkt"),
+                    principal,
+                    exchange,
+                )
 
             assertThat(response.statusCode).isEqualTo(HttpStatus.OK)
         }
-
-    // ── updateTransactionComment ─────────────────────────────────────────────
 
     @Test
     fun `should return 404 when updateTransactionComment returns null`() =
         runTest {
             whenever(updateTransactionCommentUseCase.updateComment(any(), any(), any())).thenReturn(null)
 
-            val response = controller.updateTransactionComment(99L, UpdateCommentRequest("test"), principal)
+            val response = controller.updateTransactionComment(99L, UpdateCommentRequest("test"), principal, exchange)
 
             assertThat(response.statusCode).isEqualTo(HttpStatus.NOT_FOUND)
         }
-
-    // ── updateTransactionAccountingDate ──────────────────────────────────────
 
     @Test
     fun `should return 404 when updateTransactionAccountingDate returns null`() =
         runTest {
             whenever(updateTransactionAccountingDateUseCase.updateAccountingDate(any(), any(), any())).thenReturn(null)
 
-            val response = controller.updateTransactionAccountingDate(99L, UpdateAccountingDateRequest(from), principal)
+            val response = controller.updateTransactionAccountingDate(99L, UpdateAccountingDateRequest(from), principal, exchange)
 
             assertThat(response.statusCode).isEqualTo(HttpStatus.NOT_FOUND)
         }
-
-    // ── bulkUpdateTransactionCategory ────────────────────────────────────────
 
     @Test
     fun `should map bulk update DTOs to domain and return items`() =
@@ -191,6 +189,7 @@ class TransactionQueryControllerListTest {
                             ),
                     ),
                     principal,
+                    exchange,
                 )
 
             assertThat(result).hasSize(2)
@@ -200,14 +199,12 @@ class TransactionQueryControllerListTest {
             assertThat(captor.firstValue[1].category).isEqualTo("Transport")
         }
 
-    // ── getTrends series spec parsing ────────────────────────────────────────
-
     @Test
     fun `should parse 3-part series spec category colon group colon sub`() =
         runTest {
             whenever(getTransactionsUseCase.getTransactions(any())).thenReturn(emptyList())
 
-            controller.getTrends(from, to, series = listOf("Lebensmittel:Konsum:Supermarkt"), principal = principal)
+            controller.getTrends(from, to, series = listOf("Lebensmittel:Konsum:Supermarkt"), principal = principal, exchange = exchange)
 
             val captor = argumentCaptor<GetTransactionsQuery>()
             verify(getTransactionsUseCase).getTransactions(captor.capture())
@@ -220,7 +217,7 @@ class TransactionQueryControllerListTest {
         runTest {
             whenever(getTransactionsUseCase.getTransactions(any())).thenReturn(emptyList())
 
-            controller.getTrends(from, to, series = listOf("Transport:ÖPNV"), principal = principal)
+            controller.getTrends(from, to, series = listOf("Transport:ÖPNV"), principal = principal, exchange = exchange)
 
             val captor = argumentCaptor<GetTransactionsQuery>()
             verify(getTransactionsUseCase).getTransactions(captor.capture())
@@ -233,7 +230,7 @@ class TransactionQueryControllerListTest {
         runTest {
             whenever(getTransactionsUseCase.getTransactions(any())).thenReturn(emptyList())
 
-            controller.getTrends(from, to, series = listOf("Freizeit"), principal = principal)
+            controller.getTrends(from, to, series = listOf("Freizeit"), principal = principal, exchange = exchange)
 
             val captor = argumentCaptor<GetTransactionsQuery>()
             verify(getTransactionsUseCase).getTransactions(captor.capture())

@@ -8,7 +8,7 @@ import java.time.LocalDate
 data class GetThresholdStatusQuery(
     val from: LocalDate,
     val to: LocalDate,
-    val userId: Long,
+    val organizationId: Long,
     val accountIban: String? = null,
 )
 

@@ -7,7 +7,7 @@ interface TransactionOffsetRepository {
 
     fun delete(
         linkId: Long,
-        userId: Long,
+        organizationId: Long,
     ): DeletedOffsetLink?
 
     fun existsByPair(
@@ -25,14 +25,14 @@ interface TransactionOffsetRepository {
 
     fun updateComment(
         linkId: Long,
-        userId: Long,
+        organizationId: Long,
         comment: String?,
     )
 
     fun deleteByTxAndGroupId(
         txId: Long,
         groupId: Long,
-        userId: Long,
+        organizationId: Long,
     )
 }
 

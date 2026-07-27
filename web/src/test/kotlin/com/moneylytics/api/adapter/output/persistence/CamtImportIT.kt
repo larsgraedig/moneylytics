@@ -23,45 +23,45 @@ class CamtImportIT : AbstractServiceIT() {
         ignoredTransactionService.update(
             toIgnore = listOf("fp1", "fp2"),
             toUnignore = emptyList(),
-            userId = userId,
+            organizationId = organizationId,
         )
         flushAndClear()
 
-        val found = ignoredTransactionService.findIgnoredFingerprints(listOf("fp1", "fp2"), userId)
+        val found = ignoredTransactionService.findIgnoredFingerprints(listOf("fp1", "fp2"), organizationId)
 
         assertThat(found).containsExactlyInAnyOrder("fp1", "fp2")
     }
 
     @Test
     fun `should remove fingerprints from ignore list on unignore`() {
-        ignoredTransactionService.update(toIgnore = listOf("fp1"), toUnignore = emptyList(), userId = userId)
+        ignoredTransactionService.update(toIgnore = listOf("fp1"), toUnignore = emptyList(), organizationId = organizationId)
         flushAndClear()
 
-        ignoredTransactionService.update(toIgnore = emptyList(), toUnignore = listOf("fp1"), userId = userId)
+        ignoredTransactionService.update(toIgnore = emptyList(), toUnignore = listOf("fp1"), organizationId = organizationId)
         flushAndClear()
 
-        val found = ignoredTransactionService.findIgnoredFingerprints(listOf("fp1"), userId)
+        val found = ignoredTransactionService.findIgnoredFingerprints(listOf("fp1"), organizationId)
 
         assertThat(found).isEmpty()
     }
 
     @Test
     fun `should not create duplicate ignore entries when saved twice`() {
-        ignoredTransactionService.update(toIgnore = listOf("fp1"), toUnignore = emptyList(), userId = userId)
-        ignoredTransactionService.update(toIgnore = listOf("fp1"), toUnignore = emptyList(), userId = userId)
+        ignoredTransactionService.update(toIgnore = listOf("fp1"), toUnignore = emptyList(), organizationId = organizationId)
+        ignoredTransactionService.update(toIgnore = listOf("fp1"), toUnignore = emptyList(), organizationId = organizationId)
         flushAndClear()
 
-        val existing = ignoredRepo.findExistingFingerprints(listOf("fp1"), userId)
+        val existing = ignoredRepo.findExistingFingerprints(listOf("fp1"), organizationId)
 
         assertThat(existing).hasSize(1)
     }
 
     @Test
     fun `should isolate ignored fingerprints per user`() {
-        ignoredTransactionService.update(toIgnore = listOf("fp1"), toUnignore = emptyList(), userId = userId)
+        ignoredTransactionService.update(toIgnore = listOf("fp1"), toUnignore = emptyList(), organizationId = organizationId)
         flushAndClear()
 
-        val foundForOtherUser = ignoredTransactionService.findIgnoredFingerprints(listOf("fp1"), otherUserId)
+        val foundForOtherUser = ignoredTransactionService.findIgnoredFingerprints(listOf("fp1"), otherOrganizationId)
 
         assertThat(foundForOtherUser).isEmpty()
     }
@@ -75,27 +75,27 @@ class CamtImportIT : AbstractServiceIT() {
                 Category(name = "Lebensmittel", subcategory = "Supermarkt"),
                 Category(name = "Transport", subcategory = "ÖPNV"),
             )
-        categoryService.saveCategories(categories, userId)
-        categoryService.saveCategories(categories, userId)
+        categoryService.saveCategories(categories, organizationId)
+        categoryService.saveCategories(categories, organizationId)
         flushAndClear()
 
-        assertThat(categoryService.getCategories(userId)).hasSize(2)
+        assertThat(categoryService.getCategories(organizationId)).hasSize(2)
     }
 
     @Test
     fun `should treat category as distinct when group differs`() {
-        categoryService.saveCategories(listOf(Category("Lebensmittel", "Supermarkt", group = null)), userId)
-        categoryService.saveCategories(listOf(Category("Lebensmittel", "Supermarkt", group = "Konsum")), userId)
+        categoryService.saveCategories(listOf(Category("Lebensmittel", "Supermarkt", group = null)), organizationId)
+        categoryService.saveCategories(listOf(Category("Lebensmittel", "Supermarkt", group = "Konsum")), organizationId)
         flushAndClear()
 
-        assertThat(categoryService.getCategories(userId)).hasSize(2)
+        assertThat(categoryService.getCategories(organizationId)).hasSize(2)
     }
 
     @Test
     fun `should isolate categories per user`() {
-        categoryService.saveCategories(listOf(Category("Lebensmittel", "Supermarkt")), userId)
+        categoryService.saveCategories(listOf(Category("Lebensmittel", "Supermarkt")), organizationId)
         flushAndClear()
 
-        assertThat(categoryService.getCategories(otherUserId)).isEmpty()
+        assertThat(categoryService.getCategories(otherOrganizationId)).isEmpty()
     }
 }

@@ -48,14 +48,14 @@ class UserDetailsServiceImplTest {
     }
 
     @Test
-    fun `should return UserDetails with ADMIN role when user has ADMIN role`() {
-        val domainUser = User(id = 3L, externalId = "admin@test.de", passwordHash = "hash", role = Role.ADMIN)
+    fun `should return UserDetails with SYSTEM_ADMIN role when user has SYSTEM_ADMIN role`() {
+        val domainUser = User(id = 3L, externalId = "admin@test.de", passwordHash = "hash", role = Role.SYSTEM_ADMIN)
         whenever(userRepository.findByExternalId("admin@test.de")).thenReturn(domainUser)
 
         StepVerifier
             .create(service.findByUsername("admin@test.de"))
             .assertNext { details ->
-                assertThat(details.authorities.map { it.authority }).contains("ROLE_ADMIN")
+                assertThat(details.authorities.map { it.authority }).contains("ROLE_SYSTEM_ADMIN")
                 assertThat(details.authorities.map { it.authority }).doesNotContain("ROLE_USER")
             }.verifyComplete()
     }

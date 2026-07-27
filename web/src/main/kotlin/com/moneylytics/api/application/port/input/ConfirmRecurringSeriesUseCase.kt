@@ -7,7 +7,7 @@ fun interface ConfirmRecurringSeriesUseCase {
 }
 
 data class ConfirmRecurringSeriesCommand(
-    val userId: Long,
+    val organizationId: Long,
     val confirmedFingerprints: List<String>,
     val falsePositiveFingerprints: List<String>,
     val lookbackMonths: Long = 24,

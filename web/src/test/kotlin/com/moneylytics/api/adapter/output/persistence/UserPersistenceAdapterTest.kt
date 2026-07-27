@@ -90,47 +90,64 @@ class UserPersistenceAdapterTest {
 
     @Test
     fun `should set default account by IBAN lookup in updateSettings`() {
-        val accountEntity = AccountEntity(iban = "DE01", name = "Giro", user = userEntity, id = 5L)
+        val orgId = 10L
+        val orgEntity = OrganizationEntity(name = "Org", id = orgId)
+        val accountEntity = AccountEntity(iban = "DE01", name = "Giro", organization = orgEntity, id = 5L)
         val entityToUpdate = UserEntity(externalId = "test@test.de", id = userId)
         val saved = UserEntity(externalId = "test@test.de", defaultAccount = accountEntity, id = userId)
         whenever(jpaRepository.getReferenceById(userId)).thenReturn(entityToUpdate)
-        whenever(accountJpaRepository.findByIbanAndUserId("DE01", userId)).thenReturn(accountEntity)
+        whenever(accountJpaRepository.findByIbanAndOrganizationId("DE01", orgId)).thenReturn(accountEntity)
         whenever(jpaRepository.save(entityToUpdate)).thenReturn(saved)
 
-        val settings = adapter.updateSettings(userId, defaultAccountIban = "DE01", language = null, transactionsColumnOrder = null)
+        val settings =
+            adapter.updateSettings(
+                userId,
+                organizationId = orgId,
+                defaultAccountIban = "DE01",
+                language = null,
+                transactionsColumnOrder = null,
+            )
 
         assertThat(settings.defaultAccountIban).isEqualTo("DE01")
     }
 
     @Test
     fun `should set default account to null when IBAN is null in updateSettings`() {
+        val orgId = 10L
         val entityToUpdate = UserEntity(externalId = "test@test.de", id = userId)
         whenever(jpaRepository.getReferenceById(userId)).thenReturn(entityToUpdate)
         whenever(jpaRepository.save(entityToUpdate)).thenReturn(entityToUpdate)
 
-        val settings = adapter.updateSettings(userId, defaultAccountIban = null, language = null, transactionsColumnOrder = null)
+        val settings =
+            adapter.updateSettings(
+                userId,
+                organizationId = orgId,
+                defaultAccountIban = null,
+                language = null,
+                transactionsColumnOrder = null,
+            )
 
         assertThat(settings.defaultAccountIban).isNull()
     }
 
     @Test
-    fun `should map ADMIN role from entity to domain user`() {
-        val adminEntity = UserEntity(externalId = "admin@test.de", role = Role.ADMIN, id = userId)
+    fun `should map SYSTEM_ADMIN role from entity to domain user`() {
+        val adminEntity = UserEntity(externalId = "admin@test.de", role = Role.SYSTEM_ADMIN, id = userId)
         whenever(jpaRepository.findByExternalId("admin@test.de")).thenReturn(adminEntity)
 
         val result = adapter.findByExternalId("admin@test.de")
 
-        assertThat(result?.role).isEqualTo(Role.ADMIN)
+        assertThat(result?.role).isEqualTo(Role.SYSTEM_ADMIN)
     }
 
     @Test
-    fun `should set role to ADMIN when promoteToAdmin is called`() {
+    fun `should set role to SYSTEM_ADMIN when promoteToSystemAdmin is called`() {
         val entity = UserEntity(externalId = "test@test.de", id = userId)
         whenever(jpaRepository.getReferenceById(userId)).thenReturn(entity)
 
-        adapter.promoteToAdmin(userId)
+        adapter.promoteToSystemAdmin(userId)
 
-        assertThat(entity.role).isEqualTo(Role.ADMIN)
+        assertThat(entity.role).isEqualTo(Role.SYSTEM_ADMIN)
         verify(jpaRepository).getReferenceById(userId)
     }
 }

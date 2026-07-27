@@ -14,8 +14,8 @@ import jakarta.persistence.Table
 @Table(name = "transaction_groups")
 class TransactionGroupEntity(
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "user_id", nullable = false)
-    val user: UserEntity,
+    @JoinColumn(name = "organization_id", nullable = false)
+    val organization: OrganizationEntity,
     @Column(nullable = true, length = 255)
     var name: String? = null,
     @Column(nullable = true, columnDefinition = "TEXT")

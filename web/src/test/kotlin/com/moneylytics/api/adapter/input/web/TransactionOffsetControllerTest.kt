@@ -6,26 +6,28 @@ import com.moneylytics.api.application.port.input.GetLinkedTransactionsUseCase
 import com.moneylytics.api.application.port.input.LinkTransactionResult
 import com.moneylytics.api.application.port.input.LinkedTransactionGroup
 import com.moneylytics.api.application.port.input.ManageTransactionOffsetUseCase
-import com.moneylytics.api.application.port.input.ResolveUserUseCase
+import com.moneylytics.api.application.port.input.ResolveOrganizationUseCase
 import com.moneylytics.api.domain.Transaction
 import kotlinx.coroutines.test.runTest
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.any
-import org.mockito.kotlin.doReturn
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.whenever
 import org.springframework.http.HttpStatus
 import org.springframework.security.core.userdetails.User
+import org.springframework.web.server.ServerWebExchange
 import java.math.BigDecimal
 import java.time.LocalDate
 
 class TransactionOffsetControllerTest {
-    private val userId = 1L
-    private val resolveUserUseCase: ResolveUserUseCase = mock { on { resolveUser(any()) } doReturn userId }
+    private val organizationId = 1L
+    private val exchange: ServerWebExchange = mock()
+    private val resolveOrganizationUseCase: ResolveOrganizationUseCase = ResolveOrganizationUseCase { _, _ -> organizationId }
     private val manageTransactionOffsetUseCase: ManageTransactionOffsetUseCase = mock()
     private val getLinkedTransactionsUseCase: GetLinkedTransactionsUseCase = mock()
-    private val controller = TransactionOffsetController(manageTransactionOffsetUseCase, getLinkedTransactionsUseCase, resolveUserUseCase)
+    private val controller =
+        TransactionOffsetController(manageTransactionOffsetUseCase, getLinkedTransactionsUseCase, resolveOrganizationUseCase)
     private val principal =
         User
             .withUsername("user@test.de")
@@ -40,7 +42,7 @@ class TransactionOffsetControllerTest {
         runTest {
             whenever(manageTransactionOffsetUseCase.linkTransactions(any())).thenThrow(IllegalArgumentException("not found"))
 
-            val response = controller.linkTransaction(1L, linkRequest, principal)
+            val response = controller.linkTransaction(1L, linkRequest, principal, exchange)
 
             assertThat(response.statusCode).isEqualTo(HttpStatus.NOT_FOUND)
         }
@@ -50,7 +52,7 @@ class TransactionOffsetControllerTest {
         runTest {
             whenever(manageTransactionOffsetUseCase.linkTransactions(any())).thenThrow(IllegalStateException("already linked"))
 
-            val response = controller.linkTransaction(1L, linkRequest, principal)
+            val response = controller.linkTransaction(1L, linkRequest, principal, exchange)
 
             assertThat(response.statusCode).isEqualTo(HttpStatus.BAD_REQUEST)
         }
@@ -69,7 +71,7 @@ class TransactionOffsetControllerTest {
                 )
             whenever(manageTransactionOffsetUseCase.linkTransactions(any())).thenThrow(exception)
 
-            val response = controller.linkTransaction(1L, linkRequest, principal)
+            val response = controller.linkTransaction(1L, linkRequest, principal, exchange)
 
             assertThat(response.statusCode.value()).isEqualTo(422)
             val body = response.body as AllocationErrorResponse
@@ -90,7 +92,7 @@ class TransactionOffsetControllerTest {
                 )
             whenever(manageTransactionOffsetUseCase.linkTransactions(any())).thenReturn(result)
 
-            val response = controller.linkTransaction(1L, linkRequest, principal)
+            val response = controller.linkTransaction(1L, linkRequest, principal, exchange)
 
             assertThat(response.statusCode).isEqualTo(HttpStatus.OK)
             val body = response.body as LinkTransactionsResponse
@@ -102,9 +104,9 @@ class TransactionOffsetControllerTest {
     @Test
     fun `should return 204 when unlinkTransactions succeeds`() =
         runTest {
-            whenever(manageTransactionOffsetUseCase.unlinkTransactions(5L, userId)).thenReturn(true)
+            whenever(manageTransactionOffsetUseCase.unlinkTransactions(5L, organizationId)).thenReturn(true)
 
-            val response = controller.unlinkTransaction(5L, principal)
+            val response = controller.unlinkTransaction(5L, principal, exchange)
 
             assertThat(response.statusCode).isEqualTo(HttpStatus.NO_CONTENT)
         }
@@ -112,9 +114,9 @@ class TransactionOffsetControllerTest {
     @Test
     fun `should return 404 when unlinkTransactions finds no link`() =
         runTest {
-            whenever(manageTransactionOffsetUseCase.unlinkTransactions(99L, userId)).thenReturn(false)
+            whenever(manageTransactionOffsetUseCase.unlinkTransactions(99L, organizationId)).thenReturn(false)
 
-            val response = controller.unlinkTransaction(99L, principal)
+            val response = controller.unlinkTransaction(99L, principal, exchange)
 
             assertThat(response.statusCode).isEqualTo(HttpStatus.NOT_FOUND)
         }
@@ -122,9 +124,9 @@ class TransactionOffsetControllerTest {
     @Test
     fun `should return 404 when getLinkedGroup returns null`() =
         runTest {
-            whenever(getLinkedTransactionsUseCase.getLinkedGroup(99L, userId)).thenReturn(null)
+            whenever(getLinkedTransactionsUseCase.getLinkedGroup(99L, organizationId)).thenReturn(null)
 
-            val response = controller.getLinkedGroup(99L, principal)
+            val response = controller.getLinkedGroup(99L, principal, exchange)
 
             assertThat(response.statusCode).isEqualTo(HttpStatus.NOT_FOUND)
         }
@@ -139,9 +141,9 @@ class TransactionOffsetControllerTest {
                     comment = null,
                     transactions = listOf(tx(1L), tx(2L)),
                 )
-            whenever(getLinkedTransactionsUseCase.getLinkedGroup(10L, userId)).thenReturn(group)
+            whenever(getLinkedTransactionsUseCase.getLinkedGroup(10L, organizationId)).thenReturn(group)
 
-            val response = controller.getLinkedGroup(10L, principal)
+            val response = controller.getLinkedGroup(10L, principal, exchange)
 
             assertThat(response.statusCode).isEqualTo(HttpStatus.OK)
             val body = response.body as LinkedGroupItem
@@ -158,9 +160,9 @@ class TransactionOffsetControllerTest {
                     LinkedTransactionGroup(groupId = 1L, name = "A", comment = null, transactions = listOf(tx(10L))),
                     LinkedTransactionGroup(groupId = 2L, name = "B", comment = null, transactions = listOf(tx(11L))),
                 )
-            whenever(getLinkedTransactionsUseCase.getLinkedGroups(userId)).thenReturn(groups)
+            whenever(getLinkedTransactionsUseCase.getLinkedGroups(organizationId)).thenReturn(groups)
 
-            val response = controller.getLinkedTransactions(principal)
+            val response = controller.getLinkedTransactions(principal, exchange)
 
             assertThat(response.groups).hasSize(2)
             assertThat(response.groups.map { it.groupId }).containsExactly(1L, 2L)

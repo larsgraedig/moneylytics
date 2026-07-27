@@ -18,8 +18,8 @@ import java.math.BigDecimal
 @Table(name = "thresholds")
 class ThresholdEntity(
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "user_id", nullable = false)
-    val user: UserEntity,
+    @JoinColumn(name = "organization_id", nullable = false)
+    val organization: OrganizationEntity,
     @Column(nullable = false)
     val category: String,
     val subcategory: String? = null,

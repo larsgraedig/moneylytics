@@ -5,7 +5,7 @@ import com.moneylytics.api.domain.Transaction
 interface UpdateTransactionCommentUseCase {
     fun updateComment(
         id: Long,
-        userId: Long,
+        organizationId: Long,
         comment: String?,
     ): Transaction?
 }

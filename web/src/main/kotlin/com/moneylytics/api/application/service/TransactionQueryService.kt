@@ -47,7 +47,7 @@ class TransactionQueryService(
     EnrichTransactionUseCase,
     BulkUpdateTransactionCategoryUseCase {
     override fun getTransactions(query: GetTransactionsQuery): List<Transaction> {
-        val transactions = transactionRepository.findByAccountingDateBetween(query.from, query.to, query.userId, query.accountIban)
+        val transactions = transactionRepository.findByAccountingDateBetween(query.from, query.to, query.organizationId, query.accountIban)
         return transactions
             .let { list ->
                 when (query.type) {
@@ -66,14 +66,14 @@ class TransactionQueryService(
                 } ?: list
             }.let { list ->
                 query.excludeBudgetId?.let { budgetId ->
-                    val assigned = budgetRepository.findAssignedTransactionIdsByBudgetId(budgetId, query.userId)
+                    val assigned = budgetRepository.findAssignedTransactionIdsByBudgetId(budgetId, query.organizationId)
                     list.filter { it.id !in assigned }
                 } ?: list
             }
     }
 
     override fun getCashflow(query: GetCashflowQuery): CashflowResponse {
-        val transactions = transactionRepository.findByAccountingDateBetween(query.from, query.to, query.userId, query.accountIban)
+        val transactions = transactionRepository.findByAccountingDateBetween(query.from, query.to, query.organizationId, query.accountIban)
         val bucketKeys = generateBuckets(query.from, query.to, query.granularity)
         val byBucket = transactions.groupBy { bucketKey(it.accountingDate, query.granularity) }
         val buckets =
@@ -96,7 +96,7 @@ class TransactionQueryService(
     }
 
     override fun getBurnRate(query: GetBurnRateQuery): BurnRateResponse {
-        val transactions = transactionRepository.findByAccountingDateBetween(query.from, query.to, query.userId, query.accountIban)
+        val transactions = transactionRepository.findByAccountingDateBetween(query.from, query.to, query.organizationId, query.accountIban)
         val expensesByDate =
             transactions
                 .filter { it.effectiveAmount() < BigDecimal.ZERO }
@@ -157,7 +157,7 @@ class TransactionQueryService(
                 GetTransactionsQuery(
                     from = query.from,
                     to = query.to,
-                    userId = query.userId,
+                    organizationId = query.organizationId,
                     type = TransactionType.EXPENSES,
                     accountIban = query.accountIban,
                     category = query.category,
@@ -178,38 +178,38 @@ class TransactionQueryService(
 
     override fun updateCategory(
         id: Long,
-        userId: Long,
+        organizationId: Long,
         category: String,
         subcategory: String,
         categoryGroup: String?,
-    ): Transaction? = transactionRepository.updateCategory(id, userId, category, subcategory, categoryGroup)
+    ): Transaction? = transactionRepository.updateCategory(id, organizationId, category, subcategory, categoryGroup)
 
     override fun updateComment(
         id: Long,
-        userId: Long,
+        organizationId: Long,
         comment: String?,
-    ): Transaction? = transactionRepository.updateComment(id, userId, comment)
+    ): Transaction? = transactionRepository.updateComment(id, organizationId, comment)
 
     override fun updateAccountingDate(
         id: Long,
-        userId: Long,
+        organizationId: Long,
         accountingDate: LocalDate,
-    ): Transaction? = transactionRepository.updateAccountingDate(id, userId, accountingDate)
+    ): Transaction? = transactionRepository.updateAccountingDate(id, organizationId, accountingDate)
 
     override fun enrichByFingerprint(
         fingerprint: String,
-        userId: Long,
+        organizationId: Long,
         purpose: String?,
         counterpartyName: String?,
         counterpartyIban: String?,
-    ) = transactionRepository.enrichByFingerprint(fingerprint, userId, purpose, counterpartyName, counterpartyIban, null)
+    ) = transactionRepository.enrichByFingerprint(fingerprint, organizationId, purpose, counterpartyName, counterpartyIban, null)
 
     override fun bulkUpdateCategory(
         updates: List<BulkCategoryUpdate>,
-        userId: Long,
+        organizationId: Long,
     ): List<Transaction> =
         transactionRepository.bulkUpdateCategory(
             updates.map { CategoryUpdateEntry(it.id, it.category, it.subcategory, it.categoryGroup) },
-            userId,
+            organizationId,
         )
 }

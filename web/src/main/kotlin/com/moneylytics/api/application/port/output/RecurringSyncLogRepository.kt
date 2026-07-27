@@ -5,11 +5,11 @@ import com.moneylytics.api.domain.RecurringSyncLog
 interface RecurringSyncLogRepository {
     fun save(
         log: RecurringSyncLog,
-        userId: Long,
+        organizationId: Long,
     )
 
-    fun findRecentByUserId(
-        userId: Long,
+    fun findRecentByOrganizationId(
+        organizationId: Long,
         limit: Int = 20,
     ): List<RecurringSyncLog>
 }

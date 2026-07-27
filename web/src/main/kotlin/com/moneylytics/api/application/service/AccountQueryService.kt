@@ -16,22 +16,22 @@ class AccountQueryService(
 ) : GetAccountsUseCase,
     SaveAccountUseCase,
     DeleteAccountUseCase {
-    override fun getAccounts(userId: Long): List<Account> {
-        val latestDates = transactionRepository.latestTransactionDatesByUserId(userId)
-        return accountRepository.findAll(userId).map { it.copy(latestTransactionDate = latestDates[it.iban]) }
+    override fun getAccounts(organizationId: Long): List<Account> {
+        val latestDates = transactionRepository.latestTransactionDatesByOrganizationId(organizationId)
+        return accountRepository.findAll(organizationId).map { it.copy(latestTransactionDate = latestDates[it.iban]) }
     }
 
     @Transactional
     override fun saveAccount(
         iban: String,
         name: String,
-        userId: Long,
+        organizationId: Long,
     ): Account {
-        val existing = accountRepository.findByIban(iban, userId)
+        val existing = accountRepository.findByIban(iban, organizationId)
         return accountRepository
             .save(
                 Account(iban = iban, name = name.ifBlank { iban }),
-                userId,
+                organizationId,
             ).also {
                 if (existing == null) {
                     // new account – no categories to seed
@@ -42,6 +42,6 @@ class AccountQueryService(
     @Transactional
     override fun deleteAccount(
         iban: String,
-        userId: Long,
-    ) = accountRepository.delete(iban, userId)
+        organizationId: Long,
+    ) = accountRepository.delete(iban, organizationId)
 }

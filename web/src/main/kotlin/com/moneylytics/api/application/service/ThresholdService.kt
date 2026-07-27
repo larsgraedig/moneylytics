@@ -37,27 +37,27 @@ class ThresholdService(
         private const val DIVISION_SCALE = 6
     }
 
-    override fun getThresholds(userId: Long): List<Threshold> = thresholdRepository.findAllByUserId(userId)
+    override fun getThresholds(organizationId: Long): List<Threshold> = thresholdRepository.findAllByOrganizationId(organizationId)
 
     override fun saveThreshold(
         threshold: Threshold,
-        userId: Long,
-    ): Threshold = thresholdRepository.upsert(threshold, userId)
+        organizationId: Long,
+    ): Threshold = thresholdRepository.upsert(threshold, organizationId)
 
     override fun deleteThreshold(
         id: Long,
-        userId: Long,
-    ) = thresholdRepository.deleteByIdAndUserId(id, userId)
+        organizationId: Long,
+    ) = thresholdRepository.deleteByIdAndOrganizationId(id, organizationId)
 
     override fun getThresholdStatus(query: GetThresholdStatusQuery): ThresholdStatusResponse {
-        val thresholds = thresholdRepository.findAllByUserId(query.userId)
+        val thresholds = thresholdRepository.findAllByOrganizationId(query.organizationId)
         if (thresholds.isEmpty()) return ThresholdStatusResponse(emptyList())
 
         val transactions =
             transactionRepository.findNegativeByAccountingDateBetween(
                 query.from,
                 query.to,
-                query.userId,
+                query.organizationId,
                 query.accountIban,
             )
 

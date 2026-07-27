@@ -8,27 +8,31 @@ import org.springframework.transaction.annotation.Transactional
 @Component
 class CategoryPersistenceAdapter(
     private val jpaRepository: CategoryJpaRepository,
-    private val userJpaRepository: UserJpaRepository,
+    private val organizationJpaRepository: OrganizationJpaRepository,
 ) : CategoryRepository {
     @Transactional(readOnly = true)
-    override fun findAll(userId: Long): List<Category> =
-        jpaRepository.findAllByUserId(userId).map { Category(name = it.name, subcategory = it.subcategory, group = it.categoryGroup) }
+    override fun findAll(organizationId: Long): List<Category> =
+        jpaRepository.findAllByOrganizationId(organizationId).map {
+            Category(name = it.name, subcategory = it.subcategory, group = it.categoryGroup)
+        }
 
     @Transactional
     override fun saveAllIfAbsent(
         categories: List<Category>,
-        userId: Long,
+        organizationId: Long,
     ) {
         val existing =
             jpaRepository
-                .findAllByUserId(userId)
+                .findAllByOrganizationId(organizationId)
                 .map { Triple(it.name, it.categoryGroup, it.subcategory) }
                 .toHashSet()
-        val user = userJpaRepository.getReferenceById(userId)
+        val organization = organizationJpaRepository.getReferenceById(organizationId)
         val toSave =
             categories
                 .filter { Triple(it.name, it.group, it.subcategory) !in existing }
-                .map { CategoryEntity(name = it.name, subcategory = it.subcategory, user = user, categoryGroup = it.group) }
+                .map {
+                    CategoryEntity(name = it.name, subcategory = it.subcategory, organization = organization, categoryGroup = it.group)
+                }
         jpaRepository.saveAll(toSave)
     }
 }

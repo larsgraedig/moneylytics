@@ -12,15 +12,15 @@ class IgnoredTransactionService(
     UpdateIgnoredTransactionsUseCase {
     override fun findIgnoredFingerprints(
         fingerprints: Collection<String>,
-        userId: Long,
-    ): Set<String> = if (fingerprints.isEmpty()) emptySet() else repository.findExistingFingerprints(fingerprints, userId)
+        organizationId: Long,
+    ): Set<String> = if (fingerprints.isEmpty()) emptySet() else repository.findExistingFingerprints(fingerprints, organizationId)
 
     override fun update(
         toIgnore: Collection<String>,
         toUnignore: Collection<String>,
-        userId: Long,
+        organizationId: Long,
     ) {
-        if (toIgnore.isNotEmpty()) repository.saveAll(toIgnore, userId)
-        if (toUnignore.isNotEmpty()) repository.deleteAll(toUnignore, userId)
+        if (toIgnore.isNotEmpty()) repository.saveAll(toIgnore, organizationId)
+        if (toUnignore.isNotEmpty()) repository.deleteAll(toUnignore, organizationId)
     }
 }

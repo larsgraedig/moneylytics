@@ -5,7 +5,7 @@ import com.moneylytics.api.application.port.input.CreateBudgetUseCase
 import com.moneylytics.api.application.port.input.DeleteBudgetUseCase
 import com.moneylytics.api.application.port.input.GetBudgetsUseCase
 import com.moneylytics.api.application.port.input.RemoveTransactionFromBudgetUseCase
-import com.moneylytics.api.application.port.input.ResolveUserUseCase
+import com.moneylytics.api.application.port.input.ResolveOrganizationUseCase
 import com.moneylytics.api.application.port.input.UpdateBudgetUseCase
 import com.moneylytics.api.application.service.BudgetChartPoint
 import com.moneylytics.api.domain.Budget
@@ -22,6 +22,7 @@ import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
+import org.springframework.web.server.ServerWebExchange
 import java.math.BigDecimal
 
 @RestController
@@ -33,35 +34,40 @@ class BudgetController(
     private val deleteBudgetUseCase: DeleteBudgetUseCase,
     private val assignTransactionToBudgetUseCase: AssignTransactionToBudgetUseCase,
     private val removeTransactionFromBudgetUseCase: RemoveTransactionFromBudgetUseCase,
-    private val resolveUserUseCase: ResolveUserUseCase,
+    private val resolveOrganizationUseCase: ResolveOrganizationUseCase,
 ) {
     @GetMapping
     suspend fun listBudgets(
         @AuthenticationPrincipal principal: UserDetails,
-    ): BudgetsResponse =
-        withContext(Dispatchers.IO) {
-            val userId = resolveUserUseCase.resolveUser(principal.username)
-            BudgetsResponse(getBudgetsUseCase.getBudgets(userId).map { it.toDto() })
+        exchange: ServerWebExchange,
+    ): BudgetsResponse {
+        val organizationId = resolveOrganizationUseCase.resolveOrganization(principal, exchange)
+        return withContext(Dispatchers.IO) {
+            BudgetsResponse(getBudgetsUseCase.getBudgets(organizationId).map { it.toDto() })
         }
+    }
 
     @PostMapping
     suspend fun createBudget(
         @RequestBody request: CreateBudgetRequest,
         @AuthenticationPrincipal principal: UserDetails,
-    ): BudgetDto =
-        withContext(Dispatchers.IO) {
-            val userId = resolveUserUseCase.resolveUser(principal.username)
-            createBudgetUseCase.createBudget(request.toDomain(), userId).toDto()
+        exchange: ServerWebExchange,
+    ): BudgetDto {
+        val organizationId = resolveOrganizationUseCase.resolveOrganization(principal, exchange)
+        return withContext(Dispatchers.IO) {
+            createBudgetUseCase.createBudget(request.toDomain(), organizationId).toDto()
         }
+    }
 
     @PutMapping("/{id}")
     suspend fun updateBudget(
         @PathVariable id: Long,
         @RequestBody request: UpdateBudgetRequest,
         @AuthenticationPrincipal principal: UserDetails,
-    ): BudgetDto =
-        withContext(Dispatchers.IO) {
-            val userId = resolveUserUseCase.resolveUser(principal.username)
+        exchange: ServerWebExchange,
+    ): BudgetDto {
+        val organizationId = resolveOrganizationUseCase.resolveOrganization(principal, exchange)
+        return withContext(Dispatchers.IO) {
             updateBudgetUseCase
                 .updateBudget(
                     Budget(
@@ -70,48 +76,55 @@ class BudgetController(
                         targetAmount = request.targetAmount,
                         note = request.note,
                     ),
-                    userId,
+                    organizationId,
                 ).toDto()
         }
+    }
 
     @DeleteMapping("/{id}")
     suspend fun deleteBudget(
         @PathVariable id: Long,
         @AuthenticationPrincipal principal: UserDetails,
-    ): ResponseEntity<Unit> =
+        exchange: ServerWebExchange,
+    ): ResponseEntity<Unit> {
+        val organizationId = resolveOrganizationUseCase.resolveOrganization(principal, exchange)
         withContext(Dispatchers.IO) {
-            val userId = resolveUserUseCase.resolveUser(principal.username)
-            deleteBudgetUseCase.deleteBudget(id, userId)
-            ResponseEntity.noContent().build()
+            deleteBudgetUseCase.deleteBudget(id, organizationId)
         }
+        return ResponseEntity.noContent().build()
+    }
 
     @PostMapping("/{id}/transactions")
     suspend fun assignTransaction(
         @PathVariable id: Long,
         @RequestBody request: AssignTransactionRequest,
         @AuthenticationPrincipal principal: UserDetails,
-    ): BudgetTransactionLinkDto =
-        withContext(Dispatchers.IO) {
-            val userId = resolveUserUseCase.resolveUser(principal.username)
+        exchange: ServerWebExchange,
+    ): BudgetTransactionLinkDto {
+        val organizationId = resolveOrganizationUseCase.resolveOrganization(principal, exchange)
+        return withContext(Dispatchers.IO) {
             assignTransactionToBudgetUseCase
                 .assignTransaction(
                     budgetId = id,
                     transactionId = request.transactionId,
                     amount = request.amount,
-                    userId = userId,
+                    organizationId = organizationId,
                 ).toDto()
         }
+    }
 
     @DeleteMapping("/transactions/{linkId}")
     suspend fun removeTransactionLink(
         @PathVariable linkId: Long,
         @AuthenticationPrincipal principal: UserDetails,
-    ): ResponseEntity<Unit> =
+        exchange: ServerWebExchange,
+    ): ResponseEntity<Unit> {
+        val organizationId = resolveOrganizationUseCase.resolveOrganization(principal, exchange)
         withContext(Dispatchers.IO) {
-            val userId = resolveUserUseCase.resolveUser(principal.username)
-            removeTransactionFromBudgetUseCase.removeTransactionLink(linkId, userId)
-            ResponseEntity.noContent().build()
+            removeTransactionFromBudgetUseCase.removeTransactionLink(linkId, organizationId)
         }
+        return ResponseEntity.noContent().build()
+    }
 
     private fun com.moneylytics.api.application.service.BudgetWithBalance.toDto() =
         BudgetDto(

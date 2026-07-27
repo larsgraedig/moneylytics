@@ -11,30 +11,34 @@ import java.math.BigDecimal
 class BudgetPersistenceAdapter(
     private val budgetJpaRepository: BudgetJpaRepository,
     private val budgetTransactionJpaRepository: BudgetTransactionJpaRepository,
-    private val userJpaRepository: UserJpaRepository,
+    private val organizationJpaRepository: OrganizationJpaRepository,
     private val transactionJpaRepository: TransactionJpaRepository,
 ) : BudgetRepository {
-    override fun findAllByUserId(userId: Long): List<Budget> = budgetJpaRepository.findByUserId(userId).map { it.toDomain() }
+    override fun findAllByOrganizationId(organizationId: Long): List<Budget> =
+        budgetJpaRepository.findByOrganizationId(organizationId).map { it.toDomain() }
 
     @Transactional(readOnly = true)
     override fun findTransactionLinksByBudgetId(
         budgetId: Long,
-        userId: Long,
-    ): List<BudgetTransactionLink> = budgetTransactionJpaRepository.findByBudgetIdAndUserId(budgetId, userId).map { it.toDomain() }
+        organizationId: Long,
+    ): List<BudgetTransactionLink> =
+        budgetTransactionJpaRepository.findByBudgetIdAndOrganizationId(budgetId, organizationId).map {
+            it.toDomain()
+        }
 
     @Transactional(readOnly = true)
-    override fun findAllTransactionLinksByUserId(userId: Long): List<BudgetTransactionLink> =
-        budgetTransactionJpaRepository.findAllByUserId(userId).map { it.toDomain() }
+    override fun findAllTransactionLinksByOrganizationId(organizationId: Long): List<BudgetTransactionLink> =
+        budgetTransactionJpaRepository.findAllByOrganizationId(organizationId).map { it.toDomain() }
 
     @Transactional
     override fun create(
         budget: Budget,
-        userId: Long,
+        organizationId: Long,
     ): Budget =
         budgetJpaRepository
             .save(
                 BudgetEntity(
-                    user = userJpaRepository.getReferenceById(userId),
+                    organization = organizationJpaRepository.getReferenceById(organizationId),
                     name = budget.name,
                     targetAmount = budget.targetAmount,
                     note = budget.note,
@@ -44,9 +48,9 @@ class BudgetPersistenceAdapter(
     @Transactional
     override fun update(
         budget: Budget,
-        userId: Long,
+        organizationId: Long,
     ): Budget {
-        val entity = budgetJpaRepository.findByUserId(userId).first { it.id == budget.id }
+        val entity = budgetJpaRepository.findByOrganizationId(organizationId).first { it.id == budget.id }
         entity.name = budget.name
         entity.targetAmount = budget.targetAmount
         entity.note = budget.note
@@ -54,19 +58,19 @@ class BudgetPersistenceAdapter(
     }
 
     @Transactional
-    override fun deleteByIdAndUserId(
+    override fun deleteByIdAndOrganizationId(
         id: Long,
-        userId: Long,
-    ) = budgetJpaRepository.deleteByIdAndUserId(id, userId)
+        organizationId: Long,
+    ) = budgetJpaRepository.deleteByIdAndOrganizationId(id, organizationId)
 
     @Transactional
     override fun assignTransaction(
         budgetId: Long,
         transactionId: Long,
         amount: BigDecimal?,
-        userId: Long,
+        organizationId: Long,
     ): BudgetTransactionLink {
-        val budget = budgetJpaRepository.findByUserId(userId).first { it.id == budgetId }
+        val budget = budgetJpaRepository.findByOrganizationId(organizationId).first { it.id == budgetId }
         val transaction = transactionJpaRepository.getReferenceById(transactionId)
         return budgetTransactionJpaRepository
             .save(
@@ -81,16 +85,16 @@ class BudgetPersistenceAdapter(
     @Transactional
     override fun removeTransactionLink(
         linkId: Long,
-        userId: Long,
-    ) = budgetTransactionJpaRepository.deleteByIdAndUserId(linkId, userId)
+        organizationId: Long,
+    ) = budgetTransactionJpaRepository.deleteByIdAndOrganizationId(linkId, organizationId)
 
     @Transactional(readOnly = true)
     override fun findAssignedTransactionIdsByBudgetId(
         budgetId: Long,
-        userId: Long,
+        organizationId: Long,
     ): Set<Long> =
         budgetTransactionJpaRepository
-            .findByBudgetIdAndUserId(budgetId, userId)
+            .findByBudgetIdAndOrganizationId(budgetId, organizationId)
             .mapNotNull { it.transaction.id }
             .toHashSet()
 

@@ -8,25 +8,26 @@ import org.springframework.transaction.annotation.Transactional
 @Component
 class RecurringFalsePositivePersistenceAdapter(
     private val jpaRepository: RecurringFalsePositiveJpaRepository,
-    private val userJpaRepository: UserJpaRepository,
+    private val organizationJpaRepository: OrganizationJpaRepository,
 ) : RecurringFalsePositiveRepository {
-    override fun findFingerprintsByUserId(userId: Long): Set<String> = jpaRepository.findByUserId(userId).map { it.fingerprint }.toSet()
+    override fun findFingerprintsByOrganizationId(organizationId: Long): Set<String> =
+        jpaRepository.findByOrganizationId(organizationId).map { it.fingerprint }.toSet()
 
     @Transactional
     override fun saveAll(entries: List<RecurringFalsePositive>) {
-        val user = userJpaRepository.getReferenceById(entries.first().userId)
+        val organization = organizationJpaRepository.getReferenceById(entries.first().organizationId)
         jpaRepository.saveAll(
             entries.map { e ->
-                RecurringFalsePositiveEntity(user = user, fingerprint = e.fingerprint, createdAt = e.createdAt)
+                RecurringFalsePositiveEntity(organization = organization, fingerprint = e.fingerprint, createdAt = e.createdAt)
             },
         )
     }
 
     @Transactional
-    override fun deleteByUserIdAndFingerprints(
-        userId: Long,
+    override fun deleteByOrganizationIdAndFingerprints(
+        organizationId: Long,
         fingerprints: List<String>,
     ) {
-        jpaRepository.deleteByUserIdAndFingerprintIn(userId, fingerprints)
+        jpaRepository.deleteByOrganizationIdAndFingerprintIn(organizationId, fingerprints)
     }
 }

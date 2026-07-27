@@ -4,7 +4,7 @@ import com.moneylytics.api.application.port.input.CreateCollectionUseCase
 import com.moneylytics.api.application.port.input.DeleteCollectionUseCase
 import com.moneylytics.api.application.port.input.GetCollectionsUseCase
 import com.moneylytics.api.application.port.input.ManageCollectionMembersUseCase
-import com.moneylytics.api.application.port.input.ResolveUserUseCase
+import com.moneylytics.api.application.port.input.ResolveOrganizationUseCase
 import com.moneylytics.api.application.port.input.UpdateCollectionUseCase
 import com.moneylytics.api.domain.Collection
 import kotlinx.coroutines.Dispatchers
@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
+import org.springframework.web.server.ServerWebExchange
 
 @RestController
 @RequestMapping("/collections")
@@ -29,16 +30,17 @@ class CollectionController(
     private val updateCollectionUseCase: UpdateCollectionUseCase,
     private val deleteCollectionUseCase: DeleteCollectionUseCase,
     private val manageCollectionMembersUseCase: ManageCollectionMembersUseCase,
-    private val resolveUserUseCase: ResolveUserUseCase,
+    private val resolveOrganizationUseCase: ResolveOrganizationUseCase,
 ) {
     @GetMapping
     suspend fun listCollections(
         @AuthenticationPrincipal principal: UserDetails,
-    ): CollectionsResponse =
-        withContext(Dispatchers.IO) {
-            val userId = resolveUserUseCase.resolveUser(principal.username)
+        exchange: ServerWebExchange,
+    ): CollectionsResponse {
+        val organizationId = resolveOrganizationUseCase.resolveOrganization(principal, exchange)
+        return withContext(Dispatchers.IO) {
             CollectionsResponse(
-                getCollectionsUseCase.getCollections(userId).map { c ->
+                getCollectionsUseCase.getCollections(organizationId).map { c ->
                     CollectionDto(
                         id = c.id,
                         name = c.name,
@@ -48,16 +50,18 @@ class CollectionController(
                 },
             )
         }
+    }
 
     @GetMapping("/{id}")
     suspend fun getCollection(
         @PathVariable id: Long,
         @AuthenticationPrincipal principal: UserDetails,
-    ): ResponseEntity<CollectionDto> =
-        withContext(Dispatchers.IO) {
-            val userId = resolveUserUseCase.resolveUser(principal.username)
+        exchange: ServerWebExchange,
+    ): ResponseEntity<CollectionDto> {
+        val organizationId = resolveOrganizationUseCase.resolveOrganization(principal, exchange)
+        return withContext(Dispatchers.IO) {
             val collection =
-                getCollectionsUseCase.getCollection(id, userId)
+                getCollectionsUseCase.getCollection(id, organizationId)
                     ?: return@withContext ResponseEntity.notFound().build()
             ResponseEntity.ok(
                 CollectionDto(
@@ -68,66 +72,77 @@ class CollectionController(
                 ),
             )
         }
+    }
 
     @PostMapping
     suspend fun createCollection(
         @RequestBody request: CreateCollectionRequest,
         @AuthenticationPrincipal principal: UserDetails,
-    ): CollectionDto =
-        withContext(Dispatchers.IO) {
-            val userId = resolveUserUseCase.resolveUser(principal.username)
+        exchange: ServerWebExchange,
+    ): CollectionDto {
+        val organizationId = resolveOrganizationUseCase.resolveOrganization(principal, exchange)
+        return withContext(Dispatchers.IO) {
             createCollectionUseCase
-                .createCollection(Collection(name = request.name, note = request.note), userId)
+                .createCollection(Collection(name = request.name, note = request.note), organizationId)
                 .toEmptyDto()
         }
+    }
 
     @PutMapping("/{id}")
     suspend fun updateCollection(
         @PathVariable id: Long,
         @RequestBody request: UpdateCollectionRequest,
         @AuthenticationPrincipal principal: UserDetails,
-    ): CollectionDto =
-        withContext(Dispatchers.IO) {
-            val userId = resolveUserUseCase.resolveUser(principal.username)
+        exchange: ServerWebExchange,
+    ): CollectionDto {
+        val organizationId = resolveOrganizationUseCase.resolveOrganization(principal, exchange)
+        return withContext(Dispatchers.IO) {
             updateCollectionUseCase
-                .updateCollection(Collection(id = id, name = request.name, note = request.note), userId)
+                .updateCollection(Collection(id = id, name = request.name, note = request.note), organizationId)
                 .toEmptyDto()
         }
+    }
 
     @DeleteMapping("/{id}")
     suspend fun deleteCollection(
         @PathVariable id: Long,
         @AuthenticationPrincipal principal: UserDetails,
-    ): ResponseEntity<Unit> =
+        exchange: ServerWebExchange,
+    ): ResponseEntity<Unit> {
+        val organizationId = resolveOrganizationUseCase.resolveOrganization(principal, exchange)
         withContext(Dispatchers.IO) {
-            val userId = resolveUserUseCase.resolveUser(principal.username)
-            deleteCollectionUseCase.deleteCollection(id, userId)
-            ResponseEntity.noContent().build()
+            deleteCollectionUseCase.deleteCollection(id, organizationId)
         }
+        return ResponseEntity.noContent().build()
+    }
 
     @PostMapping("/{id}/transactions")
     suspend fun addTransaction(
         @PathVariable id: Long,
         @RequestBody request: CollectionTransactionRequest,
         @AuthenticationPrincipal principal: UserDetails,
-    ): ResponseEntity<Unit> =
+        exchange: ServerWebExchange,
+    ): ResponseEntity<Unit> {
+        val organizationId = resolveOrganizationUseCase.resolveOrganization(principal, exchange)
         withContext(Dispatchers.IO) {
-            val userId = resolveUserUseCase.resolveUser(principal.username)
-            manageCollectionMembersUseCase.addTransaction(id, request.transactionId, userId)
-            ResponseEntity.noContent().build()
+            manageCollectionMembersUseCase.addTransaction(id, request.transactionId, organizationId)
         }
+        return ResponseEntity.noContent().build()
+    }
 
     @DeleteMapping("/{id}/transactions/{transactionId}")
     suspend fun removeTransaction(
         @PathVariable id: Long,
         @PathVariable transactionId: Long,
         @AuthenticationPrincipal principal: UserDetails,
-    ): ResponseEntity<Unit> =
+        exchange: ServerWebExchange,
+    ): ResponseEntity<Unit> {
+        val organizationId = resolveOrganizationUseCase.resolveOrganization(principal, exchange)
         withContext(Dispatchers.IO) {
-            val userId = resolveUserUseCase.resolveUser(principal.username)
-            manageCollectionMembersUseCase.removeTransaction(id, transactionId, userId)
-            ResponseEntity.noContent().build()
+            manageCollectionMembersUseCase.removeTransaction(id, transactionId, organizationId)
         }
+        return ResponseEntity.noContent().build()
+    }
 
     private fun Collection.toEmptyDto() =
         CollectionDto(

@@ -10,16 +10,16 @@ class BudgetJpaRepositoryIT : AbstractJpaRepositoryIT() {
 
     private fun savedBudget(
         name: String = "Urlaub 2025",
-        forUser: UserEntity = user,
-    ) = budgetRepo.save(BudgetEntity(user = forUser, name = name, targetAmount = BigDecimal("1000")))
+        forOrganization: OrganizationEntity = organization,
+    ) = budgetRepo.save(BudgetEntity(organization = forOrganization, name = name, targetAmount = BigDecimal("1000")))
 
     @Test
     fun `should find all budgets for user`() {
         savedBudget(name = "Urlaub")
         savedBudget(name = "Neue Küche")
-        savedBudget(name = "Fremdes Budget", forUser = otherUser)
+        savedBudget(name = "Fremdes Budget", forOrganization = otherOrganization)
 
-        val result = budgetRepo.findByUserId(userId)
+        val result = budgetRepo.findByOrganizationId(organizationId)
 
         assertThat(result).hasSize(2)
         assertThat(result.map { it.name }).containsExactlyInAnyOrder("Urlaub", "Neue Küche")
@@ -27,7 +27,7 @@ class BudgetJpaRepositoryIT : AbstractJpaRepositoryIT() {
 
     @Test
     fun `should return empty list when user has no budgets`() {
-        val result = budgetRepo.findByUserId(otherUserId)
+        val result = budgetRepo.findByOrganizationId(otherOrganizationId)
 
         assertThat(result).isEmpty()
     }
@@ -38,7 +38,7 @@ class BudgetJpaRepositoryIT : AbstractJpaRepositoryIT() {
         val budgetId = checkNotNull(budget.id)
         flushAndClear()
 
-        budgetRepo.deleteByIdAndUserId(budgetId, userId)
+        budgetRepo.deleteByIdAndOrganizationId(budgetId, organizationId)
         flushAndClear()
 
         assertThat(budgetRepo.findById(budgetId)).isEmpty
@@ -46,11 +46,11 @@ class BudgetJpaRepositoryIT : AbstractJpaRepositoryIT() {
 
     @Test
     fun `should not delete budget belonging to other user`() {
-        val otherBudget = savedBudget(forUser = otherUser)
+        val otherBudget = savedBudget(forOrganization = otherOrganization)
         val otherBudgetId = checkNotNull(otherBudget.id)
         flushAndClear()
 
-        budgetRepo.deleteByIdAndUserId(otherBudgetId, userId)
+        budgetRepo.deleteByIdAndOrganizationId(otherBudgetId, organizationId)
         flushAndClear()
 
         assertThat(budgetRepo.findById(otherBudgetId)).isPresent

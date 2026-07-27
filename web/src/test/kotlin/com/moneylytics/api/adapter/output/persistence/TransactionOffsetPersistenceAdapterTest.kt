@@ -16,16 +16,16 @@ class TransactionOffsetPersistenceAdapterTest {
     private val transactionJpaRepository: TransactionJpaRepository = mock()
     private val adapter = TransactionOffsetPersistenceAdapter(offsetJpaRepository, transactionJpaRepository)
 
-    private val userId = 1L
+    private val organizationId = 1L
     private val date = LocalDate.of(2025, 1, 15)
-    private val userEntity = UserEntity(externalId = "test@test.de", id = userId)
-    private val accountEntity = AccountEntity(iban = "DE00TEST", name = "Test", user = userEntity, id = 10L)
+    private val organizationEntity = OrganizationEntity(name = "Test Org", id = organizationId)
+    private val accountEntity = AccountEntity(iban = "DE00TEST", name = "Test", organization = organizationEntity, id = 10L)
 
     @Test
     fun `should return null from delete when link not found`() {
-        whenever(offsetJpaRepository.findByIdAndUserId(99L, userId)).thenReturn(null)
+        whenever(offsetJpaRepository.findByIdAndOrganizationId(99L, organizationId)).thenReturn(null)
 
-        val result = adapter.delete(99L, userId)
+        val result = adapter.delete(99L, organizationId)
 
         assertThat(result).isNull()
     }
@@ -35,9 +35,9 @@ class TransactionOffsetPersistenceAdapterTest {
         val txA = txEntity(1L)
         val txB = txEntity(2L)
         val offsetEntity = TransactionOffsetEntity(transactionA = txA, transactionB = txB, groupId = 10L, id = 5L)
-        whenever(offsetJpaRepository.findByIdAndUserId(5L, userId)).thenReturn(offsetEntity)
+        whenever(offsetJpaRepository.findByIdAndOrganizationId(5L, organizationId)).thenReturn(offsetEntity)
 
-        val result = adapter.delete(5L, userId)
+        val result = adapter.delete(5L, organizationId)
 
         assertThat(result).isNotNull
         assertThat(result!!.groupId).isEqualTo(10L)
@@ -49,9 +49,9 @@ class TransactionOffsetPersistenceAdapterTest {
         val txA = txEntity(1L)
         val txB = txEntity(2L)
         val offsetEntity = TransactionOffsetEntity(transactionA = txA, transactionB = txB, groupId = null, id = 5L)
-        whenever(offsetJpaRepository.findByIdAndUserId(5L, userId)).thenReturn(offsetEntity)
+        whenever(offsetJpaRepository.findByIdAndOrganizationId(5L, organizationId)).thenReturn(offsetEntity)
 
-        val result = adapter.delete(5L, userId)
+        val result = adapter.delete(5L, organizationId)
 
         assertThat(result!!.groupId).isNull()
     }
@@ -124,6 +124,6 @@ class TransactionOffsetPersistenceAdapterTest {
             currency = "EUR",
             account = accountEntity,
             fingerprint = "fp$id",
-            user = userEntity,
+            organization = organizationEntity,
         )
 }

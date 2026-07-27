@@ -63,7 +63,7 @@ class TransactionOffsetJpaRepositoryIT : AbstractJpaRepositoryIT() {
         val offset = savedOffset(tx1, tx2)
         val offsetId = checkNotNull(offset.id)
 
-        val result = offsetRepo.findByIdAndUserId(offsetId, userId)
+        val result = offsetRepo.findByIdAndOrganizationId(offsetId, organizationId)
 
         assertThat(result).isNotNull
         assertThat(result?.id).isEqualTo(offsetId)
@@ -71,13 +71,13 @@ class TransactionOffsetJpaRepositoryIT : AbstractJpaRepositoryIT() {
 
     @Test
     fun `should return null when offset does not belong to user`() {
-        val otherAccount = accountRepo.save(AccountEntity(iban = "DE00OTHER00000000002", name = "Fremd", user = otherUser))
-        val tx1 = savedTransaction("fp-1", forAccount = otherAccount, forUser = otherUser)
-        val tx2 = savedTransaction("fp-2", forAccount = otherAccount, forUser = otherUser)
+        val otherAccount = accountRepo.save(AccountEntity(iban = "DE00OTHER00000000002", name = "Fremd", organization = otherOrganization))
+        val tx1 = savedTransaction("fp-1", forAccount = otherAccount, forOrganization = otherOrganization)
+        val tx2 = savedTransaction("fp-2", forAccount = otherAccount, forOrganization = otherOrganization)
         val offset = savedOffset(tx1, tx2)
         val offsetId = checkNotNull(offset.id)
 
-        val result = offsetRepo.findByIdAndUserId(offsetId, userId)
+        val result = offsetRepo.findByIdAndOrganizationId(offsetId, organizationId)
 
         assertThat(result).isNull()
     }
@@ -142,7 +142,7 @@ class TransactionOffsetJpaRepositoryIT : AbstractJpaRepositoryIT() {
         val tx1Id = checkNotNull(tx1.id)
         savedOffset(tx1, tx2, groupId = 5L)
 
-        val result = offsetRepo.findByTxAndGroupId(txId = tx1Id, groupId = 5L, userId = userId)
+        val result = offsetRepo.findByTxAndGroupId(txId = tx1Id, groupId = 5L, organizationId = organizationId)
 
         assertThat(result).hasSize(1)
         assertThat(result.first().transactionA.fingerprint).isEqualTo("fp-1")
@@ -156,7 +156,7 @@ class TransactionOffsetJpaRepositoryIT : AbstractJpaRepositoryIT() {
         val offsetId = checkNotNull(offset.id)
         flushAndClear()
 
-        offsetRepo.updateComment(id = offsetId, userId = userId, comment = "Arztkosten erstattet")
+        offsetRepo.updateComment(id = offsetId, organizationId = organizationId, comment = "Arztkosten erstattet")
         flushAndClear()
 
         val updated = offsetRepo.findById(offsetId).get()
@@ -165,14 +165,14 @@ class TransactionOffsetJpaRepositoryIT : AbstractJpaRepositoryIT() {
 
     @Test
     fun `should not update comment on offset belonging to other user`() {
-        val otherAccount = accountRepo.save(AccountEntity(iban = "DE00OTHER00000000002", name = "Fremd", user = otherUser))
-        val tx1 = savedTransaction("fp-1", forAccount = otherAccount, forUser = otherUser)
-        val tx2 = savedTransaction("fp-2", forAccount = otherAccount, forUser = otherUser)
+        val otherAccount = accountRepo.save(AccountEntity(iban = "DE00OTHER00000000002", name = "Fremd", organization = otherOrganization))
+        val tx1 = savedTransaction("fp-1", forAccount = otherAccount, forOrganization = otherOrganization)
+        val tx2 = savedTransaction("fp-2", forAccount = otherAccount, forOrganization = otherOrganization)
         val offset = savedOffset(tx1, tx2)
         val offsetId = checkNotNull(offset.id)
         flushAndClear()
 
-        offsetRepo.updateComment(id = offsetId, userId = userId, comment = "Unerlaubt")
+        offsetRepo.updateComment(id = offsetId, organizationId = organizationId, comment = "Unerlaubt")
         flushAndClear()
 
         val unchanged = offsetRepo.findById(offsetId).get()

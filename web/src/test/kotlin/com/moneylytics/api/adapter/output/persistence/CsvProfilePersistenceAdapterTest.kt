@@ -14,7 +14,7 @@ class CsvProfilePersistenceAdapterTest {
     private val jpaRepository: CsvProfileJpaRepository = mock()
     private val adapter = CsvProfilePersistenceAdapter(jpaRepository)
 
-    private val userId = 1L
+    private val organizationId = 1L
     private val fingerprint = "abc123"
     private val mapping =
         GenericCsvMapping(
@@ -35,29 +35,29 @@ class CsvProfilePersistenceAdapterTest {
 
     @Test
     fun `should return null when profile not found`() {
-        whenever(jpaRepository.findByUserIdAndFingerprint(userId, fingerprint)).thenReturn(null)
+        whenever(jpaRepository.findByOrganizationIdAndFingerprint(organizationId, fingerprint)).thenReturn(null)
 
-        val result = adapter.findMapping(userId, fingerprint)
+        val result = adapter.findMapping(organizationId, fingerprint)
 
         assertThat(result).isNull()
     }
 
     @Test
     fun `should return null on JSON parse error`() {
-        val entity = CsvProfileEntity(userId = userId, fingerprint = fingerprint, mappingJson = "not-valid-json", id = 1L)
-        whenever(jpaRepository.findByUserIdAndFingerprint(userId, fingerprint)).thenReturn(entity)
+        val entity = CsvProfileEntity(organizationId = organizationId, fingerprint = fingerprint, mappingJson = "not-valid-json", id = 1L)
+        whenever(jpaRepository.findByOrganizationIdAndFingerprint(organizationId, fingerprint)).thenReturn(entity)
 
-        val result = adapter.findMapping(userId, fingerprint)
+        val result = adapter.findMapping(organizationId, fingerprint)
 
         assertThat(result).isNull()
     }
 
     @Test
     fun `should return parsed GenericCsvMapping when found`() {
-        val entity = CsvProfileEntity(userId = userId, fingerprint = fingerprint, mappingJson = mappingJson, id = 1L)
-        whenever(jpaRepository.findByUserIdAndFingerprint(userId, fingerprint)).thenReturn(entity)
+        val entity = CsvProfileEntity(organizationId = organizationId, fingerprint = fingerprint, mappingJson = mappingJson, id = 1L)
+        whenever(jpaRepository.findByOrganizationIdAndFingerprint(organizationId, fingerprint)).thenReturn(entity)
 
-        val result = adapter.findMapping(userId, fingerprint)
+        val result = adapter.findMapping(organizationId, fingerprint)
 
         assertThat(result).isNotNull
         assertThat(result!!.delimiter).isEqualTo(";")
@@ -67,20 +67,20 @@ class CsvProfilePersistenceAdapterTest {
 
     @Test
     fun `should create new profile when not existing in saveMapping`() {
-        whenever(jpaRepository.findByUserIdAndFingerprint(userId, fingerprint)).thenReturn(null)
+        whenever(jpaRepository.findByOrganizationIdAndFingerprint(organizationId, fingerprint)).thenReturn(null)
 
-        adapter.saveMapping(userId, fingerprint, mapping)
+        adapter.saveMapping(organizationId, fingerprint, mapping)
 
         verify(jpaRepository).save(any<CsvProfileEntity>())
     }
 
     @Test
     fun `should update existing profile JSON in saveMapping`() {
-        val existing = CsvProfileEntity(userId = userId, fingerprint = fingerprint, mappingJson = "{}", id = 1L)
-        whenever(jpaRepository.findByUserIdAndFingerprint(userId, fingerprint)).thenReturn(existing)
+        val existing = CsvProfileEntity(organizationId = organizationId, fingerprint = fingerprint, mappingJson = "{}", id = 1L)
+        whenever(jpaRepository.findByOrganizationIdAndFingerprint(organizationId, fingerprint)).thenReturn(existing)
 
         val updatedMapping = mapping.copy(delimiter = ",")
-        adapter.saveMapping(userId, fingerprint, updatedMapping)
+        adapter.saveMapping(organizationId, fingerprint, updatedMapping)
 
         assertThat(existing.mappingJson).contains("\"delimiter\":\",\"")
         verify(jpaRepository).save(existing)

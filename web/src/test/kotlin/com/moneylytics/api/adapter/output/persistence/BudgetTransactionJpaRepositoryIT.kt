@@ -10,8 +10,8 @@ class BudgetTransactionJpaRepositoryIT : AbstractJpaRepositoryIT() {
 
     @Autowired private lateinit var budgetTransactionRepo: BudgetTransactionJpaRepository
 
-    private fun savedBudget(forUser: UserEntity = user) =
-        budgetRepo.save(BudgetEntity(user = forUser, name = "Test Budget", targetAmount = BigDecimal("500")))
+    private fun savedBudget(forOrganization: OrganizationEntity = organization) =
+        budgetRepo.save(BudgetEntity(organization = forOrganization, name = "Test Budget", targetAmount = BigDecimal("500")))
 
     private fun savedLink(
         budget: BudgetEntity,
@@ -28,7 +28,7 @@ class BudgetTransactionJpaRepositoryIT : AbstractJpaRepositoryIT() {
         savedLink(budget, tx1)
         savedLink(budget, tx2)
 
-        val result = budgetTransactionRepo.findByBudgetIdAndUserId(budgetId, userId)
+        val result = budgetTransactionRepo.findByBudgetIdAndOrganizationId(budgetId, organizationId)
 
         assertThat(result).hasSize(2)
         assertThat(result.map { it.transaction.fingerprint }).containsExactlyInAnyOrder("fp-1", "fp-2")
@@ -36,16 +36,16 @@ class BudgetTransactionJpaRepositoryIT : AbstractJpaRepositoryIT() {
 
     @Test
     fun `should not return links belonging to other user`() {
-        val otherAccount = accountRepo.save(AccountEntity(iban = "DE00OTHER00000000002", name = "Fremd", user = otherUser))
+        val otherAccount = accountRepo.save(AccountEntity(iban = "DE00OTHER00000000002", name = "Fremd", organization = otherOrganization))
         val budget = savedBudget()
         val budgetId = checkNotNull(budget.id)
-        val otherBudget = savedBudget(forUser = otherUser)
+        val otherBudget = savedBudget(forOrganization = otherOrganization)
         val tx = savedTransaction("fp-mine")
-        val otherTx = savedTransaction("fp-theirs", forAccount = otherAccount, forUser = otherUser)
+        val otherTx = savedTransaction("fp-theirs", forAccount = otherAccount, forOrganization = otherOrganization)
         savedLink(budget, tx)
         savedLink(otherBudget, otherTx)
 
-        val result = budgetTransactionRepo.findByBudgetIdAndUserId(budgetId, userId)
+        val result = budgetTransactionRepo.findByBudgetIdAndOrganizationId(budgetId, organizationId)
 
         assertThat(result).hasSize(1)
         assertThat(result.first().transaction.fingerprint).isEqualTo("fp-mine")
@@ -60,7 +60,7 @@ class BudgetTransactionJpaRepositoryIT : AbstractJpaRepositoryIT() {
         savedLink(budget1, tx1)
         savedLink(budget2, tx2)
 
-        val result = budgetTransactionRepo.findAllByUserId(userId)
+        val result = budgetTransactionRepo.findAllByOrganizationId(organizationId)
 
         assertThat(result).hasSize(2)
     }
@@ -89,7 +89,7 @@ class BudgetTransactionJpaRepositoryIT : AbstractJpaRepositoryIT() {
         val tx = savedTransaction("fp-1", amount = BigDecimal("-800.00"))
         savedLink(budget, tx, amount = BigDecimal("300"))
 
-        val result = budgetTransactionRepo.findByBudgetIdAndUserId(budgetId, userId)
+        val result = budgetTransactionRepo.findByBudgetIdAndOrganizationId(budgetId, organizationId)
 
         assertThat(result.first().amount).isEqualByComparingTo(BigDecimal("300"))
     }
@@ -102,7 +102,7 @@ class BudgetTransactionJpaRepositoryIT : AbstractJpaRepositoryIT() {
         val linkId = checkNotNull(link.id)
         flushAndClear()
 
-        budgetTransactionRepo.deleteByIdAndUserId(linkId, userId)
+        budgetTransactionRepo.deleteByIdAndOrganizationId(linkId, organizationId)
         flushAndClear()
 
         assertThat(budgetTransactionRepo.findById(linkId)).isEmpty
@@ -110,14 +110,14 @@ class BudgetTransactionJpaRepositoryIT : AbstractJpaRepositoryIT() {
 
     @Test
     fun `should not delete link belonging to other user`() {
-        val otherAccount = accountRepo.save(AccountEntity(iban = "DE00OTHER00000000002", name = "Fremd", user = otherUser))
-        val otherBudget = savedBudget(forUser = otherUser)
-        val otherTx = savedTransaction("fp-theirs", forAccount = otherAccount, forUser = otherUser)
+        val otherAccount = accountRepo.save(AccountEntity(iban = "DE00OTHER00000000002", name = "Fremd", organization = otherOrganization))
+        val otherBudget = savedBudget(forOrganization = otherOrganization)
+        val otherTx = savedTransaction("fp-theirs", forAccount = otherAccount, forOrganization = otherOrganization)
         val otherLink = savedLink(otherBudget, otherTx)
         val otherLinkId = checkNotNull(otherLink.id)
         flushAndClear()
 
-        budgetTransactionRepo.deleteByIdAndUserId(otherLinkId, userId)
+        budgetTransactionRepo.deleteByIdAndOrganizationId(otherLinkId, organizationId)
         flushAndClear()
 
         assertThat(budgetTransactionRepo.findById(otherLinkId)).isPresent

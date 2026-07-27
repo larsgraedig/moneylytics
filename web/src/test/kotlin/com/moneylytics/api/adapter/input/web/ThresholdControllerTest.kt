@@ -3,7 +3,7 @@ package com.moneylytics.api.adapter.input.web
 import com.moneylytics.api.application.port.input.DeleteThresholdUseCase
 import com.moneylytics.api.application.port.input.GetThresholdStatusUseCase
 import com.moneylytics.api.application.port.input.GetThresholdsUseCase
-import com.moneylytics.api.application.port.input.ResolveUserUseCase
+import com.moneylytics.api.application.port.input.ResolveOrganizationUseCase
 import com.moneylytics.api.application.port.input.SaveThresholdUseCase
 import com.moneylytics.api.domain.Threshold
 import com.moneylytics.api.domain.ThresholdPeriod
@@ -12,15 +12,16 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.any
 import org.mockito.kotlin.argumentCaptor
-import org.mockito.kotlin.doReturn
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.whenever
 import org.springframework.security.core.userdetails.User
+import org.springframework.web.server.ServerWebExchange
 import java.math.BigDecimal
 
 class ThresholdControllerTest {
-    private val userId = 1L
-    private val resolveUserUseCase: ResolveUserUseCase = mock { on { resolveUser(any()) } doReturn userId }
+    private val organizationId = 1L
+    private val exchange: ServerWebExchange = mock()
+    private val resolveOrganizationUseCase: ResolveOrganizationUseCase = ResolveOrganizationUseCase { _, _ -> organizationId }
     private val getThresholdsUseCase: GetThresholdsUseCase = mock()
     private val saveThresholdUseCase: SaveThresholdUseCase = mock()
     private val deleteThresholdUseCase: DeleteThresholdUseCase = mock()
@@ -31,7 +32,7 @@ class ThresholdControllerTest {
             saveThresholdUseCase,
             deleteThresholdUseCase,
             getThresholdStatusUseCase,
-            resolveUserUseCase,
+            resolveOrganizationUseCase,
         )
     private val principal =
         User
@@ -64,7 +65,7 @@ class ThresholdControllerTest {
                     critical = BigDecimal("100"),
                 )
 
-            controller.saveThreshold(request, principal)
+            controller.saveThreshold(request, principal, exchange)
 
             val captor = argumentCaptor<Threshold>()
             org.mockito.kotlin
@@ -88,7 +89,7 @@ class ThresholdControllerTest {
                     critical = BigDecimal("50"),
                 )
 
-            controller.saveThreshold(request, principal)
+            controller.saveThreshold(request, principal, exchange)
 
             val captor = argumentCaptor<Threshold>()
             org.mockito.kotlin
@@ -111,7 +112,7 @@ class ThresholdControllerTest {
                     critical = BigDecimal("100"),
                 )
 
-            controller.saveThreshold(request, principal)
+            controller.saveThreshold(request, principal, exchange)
 
             val captor = argumentCaptor<Threshold>()
             org.mockito.kotlin
@@ -134,9 +135,9 @@ class ThresholdControllerTest {
                     warning = BigDecimal("120"),
                     critical = BigDecimal("200"),
                 )
-            whenever(getThresholdsUseCase.getThresholds(userId)).thenReturn(listOf(threshold))
+            whenever(getThresholdsUseCase.getThresholds(organizationId)).thenReturn(listOf(threshold))
 
-            val response = controller.listThresholds(principal)
+            val response = controller.listThresholds(principal, exchange)
 
             assertThat(response.thresholds).hasSize(1)
             val dto = response.thresholds[0]
@@ -153,11 +154,11 @@ class ThresholdControllerTest {
     @Test
     fun `should return 204 on deleteThreshold`() =
         runTest {
-            val response = controller.deleteThreshold(3L, principal)
+            val response = controller.deleteThreshold(3L, principal, exchange)
 
             assertThat(response.statusCode.value()).isEqualTo(204)
             org.mockito.kotlin
                 .verify(deleteThresholdUseCase)
-                .deleteThreshold(3L, userId)
+                .deleteThreshold(3L, organizationId)
         }
 }

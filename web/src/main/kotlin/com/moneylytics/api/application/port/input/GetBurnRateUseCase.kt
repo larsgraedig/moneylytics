@@ -10,7 +10,7 @@ fun interface GetBurnRateUseCase {
 data class GetBurnRateQuery(
     val from: LocalDate,
     val to: LocalDate,
-    val userId: Long,
+    val organizationId: Long,
     val accountIban: String? = null,
     val rollingWindow: Int = 7,
 )

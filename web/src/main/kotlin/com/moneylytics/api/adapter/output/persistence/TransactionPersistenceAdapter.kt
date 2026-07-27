@@ -17,7 +17,7 @@ import java.time.LocalDate
 class TransactionPersistenceAdapter(
     private val jpaRepository: TransactionJpaRepository,
     private val accountJpaRepository: AccountJpaRepository,
-    private val userJpaRepository: UserJpaRepository,
+    private val organizationJpaRepository: OrganizationJpaRepository,
     private val offsetJpaRepository: TransactionOffsetJpaRepository,
     private val groupMemberJpaRepository: TransactionGroupMemberJpaRepository,
     private val groupJpaRepository: TransactionGroupJpaRepository,
@@ -28,20 +28,20 @@ class TransactionPersistenceAdapter(
     @Transactional
     override fun saveAll(
         transactions: List<Transaction>,
-        userId: Long,
+        organizationId: Long,
     ): Int {
         if (transactions.isEmpty()) return 0
 
         val withFingerprints = assignFingerprints(transactions)
         val existing =
             jpaRepository
-                .findExistingFingerprints(withFingerprints.map { it.second }, userId)
+                .findExistingFingerprints(withFingerprints.map { it.second }, organizationId)
                 .toHashSet()
 
         val newEntities =
             withFingerprints
                 .filter { (_, fp) -> fp !in existing }
-                .map { (tx, fp) -> tx.toEntity(fp, userId) }
+                .map { (tx, fp) -> tx.toEntity(fp, organizationId) }
 
         jpaRepository.saveAll(newEntities)
         return newEntities.size
@@ -59,21 +59,21 @@ class TransactionPersistenceAdapter(
     @Transactional(readOnly = true)
     override fun findExistingFingerprints(
         fingerprints: Collection<String>,
-        userId: Long,
-    ): Set<String> = jpaRepository.findExistingFingerprints(fingerprints, userId).toHashSet()
+        organizationId: Long,
+    ): Set<String> = jpaRepository.findExistingFingerprints(fingerprints, organizationId).toHashSet()
 
     @Transactional(readOnly = true)
     override fun findByAccountingDateBetween(
         from: LocalDate,
         to: LocalDate,
-        userId: Long,
+        organizationId: Long,
         accountIban: String?,
     ): List<Transaction> {
         val entities =
             if (accountIban != null) {
-                jpaRepository.findByUserIdAndAccountIbanAndAccountingDateBetween(userId, accountIban, from, to)
+                jpaRepository.findByOrganizationIdAndAccountIbanAndAccountingDateBetween(organizationId, accountIban, from, to)
             } else {
-                jpaRepository.findByUserIdAndAccountingDateBetween(userId, from, to)
+                jpaRepository.findByOrganizationIdAndAccountingDateBetween(organizationId, from, to)
             }
         return enrichWithOffsetLinks(entities)
     }
@@ -82,20 +82,25 @@ class TransactionPersistenceAdapter(
     override fun findNegativeByAccountingDateBetween(
         from: LocalDate,
         to: LocalDate,
-        userId: Long,
+        organizationId: Long,
         accountIban: String?,
     ): List<Transaction> {
         val entities =
             if (accountIban != null) {
-                jpaRepository.findByUserIdAndAccountIbanAndAccountingDateBetweenAndAmountLessThan(
-                    userId,
+                jpaRepository.findByOrganizationIdAndAccountIbanAndAccountingDateBetweenAndAmountLessThan(
+                    organizationId,
                     accountIban,
                     from,
                     to,
                     BigDecimal.ZERO,
                 )
             } else {
-                jpaRepository.findByUserIdAndAccountingDateBetweenAndAmountLessThan(userId, from, to, BigDecimal.ZERO)
+                jpaRepository.findByOrganizationIdAndAccountingDateBetweenAndAmountLessThan(
+                    organizationId,
+                    from,
+                    to,
+                    BigDecimal.ZERO,
+                )
             }
         return enrichWithOffsetLinks(entities)
     }
@@ -103,32 +108,32 @@ class TransactionPersistenceAdapter(
     @Transactional
     override fun updateAccountingDate(
         id: Long,
-        userId: Long,
+        organizationId: Long,
         accountingDate: LocalDate,
     ): Transaction? {
-        val entity = jpaRepository.findByIdAndUserId(id, userId) ?: return null
+        val entity = jpaRepository.findByIdAndOrganizationId(id, organizationId) ?: return null
         entity.accountingDate = accountingDate
         return enrichWithOffsetLinks(listOf(jpaRepository.save(entity))).first()
     }
 
     @Transactional(readOnly = true)
-    override fun findByIdAndUserId(
+    override fun findByIdAndOrganizationId(
         id: Long,
-        userId: Long,
+        organizationId: Long,
     ): Transaction? {
-        val entity = jpaRepository.findByIdAndUserId(id, userId) ?: return null
+        val entity = jpaRepository.findByIdAndOrganizationId(id, organizationId) ?: return null
         return enrichWithOffsetLinks(listOf(entity)).first()
     }
 
     @Transactional
     override fun updateCategory(
         id: Long,
-        userId: Long,
+        organizationId: Long,
         category: String,
         subcategory: String,
         categoryGroup: String?,
     ): Transaction? {
-        val entity = jpaRepository.findByIdAndUserId(id, userId) ?: return null
+        val entity = jpaRepository.findByIdAndOrganizationId(id, organizationId) ?: return null
         entity.category = category.takeIf { it.isNotBlank() }
         entity.subcategory = subcategory.takeIf { it.isNotBlank() }
         entity.categoryGroup = categoryGroup?.takeIf { it.isNotBlank() }
@@ -138,33 +143,33 @@ class TransactionPersistenceAdapter(
     @Transactional
     override fun updateComment(
         id: Long,
-        userId: Long,
+        organizationId: Long,
         comment: String?,
     ): Transaction? {
-        val entity = jpaRepository.findByIdAndUserId(id, userId) ?: return null
+        val entity = jpaRepository.findByIdAndOrganizationId(id, organizationId) ?: return null
         entity.comment = comment?.takeIf { it.isNotBlank() }
         return enrichWithOffsetLinks(listOf(jpaRepository.save(entity))).first()
     }
 
     @Transactional(readOnly = true)
-    override fun findByIdsAndUserId(
+    override fun findByIdsAndOrganizationId(
         ids: Set<Long>,
-        userId: Long,
+        organizationId: Long,
     ): List<Transaction> {
         if (ids.isEmpty()) return emptyList()
-        return enrichWithOffsetLinks(jpaRepository.findByIdsAndUserId(ids, userId))
+        return enrichWithOffsetLinks(jpaRepository.findByIdsAndOrganizationId(ids, organizationId))
     }
 
     @Transactional
     override fun enrichByFingerprint(
         fingerprint: String,
-        userId: Long,
+        organizationId: Long,
         purpose: String?,
         counterpartyName: String?,
         counterpartyIban: String?,
         categoryGroup: String?,
     ) {
-        val entity = jpaRepository.findByFingerprintAndUserId(fingerprint, userId) ?: return
+        val entity = jpaRepository.findByFingerprintAndOrganizationId(fingerprint, organizationId) ?: return
         if (entity.purpose == null && !purpose.isNullOrBlank()) entity.purpose = purpose
         if (entity.counterpartyName == null && !counterpartyName.isNullOrBlank()) entity.counterpartyName = counterpartyName
         if (entity.counterpartyIban == null && !counterpartyIban.isNullOrBlank()) entity.counterpartyIban = counterpartyIban
@@ -173,9 +178,9 @@ class TransactionPersistenceAdapter(
     }
 
     @Transactional(readOnly = true)
-    override fun latestTransactionDatesByUserId(userId: Long): Map<String, LocalDate> =
+    override fun latestTransactionDatesByOrganizationId(organizationId: Long): Map<String, LocalDate> =
         jpaRepository
-            .findLatestDatePerIban(userId)
+            .findLatestDatePerIban(organizationId)
             .associate { row -> row[0] as String to row[1] as LocalDate }
 
     @Transactional(readOnly = true)
@@ -185,11 +190,11 @@ class TransactionPersistenceAdapter(
     @Transactional
     override fun bulkUpdateCategory(
         updates: List<CategoryUpdateEntry>,
-        userId: Long,
+        organizationId: Long,
     ): List<Transaction> {
         if (updates.isEmpty()) return emptyList()
         val ids = updates.map { it.id }.toSet()
-        val entities = jpaRepository.findByIdsAndUserId(ids, userId).associateBy { requireNotNull(it.id) }
+        val entities = jpaRepository.findByIdsAndOrganizationId(ids, organizationId).associateBy { requireNotNull(it.id) }
         val updateMap = updates.associateBy { it.id }
         val toSave =
             entities.mapNotNull { (id, entity) ->
@@ -323,12 +328,12 @@ class TransactionPersistenceAdapter(
 
     private fun Transaction.toEntity(
         fingerprint: String,
-        userId: Long,
+        organizationId: Long,
     ): TransactionEntity {
         val account =
-            accountJpaRepository.findByIbanAndUserId(accountIban, userId)
+            accountJpaRepository.findByIbanAndOrganizationId(accountIban, organizationId)
                 ?: error(
-                    "Account not found for IBAN $accountIban and userId $userId — ensure accounts are created before importing transactions",
+                    "Account not found for IBAN $accountIban and organizationId $organizationId — ensure accounts are created before importing transactions",
                 )
         return TransactionEntity(
             category = category?.takeIf { it.isNotBlank() },
@@ -341,7 +346,7 @@ class TransactionPersistenceAdapter(
             currency = currency,
             account = account,
             fingerprint = fingerprint,
-            user = userJpaRepository.getReferenceById(userId),
+            organization = organizationJpaRepository.getReferenceById(organizationId),
             purpose = purpose?.takeIf { it.isNotBlank() },
             counterpartyName = counterpartyName?.takeIf { it.isNotBlank() },
             counterpartyIban = counterpartyIban?.takeIf { it.isNotBlank() },

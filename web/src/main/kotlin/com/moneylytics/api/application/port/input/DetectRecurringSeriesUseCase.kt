@@ -7,6 +7,6 @@ fun interface DetectRecurringSeriesUseCase {
 }
 
 data class RefreshRecurringSeriesCommand(
-    val userId: Long,
+    val organizationId: Long,
     val lookbackMonths: Long = 24,
 )

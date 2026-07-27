@@ -14,8 +14,8 @@ import jakarta.persistence.Table
 @Table(name = "collections")
 class CollectionEntity(
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "user_id", nullable = false)
-    val user: UserEntity,
+    @JoinColumn(name = "organization_id", nullable = false)
+    val organization: OrganizationEntity,
     @Column(nullable = false)
     var name: String,
     @Column(columnDefinition = "TEXT")

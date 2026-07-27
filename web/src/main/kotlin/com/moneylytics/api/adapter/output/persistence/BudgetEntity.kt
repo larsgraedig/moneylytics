@@ -15,8 +15,8 @@ import java.math.BigDecimal
 @Table(name = "budgets")
 class BudgetEntity(
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "user_id", nullable = false)
-    val user: UserEntity,
+    @JoinColumn(name = "organization_id", nullable = false)
+    val organization: OrganizationEntity,
     @Column(nullable = false)
     var name: String,
     @Column(precision = 19, scale = 2)

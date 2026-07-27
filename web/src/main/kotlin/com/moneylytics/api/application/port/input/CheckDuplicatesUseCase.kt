@@ -3,6 +3,6 @@ package com.moneylytics.api.application.port.input
 fun interface CheckDuplicatesUseCase {
     fun findExistingFingerprints(
         fingerprints: Collection<String>,
-        userId: Long,
+        organizationId: Long,
     ): Set<String>
 }

@@ -14,13 +14,13 @@ class TransactionImportService(
 ) : ImportTransactionsUseCase {
     override fun importTransactions(command: ImportTransactionsCommand): Int {
         command.accountNames.forEach { (iban, name) ->
-            if (accountRepository.findByIban(iban, command.userId) == null) {
-                accountRepository.save(Account(iban = iban, name = name), command.userId)
+            if (accountRepository.findByIban(iban, command.organizationId) == null) {
+                accountRepository.save(Account(iban = iban, name = name), command.organizationId)
             }
         }
-        val count = transactionRepository.saveAll(command.transactions, command.userId)
+        val count = transactionRepository.saveAll(command.transactions, command.organizationId)
         command.accountBalances.forEach { (iban, balance) ->
-            accountRepository.updateBalance(iban, command.userId, balance.amount, balance.date)
+            accountRepository.updateBalance(iban, command.organizationId, balance.amount, balance.date)
         }
         return count
     }

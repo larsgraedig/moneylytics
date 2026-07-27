@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { RefreshCw, X, RotateCcw, Plus, Trash2, ClipboardList } from 'lucide-react'
+import { RefreshCw, X, RotateCcw, Plus, Trash2, ClipboardList, Play } from 'lucide-react'
 import {
   fetchRecurringSeries,
   refreshRecurringSeries,
@@ -9,6 +9,7 @@ import {
   deleteRecurringSeries,
   correctRecurringSeriesType,
   fetchRecurringSyncLogs,
+  triggerRecurringSync,
   type RecurringSeriesItem,
   type RecurrenceDirection,
   type RecurrenceCadence,
@@ -17,6 +18,7 @@ import {
   type RecurringSyncLog,
 } from '../api/recurring'
 import { fetchAccounts, type Account } from '../api/accounts'
+import { useAuth } from '../context/AuthContext'
 
 type PageState =
   | { phase: 'idle' }
@@ -81,6 +83,9 @@ function formatDateTime(iso: string): string {
 
 export default function RecurringPage() {
   const { t } = useTranslation()
+  const { isSystemAdmin, activeOrganization } = useAuth()
+  const isOrgAdminOrOwner = activeOrganization?.role === 'ADMIN' || activeOrganization?.role === 'OWNER'
+  const canTriggerSync = isSystemAdmin || isOrgAdminOrOwner
   const [state, setState] = useState<PageState>({ phase: 'idle' })
   const [filterDirection, setFilterDirection] = useState<RecurrenceDirection | undefined>()
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
@@ -95,6 +100,8 @@ export default function RecurringPage() {
   const [showSyncLog, setShowSyncLog] = useState(false)
   const [syncLogs, setSyncLogs] = useState<RecurringSyncLog[]>([])
   const [syncLogLoading, setSyncLogLoading] = useState(false)
+  const [syncing, setSyncing] = useState(false)
+  const [syncSuccess, setSyncSuccess] = useState(false)
 
   useEffect(() => {
     load()
@@ -228,6 +235,20 @@ export default function RecurringPage() {
     }
   }
 
+  async function handleSync() {
+    setSyncing(true)
+    setSyncSuccess(false)
+    try {
+      await triggerRecurringSync()
+      setSyncSuccess(true)
+      await load()
+    } catch {
+      // silent — load() will show error if needed
+    } finally {
+      setSyncing(false)
+    }
+  }
+
   async function openSyncLog() {
     setShowSyncLog(true)
     setSyncLogLoading(true)
@@ -287,6 +308,12 @@ export default function RecurringPage() {
                 <Plus size={14} />
                 {t('recurring.addManual')}
               </button>
+              {canTriggerSync && (
+                <button className="rcr-sync-btn" onClick={handleSync} disabled={syncing} title={syncing ? t('recurring.syncing') : t('recurring.sync')}>
+                  <Play size={14} />
+                  {syncing ? t('recurring.syncing') : syncSuccess ? t('recurring.syncSuccess') : t('recurring.sync')}
+                </button>
+              )}
               <button className="rcr-refresh-btn" onClick={refresh} disabled={refreshing}>
                 <RefreshCw size={14} className={refreshing ? 'rcr-spin' : ''} />
                 {refreshing ? t('recurring.refreshing') : t('recurring.refresh')}

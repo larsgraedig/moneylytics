@@ -16,7 +16,7 @@ import java.time.LocalDate
 class TransactionPersistenceAdapterTest {
     private val jpaRepository: TransactionJpaRepository = mock()
     private val accountJpaRepository: AccountJpaRepository = mock()
-    private val userJpaRepository: UserJpaRepository = mock()
+    private val organizationJpaRepository: OrganizationJpaRepository = mock()
     private val offsetJpaRepository: TransactionOffsetJpaRepository = mock()
     private val groupMemberJpaRepository: TransactionGroupMemberJpaRepository = mock()
     private val groupJpaRepository: TransactionGroupJpaRepository = mock()
@@ -27,7 +27,7 @@ class TransactionPersistenceAdapterTest {
         TransactionPersistenceAdapter(
             jpaRepository,
             accountJpaRepository,
-            userJpaRepository,
+            organizationJpaRepository,
             offsetJpaRepository,
             groupMemberJpaRepository,
             groupJpaRepository,
@@ -36,14 +36,14 @@ class TransactionPersistenceAdapterTest {
             budgetTransactionJpaRepository,
         )
 
-    private val userId = 1L
+    private val organizationId = 1L
     private val date = LocalDate.of(2025, 1, 15)
-    private val userEntity = UserEntity(externalId = "test@test.de", id = userId)
-    private val accountEntity = AccountEntity(iban = "DE00TEST", name = "Test", user = userEntity, id = 10L)
+    private val organizationEntity = OrganizationEntity(name = "Test Org", id = organizationId)
+    private val accountEntity = AccountEntity(iban = "DE00TEST", name = "Test", organization = organizationEntity, id = 10L)
 
     @Test
     fun `should return 0 from saveAll when list is empty`() {
-        val result = adapter.saveAll(emptyList(), userId)
+        val result = adapter.saveAll(emptyList(), organizationId)
 
         assertThat(result).isEqualTo(0)
         verify(jpaRepository, never()).saveAll(any<List<TransactionEntity>>())
@@ -53,14 +53,14 @@ class TransactionPersistenceAdapterTest {
     fun `should skip transactions with existing fingerprints in saveAll`() {
         val tx1 = domainTx(amount = BigDecimal("-100"))
         val tx2 = domainTx(amount = BigDecimal("-200"))
-        whenever(accountJpaRepository.findByIbanAndUserId("DE00TEST", userId)).thenReturn(accountEntity)
-        whenever(userJpaRepository.getReferenceById(userId)).thenReturn(userEntity)
+        whenever(accountJpaRepository.findByIbanAndOrganizationId("DE00TEST", organizationId)).thenReturn(accountEntity)
+        whenever(organizationJpaRepository.getReferenceById(organizationId)).thenReturn(organizationEntity)
         val fp1 = computeFingerprint(tx1)
         val fp2 = computeFingerprint(tx2)
         whenever(jpaRepository.findExistingFingerprints(any(), any())).thenReturn(listOf(fp1))
         whenever(jpaRepository.saveAll(any<List<TransactionEntity>>())).thenReturn(emptyList())
 
-        val result = adapter.saveAll(listOf(tx1, tx2), userId)
+        val result = adapter.saveAll(listOf(tx1, tx2), organizationId)
 
         assertThat(result).isEqualTo(1)
         val captor = argumentCaptor<List<TransactionEntity>>()
@@ -72,12 +72,12 @@ class TransactionPersistenceAdapterTest {
     fun `should assign different fingerprints to duplicate transactions in same batch`() {
         val tx = domainTx()
         val transactions = listOf(tx, tx)
-        whenever(accountJpaRepository.findByIbanAndUserId("DE00TEST", userId)).thenReturn(accountEntity)
-        whenever(userJpaRepository.getReferenceById(userId)).thenReturn(userEntity)
+        whenever(accountJpaRepository.findByIbanAndOrganizationId("DE00TEST", organizationId)).thenReturn(accountEntity)
+        whenever(organizationJpaRepository.getReferenceById(organizationId)).thenReturn(organizationEntity)
         whenever(jpaRepository.findExistingFingerprints(any(), any())).thenReturn(emptyList())
         whenever(jpaRepository.saveAll(any<List<TransactionEntity>>())).thenReturn(emptyList())
 
-        val result = adapter.saveAll(transactions, userId)
+        val result = adapter.saveAll(transactions, organizationId)
 
         assertThat(result).isEqualTo(2)
         val captor = argumentCaptor<List<TransactionEntity>>()
@@ -89,9 +89,9 @@ class TransactionPersistenceAdapterTest {
     @Test
     fun `should not overwrite existing non-null fields in enrichByFingerprint`() {
         val entity = txEntity(1L, purpose = "existing-purpose", counterpartyName = "existing-name")
-        whenever(jpaRepository.findByFingerprintAndUserId("fp1", userId)).thenReturn(entity)
+        whenever(jpaRepository.findByFingerprintAndOrganizationId("fp1", organizationId)).thenReturn(entity)
 
-        adapter.enrichByFingerprint("fp1", userId, purpose = "new-purpose", counterpartyName = "new-name", counterpartyIban = null)
+        adapter.enrichByFingerprint("fp1", organizationId, purpose = "new-purpose", counterpartyName = "new-name", counterpartyIban = null)
 
         assertThat(entity.purpose).isEqualTo("existing-purpose")
         assertThat(entity.counterpartyName).isEqualTo("existing-name")
@@ -100,10 +100,10 @@ class TransactionPersistenceAdapterTest {
     @Test
     fun `should update null fields in enrichByFingerprint`() {
         val entity = txEntity(1L, purpose = null, counterpartyName = null)
-        whenever(jpaRepository.findByFingerprintAndUserId("fp1", userId)).thenReturn(entity)
+        whenever(jpaRepository.findByFingerprintAndOrganizationId("fp1", organizationId)).thenReturn(entity)
         whenever(jpaRepository.save(entity)).thenReturn(entity)
 
-        adapter.enrichByFingerprint("fp1", userId, purpose = "Gehalt", counterpartyName = "Arbeitgeber", counterpartyIban = null)
+        adapter.enrichByFingerprint("fp1", organizationId, purpose = "Gehalt", counterpartyName = "Arbeitgeber", counterpartyIban = null)
 
         assertThat(entity.purpose).isEqualTo("Gehalt")
         assertThat(entity.counterpartyName).isEqualTo("Arbeitgeber")
@@ -111,18 +111,18 @@ class TransactionPersistenceAdapterTest {
 
     @Test
     fun `should skip enrichByFingerprint when entity not found`() {
-        whenever(jpaRepository.findByFingerprintAndUserId("unknown", userId)).thenReturn(null)
+        whenever(jpaRepository.findByFingerprintAndOrganizationId("unknown", organizationId)).thenReturn(null)
 
-        adapter.enrichByFingerprint("unknown", userId, purpose = "Test", counterpartyName = null, counterpartyIban = null)
+        adapter.enrichByFingerprint("unknown", organizationId, purpose = "Test", counterpartyName = null, counterpartyIban = null)
 
         verify(jpaRepository, never()).save(any())
     }
 
     @Test
     fun `should return null from updateCategory when entity not found`() {
-        whenever(jpaRepository.findByIdAndUserId(99L, userId)).thenReturn(null)
+        whenever(jpaRepository.findByIdAndOrganizationId(99L, organizationId)).thenReturn(null)
 
-        val result = adapter.updateCategory(99L, userId, "Lebensmittel", "Supermarkt", null)
+        val result = adapter.updateCategory(99L, organizationId, "Lebensmittel", "Supermarkt", null)
 
         assertThat(result).isNull()
     }
@@ -131,11 +131,11 @@ class TransactionPersistenceAdapterTest {
     fun `should convert blank category strings to null on updateCategory`() {
         val entity = txEntity(1L)
         val savedEntity = txEntity(1L)
-        whenever(jpaRepository.findByIdAndUserId(1L, userId)).thenReturn(entity)
+        whenever(jpaRepository.findByIdAndOrganizationId(1L, organizationId)).thenReturn(entity)
         whenever(jpaRepository.save(entity)).thenReturn(savedEntity)
         stubEnrichEmpty(listOf(1L))
 
-        adapter.updateCategory(1L, userId, "  ", "  ", "  ")
+        adapter.updateCategory(1L, organizationId, "  ", "  ", "  ")
 
         assertThat(entity.category).isNull()
         assertThat(entity.subcategory).isNull()
@@ -144,9 +144,9 @@ class TransactionPersistenceAdapterTest {
 
     @Test
     fun `should return null from updateComment when entity not found`() {
-        whenever(jpaRepository.findByIdAndUserId(99L, userId)).thenReturn(null)
+        whenever(jpaRepository.findByIdAndOrganizationId(99L, organizationId)).thenReturn(null)
 
-        val result = adapter.updateComment(99L, userId, "test")
+        val result = adapter.updateComment(99L, organizationId, "test")
 
         assertThat(result).isNull()
     }
@@ -154,33 +154,33 @@ class TransactionPersistenceAdapterTest {
     @Test
     fun `should convert blank comment to null on updateComment`() {
         val entity = txEntity(1L)
-        whenever(jpaRepository.findByIdAndUserId(1L, userId)).thenReturn(entity)
+        whenever(jpaRepository.findByIdAndOrganizationId(1L, organizationId)).thenReturn(entity)
         whenever(jpaRepository.save(entity)).thenReturn(txEntity(1L))
         stubEnrichEmpty(listOf(1L))
 
-        adapter.updateComment(1L, userId, "  ")
+        adapter.updateComment(1L, organizationId, "  ")
 
         assertThat(entity.comment).isNull()
     }
 
     @Test
     fun `should return empty list from bulkUpdateCategory when updates is empty`() {
-        val result = adapter.bulkUpdateCategory(emptyList(), userId)
+        val result = adapter.bulkUpdateCategory(emptyList(), organizationId)
 
         assertThat(result).isEmpty()
-        verify(jpaRepository, never()).findByIdsAndUserId(any(), any())
+        verify(jpaRepository, never()).findByIdsAndOrganizationId(any(), any())
     }
 
     @Test
     fun `should apply bulk category updates`() {
         val entity = txEntity(1L)
-        whenever(jpaRepository.findByIdsAndUserId(setOf(1L), userId)).thenReturn(listOf(entity))
+        whenever(jpaRepository.findByIdsAndOrganizationId(setOf(1L), organizationId)).thenReturn(listOf(entity))
         whenever(jpaRepository.saveAll(any<List<TransactionEntity>>())).thenReturn(listOf(entity))
         stubEnrichEmpty(listOf(1L))
 
         adapter.bulkUpdateCategory(
             listOf(CategoryUpdateEntry(id = 1L, category = "Transport", subcategory = "ÖPNV", categoryGroup = null)),
-            userId,
+            organizationId,
         )
 
         assertThat(entity.category).isEqualTo("Transport")
@@ -190,24 +190,24 @@ class TransactionPersistenceAdapterTest {
     @Test
     fun `should use account-specific query when IBAN provided in findByAccountingDateBetween`() {
         stubEnrichEmpty(emptyList())
-        whenever(jpaRepository.findByUserIdAndAccountIbanAndAccountingDateBetween(userId, "DE00TEST", date, date))
+        whenever(jpaRepository.findByOrganizationIdAndAccountIbanAndAccountingDateBetween(organizationId, "DE00TEST", date, date))
             .thenReturn(emptyList())
 
-        adapter.findByAccountingDateBetween(date, date, userId, accountIban = "DE00TEST")
+        adapter.findByAccountingDateBetween(date, date, organizationId, accountIban = "DE00TEST")
 
-        verify(jpaRepository).findByUserIdAndAccountIbanAndAccountingDateBetween(userId, "DE00TEST", date, date)
-        verify(jpaRepository, never()).findByUserIdAndAccountingDateBetween(any(), any(), any())
+        verify(jpaRepository).findByOrganizationIdAndAccountIbanAndAccountingDateBetween(organizationId, "DE00TEST", date, date)
+        verify(jpaRepository, never()).findByOrganizationIdAndAccountingDateBetween(any(), any(), any())
     }
 
     @Test
     fun `should use general query when no IBAN in findByAccountingDateBetween`() {
         stubEnrichEmpty(emptyList())
-        whenever(jpaRepository.findByUserIdAndAccountingDateBetween(userId, date, date)).thenReturn(emptyList())
+        whenever(jpaRepository.findByOrganizationIdAndAccountingDateBetween(organizationId, date, date)).thenReturn(emptyList())
 
-        adapter.findByAccountingDateBetween(date, date, userId, accountIban = null)
+        adapter.findByAccountingDateBetween(date, date, organizationId, accountIban = null)
 
-        verify(jpaRepository).findByUserIdAndAccountingDateBetween(userId, date, date)
-        verify(jpaRepository, never()).findByUserIdAndAccountIbanAndAccountingDateBetween(any(), any(), any(), any())
+        verify(jpaRepository).findByOrganizationIdAndAccountingDateBetween(organizationId, date, date)
+        verify(jpaRepository, never()).findByOrganizationIdAndAccountIbanAndAccountingDateBetween(any(), any(), any(), any())
     }
 
     @Test
@@ -223,11 +223,11 @@ class TransactionPersistenceAdapterTest {
                 groupId = 10L,
                 id = 5L,
             )
-        whenever(jpaRepository.findByUserIdAndAccountingDateBetween(userId, date, date)).thenReturn(listOf(txA))
+        whenever(jpaRepository.findByOrganizationIdAndAccountingDateBetween(organizationId, date, date)).thenReturn(listOf(txA))
         whenever(offsetJpaRepository.findByTransactionIds(listOf(1L))).thenReturn(listOf(offsetEntity))
         stubGroupsAndCollectionsEmpty(listOf(1L))
 
-        val result = adapter.findByAccountingDateBetween(date, date, userId, null)
+        val result = adapter.findByAccountingDateBetween(date, date, organizationId, null)
 
         val link = result[0].offsetLinks[0]
         assertThat(link.linkedTransactionId).isEqualTo(2L)
@@ -249,11 +249,11 @@ class TransactionPersistenceAdapterTest {
                 groupId = 10L,
                 id = 5L,
             )
-        whenever(jpaRepository.findByUserIdAndAccountingDateBetween(userId, date, date)).thenReturn(listOf(txB))
+        whenever(jpaRepository.findByOrganizationIdAndAccountingDateBetween(organizationId, date, date)).thenReturn(listOf(txB))
         whenever(offsetJpaRepository.findByTransactionIds(listOf(2L))).thenReturn(listOf(offsetEntity))
         stubGroupsAndCollectionsEmpty(listOf(2L))
 
-        val result = adapter.findByAccountingDateBetween(date, date, userId, null)
+        val result = adapter.findByAccountingDateBetween(date, date, organizationId, null)
 
         val link = result[0].offsetLinks[0]
         assertThat(link.linkedTransactionId).isEqualTo(1L)
@@ -267,30 +267,30 @@ class TransactionPersistenceAdapterTest {
         val txB = txEntity(2L, amount = BigDecimal("50"))
         val offsetEntity =
             TransactionOffsetEntity(transactionA = txA, transactionB = txB, amountA = null, amountB = null, groupId = null, id = 5L)
-        whenever(jpaRepository.findByUserIdAndAccountingDateBetween(userId, date, date)).thenReturn(listOf(txA))
+        whenever(jpaRepository.findByOrganizationIdAndAccountingDateBetween(organizationId, date, date)).thenReturn(listOf(txA))
         whenever(offsetJpaRepository.findByTransactionIds(listOf(1L))).thenReturn(listOf(offsetEntity))
         stubGroupsAndCollectionsEmpty(listOf(1L))
 
-        val result = adapter.findByAccountingDateBetween(date, date, userId, null)
+        val result = adapter.findByAccountingDateBetween(date, date, organizationId, null)
 
         assertThat(result[0].offsetLinks[0].myCommitted).isEqualByComparingTo(BigDecimal("-100"))
     }
 
     @Test
-    fun `should map result rows to LocalDate map in latestTransactionDatesByUserId`() {
+    fun `should map result rows to LocalDate map in latestTransactionDatesByOrganizationId`() {
         val latestDate = LocalDate.of(2025, 6, 15)
-        whenever(jpaRepository.findLatestDatePerIban(userId)).thenReturn(listOf(arrayOf("DE00TEST", latestDate)))
+        whenever(jpaRepository.findLatestDatePerIban(organizationId)).thenReturn(listOf(arrayOf("DE00TEST", latestDate)))
 
-        val result = adapter.latestTransactionDatesByUserId(userId)
+        val result = adapter.latestTransactionDatesByOrganizationId(organizationId)
 
         assertThat(result).containsEntry("DE00TEST", latestDate)
     }
 
     @Test
     fun `should return empty map when no transactions for user`() {
-        whenever(jpaRepository.findLatestDatePerIban(userId)).thenReturn(emptyList())
+        whenever(jpaRepository.findLatestDatePerIban(organizationId)).thenReturn(emptyList())
 
-        val result = adapter.latestTransactionDatesByUserId(userId)
+        val result = adapter.latestTransactionDatesByOrganizationId(organizationId)
 
         assertThat(result).isEmpty()
     }
@@ -322,7 +322,7 @@ class TransactionPersistenceAdapterTest {
         currency = "EUR",
         account = accountEntity,
         fingerprint = "fp$id",
-        user = userEntity,
+        organization = organizationEntity,
         purpose = purpose,
         counterpartyName = counterpartyName,
     )

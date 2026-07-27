@@ -21,7 +21,7 @@ class TransactionImportServiceTest {
     private val accountRepository: AccountRepository = mock()
     private val service = TransactionImportService(transactionRepository, accountRepository)
 
-    private val userId = 1L
+    private val organizationId = 1L
     private val date = LocalDate.of(2025, 1, 15)
 
     @Test
@@ -31,14 +31,14 @@ class TransactionImportServiceTest {
             ImportTransactionsCommand(
                 transactions = listOf(tx),
                 accountNames = mapOf("DE01" to "Giro"),
-                userId = userId,
+                organizationId = organizationId,
             )
-        whenever(accountRepository.findByIban("DE01", userId)).thenReturn(null)
-        whenever(transactionRepository.saveAll(listOf(tx), userId)).thenReturn(1)
+        whenever(accountRepository.findByIban("DE01", organizationId)).thenReturn(null)
+        whenever(transactionRepository.saveAll(listOf(tx), organizationId)).thenReturn(1)
 
         val count = service.importTransactions(command)
 
-        verify(accountRepository).save(Account(iban = "DE01", name = "Giro"), userId)
+        verify(accountRepository).save(Account(iban = "DE01", name = "Giro"), organizationId)
         assertThat(count).isEqualTo(1)
     }
 
@@ -49,10 +49,10 @@ class TransactionImportServiceTest {
             ImportTransactionsCommand(
                 transactions = listOf(tx),
                 accountNames = mapOf("DE01" to "Giro"),
-                userId = userId,
+                organizationId = organizationId,
             )
-        whenever(accountRepository.findByIban("DE01", userId)).thenReturn(Account(iban = "DE01", name = "Giro"))
-        whenever(transactionRepository.saveAll(listOf(tx), userId)).thenReturn(1)
+        whenever(accountRepository.findByIban("DE01", organizationId)).thenReturn(Account(iban = "DE01", name = "Giro"))
+        whenever(transactionRepository.saveAll(listOf(tx), organizationId)).thenReturn(1)
 
         service.importTransactions(command)
 
@@ -66,10 +66,10 @@ class TransactionImportServiceTest {
             ImportTransactionsCommand(
                 transactions = transactions,
                 accountNames = mapOf("DE01" to "Giro"),
-                userId = userId,
+                organizationId = organizationId,
             )
-        whenever(accountRepository.findByIban("DE01", userId)).thenReturn(Account(iban = "DE01", name = "Giro"))
-        whenever(transactionRepository.saveAll(transactions, userId)).thenReturn(2)
+        whenever(accountRepository.findByIban("DE01", organizationId)).thenReturn(Account(iban = "DE01", name = "Giro"))
+        whenever(transactionRepository.saveAll(transactions, organizationId)).thenReturn(2)
 
         val count = service.importTransactions(command)
 
@@ -85,14 +85,14 @@ class TransactionImportServiceTest {
                 transactions = listOf(tx),
                 accountNames = mapOf("DE01" to "Giro"),
                 accountBalances = mapOf("DE01" to balance),
-                userId = userId,
+                organizationId = organizationId,
             )
-        whenever(accountRepository.findByIban("DE01", userId)).thenReturn(Account(iban = "DE01", name = "Giro"))
-        whenever(transactionRepository.saveAll(listOf(tx), userId)).thenReturn(1)
+        whenever(accountRepository.findByIban("DE01", organizationId)).thenReturn(Account(iban = "DE01", name = "Giro"))
+        whenever(transactionRepository.saveAll(listOf(tx), organizationId)).thenReturn(1)
 
         service.importTransactions(command)
 
-        verify(accountRepository).updateBalance("DE01", userId, balance.amount, balance.date)
+        verify(accountRepository).updateBalance("DE01", organizationId, balance.amount, balance.date)
     }
 
     @Test
@@ -102,10 +102,10 @@ class TransactionImportServiceTest {
             ImportTransactionsCommand(
                 transactions = listOf(tx),
                 accountNames = mapOf("DE01" to "Giro"),
-                userId = userId,
+                organizationId = organizationId,
             )
-        whenever(accountRepository.findByIban("DE01", userId)).thenReturn(Account(iban = "DE01", name = "Giro"))
-        whenever(transactionRepository.saveAll(listOf(tx), userId)).thenReturn(1)
+        whenever(accountRepository.findByIban("DE01", organizationId)).thenReturn(Account(iban = "DE01", name = "Giro"))
+        whenever(transactionRepository.saveAll(listOf(tx), organizationId)).thenReturn(1)
 
         service.importTransactions(command)
 

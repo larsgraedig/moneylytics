@@ -24,12 +24,12 @@ interface TransactionOffsetJpaRepository : JpaRepository<TransactionOffsetEntity
         JOIN FETCH o.transactionA
         JOIN FETCH o.transactionB
         WHERE o.id = :id
-        AND (o.transactionA.user.id = :userId OR o.transactionB.user.id = :userId)
+        AND (o.transactionA.organization.id = :organizationId OR o.transactionB.organization.id = :organizationId)
         """,
     )
-    fun findByIdAndUserId(
+    fun findByIdAndOrganizationId(
         @Param("id") id: Long,
-        @Param("userId") userId: Long,
+        @Param("organizationId") organizationId: Long,
     ): TransactionOffsetEntity?
 
     @Query(
@@ -78,13 +78,13 @@ interface TransactionOffsetJpaRepository : JpaRepository<TransactionOffsetEntity
         JOIN FETCH o.transactionB
         WHERE (o.transactionA.id = :txId OR o.transactionB.id = :txId)
         AND o.groupId = :groupId
-        AND (o.transactionA.user.id = :userId OR o.transactionB.user.id = :userId)
+        AND (o.transactionA.organization.id = :organizationId OR o.transactionB.organization.id = :organizationId)
         """,
     )
     fun findByTxAndGroupId(
         @Param("txId") txId: Long,
         @Param("groupId") groupId: Long,
-        @Param("userId") userId: Long,
+        @Param("organizationId") organizationId: Long,
     ): List<TransactionOffsetEntity>
 
     @Modifying
@@ -92,12 +92,12 @@ interface TransactionOffsetJpaRepository : JpaRepository<TransactionOffsetEntity
         """
         UPDATE TransactionOffsetEntity o SET o.comment = :comment
         WHERE o.id = :id
-        AND (o.transactionA.user.id = :userId OR o.transactionB.user.id = :userId)
+        AND (o.transactionA.organization.id = :organizationId OR o.transactionB.organization.id = :organizationId)
         """,
     )
     fun updateComment(
         @Param("id") id: Long,
-        @Param("userId") userId: Long,
+        @Param("organizationId") organizationId: Long,
         @Param("comment") comment: String?,
     )
 }

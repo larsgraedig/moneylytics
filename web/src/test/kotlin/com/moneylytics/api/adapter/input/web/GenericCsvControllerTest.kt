@@ -5,23 +5,24 @@ import com.moneylytics.api.application.port.input.CheckDuplicatesUseCase
 import com.moneylytics.api.application.port.input.EnrichTransactionUseCase
 import com.moneylytics.api.application.port.input.GetAccountsUseCase
 import com.moneylytics.api.application.port.input.ImportTransactionsUseCase
-import com.moneylytics.api.application.port.input.ResolveUserUseCase
+import com.moneylytics.api.application.port.input.ResolveOrganizationUseCase
 import com.moneylytics.api.domain.Account
 import kotlinx.coroutines.test.runTest
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.any
 import org.mockito.kotlin.argumentCaptor
-import org.mockito.kotlin.doReturn
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import org.springframework.http.HttpStatus
 import org.springframework.security.core.userdetails.User
+import org.springframework.web.server.ServerWebExchange
 
 class GenericCsvControllerTest {
-    private val userId = 1L
-    private val resolveUserUseCase: ResolveUserUseCase = mock { on { resolveUser(any()) } doReturn userId }
+    private val organizationId = 1L
+    private val exchange: ServerWebExchange = mock()
+    private val resolveOrganizationUseCase: ResolveOrganizationUseCase = ResolveOrganizationUseCase { _, _ -> organizationId }
     private val detector: GenericCsvDetector = mock()
     private val parser: GenericCsvParser = mock()
     private val importTransactionsUseCase: ImportTransactionsUseCase = mock()
@@ -37,7 +38,7 @@ class GenericCsvControllerTest {
             checkDuplicatesUseCase,
             getAccountsUseCase,
             enrichTransactionUseCase,
-            resolveUserUseCase,
+            resolveOrganizationUseCase,
             csvProfileAdapter,
         )
     private val principal =
@@ -50,7 +51,7 @@ class GenericCsvControllerTest {
     @Test
     fun `should import all rows when knownIbans is empty`() =
         runTest {
-            whenever(getAccountsUseCase.getAccounts(userId)).thenReturn(emptyList())
+            whenever(getAccountsUseCase.getAccounts(organizationId)).thenReturn(emptyList())
             whenever(importTransactionsUseCase.importTransactions(any())).thenReturn(3)
 
             val request =
@@ -62,7 +63,7 @@ class GenericCsvControllerTest {
                             row("DE03"),
                         ),
                 )
-            val response = controller.importRows(request, principal)
+            val response = controller.importRows(request, principal, exchange)
 
             assertThat(response.statusCode).isEqualTo(HttpStatus.OK)
             assertThat((response.body as ImportSuccessResponse).importedCount).isEqualTo(3)
@@ -71,7 +72,7 @@ class GenericCsvControllerTest {
     @Test
     fun `should filter rows to known IBANs when knownIbans is non-empty`() =
         runTest {
-            whenever(getAccountsUseCase.getAccounts(userId)).thenReturn(
+            whenever(getAccountsUseCase.getAccounts(organizationId)).thenReturn(
                 listOf(Account(iban = "DE01", name = "Giro")),
             )
             whenever(importTransactionsUseCase.importTransactions(any())).thenReturn(1)
@@ -84,7 +85,7 @@ class GenericCsvControllerTest {
                             row("DE99"),
                         ),
                 )
-            controller.importRows(request, principal)
+            controller.importRows(request, principal, exchange)
 
             val captor = argumentCaptor<com.moneylytics.api.application.port.input.ImportTransactionsCommand>()
             verify(importTransactionsUseCase).importTransactions(captor.capture())
@@ -95,10 +96,10 @@ class GenericCsvControllerTest {
     @Test
     fun `should use iban as key and value in accountNames map for importRows`() =
         runTest {
-            whenever(getAccountsUseCase.getAccounts(userId)).thenReturn(emptyList())
+            whenever(getAccountsUseCase.getAccounts(organizationId)).thenReturn(emptyList())
             whenever(importTransactionsUseCase.importTransactions(any())).thenReturn(1)
 
-            controller.importRows(GenericCsvImportRequest(toImport = listOf(row("DE01"))), principal)
+            controller.importRows(GenericCsvImportRequest(toImport = listOf(row("DE01"))), principal, exchange)
 
             val captor = argumentCaptor<com.moneylytics.api.application.port.input.ImportTransactionsCommand>()
             verify(importTransactionsUseCase).importTransactions(captor.capture())
@@ -108,7 +109,7 @@ class GenericCsvControllerTest {
     @Test
     fun `should call enrichByFingerprint for each toEnrich entry in importRows`() =
         runTest {
-            whenever(getAccountsUseCase.getAccounts(userId)).thenReturn(emptyList())
+            whenever(getAccountsUseCase.getAccounts(organizationId)).thenReturn(emptyList())
             whenever(importTransactionsUseCase.importTransactions(any())).thenReturn(0)
 
             val request =
@@ -124,9 +125,9 @@ class GenericCsvControllerTest {
                             ),
                         ),
                 )
-            controller.importRows(request, principal)
+            controller.importRows(request, principal, exchange)
 
-            verify(enrichTransactionUseCase).enrichByFingerprint("fp1", userId, "Test", null, null)
+            verify(enrichTransactionUseCase).enrichByFingerprint("fp1", organizationId, "Test", null, null)
         }
 
     private fun row(iban: String) =

@@ -2,7 +2,7 @@ package com.moneylytics.api.adapter.input.web
 
 import com.moneylytics.api.application.port.input.ImportTransactionsCommand
 import com.moneylytics.api.application.port.input.ImportTransactionsUseCase
-import com.moneylytics.api.application.port.input.ResolveUserUseCase
+import com.moneylytics.api.application.port.input.ResolveOrganizationUseCase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.reactive.awaitSingle
 import kotlinx.coroutines.withContext
@@ -16,18 +16,20 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestPart
 import org.springframework.web.bind.annotation.RestController
+import org.springframework.web.server.ServerWebExchange
 
 @RestController
 @RequestMapping("/transactions")
 class TransactionImportController(
     private val importTransactionsUseCase: ImportTransactionsUseCase,
     private val csvTransactionParser: CsvTransactionParser,
-    private val resolveUserUseCase: ResolveUserUseCase,
+    private val resolveOrganizationUseCase: ResolveOrganizationUseCase,
 ) {
     @PostMapping("/import", consumes = [MediaType.MULTIPART_FORM_DATA_VALUE])
     suspend fun importTransactions(
         @RequestPart("file") filePart: FilePart,
         @AuthenticationPrincipal principal: UserDetails,
+        exchange: ServerWebExchange,
     ): ResponseEntity<out Any> {
         val bytes =
             DataBufferUtils
@@ -49,16 +51,18 @@ class TransactionImportController(
             }
 
             is CsvParseResult.Valid -> {
-                val userId = withContext(Dispatchers.IO) { resolveUserUseCase.resolveUser(principal.username) }
+                val organizationId = resolveOrganizationUseCase.resolveOrganization(principal, exchange)
                 val importedCount =
-                    importTransactionsUseCase.importTransactions(
-                        ImportTransactionsCommand(
-                            transactions = result.transactions,
-                            accountNames = result.accountNames,
-                            accountBalances = result.accountBalances,
-                            userId = userId,
-                        ),
-                    )
+                    withContext(Dispatchers.IO) {
+                        importTransactionsUseCase.importTransactions(
+                            ImportTransactionsCommand(
+                                transactions = result.transactions,
+                                accountNames = result.accountNames,
+                                accountBalances = result.accountBalances,
+                                organizationId = organizationId,
+                            ),
+                        )
+                    }
                 ResponseEntity.ok(ImportSuccessResponse(importedCount = importedCount))
             }
         }

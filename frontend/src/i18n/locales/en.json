@@ -21,6 +21,7 @@
     "camt": "CAMT",
     "wiederkehrer": "Recurring",
     "admin": "Technical",
+    "orgs": "Organization",
     "collapse": "Collapse menu",
     "expand": "Expand menu"
   },
@@ -497,6 +498,9 @@
       "counterparty": "Counterparty",
       "purpose": "Purpose"
     },
+    "sync": "Sync",
+    "syncing": "Syncing…",
+    "syncSuccess": "Synced",
     "addManual": "Add",
     "status": {
       "MANUAL": "Manual"
@@ -577,6 +581,14 @@
     "legendSoll": "Target forecast"
   },
   "admin": {
+    "impersonation": {
+      "title": "Impersonate user",
+      "description": "Act as another user to provide support. Admin actions remain executed as yourself.",
+      "selectUser": "Select user…",
+      "button": "Act as user",
+      "active": "You are acting as {{username}}",
+      "stop": "End impersonation"
+    },
     "recurring": {
       "title": "Recurring Transactions",
       "triggerSync": "Run scheduler now",

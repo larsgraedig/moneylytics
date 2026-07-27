@@ -3,15 +3,15 @@ package com.moneylytics.api.application.port.output
 import com.moneylytics.api.domain.Threshold
 
 interface ThresholdRepository {
-    fun findAllByUserId(userId: Long): List<Threshold>
+    fun findAllByOrganizationId(organizationId: Long): List<Threshold>
 
     fun upsert(
         threshold: Threshold,
-        userId: Long,
+        organizationId: Long,
     ): Threshold
 
-    fun deleteByIdAndUserId(
+    fun deleteByIdAndOrganizationId(
         id: Long,
-        userId: Long,
+        organizationId: Long,
     )
 }

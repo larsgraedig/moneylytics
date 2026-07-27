@@ -5,6 +5,6 @@ import com.moneylytics.api.domain.Collection
 interface UpdateCollectionUseCase {
     fun updateCollection(
         collection: Collection,
-        userId: Long,
+        organizationId: Long,
     ): Collection
 }

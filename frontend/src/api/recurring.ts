@@ -129,3 +129,8 @@ export async function fetchRecurringSyncLogs(): Promise<RecurringSyncLog[]> {
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
   return res.json() as Promise<RecurringSyncLog[]>
 }
+
+export async function triggerRecurringSync(): Promise<void> {
+  const res = await fetchWithUser('/transactions/recurring/sync', { method: 'POST' })
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+}

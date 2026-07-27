@@ -3,5 +3,5 @@ package com.moneylytics.api.application.port.input
 import com.moneylytics.api.domain.Category
 
 fun interface GetCategoriesUseCase {
-    fun getCategories(userId: Long): List<Category>
+    fun getCategories(organizationId: Long): List<Category>
 }

@@ -4,7 +4,7 @@ import type { LucideIcon } from 'lucide-react'
 import {
   Workflow, TrendingUp, TrendingDown, PieChart, BarChart2,
   List, Landmark, Wallet, Gauge,
-  FileSpreadsheet, FileCode, Link2, FolderOpen, Repeat, Wrench,
+  FileSpreadsheet, FileCode, Link2, FolderOpen, Repeat, Wrench, Building2,
 } from 'lucide-react'
 import { getPresetRange, detectPreset, PRESETS, type Preset } from './utils/datePresets'
 import SankeyChart from './components/SankeyChart'
@@ -23,6 +23,7 @@ import LinkedTransactionsPage from './components/LinkedTransactionsPage'
 import CollectionsPage from './components/CollectionsPage'
 import RecurringPage from './components/RecurringPage'
 import AdminPage from './components/AdminPage'
+import OrgsPage from './components/OrgsPage'
 import LoginPage from './components/LoginPage'
 import SettingsPanel from './components/SettingsPanel'
 import { fetchSankeyData, type SankeyResponse } from './api/transactions'
@@ -39,9 +40,9 @@ function isoDate(d: Date) {
 const today = isoDate(new Date())
 const firstOfYear = isoDate(new Date(new Date().getFullYear(), 0, 1))
 
-type Tab = 'sankey' | 'trends' | 'breakdown' | 'cashflow' | 'burnrate' | 'kontoauszug' | 'verknuepfungen' | 'sammlungen' | 'konten' | 'budgets' | 'limits' | 'csv' | 'camt' | 'wiederkehrer' | 'admin'
+type Tab = 'sankey' | 'trends' | 'breakdown' | 'cashflow' | 'burnrate' | 'kontoauszug' | 'verknuepfungen' | 'sammlungen' | 'konten' | 'budgets' | 'limits' | 'csv' | 'camt' | 'wiederkehrer' | 'admin' | 'orgs'
 
-const VALID_TABS = new Set<string>(['sankey', 'trends', 'breakdown', 'cashflow', 'burnrate', 'kontoauszug', 'verknuepfungen', 'sammlungen', 'konten', 'budgets', 'limits', 'csv', 'camt', 'wiederkehrer', 'admin'])
+const VALID_TABS = new Set<string>(['sankey', 'trends', 'breakdown', 'cashflow', 'burnrate', 'kontoauszug', 'verknuepfungen', 'sammlungen', 'konten', 'budgets', 'limits', 'csv', 'camt', 'wiederkehrer', 'admin', 'orgs'])
 
 type ViewState =
   | { phase: 'idle' }
@@ -84,11 +85,23 @@ const BASE_NAV: NavSection[] = [
 ]
 
 export default function App() {
-  const { username, isAdmin, isLoading, logout } = useAuth()
+  const { username, isSystemAdmin, isLoading, logout, activeOrganization, organizations, activateOrganization } = useAuth()
+  const isOrgAdminOrOwner = activeOrganization?.role === 'ADMIN' || activeOrganization?.role === 'OWNER'
   const NAV = useMemo((): NavSection[] => {
-    if (!isAdmin) return BASE_NAV
-    return [...BASE_NAV, { sectionKey: 'admin', items: [['admin', 'nav.admin', Wrench]] }]
-  }, [isAdmin])
+    const sections = [...BASE_NAV]
+    if (isOrgAdminOrOwner) {
+      sections.push({ sectionKey: 'admin', items: [['orgs', 'nav.orgs', Building2]] })
+    }
+    if (isSystemAdmin) {
+      const last = sections[sections.length - 1]
+      if (last.sectionKey === 'admin') {
+        last.items.push(['admin', 'nav.admin', Wrench])
+      } else {
+        sections.push({ sectionKey: 'admin', items: [['admin', 'nav.admin', Wrench]] })
+      }
+    }
+    return sections
+  }, [isSystemAdmin, isOrgAdminOrOwner])
   const { t, i18n } = useTranslation()
   const navigate = useNavigate()
   const location = useLocation()
@@ -213,6 +226,20 @@ export default function App() {
         <header className="bar">
           <span className="wordmark">moneylytics</span>
           <div className="session">
+            {organizations.length > 1 && (
+              <select
+                className="org-select"
+                value={activeOrganization?.id ?? ''}
+                onChange={e => activateOrganization(Number(e.target.value))}
+              >
+                {organizations.map(org => (
+                  <option key={org.id} value={org.id}>{org.name}</option>
+                ))}
+              </select>
+            )}
+            {organizations.length === 1 && activeOrganization && (
+              <span className="org-name">{activeOrganization.name}</span>
+            )}
             <button className="session-user-btn" onClick={() => setSettingsOpen(true)}>
               {username}
             </button>
@@ -316,7 +343,8 @@ export default function App() {
           {tab === 'csv' && <CsvImportPage key={username} categories={categories} />}
           {tab === 'camt' && <CamtImportPage key={username} categories={categories} />}
           {tab === 'wiederkehrer' && <RecurringPage key={username} />}
-          {tab === 'admin' && isAdmin && <AdminPage key={username} />}
+          {tab === 'orgs' && isOrgAdminOrOwner && <OrgsPage key={activeOrganization?.id} />}
+          {tab === 'admin' && isSystemAdmin && <AdminPage key={username} />}
         </main>
       </div>
       {settingsOpen && <SettingsPanel accounts={accounts} defaultAccountIban={selectedIban} onClose={() => setSettingsOpen(false)} />}

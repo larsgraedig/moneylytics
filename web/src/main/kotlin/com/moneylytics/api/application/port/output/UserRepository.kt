@@ -17,10 +17,11 @@ interface UserRepository {
 
     fun updateSettings(
         userId: Long,
+        organizationId: Long,
         defaultAccountIban: String?,
         language: String?,
         transactionsColumnOrder: List<String>?,
     ): UserSettings
 
-    fun promoteToAdmin(userId: Long)
+    fun promoteToSystemAdmin(userId: Long)
 }

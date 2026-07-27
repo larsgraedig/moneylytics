@@ -20,29 +20,29 @@ class CollectionService(
     UpdateCollectionUseCase,
     DeleteCollectionUseCase,
     ManageCollectionMembersUseCase {
-    override fun getCollections(userId: Long): List<CollectionWithTransactions> =
-        collectionRepository.findAllByUserId(userId).map { collection ->
-            buildWithTransactions(collection, userId)
+    override fun getCollections(organizationId: Long): List<CollectionWithTransactions> =
+        collectionRepository.findAllByOrganizationId(organizationId).map { collection ->
+            buildWithTransactions(collection, organizationId)
         }
 
     override fun getCollection(
         id: Long,
-        userId: Long,
+        organizationId: Long,
     ): CollectionWithTransactions? {
-        val collection = collectionRepository.findByIdAndUserId(id, userId) ?: return null
-        return buildWithTransactions(collection, userId)
+        val collection = collectionRepository.findByIdAndOrganizationId(id, organizationId) ?: return null
+        return buildWithTransactions(collection, organizationId)
     }
 
     private fun buildWithTransactions(
         collection: com.moneylytics.api.domain.Collection,
-        userId: Long,
+        organizationId: Long,
     ): CollectionWithTransactions {
-        val txIds = collectionRepository.findTransactionIdsByCollectionId(requireNotNull(collection.id), userId)
+        val txIds = collectionRepository.findTransactionIdsByCollectionId(requireNotNull(collection.id), organizationId)
         val transactions =
             if (txIds.isEmpty()) {
                 emptyList()
             } else {
-                transactionRepository.findByIdsAndUserId(txIds.toSet(), userId)
+                transactionRepository.findByIdsAndOrganizationId(txIds.toSet(), organizationId)
             }
         return CollectionWithTransactions(
             id = requireNotNull(collection.id),
@@ -54,28 +54,28 @@ class CollectionService(
 
     override fun createCollection(
         collection: Collection,
-        userId: Long,
-    ): Collection = collectionRepository.create(collection, userId)
+        organizationId: Long,
+    ): Collection = collectionRepository.create(collection, organizationId)
 
     override fun updateCollection(
         collection: Collection,
-        userId: Long,
-    ): Collection = collectionRepository.update(collection, userId)
+        organizationId: Long,
+    ): Collection = collectionRepository.update(collection, organizationId)
 
     override fun deleteCollection(
         id: Long,
-        userId: Long,
-    ) = collectionRepository.deleteByIdAndUserId(id, userId)
+        organizationId: Long,
+    ) = collectionRepository.deleteByIdAndOrganizationId(id, organizationId)
 
     override fun addTransaction(
         collectionId: Long,
         transactionId: Long,
-        userId: Long,
-    ) = collectionRepository.addTransaction(collectionId, transactionId, userId)
+        organizationId: Long,
+    ) = collectionRepository.addTransaction(collectionId, transactionId, organizationId)
 
     override fun removeTransaction(
         collectionId: Long,
         transactionId: Long,
-        userId: Long,
-    ) = collectionRepository.removeTransaction(collectionId, transactionId, userId)
+        organizationId: Long,
+    ) = collectionRepository.removeTransaction(collectionId, transactionId, organizationId)
 }
