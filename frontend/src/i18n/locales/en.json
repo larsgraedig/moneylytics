@@ -21,6 +21,7 @@
     "camt": "CAMT",
     "wiederkehrer": "Recurring",
     "admin": "Technical",
+    "orgs": "Organization",
     "collapse": "Collapse menu",
     "expand": "Expand menu"
   },
@@ -497,6 +498,9 @@
       "counterparty": "Counterparty",
       "purpose": "Purpose"
     },
+    "sync": "Sync",
+    "syncing": "Syncing…",
+    "syncSuccess": "Synced",
     "addManual": "Add",
     "status": {
       "MANUAL": "Manual"
@@ -577,6 +581,26 @@
     "legendSoll": "Target forecast"
   },
   "admin": {
+    "impersonation": {
+      "active": "You are acting as {{username}}",
+      "stop": "End impersonation",
+      "button": "Impersonate",
+      "confirm": "Do you really want to act as {{username}}?"
+    },
+    "members": {
+      "title": "Organization memberships",
+      "managementTitle": "Member management",
+      "selectUser": "Select user…",
+      "searchUser": "Search user…",
+      "selectOrg": "Select organization…",
+      "add": "Add",
+      "remove": "Remove",
+      "noMembers": "No members in this organization.",
+      "confirmRemove": "Do you really want to remove {{username}} from the organization?",
+      "addSuccess": "User added successfully.",
+      "addError": "Failed to add user.",
+      "removeError": "Failed to remove user."
+    },
     "recurring": {
       "title": "Recurring Transactions",
       "triggerSync": "Run scheduler now",
@@ -584,5 +608,74 @@
       "success": "Scheduler executed successfully.",
       "description": "Triggers the matching of new transactions against existing recurring series — identical to the daily scheduled run (log entry: Automatic)."
     }
+  },
+  "orgs": {
+    "members": {
+      "title": "Members",
+      "email": "Email",
+      "role": "Role",
+      "remove": "Remove"
+    },
+    "invite": {
+      "title": "Invite member",
+      "emailPlaceholder": "Email",
+      "passwordPlaceholder": "Password",
+      "button": "Create",
+      "success": "Member invited successfully.",
+      "error": "Failed to invite member."
+    },
+    "create": {
+      "title": "Create new organization",
+      "namePlaceholder": "Name",
+      "button": "Create",
+      "success": "Organization created.",
+      "error": "Failed to create organization."
+    },
+    "errors": {
+      "loadMembers": "Failed to load members.",
+      "removeMember": "Failed to remove member.",
+      "updateRole": "Failed to update role."
+    },
+    "invite": {
+      "generateTitle": "Generate invitation link",
+      "emailPlaceholder": "Email of invitee",
+      "generate": "Generate link",
+      "copy": "Copy",
+      "expires": "Expires",
+      "linkGenerated": "Invitation link created.",
+      "error": "Failed to create invitation."
+    },
+    "logo": {
+      "title": "Organization logo",
+      "upload": "Upload logo",
+      "remove": "Remove logo",
+      "uploadSuccess": "Logo uploaded successfully.",
+      "removeSuccess": "Logo removed successfully.",
+      "uploadError": "Failed to upload logo.",
+      "removeError": "Failed to remove logo."
+    }
+  },
+  "invite": {
+    "loading": "Loading invitation…",
+    "invalid": "This invitation link is invalid or has expired.",
+    "title": "Invitation to {{org}}",
+    "roleLabel": "You will be added as {{role}}.",
+    "join": "Join now",
+    "accepted": "Successfully joined.",
+    "goToApp": "Go to app",
+    "acceptError": "Failed to join.",
+    "alreadyHaveAccount": "Already have an account?",
+    "createAccount": "Create new account"
+  },
+  "onboarding": {
+    "title": "Welcome!",
+    "subtitle": "What should your organization be called?",
+    "placeholder": "Organization name",
+    "button": "Create",
+    "error": "Failed to create organization."
+  },
+  "orgSelect": {
+    "title": "Select organization",
+    "subtitle": "You belong to multiple organizations. Which one do you want to enter?"
   }
 }

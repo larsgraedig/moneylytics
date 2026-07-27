@@ -1,6 +1,7 @@
 package com.moneylytics.api.adapter.output.persistence
 
 import com.moneylytics.api.application.port.output.UserRepository
+import com.moneylytics.api.domain.Role
 import com.moneylytics.api.domain.User
 import com.moneylytics.api.domain.UserSettings
 import org.springframework.stereotype.Component
@@ -12,6 +13,8 @@ class UserPersistenceAdapter(
     private val accountJpaRepository: AccountJpaRepository,
 ) : UserRepository {
     override fun findByExternalId(externalId: String): User? = jpaRepository.findByExternalId(externalId)?.toDomain()
+
+    override fun findById(id: Long): User? = jpaRepository.findById(id).orElse(null)?.toDomain()
 
     @Transactional
     override fun save(
@@ -36,18 +39,24 @@ class UserPersistenceAdapter(
     @Transactional
     override fun updateSettings(
         userId: Long,
+        organizationId: Long,
         defaultAccountIban: String?,
         language: String?,
         transactionsColumnOrder: List<String>?,
     ): UserSettings {
         val entity = jpaRepository.getReferenceById(userId)
-        entity.defaultAccount = defaultAccountIban?.let { accountJpaRepository.findByIbanAndUserId(it, userId) }
+        entity.defaultAccount = defaultAccountIban?.let { accountJpaRepository.findByIbanAndOrganizationId(it, organizationId) }
         entity.language = language
         entity.transactionsColumnOrder = transactionsColumnOrder?.joinToString(",")
         return jpaRepository.save(entity).toSettings()
     }
 
-    private fun UserEntity.toDomain() = User(id = id!!, externalId = externalId, passwordHash = passwordHash)
+    @Transactional
+    override fun promoteToSystemAdmin(userId: Long) {
+        jpaRepository.getReferenceById(userId).role = Role.SYSTEM_ADMIN
+    }
+
+    private fun UserEntity.toDomain() = User(id = id!!, externalId = externalId, passwordHash = passwordHash, role = role)
 
     private fun UserEntity.toSettings() =
         UserSettings(

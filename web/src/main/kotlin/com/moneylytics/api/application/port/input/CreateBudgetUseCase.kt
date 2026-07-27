@@ -5,6 +5,6 @@ import com.moneylytics.api.domain.Budget
 interface CreateBudgetUseCase {
     fun createBudget(
         budget: Budget,
-        userId: Long,
+        organizationId: Long,
     ): Budget
 }

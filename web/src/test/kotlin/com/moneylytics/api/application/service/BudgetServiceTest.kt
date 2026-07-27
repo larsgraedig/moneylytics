@@ -14,7 +14,7 @@ class BudgetServiceTest {
     private val budgetRepository: BudgetRepository = mock()
     private val service = BudgetService(budgetRepository)
 
-    private val userId = 1L
+    private val organizationId = 1L
     private val urlaub = Budget(id = 1L, name = "Urlaub 2025", targetAmount = BigDecimal("1200"))
     private val kueche = Budget(id = 2L, name = "Neue Küche", targetAmount = BigDecimal("3500"))
 
@@ -25,10 +25,10 @@ class BudgetServiceTest {
 
     @Test
     fun `should calculate total contributions with full amounts`() {
-        whenever(budgetRepository.findAllByUserId(userId)).thenReturn(listOf(urlaub))
-        whenever(budgetRepository.findAllTransactionLinksByUserId(userId)).thenReturn(listOf(link1, link2))
+        whenever(budgetRepository.findAllByOrganizationId(organizationId)).thenReturn(listOf(urlaub))
+        whenever(budgetRepository.findAllTransactionLinksByOrganizationId(organizationId)).thenReturn(listOf(link1, link2))
 
-        val result = service.getBudgets(userId)
+        val result = service.getBudgets(organizationId)
 
         assertThat(result).hasSize(1)
         assertThat(result[0].totalContributions).isEqualByComparingTo(BigDecimal("-870.00"))
@@ -36,10 +36,10 @@ class BudgetServiceTest {
 
     @Test
     fun `should calculate total contributions with partial amounts`() {
-        whenever(budgetRepository.findAllByUserId(userId)).thenReturn(listOf(kueche))
-        whenever(budgetRepository.findAllTransactionLinksByUserId(userId)).thenReturn(listOf(link3))
+        whenever(budgetRepository.findAllByOrganizationId(organizationId)).thenReturn(listOf(kueche))
+        whenever(budgetRepository.findAllTransactionLinksByOrganizationId(organizationId)).thenReturn(listOf(link3))
 
-        val result = service.getBudgets(userId)
+        val result = service.getBudgets(organizationId)
 
         assertThat(result).hasSize(1)
         assertThat(result[0].totalContributions).isEqualByComparingTo(BigDecimal("-500.00"))
@@ -47,10 +47,10 @@ class BudgetServiceTest {
 
     @Test
     fun `should build sorted cumulative chart points`() {
-        whenever(budgetRepository.findAllByUserId(userId)).thenReturn(listOf(urlaub))
-        whenever(budgetRepository.findAllTransactionLinksByUserId(userId)).thenReturn(listOf(link2, link1))
+        whenever(budgetRepository.findAllByOrganizationId(organizationId)).thenReturn(listOf(urlaub))
+        whenever(budgetRepository.findAllTransactionLinksByOrganizationId(organizationId)).thenReturn(listOf(link2, link1))
 
-        val result = service.getBudgets(userId)
+        val result = service.getBudgets(organizationId)
 
         val points = result[0].chartPoints
         assertThat(points).hasSize(2)

@@ -4,12 +4,12 @@ interface ManageCollectionMembersUseCase {
     fun addTransaction(
         collectionId: Long,
         transactionId: Long,
-        userId: Long,
+        organizationId: Long,
     )
 
     fun removeTransaction(
         collectionId: Long,
         transactionId: Long,
-        userId: Long,
+        organizationId: Long,
     )
 }

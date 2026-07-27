@@ -9,29 +9,30 @@ import org.springframework.transaction.annotation.Transactional
 class CollectionPersistenceAdapter(
     private val collectionJpaRepository: CollectionJpaRepository,
     private val collectionTransactionJpaRepository: CollectionTransactionJpaRepository,
-    private val userJpaRepository: UserJpaRepository,
+    private val organizationJpaRepository: OrganizationJpaRepository,
 ) : CollectionRepository {
-    override fun findAllByUserId(userId: Long): List<Collection> = collectionJpaRepository.findByUserId(userId).map { it.toDomain() }
+    override fun findAllByOrganizationId(organizationId: Long): List<Collection> =
+        collectionJpaRepository.findByOrganizationId(organizationId).map { it.toDomain() }
 
-    override fun findByIdAndUserId(
+    override fun findByIdAndOrganizationId(
         id: Long,
-        userId: Long,
-    ): Collection? = collectionJpaRepository.findByIdAndUserId(id, userId)?.toDomain()
+        organizationId: Long,
+    ): Collection? = collectionJpaRepository.findByIdAndOrganizationId(id, organizationId)?.toDomain()
 
     override fun findTransactionIdsByCollectionId(
         collectionId: Long,
-        userId: Long,
+        organizationId: Long,
     ): List<Long> = collectionTransactionJpaRepository.findTransactionIdsByCollectionId(collectionId)
 
     @Transactional
     override fun create(
         collection: Collection,
-        userId: Long,
+        organizationId: Long,
     ): Collection =
         collectionJpaRepository
             .save(
                 CollectionEntity(
-                    user = userJpaRepository.getReferenceById(userId),
+                    organization = organizationJpaRepository.getReferenceById(organizationId),
                     name = collection.name,
                     note = collection.note,
                 ),
@@ -40,25 +41,25 @@ class CollectionPersistenceAdapter(
     @Transactional
     override fun update(
         collection: Collection,
-        userId: Long,
+        organizationId: Long,
     ): Collection {
-        val entity = collectionJpaRepository.findByUserId(userId).first { it.id == collection.id }
+        val entity = collectionJpaRepository.findByOrganizationId(organizationId).first { it.id == collection.id }
         entity.name = collection.name
         entity.note = collection.note
         return collectionJpaRepository.save(entity).toDomain()
     }
 
     @Transactional
-    override fun deleteByIdAndUserId(
+    override fun deleteByIdAndOrganizationId(
         id: Long,
-        userId: Long,
-    ) = collectionJpaRepository.deleteByIdAndUserId(id, userId)
+        organizationId: Long,
+    ) = collectionJpaRepository.deleteByIdAndOrganizationId(id, organizationId)
 
     @Transactional
     override fun addTransaction(
         collectionId: Long,
         transactionId: Long,
-        userId: Long,
+        organizationId: Long,
     ) {
         if (!collectionTransactionJpaRepository.existsByCollectionIdAndTransactionId(collectionId, transactionId)) {
             collectionTransactionJpaRepository.save(
@@ -71,7 +72,7 @@ class CollectionPersistenceAdapter(
     override fun removeTransaction(
         collectionId: Long,
         transactionId: Long,
-        userId: Long,
+        organizationId: Long,
     ) = collectionTransactionJpaRepository.deleteByCollectionIdAndTransactionId(collectionId, transactionId)
 
     private fun CollectionEntity.toDomain() =

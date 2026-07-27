@@ -9,6 +9,7 @@ fun interface GetUserSettingsUseCase {
 fun interface UpdateUserSettingsUseCase {
     fun updateSettings(
         userId: Long,
+        organizationId: Long,
         defaultAccountIban: String?,
         language: String?,
         transactionsColumnOrder: List<String>?,

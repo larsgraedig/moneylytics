@@ -6,6 +6,8 @@ import com.moneylytics.api.domain.UserSettings
 interface UserRepository {
     fun findByExternalId(externalId: String): User?
 
+    fun findById(id: Long): User?
+
     fun save(
         externalId: String,
         passwordHash: String?,
@@ -17,8 +19,11 @@ interface UserRepository {
 
     fun updateSettings(
         userId: Long,
+        organizationId: Long,
         defaultAccountIban: String?,
         language: String?,
         transactionsColumnOrder: List<String>?,
     ): UserSettings
+
+    fun promoteToSystemAdmin(userId: Long)
 }

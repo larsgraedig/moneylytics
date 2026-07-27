@@ -7,33 +7,33 @@ import org.springframework.transaction.annotation.Transactional
 @Component
 class IgnoredTransactionPersistenceAdapter(
     private val jpaRepository: IgnoredTransactionJpaRepository,
-    private val userJpaRepository: UserJpaRepository,
+    private val organizationJpaRepository: OrganizationJpaRepository,
 ) : IgnoredTransactionRepository {
     @Transactional(readOnly = true)
     override fun findExistingFingerprints(
         fingerprints: Collection<String>,
-        userId: Long,
-    ): Set<String> = jpaRepository.findExistingFingerprints(fingerprints, userId).toHashSet()
+        organizationId: Long,
+    ): Set<String> = jpaRepository.findExistingFingerprints(fingerprints, organizationId).toHashSet()
 
     @Transactional
     override fun saveAll(
         fingerprints: Collection<String>,
-        userId: Long,
+        organizationId: Long,
     ) {
-        val existing = jpaRepository.findExistingFingerprints(fingerprints, userId).toHashSet()
-        val user = userJpaRepository.getReferenceById(userId)
+        val existing = jpaRepository.findExistingFingerprints(fingerprints, organizationId).toHashSet()
+        val organization = organizationJpaRepository.getReferenceById(organizationId)
         val toSave =
             fingerprints
                 .filter { it !in existing }
-                .map { IgnoredTransactionEntity(fingerprint = it, user = user) }
+                .map { IgnoredTransactionEntity(fingerprint = it, organization = organization) }
         if (toSave.isNotEmpty()) jpaRepository.saveAll(toSave)
     }
 
     @Transactional
     override fun deleteAll(
         fingerprints: Collection<String>,
-        userId: Long,
+        organizationId: Long,
     ) {
-        jpaRepository.deleteByFingerprintInAndUserId(fingerprints, userId)
+        jpaRepository.deleteByFingerprintInAndOrganizationId(fingerprints, organizationId)
     }
 }

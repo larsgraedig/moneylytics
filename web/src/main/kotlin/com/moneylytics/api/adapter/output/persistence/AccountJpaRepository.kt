@@ -3,15 +3,15 @@ package com.moneylytics.api.adapter.output.persistence
 import org.springframework.data.jpa.repository.JpaRepository
 
 interface AccountJpaRepository : JpaRepository<AccountEntity, Long> {
-    fun findByIbanAndUserId(
+    fun findByIbanAndOrganizationId(
         iban: String,
-        userId: Long,
+        organizationId: Long,
     ): AccountEntity?
 
-    fun findAllByUserId(userId: Long): List<AccountEntity>
+    fun findAllByOrganizationId(organizationId: Long): List<AccountEntity>
 
-    fun deleteByIbanAndUserId(
+    fun deleteByIbanAndOrganizationId(
         iban: String,
-        userId: Long,
+        organizationId: Long,
     )
 }

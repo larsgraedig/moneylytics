@@ -15,26 +15,26 @@ class CsvProfilePersistenceAdapter(
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
 
     fun findMapping(
-        userId: Long,
+        organizationId: Long,
         fingerprint: String,
     ): GenericCsvMapping? {
-        val entity = jpaRepository.findByUserIdAndFingerprint(userId, fingerprint) ?: return null
+        val entity = jpaRepository.findByOrganizationIdAndFingerprint(organizationId, fingerprint) ?: return null
         return runCatching { objectMapper.readValue(entity.mappingJson, GenericCsvMapping::class.java) }.getOrNull()
     }
 
     @Transactional
     fun saveMapping(
-        userId: Long,
+        organizationId: Long,
         fingerprint: String,
         mapping: GenericCsvMapping,
     ) {
         val json = objectMapper.writeValueAsString(mapping)
-        val existing = jpaRepository.findByUserIdAndFingerprint(userId, fingerprint)
+        val existing = jpaRepository.findByOrganizationIdAndFingerprint(organizationId, fingerprint)
         if (existing != null) {
             existing.mappingJson = json
             jpaRepository.save(existing)
         } else {
-            jpaRepository.save(CsvProfileEntity(userId = userId, fingerprint = fingerprint, mappingJson = json))
+            jpaRepository.save(CsvProfileEntity(organizationId = organizationId, fingerprint = fingerprint, mappingJson = json))
         }
     }
 }

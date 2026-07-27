@@ -13,10 +13,10 @@ class ThresholdJpaRepositoryIT : AbstractJpaRepositoryIT() {
         category: String = "Lebensmittel",
         subcategory: String? = null,
         period: ThresholdPeriod = ThresholdPeriod.MONTHLY,
-        forUser: UserEntity = user,
+        forOrganization: OrganizationEntity = organization,
     ) = thresholdRepo.save(
         ThresholdEntity(
-            user = forUser,
+            organization = forOrganization,
             category = category,
             subcategory = subcategory,
             period = period,
@@ -28,9 +28,9 @@ class ThresholdJpaRepositoryIT : AbstractJpaRepositoryIT() {
     fun `should find all thresholds for user`() {
         savedThreshold(category = "Lebensmittel")
         savedThreshold(category = "Transport")
-        savedThreshold(category = "Fremdes", forUser = otherUser)
+        savedThreshold(category = "Fremdes", forOrganization = otherOrganization)
 
-        val result = thresholdRepo.findByUserId(userId)
+        val result = thresholdRepo.findByOrganizationId(organizationId)
 
         assertThat(result).hasSize(2)
         assertThat(result.map { it.category }).containsExactlyInAnyOrder("Lebensmittel", "Transport")
@@ -38,7 +38,7 @@ class ThresholdJpaRepositoryIT : AbstractJpaRepositoryIT() {
 
     @Test
     fun `should return empty list when user has no thresholds`() {
-        val result = thresholdRepo.findByUserId(otherUserId)
+        val result = thresholdRepo.findByOrganizationId(otherOrganizationId)
 
         assertThat(result).isEmpty()
     }
@@ -49,8 +49,8 @@ class ThresholdJpaRepositoryIT : AbstractJpaRepositoryIT() {
         savedThreshold(category = "Lebensmittel", subcategory = "Restaurant", period = ThresholdPeriod.MONTHLY)
 
         val result =
-            thresholdRepo.findByUserIdAndCategoryAndSubcategoryIsNullAndPeriod(
-                userId = userId,
+            thresholdRepo.findByOrganizationIdAndCategoryAndSubcategoryIsNullAndPeriod(
+                organizationId = organizationId,
                 category = "Lebensmittel",
                 period = ThresholdPeriod.MONTHLY,
             )
@@ -64,8 +64,8 @@ class ThresholdJpaRepositoryIT : AbstractJpaRepositoryIT() {
         savedThreshold(category = "Lebensmittel", subcategory = null, period = ThresholdPeriod.MONTHLY)
 
         val result =
-            thresholdRepo.findByUserIdAndCategoryAndSubcategoryIsNullAndPeriod(
-                userId = userId,
+            thresholdRepo.findByOrganizationIdAndCategoryAndSubcategoryIsNullAndPeriod(
+                organizationId = organizationId,
                 category = "Lebensmittel",
                 period = ThresholdPeriod.YEARLY,
             )
@@ -79,8 +79,8 @@ class ThresholdJpaRepositoryIT : AbstractJpaRepositoryIT() {
         savedThreshold(category = "Lebensmittel", subcategory = "Restaurant")
 
         val result =
-            thresholdRepo.findByUserIdAndCategoryAndSubcategoryAndPeriod(
-                userId = userId,
+            thresholdRepo.findByOrganizationIdAndCategoryAndSubcategoryAndPeriod(
+                organizationId = organizationId,
                 category = "Lebensmittel",
                 subcategory = "Restaurant",
                 period = ThresholdPeriod.MONTHLY,
@@ -96,7 +96,7 @@ class ThresholdJpaRepositoryIT : AbstractJpaRepositoryIT() {
         val thresholdId = checkNotNull(threshold.id)
         flushAndClear()
 
-        thresholdRepo.deleteByIdAndUserId(thresholdId, userId)
+        thresholdRepo.deleteByIdAndOrganizationId(thresholdId, organizationId)
         flushAndClear()
 
         assertThat(thresholdRepo.findById(thresholdId)).isEmpty
@@ -104,11 +104,11 @@ class ThresholdJpaRepositoryIT : AbstractJpaRepositoryIT() {
 
     @Test
     fun `should not delete threshold belonging to other user`() {
-        val otherThreshold = savedThreshold(forUser = otherUser)
+        val otherThreshold = savedThreshold(forOrganization = otherOrganization)
         val otherThresholdId = checkNotNull(otherThreshold.id)
         flushAndClear()
 
-        thresholdRepo.deleteByIdAndUserId(otherThresholdId, userId)
+        thresholdRepo.deleteByIdAndOrganizationId(otherThresholdId, organizationId)
         flushAndClear()
 
         assertThat(thresholdRepo.findById(otherThresholdId)).isPresent

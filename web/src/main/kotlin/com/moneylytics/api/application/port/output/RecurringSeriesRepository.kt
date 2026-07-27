@@ -5,12 +5,12 @@ import com.moneylytics.api.domain.RecurringType
 import java.time.LocalDate
 
 interface RecurringSeriesRepository {
-    fun replaceAllForUser(
+    fun replaceAllForOrganization(
         series: List<RecurringSeries>,
-        userId: Long,
+        organizationId: Long,
     )
 
-    fun findByUserId(userId: Long): List<RecurringSeries>
+    fun findByOrganizationId(organizationId: Long): List<RecurringSeries>
 
     fun updateType(
         seriesId: Long,
@@ -19,15 +19,15 @@ interface RecurringSeriesRepository {
 
     fun save(
         series: RecurringSeries,
-        userId: Long,
+        organizationId: Long,
     ): RecurringSeries
 
-    fun deleteByIdAndUserId(
+    fun deleteByIdAndOrganizationId(
         seriesId: Long,
-        userId: Long,
+        organizationId: Long,
     )
 
-    fun findAllUserIds(): Set<Long>
+    fun findAllOrganizationIds(): Set<Long>
 
     fun findMemberTransactionIds(seriesId: Long): Set<Long>
 

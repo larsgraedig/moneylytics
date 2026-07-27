@@ -5,6 +5,6 @@ fun interface DeleteRecurringSeriesUseCase {
 }
 
 data class DeleteRecurringSeriesCommand(
-    val userId: Long,
+    val organizationId: Long,
     val seriesId: Long,
 )

@@ -7,24 +7,24 @@ import java.time.LocalDate
 interface AccountRepository {
     fun findByIban(
         iban: String,
-        userId: Long,
+        organizationId: Long,
     ): Account?
 
     fun save(
         account: Account,
-        userId: Long,
+        organizationId: Long,
     ): Account
 
-    fun findAll(userId: Long): List<Account>
+    fun findAll(organizationId: Long): List<Account>
 
     fun delete(
         iban: String,
-        userId: Long,
+        organizationId: Long,
     )
 
     fun updateBalance(
         iban: String,
-        userId: Long,
+        organizationId: Long,
         balance: BigDecimal,
         balanceDate: LocalDate,
     )

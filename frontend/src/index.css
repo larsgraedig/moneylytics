@@ -5,18 +5,20 @@
 }
 
 :root {
-  --bg:           #09090b;
-  --surface:      #111114;
-  --border:       #222228;
-  --border-hi:    #36363f;
-  --accent:       #f59e0b;
-  --accent-glow:  rgba(245, 158, 11, 0.10);
-  --accent-dim:   rgba(245, 158, 11, 0.40);
-  --text:         #e4e4ea;
-  --text-muted:   #6b6b78;
-  --text-dim:     #303038;
-  --error:        #f87171;
-  --mono:         ui-monospace, 'SF Mono', SFMono-Regular, Consolas, 'Liberation Mono', monospace;
+  --bg:              #09090b;
+  --surface:         #111114;
+  --border:          #222228;
+  --border-hi:       #36363f;
+  --accent:          #f59e0b;
+  --accent-glow:     rgba(245, 158, 11, 0.10);
+  --accent-dim:      rgba(245, 158, 11, 0.40);
+  --text:            #e4e4ea;
+  --text-muted:      #6b6b78;
+  --text-dim:        #303038;
+  --error:           #f87171;
+  --impersonate:     #f97316;
+  --impersonate-dim: rgba(249, 115, 22, 0.15);
+  --mono:            ui-monospace, 'SF Mono', SFMono-Regular, Consolas, 'Liberation Mono', monospace;
 }
 
 html, body, #root {
@@ -463,6 +465,43 @@ body {
 .logout-btn:hover {
   border-color: var(--border-hi);
   color: var(--text);
+}
+
+.bar--impersonating {
+  border-top: 3px solid var(--impersonate);
+  background: color-mix(in srgb, var(--surface) 92%, var(--impersonate) 8%);
+}
+
+.impersonate-badge {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: var(--impersonate);
+  background: var(--impersonate-dim);
+  border: 1px solid var(--impersonate);
+  border-radius: 4px;
+  padding: 2px 8px;
+  white-space: nowrap;
+}
+
+.deimpersonate-btn {
+  height: 28px;
+  padding: 0 12px;
+  background: var(--impersonate-dim);
+  border: 1px solid var(--impersonate);
+  border-radius: 4px;
+  color: var(--impersonate);
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+  white-space: nowrap;
+}
+
+.deimpersonate-btn:hover {
+  background: var(--impersonate);
+  color: #000;
 }
 
 /* ── settings panel ──────────────────────── */
@@ -5209,3 +5248,542 @@ body {
 }
 .adm-feedback--ok { color: #4ade80; }
 .adm-feedback--error { color: #f87171; }
+
+.adm-impersonation-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  border-radius: 6px;
+  margin-bottom: 20px;
+  font-size: 13px;
+  color: #f87171;
+}
+.adm-deimpersonate-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  background: transparent;
+  border: 1px solid #f87171;
+  border-radius: 4px;
+  color: #f87171;
+  font-size: 12px;
+  cursor: pointer;
+  margin-left: auto;
+}
+.adm-deimpersonate-btn:hover { background: rgba(239, 68, 68, 0.15); }
+
+.adm-divider {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 8px 0 0;
+}
+
+.adm-user-search-wrap {
+  position: relative;
+}
+
+.adm-user-list {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  min-width: 220px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  max-height: 220px;
+  overflow-y: auto;
+  z-index: 50;
+}
+
+.adm-user-list-item {
+  padding: 7px 10px;
+  font-size: 13px;
+  color: var(--text);
+  cursor: pointer;
+  border-bottom: 1px solid var(--border);
+}
+
+.adm-user-list-item:last-child { border-bottom: none; }
+
+.adm-user-list-item:hover { background: var(--accent-glow); color: var(--accent); }
+
+.adm-tab-bar {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 24px;
+}
+
+.adm-tab-btn {
+  padding: 8px 16px;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-muted);
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  margin-bottom: -1px;
+  transition: color 0.12s, border-color 0.12s;
+}
+
+.adm-tab-btn:hover:not(.adm-tab-btn--active) { color: var(--text); }
+
+.adm-tab-btn--active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+.adm-section--wide {
+  max-width: 680px;
+}
+
+.adm-org-block {
+  margin-top: 16px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.adm-org-block-name {
+  display: block;
+  padding: 6px 12px;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+
+.adm-org-members {
+  display: flex;
+  flex-direction: column;
+}
+
+.adm-org-member-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+}
+
+.adm-org-member-row:last-child {
+  border-bottom: none;
+}
+
+.adm-org-member-email {
+  color: var(--text);
+}
+
+.adm-org-member-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.adm-user-select {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  font-size: 13px;
+  padding: 6px 10px;
+  min-width: 220px;
+}
+
+/* ── organizations page ──────────────────── */
+
+.org-section--wide {
+  max-width: 680px;
+}
+
+.org-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.org-table th {
+  text-align: left;
+  padding: 0 12px 8px;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  border-bottom: 1px solid var(--border);
+}
+
+.org-row td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+
+.org-row:last-child td { border-bottom: none; }
+
+.org-cell-email {
+  color: var(--text);
+}
+
+.org-cell-role {
+  width: 140px;
+}
+
+.org-cell-action {
+  width: 40px;
+  text-align: right;
+}
+
+.org-cell-expires {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.org-role-badge {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.org-role-select {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  font-size: 12px;
+  padding: 4px 8px;
+  cursor: pointer;
+  transition: border-color 0.12s;
+}
+
+.org-role-select:focus { border-color: var(--accent); outline: none; }
+
+.org-remove-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: border-color 0.12s, color 0.12s;
+}
+
+.org-remove-btn:hover:not(:disabled) {
+  border-color: var(--error);
+  color: var(--error);
+}
+
+.org-remove-btn:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+/* ── invite link row ─────────────────────── */
+
+.invite-link-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.invite-link-input {
+  flex: 1;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.invite-copy-btn {
+  flex-shrink: 0;
+  color: var(--accent);
+  border-color: var(--accent-dim);
+}
+
+.invite-copy-btn:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* ── onboarding / org-select modal ──────── */
+
+.onboarding-backdrop {
+  position: fixed;
+  inset: 0;
+  background: var(--bg);
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: fade-in 0.15s ease;
+}
+
+.onboarding-modal {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+  max-width: 420px;
+  padding: 40px 32px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.onboarding-title {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--text);
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+
+.onboarding-subtitle {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin: 0;
+  text-align: center;
+}
+
+.onboarding-form {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+}
+
+.onboarding-input {
+  flex: 1;
+}
+
+.onboarding-btn {
+  height: 34px;
+  padding: 0 16px;
+  background: var(--accent);
+  border: none;
+  border-radius: 4px;
+  color: #000;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.12s;
+  white-space: nowrap;
+}
+
+.onboarding-btn:hover:not(:disabled) { opacity: 0.85; }
+.onboarding-btn:disabled { opacity: 0.5; cursor: default; }
+
+.onboarding-error {
+  font-size: 12px;
+  color: var(--error);
+  margin: 0;
+}
+
+/* ── org select list ─────────────────────── */
+
+.org-select-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+.org-select-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: border-color 0.12s, background 0.12s;
+  text-align: left;
+}
+
+.org-select-card:hover {
+  border-color: var(--accent);
+  background: var(--accent-glow);
+}
+
+.org-select-name {
+  font-size: 14px;
+  color: var(--text);
+}
+
+.org-select-role {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+/* ── invite page extra ───────────────────── */
+
+.invite-org-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text);
+  margin: 0;
+  text-align: center;
+}
+
+.invite-role-label {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin: 0;
+  text-align: center;
+}
+
+/* ── org avatar ──────────────────────────── */
+
+.org-avatar-wrap {
+  position: relative;
+}
+
+.org-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--accent-glow);
+  border: 1px solid var(--accent-dim);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.org-avatar--clickable {
+  cursor: pointer;
+  transition: border-color 0.12s, background 0.12s;
+}
+
+.org-avatar--clickable:hover {
+  border-color: var(--accent);
+  background: rgba(245, 158, 11, 0.18);
+}
+
+.org-avatar__initials {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent);
+  user-select: none;
+  letter-spacing: 0.04em;
+}
+
+.org-avatar__img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.org-avatar-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  min-width: 180px;
+  z-index: 200;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  padding: 4px 0;
+}
+
+.org-avatar-menu-item {
+  display: block;
+  width: 100%;
+  padding: 8px 14px;
+  background: transparent;
+  border: none;
+  text-align: left;
+  font-size: 13px;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background 0.1s, color 0.1s;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.org-avatar-menu-item:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text);
+}
+
+.org-avatar-menu-item--active {
+  color: var(--accent);
+  background: var(--accent-glow);
+}
+
+.org-avatar-menu-item--active:hover {
+  background: rgba(245, 158, 11, 0.15);
+}
+
+/* ── org logo management ─────────────────── */
+
+.org-logo-row {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.org-logo-preview {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.org-logo-placeholder {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: var(--accent-glow);
+  border: 1px solid var(--accent-dim);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--mono);
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--accent);
+  flex-shrink: 0;
+  user-select: none;
+}
+
+.org-logo-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.org-logo-file-input {
+  font-size: 13px;
+  color: var(--text-muted);
+}

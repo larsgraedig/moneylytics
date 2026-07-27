@@ -10,7 +10,7 @@ fun interface GetCashflowUseCase {
 data class GetCashflowQuery(
     val from: LocalDate,
     val to: LocalDate,
-    val userId: Long,
+    val organizationId: Long,
     val granularity: Granularity = Granularity.MONTHLY,
     val accountIban: String? = null,
 )

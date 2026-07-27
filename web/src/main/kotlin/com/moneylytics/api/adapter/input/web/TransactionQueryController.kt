@@ -15,7 +15,7 @@ import com.moneylytics.api.application.port.input.GetCategoryTotalsUseCase
 import com.moneylytics.api.application.port.input.GetTransactionsQuery
 import com.moneylytics.api.application.port.input.GetTransactionsUseCase
 import com.moneylytics.api.application.port.input.Granularity
-import com.moneylytics.api.application.port.input.ResolveUserUseCase
+import com.moneylytics.api.application.port.input.ResolveOrganizationUseCase
 import com.moneylytics.api.application.port.input.TransactionType
 import com.moneylytics.api.application.port.input.UpdateTransactionAccountingDateUseCase
 import com.moneylytics.api.application.port.input.UpdateTransactionCategoryUseCase
@@ -37,6 +37,7 @@ import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
+import org.springframework.web.server.ServerWebExchange
 import java.math.BigDecimal
 import java.time.LocalDate
 
@@ -74,7 +75,7 @@ class TransactionQueryController(
     private val getBurnRateUseCase: GetBurnRateUseCase,
     private val getCategoriesUseCase: GetCategoriesUseCase,
     private val getCategoryTotalsUseCase: GetCategoryTotalsUseCase,
-    private val resolveUserUseCase: ResolveUserUseCase,
+    private val resolveOrganizationUseCase: ResolveOrganizationUseCase,
     private val updateTransactionCategoryUseCase: UpdateTransactionCategoryUseCase,
     private val updateTransactionCommentUseCase: UpdateTransactionCommentUseCase,
     private val updateTransactionAccountingDateUseCase: UpdateTransactionAccountingDateUseCase,
@@ -90,21 +91,21 @@ class TransactionQueryController(
         @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) to: LocalDate,
         @RequestParam(required = false) iban: String? = null,
         @AuthenticationPrincipal principal: UserDetails,
+        exchange: ServerWebExchange,
     ): SankeyResponse {
+        val organizationId = resolveOrganizationUseCase.resolveOrganization(principal, exchange)
         val (transactions, groupLookup) =
             withContext(Dispatchers.IO) {
-                val userId = resolveUserUseCase.resolveUser(principal.username)
                 val txns =
                     getTransactionsUseCase.getTransactions(
-                        GetTransactionsQuery(from, to, userId, type = TransactionType.EXPENSES, accountIban = iban),
+                        GetTransactionsQuery(from, to, organizationId, type = TransactionType.EXPENSES, accountIban = iban),
                     )
-                val lookup = buildGroupLookup(getCategoriesUseCase.getCategories(userId))
+                val lookup = buildGroupLookup(getCategoriesUseCase.getCategories(organizationId))
                 txns to lookup
             }
         return transactions.toSankeyResponse(groupLookup)
     }
 
-    // Builds a lookup from (category, subcategory) → group, derived from the categories table.
     private fun buildGroupLookup(categories: List<Category>): Map<Pair<String?, String?>, String> =
         categories
             .filter { it.group != null }
@@ -123,15 +124,16 @@ class TransactionQueryController(
         @RequestParam(required = false) excludeCollectionId: Long? = null,
         @RequestParam(required = false) excludeBudgetId: Long? = null,
         @AuthenticationPrincipal principal: UserDetails,
+        exchange: ServerWebExchange,
     ): TransactionListResponse {
+        val organizationId = resolveOrganizationUseCase.resolveOrganization(principal, exchange)
         val transactions =
             withContext(Dispatchers.IO) {
-                val userId = resolveUserUseCase.resolveUser(principal.username)
                 getTransactionsUseCase.getTransactions(
                     GetTransactionsQuery(
                         from = from,
                         to = to,
-                        userId = userId,
+                        organizationId = organizationId,
                         type = type,
                         accountIban = iban,
                         category = category,
@@ -157,57 +159,65 @@ class TransactionQueryController(
         @PathVariable id: Long,
         @RequestBody request: UpdateCategoryRequest,
         @AuthenticationPrincipal principal: UserDetails,
-    ): ResponseEntity<TransactionItem> =
-        withContext(Dispatchers.IO) {
-            val userId = resolveUserUseCase.resolveUser(principal.username)
+        exchange: ServerWebExchange,
+    ): ResponseEntity<TransactionItem> {
+        val organizationId = resolveOrganizationUseCase.resolveOrganization(principal, exchange)
+        return withContext(Dispatchers.IO) {
             val updated =
                 updateTransactionCategoryUseCase.updateCategory(
                     id,
-                    userId,
+                    organizationId,
                     request.category,
                     request.subcategory,
                     request.categoryGroup,
                 )
             if (updated != null) ResponseEntity.ok(updated.toItem()) else ResponseEntity.notFound().build()
         }
+    }
 
     @PatchMapping("/{id}/accounting-date")
     suspend fun updateTransactionAccountingDate(
         @PathVariable id: Long,
         @RequestBody request: UpdateAccountingDateRequest,
         @AuthenticationPrincipal principal: UserDetails,
-    ): ResponseEntity<TransactionItem> =
-        withContext(Dispatchers.IO) {
-            val userId = resolveUserUseCase.resolveUser(principal.username)
-            val updated = updateTransactionAccountingDateUseCase.updateAccountingDate(id, userId, request.accountingDate)
+        exchange: ServerWebExchange,
+    ): ResponseEntity<TransactionItem> {
+        val organizationId = resolveOrganizationUseCase.resolveOrganization(principal, exchange)
+        return withContext(Dispatchers.IO) {
+            val updated = updateTransactionAccountingDateUseCase.updateAccountingDate(id, organizationId, request.accountingDate)
             if (updated != null) ResponseEntity.ok(updated.toItem()) else ResponseEntity.notFound().build()
         }
+    }
 
     @PatchMapping("/{id}/comment")
     suspend fun updateTransactionComment(
         @PathVariable id: Long,
         @RequestBody request: UpdateCommentRequest,
         @AuthenticationPrincipal principal: UserDetails,
-    ): ResponseEntity<TransactionItem> =
-        withContext(Dispatchers.IO) {
-            val userId = resolveUserUseCase.resolveUser(principal.username)
-            val updated = updateTransactionCommentUseCase.updateComment(id, userId, request.comment)
+        exchange: ServerWebExchange,
+    ): ResponseEntity<TransactionItem> {
+        val organizationId = resolveOrganizationUseCase.resolveOrganization(principal, exchange)
+        return withContext(Dispatchers.IO) {
+            val updated = updateTransactionCommentUseCase.updateComment(id, organizationId, request.comment)
             if (updated != null) ResponseEntity.ok(updated.toItem()) else ResponseEntity.notFound().build()
         }
+    }
 
     @PatchMapping("/bulk")
     suspend fun bulkUpdateTransactionCategory(
         @RequestBody request: BulkUpdateCategoryRequestDto,
         @AuthenticationPrincipal principal: UserDetails,
-    ): List<TransactionItem> =
-        withContext(Dispatchers.IO) {
-            val userId = resolveUserUseCase.resolveUser(principal.username)
+        exchange: ServerWebExchange,
+    ): List<TransactionItem> {
+        val organizationId = resolveOrganizationUseCase.resolveOrganization(principal, exchange)
+        return withContext(Dispatchers.IO) {
             bulkUpdateTransactionCategoryUseCase
                 .bulkUpdateCategory(
                     request.updates.map { BulkCategoryUpdate(it.id, it.category, it.subcategory, it.categoryGroup) },
-                    userId,
+                    organizationId,
                 ).map { it.toItem() }
         }
+    }
 
     @GetMapping("/trends")
     suspend fun getTrends(
@@ -217,9 +227,10 @@ class TransactionQueryController(
         @RequestParam(required = false) granularity: Granularity = Granularity.MONTHLY,
         @RequestParam(required = false) iban: String? = null,
         @AuthenticationPrincipal principal: UserDetails,
+        exchange: ServerWebExchange,
     ): TrendsResponse {
         val effectiveSeries = series ?: emptyList()
-        val userId = withContext(Dispatchers.IO) { resolveUserUseCase.resolveUser(principal.username) }
+        val organizationId = resolveOrganizationUseCase.resolveOrganization(principal, exchange)
         val buckets = generateBuckets(from, to, granularity)
 
         val groups =
@@ -249,7 +260,7 @@ class TransactionQueryController(
                             GetTransactionsQuery(
                                 from = from,
                                 to = to,
-                                userId = userId,
+                                organizationId = organizationId,
                                 type = TransactionType.EXPENSES,
                                 accountIban = iban,
                                 category = category,
@@ -274,31 +285,17 @@ class TransactionQueryController(
                     )
 
                 val subEntries =
-                    if (selectedGroup != null) {
-                        allTransactions
-                            .groupBy { it.subcategory }
-                            .entries
-                            .sortedBy { it.key }
-                            .map { (subName, txns) ->
-                                TrendSeriesEntry(
-                                    label = subName,
-                                    data = bucketSums(txns),
-                                    role = if (subName == selectedSub) SeriesRole.SUB_SELECTED else SeriesRole.SUB_CONTEXT,
-                                )
-                            }
-                    } else {
-                        allTransactions
-                            .groupBy { it.subcategory }
-                            .entries
-                            .sortedBy { it.key }
-                            .map { (subName, txns) ->
-                                TrendSeriesEntry(
-                                    label = subName,
-                                    data = bucketSums(txns),
-                                    role = if (subName == selectedSub) SeriesRole.SUB_SELECTED else SeriesRole.SUB_CONTEXT,
-                                )
-                            }
-                    }
+                    allTransactions
+                        .groupBy { it.subcategory }
+                        .entries
+                        .sortedBy { it.key }
+                        .map { (subName, txns) ->
+                            TrendSeriesEntry(
+                                label = subName,
+                                data = bucketSums(txns),
+                                role = if (subName == selectedSub) SeriesRole.SUB_SELECTED else SeriesRole.SUB_CONTEXT,
+                            )
+                        }
 
                 TrendSeriesGroup(main = mainEntry, subs = subEntries)
             }
@@ -313,19 +310,21 @@ class TransactionQueryController(
         @RequestParam(required = false) granularity: Granularity = Granularity.MONTHLY,
         @RequestParam(required = false) iban: String? = null,
         @AuthenticationPrincipal principal: UserDetails,
-    ): CashflowResponse =
-        withContext(Dispatchers.IO) {
-            val userId = resolveUserUseCase.resolveUser(principal.username)
+        exchange: ServerWebExchange,
+    ): CashflowResponse {
+        val organizationId = resolveOrganizationUseCase.resolveOrganization(principal, exchange)
+        return withContext(Dispatchers.IO) {
             getCashflowUseCase.getCashflow(
                 GetCashflowQuery(
                     from = from,
                     to = to,
-                    userId = userId,
+                    organizationId = organizationId,
                     granularity = granularity,
                     accountIban = iban,
                 ),
             )
         }
+    }
 
     @GetMapping("/category-totals")
     suspend fun getCategoryTotals(
@@ -334,19 +333,21 @@ class TransactionQueryController(
         @RequestParam(required = false) iban: String? = null,
         @RequestParam(required = false) category: String? = null,
         @AuthenticationPrincipal principal: UserDetails,
-    ): CategoryTotalsResponse =
-        withContext(Dispatchers.IO) {
-            val userId = resolveUserUseCase.resolveUser(principal.username)
+        exchange: ServerWebExchange,
+    ): CategoryTotalsResponse {
+        val organizationId = resolveOrganizationUseCase.resolveOrganization(principal, exchange)
+        return withContext(Dispatchers.IO) {
             getCategoryTotalsUseCase.getCategoryTotals(
                 GetCategoryTotalsQuery(
                     from = from,
                     to = to,
-                    userId = userId,
+                    organizationId = organizationId,
                     accountIban = iban,
                     category = category,
                 ),
             )
         }
+    }
 
     @GetMapping("/burnrate")
     suspend fun getBurnRate(
@@ -355,19 +356,21 @@ class TransactionQueryController(
         @RequestParam(required = false) iban: String? = null,
         @RequestParam(required = false) rollingWindow: Int = 7,
         @AuthenticationPrincipal principal: UserDetails,
-    ): BurnRateResponse =
-        withContext(Dispatchers.IO) {
-            val userId = resolveUserUseCase.resolveUser(principal.username)
+        exchange: ServerWebExchange,
+    ): BurnRateResponse {
+        val organizationId = resolveOrganizationUseCase.resolveOrganization(principal, exchange)
+        return withContext(Dispatchers.IO) {
             getBurnRateUseCase.getBurnRate(
                 GetBurnRateQuery(
                     from = from,
                     to = to,
-                    userId = userId,
+                    organizationId = organizationId,
                     accountIban = iban,
                     rollingWindow = rollingWindow,
                 ),
             )
         }
+    }
 
     private fun List<Transaction>.toSankeyResponse(groupLookup: Map<Pair<String?, String?>, String> = emptyMap()): SankeyResponse {
         val nodeIndex = linkedMapOf<String, Int>()
@@ -387,7 +390,6 @@ class TransactionQueryController(
                 TxKey(it.category, resolvedGroup, it.subcategory)
             }.mapValues { (_, txns) -> txns.sumOf { it.effectiveAmount().abs() } }
 
-        // Node registration order: categories (left), groups (middle), subcategories (right)
         aggregated.keys.forEach { k -> indexFor("cat:${k.category ?: ""}") }
         aggregated.keys.filter { it.group != null }.forEach { k -> indexFor("grp:${k.category ?: ""}:${k.group}") }
         aggregated.keys.forEach { k ->

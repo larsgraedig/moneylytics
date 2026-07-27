@@ -37,9 +37,9 @@ class TransactionOffsetPersistenceAdapter(
     @Transactional
     override fun delete(
         linkId: Long,
-        userId: Long,
+        organizationId: Long,
     ): DeletedOffsetLink? {
-        val link = offsetJpaRepository.findByIdAndUserId(linkId, userId) ?: return null
+        val link = offsetJpaRepository.findByIdAndOrganizationId(linkId, organizationId) ?: return null
         val groupId = link.groupId
         offsetJpaRepository.delete(link)
         return DeletedOffsetLink(groupId)
@@ -68,19 +68,19 @@ class TransactionOffsetPersistenceAdapter(
     @Transactional
     override fun updateComment(
         linkId: Long,
-        userId: Long,
+        organizationId: Long,
         comment: String?,
     ) {
-        offsetJpaRepository.updateComment(linkId, userId, comment)
+        offsetJpaRepository.updateComment(linkId, organizationId, comment)
     }
 
     @Transactional
     override fun deleteByTxAndGroupId(
         txId: Long,
         groupId: Long,
-        userId: Long,
+        organizationId: Long,
     ) {
-        val links = offsetJpaRepository.findByTxAndGroupId(txId, groupId, userId)
+        val links = offsetJpaRepository.findByTxAndGroupId(txId, groupId, organizationId)
         offsetJpaRepository.deleteAll(links)
     }
 }

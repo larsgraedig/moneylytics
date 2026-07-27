@@ -13,11 +13,11 @@ class IgnoredTransactionServiceTest {
     private val repository: IgnoredTransactionRepository = mock()
     private val service = IgnoredTransactionService(repository)
 
-    private val userId = 1L
+    private val organizationId = 1L
 
     @Test
     fun `should return empty set without calling repository when fingerprints list is empty`() {
-        val result = service.findIgnoredFingerprints(emptyList(), userId)
+        val result = service.findIgnoredFingerprints(emptyList(), organizationId)
 
         assertThat(result).isEmpty()
         verify(repository, never()).findExistingFingerprints(any(), any())
@@ -26,9 +26,9 @@ class IgnoredTransactionServiceTest {
     @Test
     fun `should delegate to repository when fingerprints list is non-empty`() {
         val fingerprints = listOf("fp1", "fp2")
-        whenever(repository.findExistingFingerprints(fingerprints, userId)).thenReturn(setOf("fp1"))
+        whenever(repository.findExistingFingerprints(fingerprints, organizationId)).thenReturn(setOf("fp1"))
 
-        val result = service.findIgnoredFingerprints(fingerprints, userId)
+        val result = service.findIgnoredFingerprints(fingerprints, organizationId)
 
         assertThat(result).containsExactly("fp1")
     }
@@ -38,25 +38,25 @@ class IgnoredTransactionServiceTest {
         val toIgnore = listOf("fp1", "fp2")
         val toUnignore = listOf("fp3")
 
-        service.update(toIgnore, toUnignore, userId)
+        service.update(toIgnore, toUnignore, organizationId)
 
-        verify(repository).saveAll(toIgnore, userId)
-        verify(repository).deleteAll(toUnignore, userId)
+        verify(repository).saveAll(toIgnore, organizationId)
+        verify(repository).deleteAll(toUnignore, organizationId)
     }
 
     @Test
     fun `should skip saveAll when toIgnore is empty`() {
-        service.update(emptyList(), listOf("fp1"), userId)
+        service.update(emptyList(), listOf("fp1"), organizationId)
 
         verify(repository, never()).saveAll(any(), any())
-        verify(repository).deleteAll(listOf("fp1"), userId)
+        verify(repository).deleteAll(listOf("fp1"), organizationId)
     }
 
     @Test
     fun `should skip deleteAll when toUnignore is empty`() {
-        service.update(listOf("fp1"), emptyList(), userId)
+        service.update(listOf("fp1"), emptyList(), organizationId)
 
-        verify(repository).saveAll(listOf("fp1"), userId)
+        verify(repository).saveAll(listOf("fp1"), organizationId)
         verify(repository, never()).deleteAll(any(), any())
     }
 }

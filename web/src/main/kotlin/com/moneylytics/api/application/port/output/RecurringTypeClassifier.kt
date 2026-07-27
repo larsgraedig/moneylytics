@@ -5,15 +5,15 @@ import com.moneylytics.api.domain.RecurringType
 
 interface RecurringTypeClassifier {
     fun classify(
-        userId: Long,
+        organizationId: Long,
         features: ClassifierFeatures,
     ): RecurringType
 
     fun train(
-        userId: Long,
+        organizationId: Long,
         type: RecurringType,
         features: ClassifierFeatures,
     )
 
-    fun seedIfEmpty(userId: Long)
+    fun seedIfEmpty(organizationId: Long)
 }

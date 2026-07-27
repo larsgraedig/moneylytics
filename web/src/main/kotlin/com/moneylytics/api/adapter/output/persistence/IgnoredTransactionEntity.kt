@@ -13,15 +13,15 @@ import jakarta.persistence.UniqueConstraint
 
 @Entity
 @Table(
-    name = "ignored_transactions",
-    uniqueConstraints = [UniqueConstraint(columnNames = ["fingerprint", "user_id"])],
+    name = "ignored_transaction",
+    uniqueConstraints = [UniqueConstraint(columnNames = ["fingerprint", "organization_id"])],
 )
 class IgnoredTransactionEntity(
     @Column(nullable = false, length = 64)
     val fingerprint: String,
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "user_id", nullable = false)
-    val user: UserEntity,
+    @JoinColumn(name = "organization_id", nullable = false)
+    val organization: OrganizationEntity,
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     var id: Long? = null,

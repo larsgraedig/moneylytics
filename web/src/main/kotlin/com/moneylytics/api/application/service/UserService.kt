@@ -37,10 +37,11 @@ class UserService(
 
     override fun updateSettings(
         userId: Long,
+        organizationId: Long,
         defaultAccountIban: String?,
         language: String?,
         transactionsColumnOrder: List<String>?,
-    ): UserSettings = userRepository.updateSettings(userId, defaultAccountIban, language, transactionsColumnOrder)
+    ): UserSettings = userRepository.updateSettings(userId, organizationId, defaultAccountIban, language, transactionsColumnOrder)
 
     override fun resolveUser(externalId: String): Long =
         userRepository.findByExternalId(externalId)?.id

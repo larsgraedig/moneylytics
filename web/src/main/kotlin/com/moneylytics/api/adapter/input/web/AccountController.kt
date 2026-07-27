@@ -2,7 +2,7 @@ package com.moneylytics.api.adapter.input.web
 
 import com.moneylytics.api.application.port.input.DeleteAccountUseCase
 import com.moneylytics.api.application.port.input.GetAccountsUseCase
-import com.moneylytics.api.application.port.input.ResolveUserUseCase
+import com.moneylytics.api.application.port.input.ResolveOrganizationUseCase
 import com.moneylytics.api.application.port.input.SaveAccountUseCase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
+import org.springframework.web.server.ServerWebExchange
 
 @RestController
 @RequestMapping("/accounts")
@@ -24,16 +25,17 @@ class AccountController(
     private val getAccountsUseCase: GetAccountsUseCase,
     private val saveAccountUseCase: SaveAccountUseCase,
     private val deleteAccountUseCase: DeleteAccountUseCase,
-    private val resolveUserUseCase: ResolveUserUseCase,
+    private val resolveOrganizationUseCase: ResolveOrganizationUseCase,
 ) {
     @GetMapping
     suspend fun getAccounts(
         @AuthenticationPrincipal principal: UserDetails,
+        exchange: ServerWebExchange,
     ): AccountsResponse {
+        val organizationId = resolveOrganizationUseCase.resolveOrganization(principal, exchange)
         val accounts =
             withContext(Dispatchers.IO) {
-                val userId = resolveUserUseCase.resolveUser(principal.username)
-                getAccountsUseCase.getAccounts(userId)
+                getAccountsUseCase.getAccounts(organizationId)
             }
         return AccountsResponse(
             accounts.map {
@@ -46,12 +48,13 @@ class AccountController(
     suspend fun createAccount(
         @RequestBody request: SaveAccountRequest,
         @AuthenticationPrincipal principal: UserDetails,
+        exchange: ServerWebExchange,
     ): ResponseEntity<AccountResponse> {
         if (request.iban.isBlank()) return ResponseEntity.badRequest().build()
+        val organizationId = resolveOrganizationUseCase.resolveOrganization(principal, exchange)
         val account =
             withContext(Dispatchers.IO) {
-                val userId = resolveUserUseCase.resolveUser(principal.username)
-                saveAccountUseCase.saveAccount(request.iban.trim(), request.name.trim(), userId)
+                saveAccountUseCase.saveAccount(request.iban.trim(), request.name.trim(), organizationId)
             }
         return ResponseEntity.ok(AccountResponse(iban = account.iban, name = account.name))
     }
@@ -61,11 +64,12 @@ class AccountController(
         @PathVariable iban: String,
         @RequestBody request: UpdateAccountRequest,
         @AuthenticationPrincipal principal: UserDetails,
+        exchange: ServerWebExchange,
     ): ResponseEntity<AccountResponse> {
+        val organizationId = resolveOrganizationUseCase.resolveOrganization(principal, exchange)
         val account =
             withContext(Dispatchers.IO) {
-                val userId = resolveUserUseCase.resolveUser(principal.username)
-                saveAccountUseCase.saveAccount(iban, request.name.trim(), userId)
+                saveAccountUseCase.saveAccount(iban, request.name.trim(), organizationId)
             }
         return ResponseEntity.ok(AccountResponse(iban = account.iban, name = account.name))
     }
@@ -74,10 +78,11 @@ class AccountController(
     suspend fun deleteAccount(
         @PathVariable iban: String,
         @AuthenticationPrincipal principal: UserDetails,
+        exchange: ServerWebExchange,
     ): ResponseEntity<Void> {
+        val organizationId = resolveOrganizationUseCase.resolveOrganization(principal, exchange)
         withContext(Dispatchers.IO) {
-            val userId = resolveUserUseCase.resolveUser(principal.username)
-            deleteAccountUseCase.deleteAccount(iban, userId)
+            deleteAccountUseCase.deleteAccount(iban, organizationId)
         }
         return ResponseEntity.noContent().build()
     }

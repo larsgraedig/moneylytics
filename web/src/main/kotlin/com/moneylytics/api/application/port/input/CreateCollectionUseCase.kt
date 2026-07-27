@@ -5,6 +5,6 @@ import com.moneylytics.api.domain.Collection
 interface CreateCollectionUseCase {
     fun createCollection(
         collection: Collection,
-        userId: Long,
+        organizationId: Long,
     ): Collection
 }

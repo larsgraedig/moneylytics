@@ -1,10 +1,10 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import type { LucideIcon } from 'lucide-react'
 import {
   Workflow, TrendingUp, TrendingDown, PieChart, BarChart2,
   List, Landmark, Wallet, Gauge,
-  FileSpreadsheet, FileCode, Link2, FolderOpen, Repeat, Wrench,
+  FileSpreadsheet, FileCode, Link2, FolderOpen, Repeat, Wrench, Building2,
 } from 'lucide-react'
 import { getPresetRange, detectPreset, PRESETS, type Preset } from './utils/datePresets'
 import SankeyChart from './components/SankeyChart'
@@ -23,8 +23,13 @@ import LinkedTransactionsPage from './components/LinkedTransactionsPage'
 import CollectionsPage from './components/CollectionsPage'
 import RecurringPage from './components/RecurringPage'
 import AdminPage from './components/AdminPage'
+import OrgsPage from './components/OrgsPage'
 import LoginPage from './components/LoginPage'
 import SettingsPanel from './components/SettingsPanel'
+import InvitePage from './components/InvitePage'
+import OnboardingModal from './components/OnboardingModal'
+import OrgSelectModal from './components/OrgSelectModal'
+import OrgAvatar from './components/OrgAvatar'
 import { fetchSankeyData, type SankeyResponse } from './api/transactions'
 import { fetchAccounts, type Account } from './api/accounts'
 import { fetchCategories, type CategoryGroup } from './api/rawImport'
@@ -39,9 +44,9 @@ function isoDate(d: Date) {
 const today = isoDate(new Date())
 const firstOfYear = isoDate(new Date(new Date().getFullYear(), 0, 1))
 
-type Tab = 'sankey' | 'trends' | 'breakdown' | 'cashflow' | 'burnrate' | 'kontoauszug' | 'verknuepfungen' | 'sammlungen' | 'konten' | 'budgets' | 'limits' | 'csv' | 'camt' | 'wiederkehrer' | 'admin'
+type Tab = 'sankey' | 'trends' | 'breakdown' | 'cashflow' | 'burnrate' | 'kontoauszug' | 'verknuepfungen' | 'sammlungen' | 'konten' | 'budgets' | 'limits' | 'csv' | 'camt' | 'wiederkehrer' | 'admin' | 'orgs'
 
-const VALID_TABS = new Set<string>(['sankey', 'trends', 'breakdown', 'cashflow', 'burnrate', 'kontoauszug', 'verknuepfungen', 'sammlungen', 'konten', 'budgets', 'limits', 'csv', 'camt', 'wiederkehrer', 'admin'])
+const VALID_TABS = new Set<string>(['sankey', 'trends', 'breakdown', 'cashflow', 'burnrate', 'kontoauszug', 'verknuepfungen', 'sammlungen', 'konten', 'budgets', 'limits', 'csv', 'camt', 'wiederkehrer', 'admin', 'orgs'])
 
 type ViewState =
   | { phase: 'idle' }
@@ -51,7 +56,7 @@ type ViewState =
 
 type NavSection = { sectionKey: string; items: [Tab, string, LucideIcon][] }
 
-const NAV: NavSection[] = [
+const BASE_NAV: NavSection[] = [
   {
     sectionKey: 'analytics',
     items: [
@@ -81,16 +86,26 @@ const NAV: NavSection[] = [
       ['camt', 'nav.camt', FileCode],
     ],
   },
-  {
-    sectionKey: 'admin',
-    items: [
-      ['admin', 'nav.admin', Wrench],
-    ],
-  },
 ]
 
 export default function App() {
-  const { username, isLoading, logout } = useAuth()
+  const { username, isSystemAdmin, impersonating, deimpersonate, isLoading, logout, activeOrganization, organizations, activateOrganization, refreshAuth } = useAuth()
+  const isOrgAdminOrOwner = activeOrganization?.role === 'ADMIN' || activeOrganization?.role === 'OWNER'
+  const NAV = useMemo((): NavSection[] => {
+    const sections = [...BASE_NAV]
+    if (isOrgAdminOrOwner) {
+      sections.push({ sectionKey: 'admin', items: [['orgs', 'nav.orgs', Building2]] })
+    }
+    if (isSystemAdmin) {
+      const last = sections[sections.length - 1]
+      if (last.sectionKey === 'admin') {
+        last.items.push(['admin', 'nav.admin', Wrench])
+      } else {
+        sections.push({ sectionKey: 'admin', items: [['admin', 'nav.admin', Wrench]] })
+      }
+    }
+    return sections
+  }, [isSystemAdmin, isOrgAdminOrOwner])
   const { t, i18n } = useTranslation()
   const navigate = useNavigate()
   const location = useLocation()
@@ -161,10 +176,17 @@ export default function App() {
         }
       }).catch(() => {})
     })
-  }, [username])
+  }, [username, activeOrganization?.id])
+
+  if (location.pathname.startsWith('/invite/')) {
+    const token = location.pathname.split('/')[2]
+    return <InvitePage token={token} />
+  }
 
   if (isLoading) return null
   if (!username) return <LoginPage />
+  if (organizations.length === 0) return <OnboardingModal onComplete={refreshAuth} />
+  if (organizations.length > 1 && !activeOrganization) return <OrgSelectModal organizations={organizations} onSelect={activateOrganization} />
 
   const iban = selectedIban || undefined
 
@@ -212,9 +234,24 @@ export default function App() {
 
       {/* ── main column ── */}
       <div className="main-col">
-        <header className="bar">
+        <header className={`bar${impersonating ? ' bar--impersonating' : ''}`}>
           <span className="wordmark">moneylytics</span>
           <div className="session">
+            {impersonating && (
+              <>
+                <span className="impersonate-badge">
+                  {t('admin.impersonation.active', { username: impersonating })}
+                </span>
+                <button className="deimpersonate-btn" onClick={deimpersonate}>
+                  {t('admin.impersonation.stop')}
+                </button>
+              </>
+            )}
+            <OrgAvatar
+              organizations={organizations}
+              activeOrganization={activeOrganization}
+              onSwitch={activateOrganization}
+            />
             <button className="session-user-btn" onClick={() => setSettingsOpen(true)}>
               {username}
             </button>
@@ -305,20 +342,21 @@ export default function App() {
             </>
           )}
 
-          {tab === 'cashflow' && <CashflowPage key={username} from={from} to={to} iban={iban} />}
-          {tab === 'burnrate' && <BurnRatePage key={username} from={from} to={to} iban={iban} />}
-          {tab === 'trends' && <TrendsPage key={username} from={from} to={to} iban={iban} categories={categories} />}
-          {tab === 'breakdown' && <PiePage key={username} from={from} to={to} iban={iban} />}
-          {tab === 'kontoauszug' && <TransactionsPage key={username} from={from} to={to} iban={iban} accounts={accounts} categories={categories} columnOrder={txColumnOrder ?? undefined} onColumnOrderChange={order => setTxColumnOrder(order)} />}
-          {tab === 'verknuepfungen' && <LinkedTransactionsPage key={username} />}
-          {tab === 'sammlungen' && <CollectionsPage key={username} accounts={accounts} categories={categories} />}
-          {tab === 'budgets' && <BudgetsPage key={username} from={from} to={to} iban={iban} accounts={accounts} categories={categories} />}
-          {tab === 'limits' && <ThresholdsPage key={username} from={from} to={to} iban={iban} categories={categories} />}
-          {tab === 'konten' && <AccountsPage key={username} />}
-          {tab === 'csv' && <CsvImportPage key={username} categories={categories} />}
-          {tab === 'camt' && <CamtImportPage key={username} categories={categories} />}
-          {tab === 'wiederkehrer' && <RecurringPage key={username} />}
-          {tab === 'admin' && <AdminPage key={username} />}
+          {tab === 'cashflow' && <CashflowPage key={`${username}-${activeOrganization?.id}`} from={from} to={to} iban={iban} />}
+          {tab === 'burnrate' && <BurnRatePage key={`${username}-${activeOrganization?.id}`} from={from} to={to} iban={iban} />}
+          {tab === 'trends' && <TrendsPage key={`${username}-${activeOrganization?.id}`} from={from} to={to} iban={iban} categories={categories} />}
+          {tab === 'breakdown' && <PiePage key={`${username}-${activeOrganization?.id}`} from={from} to={to} iban={iban} />}
+          {tab === 'kontoauszug' && <TransactionsPage key={`${username}-${activeOrganization?.id}`} from={from} to={to} iban={iban} accounts={accounts} categories={categories} columnOrder={txColumnOrder ?? undefined} onColumnOrderChange={order => setTxColumnOrder(order)} />}
+          {tab === 'verknuepfungen' && <LinkedTransactionsPage key={`${username}-${activeOrganization?.id}`} />}
+          {tab === 'sammlungen' && <CollectionsPage key={`${username}-${activeOrganization?.id}`} accounts={accounts} categories={categories} />}
+          {tab === 'budgets' && <BudgetsPage key={`${username}-${activeOrganization?.id}`} from={from} to={to} iban={iban} accounts={accounts} categories={categories} />}
+          {tab === 'limits' && <ThresholdsPage key={`${username}-${activeOrganization?.id}`} from={from} to={to} iban={iban} categories={categories} />}
+          {tab === 'konten' && <AccountsPage key={`${username}-${activeOrganization?.id}`} />}
+          {tab === 'csv' && <CsvImportPage key={`${username}-${activeOrganization?.id}`} categories={categories} />}
+          {tab === 'camt' && <CamtImportPage key={`${username}-${activeOrganization?.id}`} categories={categories} />}
+          {tab === 'wiederkehrer' && <RecurringPage key={`${username}-${activeOrganization?.id}`} />}
+          {tab === 'orgs' && isOrgAdminOrOwner && <OrgsPage key={activeOrganization?.id} />}
+          {tab === 'admin' && isSystemAdmin && <AdminPage key={`${username}-${activeOrganization?.id}`} />}
         </main>
       </div>
       {settingsOpen && <SettingsPanel accounts={accounts} defaultAccountIban={selectedIban} onClose={() => setSettingsOpen(false)} />}

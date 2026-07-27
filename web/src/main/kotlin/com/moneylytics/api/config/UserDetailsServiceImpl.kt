@@ -23,7 +23,7 @@ class UserDetailsServiceImpl(
                         .withUsername(domainUser.externalId)
                         // OAuth users have no password — empty string never matches any BCrypt hash
                         .password(domainUser.passwordHash ?: "")
-                        .roles("USER")
+                        .roles(domainUser.role.name)
                         .build(),
                 )
             }

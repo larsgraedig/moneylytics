@@ -10,10 +10,10 @@ data class LinkedTransactionGroup(
 )
 
 interface GetLinkedTransactionsUseCase {
-    fun getLinkedGroups(userId: Long): List<LinkedTransactionGroup>
+    fun getLinkedGroups(organizationId: Long): List<LinkedTransactionGroup>
 
     fun getLinkedGroup(
         groupId: Long,
-        userId: Long,
+        organizationId: Long,
     ): LinkedTransactionGroup?
 }

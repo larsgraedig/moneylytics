@@ -5,7 +5,7 @@ import com.moneylytics.api.domain.Transaction
 interface UpdateTransactionCategoryUseCase {
     fun updateCategory(
         id: Long,
-        userId: Long,
+        organizationId: Long,
         category: String,
         subcategory: String,
         categoryGroup: String? = null,

@@ -15,6 +15,8 @@ export default defineConfig({
       '/budgets': 'http://localhost:8080',
       '/collections': 'http://localhost:8080',
       '/admin': 'http://localhost:8080',
+      '/organizations': 'http://localhost:8080',
+      '/invitations': 'http://localhost:8080',
     },
   },
 })

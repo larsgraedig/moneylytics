@@ -9,42 +9,42 @@ import java.time.LocalDate
 @Component
 class AccountPersistenceAdapter(
     private val jpaRepository: AccountJpaRepository,
-    private val userJpaRepository: UserJpaRepository,
+    private val organizationJpaRepository: OrganizationJpaRepository,
 ) : AccountRepository {
     override fun findByIban(
         iban: String,
-        userId: Long,
-    ): Account? = jpaRepository.findByIbanAndUserId(iban, userId)?.toDomain()
+        organizationId: Long,
+    ): Account? = jpaRepository.findByIbanAndOrganizationId(iban, organizationId)?.toDomain()
 
     override fun save(
         account: Account,
-        userId: Long,
-    ): Account = jpaRepository.save(account.toEntity(userId)).toDomain()
+        organizationId: Long,
+    ): Account = jpaRepository.save(account.toEntity(organizationId)).toDomain()
 
-    override fun findAll(userId: Long): List<Account> = jpaRepository.findAllByUserId(userId).map { it.toDomain() }
+    override fun findAll(organizationId: Long): List<Account> = jpaRepository.findAllByOrganizationId(organizationId).map { it.toDomain() }
 
     override fun delete(
         iban: String,
-        userId: Long,
-    ) = jpaRepository.deleteByIbanAndUserId(iban, userId)
+        organizationId: Long,
+    ) = jpaRepository.deleteByIbanAndOrganizationId(iban, organizationId)
 
     override fun updateBalance(
         iban: String,
-        userId: Long,
+        organizationId: Long,
         balance: BigDecimal,
         balanceDate: LocalDate,
     ) {
-        val entity = jpaRepository.findByIbanAndUserId(iban, userId) ?: return
+        val entity = jpaRepository.findByIbanAndOrganizationId(iban, organizationId) ?: return
         entity.balance = balance
         entity.balanceDate = balanceDate
         jpaRepository.save(entity)
     }
 
-    private fun Account.toEntity(userId: Long) =
+    private fun Account.toEntity(organizationId: Long) =
         AccountEntity(
             iban = iban,
             name = name,
-            user = userJpaRepository.getReferenceById(userId),
+            organization = organizationJpaRepository.getReferenceById(organizationId),
         )
 
     private fun AccountEntity.toDomain() =

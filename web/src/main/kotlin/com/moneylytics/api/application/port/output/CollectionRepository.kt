@@ -3,42 +3,42 @@ package com.moneylytics.api.application.port.output
 import com.moneylytics.api.domain.Collection
 
 interface CollectionRepository {
-    fun findAllByUserId(userId: Long): List<Collection>
+    fun findAllByOrganizationId(organizationId: Long): List<Collection>
 
-    fun findByIdAndUserId(
+    fun findByIdAndOrganizationId(
         id: Long,
-        userId: Long,
+        organizationId: Long,
     ): Collection?
 
     fun findTransactionIdsByCollectionId(
         collectionId: Long,
-        userId: Long,
+        organizationId: Long,
     ): List<Long>
 
     fun create(
         collection: Collection,
-        userId: Long,
+        organizationId: Long,
     ): Collection
 
     fun update(
         collection: Collection,
-        userId: Long,
+        organizationId: Long,
     ): Collection
 
-    fun deleteByIdAndUserId(
+    fun deleteByIdAndOrganizationId(
         id: Long,
-        userId: Long,
+        organizationId: Long,
     )
 
     fun addTransaction(
         collectionId: Long,
         transactionId: Long,
-        userId: Long,
+        organizationId: Long,
     )
 
     fun removeTransaction(
         collectionId: Long,
         transactionId: Long,
-        userId: Long,
+        organizationId: Long,
     )
 }

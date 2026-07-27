@@ -8,6 +8,6 @@ fun interface CorrectRecurringSeriesTypeUseCase {
 
 data class CorrectRecurringSeriesTypeCommand(
     val seriesId: Long,
-    val userId: Long,
+    val organizationId: Long,
     val type: RecurringType,
 )

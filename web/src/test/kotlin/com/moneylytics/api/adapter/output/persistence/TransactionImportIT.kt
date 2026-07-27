@@ -27,7 +27,7 @@ class TransactionImportIT : AbstractServiceIT() {
 
         assertThat(count).isEqualTo(3)
         flushAndClear()
-        assertThat(transactionRepo.findByUserIdAndAccountingDateBetween(userId, date, date)).hasSize(3)
+        assertThat(transactionRepo.findByOrganizationIdAndAccountingDateBetween(organizationId, date, date)).hasSize(3)
     }
 
     @Test
@@ -39,7 +39,7 @@ class TransactionImportIT : AbstractServiceIT() {
         val count = importService.importTransactions(command)
 
         assertThat(count).isEqualTo(0)
-        assertThat(transactionRepo.findByUserIdAndAccountingDateBetween(userId, date, date)).hasSize(3)
+        assertThat(transactionRepo.findByOrganizationIdAndAccountingDateBetween(organizationId, date, date)).hasSize(3)
     }
 
     @Test
@@ -51,7 +51,7 @@ class TransactionImportIT : AbstractServiceIT() {
         val count = importService.importTransactions(command(existing, tx("-200"), tx("-50")))
 
         assertThat(count).isEqualTo(2)
-        assertThat(transactionRepo.findByUserIdAndAccountingDateBetween(userId, date, date)).hasSize(3)
+        assertThat(transactionRepo.findByOrganizationIdAndAccountingDateBetween(organizationId, date, date)).hasSize(3)
     }
 
     @Test
@@ -83,13 +83,13 @@ class TransactionImportIT : AbstractServiceIT() {
                         ),
                     ),
                 accountNames = mapOf(newIban to "New Account"),
-                userId = userId,
+                organizationId = organizationId,
             )
 
         importService.importTransactions(command)
         flushAndClear()
 
-        assertThat(accountRepo2.findByIbanAndUserId(newIban, userId)).isNotNull
+        assertThat(accountRepo2.findByIbanAndOrganizationId(newIban, organizationId)).isNotNull
     }
 
     @Test
@@ -101,7 +101,7 @@ class TransactionImportIT : AbstractServiceIT() {
         importService.importTransactions(command)
         flushAndClear()
 
-        val accounts = accountRepo2.findAllByUserId(userId)
+        val accounts = accountRepo2.findAllByOrganizationId(organizationId)
         assertThat(accounts.filter { it.iban == importIban }).hasSize(1)
     }
 
@@ -121,6 +121,6 @@ class TransactionImportIT : AbstractServiceIT() {
         ImportTransactionsCommand(
             transactions = transactions.toList(),
             accountNames = mapOf(importIban to "Import Account"),
-            userId = userId,
+            organizationId = organizationId,
         )
 }

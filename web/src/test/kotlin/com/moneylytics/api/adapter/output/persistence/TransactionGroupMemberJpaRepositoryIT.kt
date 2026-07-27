@@ -9,7 +9,7 @@ class TransactionGroupMemberJpaRepositoryIT : AbstractJpaRepositoryIT() {
 
     @Autowired private lateinit var memberRepo: TransactionGroupMemberJpaRepository
 
-    private fun savedGroupId() = checkNotNull(groupRepo.save(TransactionGroupEntity(user = user)).id)
+    private fun savedGroupId() = checkNotNull(groupRepo.save(TransactionGroupEntity(organization = organization)).id)
 
     private fun savedMember(
         groupId: Long,

@@ -75,3 +75,4 @@ The CSV uses German locale. Non-obvious details for `CsvTransactionParser`:
 
 - Always run `ktlintFormat` after adding new Kotlin files, then verify with `ktlintCheck` and `detekt` before finishing any code changes.
 - Flyway migrations are versioned sequentially (`V1`, `V2`, …). Check the highest existing version in `web/src/main/resources/db/migration/` before creating a new one to avoid conflicts.
+- **Database table names are singular** (e.g. `account`, `transaction`, `organization`). Use `@Table(name = "singular_name")` in JPA entities. Note: `user` is a reserved word in PostgreSQL — quote it with backticks in the annotation: `@Table(name = "\`user\`")`.

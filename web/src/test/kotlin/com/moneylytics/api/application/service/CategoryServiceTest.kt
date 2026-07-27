@@ -12,14 +12,14 @@ class CategoryServiceTest {
     private val categoryRepository: CategoryRepository = mock()
     private val service = CategoryService(categoryRepository)
 
-    private val userId = 1L
+    private val organizationId = 1L
 
     @Test
     fun `should return all categories for user`() {
         val categories = listOf(Category(name = "Lebensmittel", subcategory = "Supermarkt"))
-        whenever(categoryRepository.findAll(userId)).thenReturn(categories)
+        whenever(categoryRepository.findAll(organizationId)).thenReturn(categories)
 
-        val result = service.getCategories(userId)
+        val result = service.getCategories(organizationId)
 
         assertThat(result).isEqualTo(categories)
     }
@@ -28,8 +28,8 @@ class CategoryServiceTest {
     fun `should delegate save to repository`() {
         val categories = listOf(Category(name = "Lebensmittel", subcategory = "Supermarkt"))
 
-        service.saveCategories(categories, userId)
+        service.saveCategories(categories, organizationId)
 
-        verify(categoryRepository).saveAllIfAbsent(categories, userId)
+        verify(categoryRepository).saveAllIfAbsent(categories, organizationId)
     }
 }

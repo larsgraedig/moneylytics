@@ -28,7 +28,7 @@ class RecurringMatcherServiceTest {
     private val syncLogRepository: RecurringSyncLogRepository = mock()
     private val service = RecurringMatcherService(recurringSeriesRepository, transactionRepository, syncLogRepository)
 
-    private val userId = 1L
+    private val organizationId = 1L
     private val baseDate = LocalDate.of(2024, 1, 1)
 
     private fun series(
@@ -78,21 +78,21 @@ class RecurringMatcherServiceTest {
 
     @Test
     fun `should do nothing when no users have series`() {
-        whenever(recurringSeriesRepository.findAllUserIds()).thenReturn(emptySet())
+        whenever(recurringSeriesRepository.findAllOrganizationIds()).thenReturn(emptySet())
 
-        service.syncForAllUsers()
+        service.syncForAllOrganizations()
 
-        verify(recurringSeriesRepository, never()).findByUserId(any())
+        verify(recurringSeriesRepository, never()).findByOrganizationId(any())
     }
 
     @Test
     fun `should skip manual series`() {
-        whenever(recurringSeriesRepository.findAllUserIds()).thenReturn(setOf(userId))
-        whenever(recurringSeriesRepository.findByUserId(userId)).thenReturn(
+        whenever(recurringSeriesRepository.findAllOrganizationIds()).thenReturn(setOf(organizationId))
+        whenever(recurringSeriesRepository.findByOrganizationId(organizationId)).thenReturn(
             listOf(series(fingerprint = "manual:some-uuid")),
         )
 
-        service.syncForAllUsers()
+        service.syncForAllOrganizations()
 
         verify(transactionRepository, never()).findByAccountingDateBetween(any(), any(), any(), anyOrNull())
     }
@@ -102,14 +102,14 @@ class RecurringMatcherServiceTest {
         val newTx = tx(id = 99L, bookingDate = baseDate.plusDays(62))
         val s = series(lastSeen = baseDate.plusDays(31))
 
-        whenever(recurringSeriesRepository.findAllUserIds()).thenReturn(setOf(userId))
-        whenever(recurringSeriesRepository.findByUserId(userId)).thenReturn(listOf(s))
+        whenever(recurringSeriesRepository.findAllOrganizationIds()).thenReturn(setOf(organizationId))
+        whenever(recurringSeriesRepository.findByOrganizationId(organizationId)).thenReturn(listOf(s))
         whenever(recurringSeriesRepository.findMemberTransactionIds(s.id!!)).thenReturn(emptySet())
         whenever(
-            transactionRepository.findByAccountingDateBetween(any(), any(), eq(userId), anyOrNull()),
+            transactionRepository.findByAccountingDateBetween(any(), any(), eq(organizationId), anyOrNull()),
         ).thenReturn(listOf(newTx))
 
-        service.syncForAllUsers()
+        service.syncForAllOrganizations()
 
         val idsCaptor = argumentCaptor<List<Long>>()
         verify(recurringSeriesRepository).addMembers(eq(s.id!!), idsCaptor.capture())
@@ -121,14 +121,14 @@ class RecurringMatcherServiceTest {
         val existingTx = tx(id = 50L, bookingDate = baseDate.plusDays(62))
         val s = series(lastSeen = baseDate.plusDays(31))
 
-        whenever(recurringSeriesRepository.findAllUserIds()).thenReturn(setOf(userId))
-        whenever(recurringSeriesRepository.findByUserId(userId)).thenReturn(listOf(s))
+        whenever(recurringSeriesRepository.findAllOrganizationIds()).thenReturn(setOf(organizationId))
+        whenever(recurringSeriesRepository.findByOrganizationId(organizationId)).thenReturn(listOf(s))
         whenever(recurringSeriesRepository.findMemberTransactionIds(s.id!!)).thenReturn(setOf(50L))
         whenever(
             transactionRepository.findByAccountingDateBetween(any(), any(), any(), anyOrNull()),
         ).thenReturn(listOf(existingTx))
 
-        service.syncForAllUsers()
+        service.syncForAllOrganizations()
 
         verify(recurringSeriesRepository, never()).addMembers(any(), any())
     }
@@ -138,14 +138,14 @@ class RecurringMatcherServiceTest {
         val oldTx = tx(id = 10L, bookingDate = baseDate.plusDays(20))
         val s = series(lastSeen = baseDate.plusDays(31))
 
-        whenever(recurringSeriesRepository.findAllUserIds()).thenReturn(setOf(userId))
-        whenever(recurringSeriesRepository.findByUserId(userId)).thenReturn(listOf(s))
+        whenever(recurringSeriesRepository.findAllOrganizationIds()).thenReturn(setOf(organizationId))
+        whenever(recurringSeriesRepository.findByOrganizationId(organizationId)).thenReturn(listOf(s))
         whenever(recurringSeriesRepository.findMemberTransactionIds(s.id!!)).thenReturn(emptySet())
         whenever(
             transactionRepository.findByAccountingDateBetween(any(), any(), any(), anyOrNull()),
         ).thenReturn(listOf(oldTx))
 
-        service.syncForAllUsers()
+        service.syncForAllOrganizations()
 
         verify(recurringSeriesRepository, never()).addMembers(any(), any())
     }
@@ -155,14 +155,14 @@ class RecurringMatcherServiceTest {
         val nonMatchingTx = tx(id = 77L, counterpartyName = "Spotify", bookingDate = baseDate.plusDays(62))
         val s = series(fingerprint = "DE01|E|netflix", lastSeen = baseDate.plusDays(31))
 
-        whenever(recurringSeriesRepository.findAllUserIds()).thenReturn(setOf(userId))
-        whenever(recurringSeriesRepository.findByUserId(userId)).thenReturn(listOf(s))
+        whenever(recurringSeriesRepository.findAllOrganizationIds()).thenReturn(setOf(organizationId))
+        whenever(recurringSeriesRepository.findByOrganizationId(organizationId)).thenReturn(listOf(s))
         whenever(recurringSeriesRepository.findMemberTransactionIds(s.id!!)).thenReturn(emptySet())
         whenever(
             transactionRepository.findByAccountingDateBetween(any(), any(), any(), anyOrNull()),
         ).thenReturn(listOf(nonMatchingTx))
 
-        service.syncForAllUsers()
+        service.syncForAllOrganizations()
 
         verify(recurringSeriesRepository, never()).addMembers(any(), any())
     }
@@ -173,14 +173,14 @@ class RecurringMatcherServiceTest {
         val newTx = tx(id = 99L, bookingDate = newDate)
         val s = series(lastSeen = baseDate.plusDays(31), occurrenceCount = 3, intervalDays = 30)
 
-        whenever(recurringSeriesRepository.findAllUserIds()).thenReturn(setOf(userId))
-        whenever(recurringSeriesRepository.findByUserId(userId)).thenReturn(listOf(s))
+        whenever(recurringSeriesRepository.findAllOrganizationIds()).thenReturn(setOf(organizationId))
+        whenever(recurringSeriesRepository.findByOrganizationId(organizationId)).thenReturn(listOf(s))
         whenever(recurringSeriesRepository.findMemberTransactionIds(s.id!!)).thenReturn(emptySet())
         whenever(
             transactionRepository.findByAccountingDateBetween(any(), any(), any(), anyOrNull()),
         ).thenReturn(listOf(newTx))
 
-        service.syncForAllUsers()
+        service.syncForAllOrganizations()
 
         verify(recurringSeriesRepository).updateSeriesMetadata(
             seriesId = s.id!!,
@@ -192,14 +192,14 @@ class RecurringMatcherServiceTest {
 
     @Test
     fun `should process multiple users independently`() {
-        val userId2 = 2L
-        whenever(recurringSeriesRepository.findAllUserIds()).thenReturn(setOf(userId, userId2))
-        whenever(recurringSeriesRepository.findByUserId(userId)).thenReturn(emptyList())
-        whenever(recurringSeriesRepository.findByUserId(userId2)).thenReturn(emptyList())
+        val organizationId2 = 2L
+        whenever(recurringSeriesRepository.findAllOrganizationIds()).thenReturn(setOf(organizationId, organizationId2))
+        whenever(recurringSeriesRepository.findByOrganizationId(organizationId)).thenReturn(emptyList())
+        whenever(recurringSeriesRepository.findByOrganizationId(organizationId2)).thenReturn(emptyList())
 
-        service.syncForAllUsers()
+        service.syncForAllOrganizations()
 
-        verify(recurringSeriesRepository).findByUserId(userId)
-        verify(recurringSeriesRepository).findByUserId(userId2)
+        verify(recurringSeriesRepository).findByOrganizationId(organizationId)
+        verify(recurringSeriesRepository).findByOrganizationId(organizationId2)
     }
 }

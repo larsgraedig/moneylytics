@@ -6,6 +6,6 @@ interface SaveAccountUseCase {
     fun saveAccount(
         iban: String,
         name: String,
-        userId: Long,
+        organizationId: Long,
     ): Account
 }

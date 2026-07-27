@@ -5,6 +5,6 @@ import com.moneylytics.api.domain.Threshold
 interface SaveThresholdUseCase {
     fun saveThreshold(
         threshold: Threshold,
-        userId: Long,
+        organizationId: Long,
     ): Threshold
 }

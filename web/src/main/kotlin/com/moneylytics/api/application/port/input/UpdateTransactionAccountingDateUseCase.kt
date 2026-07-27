@@ -6,7 +6,7 @@ import java.time.LocalDate
 interface UpdateTransactionAccountingDateUseCase {
     fun updateAccountingDate(
         id: Long,
-        userId: Long,
+        organizationId: Long,
         accountingDate: LocalDate,
     ): Transaction?
 }

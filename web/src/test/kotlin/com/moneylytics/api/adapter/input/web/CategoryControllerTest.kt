@@ -1,22 +1,22 @@
 package com.moneylytics.api.adapter.input.web
 
 import com.moneylytics.api.application.port.input.GetCategoriesUseCase
-import com.moneylytics.api.application.port.input.ResolveUserUseCase
+import com.moneylytics.api.application.port.input.ResolveOrganizationUseCase
 import com.moneylytics.api.domain.Category
 import kotlinx.coroutines.test.runTest
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
-import org.mockito.kotlin.any
-import org.mockito.kotlin.doReturn
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.whenever
 import org.springframework.security.core.userdetails.User
+import org.springframework.web.server.ServerWebExchange
 
 class CategoryControllerTest {
-    private val userId = 1L
-    private val resolveUserUseCase: ResolveUserUseCase = mock { on { resolveUser(any()) } doReturn userId }
+    private val organizationId = 1L
+    private val exchange: ServerWebExchange = mock()
+    private val resolveOrganizationUseCase: ResolveOrganizationUseCase = ResolveOrganizationUseCase { _, _ -> organizationId }
     private val getCategoriesUseCase: GetCategoriesUseCase = mock()
-    private val controller = CategoryController(getCategoriesUseCase, resolveUserUseCase)
+    private val controller = CategoryController(getCategoriesUseCase, resolveOrganizationUseCase)
     private val principal =
         User
             .withUsername("user@test.de")
@@ -27,7 +27,7 @@ class CategoryControllerTest {
     @Test
     fun `should group subcategories by category name`() =
         runTest {
-            whenever(getCategoriesUseCase.getCategories(userId)).thenReturn(
+            whenever(getCategoriesUseCase.getCategories(organizationId)).thenReturn(
                 listOf(
                     Category(name = "Transport", subcategory = "ÖPNV"),
                     Category(name = "Transport", subcategory = "Auto"),
@@ -35,7 +35,7 @@ class CategoryControllerTest {
                 ),
             )
 
-            val response = controller.getCategories(principal)
+            val response = controller.getCategories(principal, exchange)
 
             assertThat(response.categories).hasSize(2)
             assertThat(response.categories.map { it.name }).containsExactly("Lebensmittel", "Transport")
@@ -44,7 +44,7 @@ class CategoryControllerTest {
     @Test
     fun `should sort categories alphabetically`() =
         runTest {
-            whenever(getCategoriesUseCase.getCategories(userId)).thenReturn(
+            whenever(getCategoriesUseCase.getCategories(organizationId)).thenReturn(
                 listOf(
                     Category(name = "Wohnen", subcategory = "Miete"),
                     Category(name = "Auto", subcategory = "Versicherung"),
@@ -52,7 +52,7 @@ class CategoryControllerTest {
                 ),
             )
 
-            val response = controller.getCategories(principal)
+            val response = controller.getCategories(principal, exchange)
 
             assertThat(response.categories.map { it.name }).containsExactly("Auto", "Lebensmittel", "Wohnen")
         }
@@ -60,14 +60,14 @@ class CategoryControllerTest {
     @Test
     fun `should put subcategories with group into CategorySubGroupResponse`() =
         runTest {
-            whenever(getCategoriesUseCase.getCategories(userId)).thenReturn(
+            whenever(getCategoriesUseCase.getCategories(organizationId)).thenReturn(
                 listOf(
                     Category(name = "Lebensmittel", subcategory = "Restaurant", group = "Auswärts"),
                     Category(name = "Lebensmittel", subcategory = "Lieferdienst", group = "Auswärts"),
                 ),
             )
 
-            val response = controller.getCategories(principal)
+            val response = controller.getCategories(principal, exchange)
 
             val lebensmittel = response.categories.single()
             assertThat(lebensmittel.groups).hasSize(1)
@@ -79,14 +79,14 @@ class CategoryControllerTest {
     @Test
     fun `should put subcategories without group into flat subcategories list`() =
         runTest {
-            whenever(getCategoriesUseCase.getCategories(userId)).thenReturn(
+            whenever(getCategoriesUseCase.getCategories(organizationId)).thenReturn(
                 listOf(
                     Category(name = "Transport", subcategory = "ÖPNV"),
                     Category(name = "Transport", subcategory = "Auto"),
                 ),
             )
 
-            val response = controller.getCategories(principal)
+            val response = controller.getCategories(principal, exchange)
 
             val transport = response.categories.single()
             assertThat(transport.subcategories).containsExactly("Auto", "ÖPNV")
@@ -96,7 +96,7 @@ class CategoryControllerTest {
     @Test
     fun `should separate grouped and ungrouped subcategories within same category`() =
         runTest {
-            whenever(getCategoriesUseCase.getCategories(userId)).thenReturn(
+            whenever(getCategoriesUseCase.getCategories(organizationId)).thenReturn(
                 listOf(
                     Category(name = "Lebensmittel", subcategory = "Supermarkt"),
                     Category(name = "Lebensmittel", subcategory = "Restaurant", group = "Auswärts"),
@@ -104,7 +104,7 @@ class CategoryControllerTest {
                 ),
             )
 
-            val response = controller.getCategories(principal)
+            val response = controller.getCategories(principal, exchange)
 
             val lebensmittel = response.categories.single()
             assertThat(lebensmittel.subcategories).containsExactly("Supermarkt")
@@ -115,7 +115,7 @@ class CategoryControllerTest {
     @Test
     fun `should sort subcategories within groups alphabetically`() =
         runTest {
-            whenever(getCategoriesUseCase.getCategories(userId)).thenReturn(
+            whenever(getCategoriesUseCase.getCategories(organizationId)).thenReturn(
                 listOf(
                     Category(name = "Freizeit", subcategory = "Zirkus", group = "Kultur"),
                     Category(name = "Freizeit", subcategory = "Ausstellung", group = "Kultur"),
@@ -123,7 +123,7 @@ class CategoryControllerTest {
                 ),
             )
 
-            val response = controller.getCategories(principal)
+            val response = controller.getCategories(principal, exchange)
 
             val group =
                 response.categories
@@ -136,14 +136,14 @@ class CategoryControllerTest {
     @Test
     fun `should sort groups within a category alphabetically`() =
         runTest {
-            whenever(getCategoriesUseCase.getCategories(userId)).thenReturn(
+            whenever(getCategoriesUseCase.getCategories(organizationId)).thenReturn(
                 listOf(
                     Category(name = "Freizeit", subcategory = "Kino", group = "Unterhaltung"),
                     Category(name = "Freizeit", subcategory = "Museum", group = "Bildung"),
                 ),
             )
 
-            val response = controller.getCategories(principal)
+            val response = controller.getCategories(principal, exchange)
 
             val groups = response.categories.single().groups
             assertThat(groups.map { it.name }).containsExactly("Bildung", "Unterhaltung")
@@ -152,9 +152,9 @@ class CategoryControllerTest {
     @Test
     fun `should return empty response when no categories exist`() =
         runTest {
-            whenever(getCategoriesUseCase.getCategories(userId)).thenReturn(emptyList())
+            whenever(getCategoriesUseCase.getCategories(organizationId)).thenReturn(emptyList())
 
-            val response = controller.getCategories(principal)
+            val response = controller.getCategories(principal, exchange)
 
             assertThat(response.categories).isEmpty()
         }

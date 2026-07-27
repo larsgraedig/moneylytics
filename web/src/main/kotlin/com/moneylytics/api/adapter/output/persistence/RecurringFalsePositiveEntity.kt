@@ -15,8 +15,8 @@ import java.time.LocalDate
 @Table(name = "recurring_false_positive")
 class RecurringFalsePositiveEntity(
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "user_id", nullable = false)
-    val user: UserEntity,
+    @JoinColumn(name = "organization_id", nullable = false)
+    val organization: OrganizationEntity,
     @Column(nullable = false, length = 512)
     val fingerprint: String,
     @Column(nullable = false)

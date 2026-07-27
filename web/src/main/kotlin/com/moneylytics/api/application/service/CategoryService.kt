@@ -11,10 +11,10 @@ class CategoryService(
     private val categoryRepository: CategoryRepository,
 ) : GetCategoriesUseCase,
     SaveCategoriesUseCase {
-    override fun getCategories(userId: Long): List<Category> = categoryRepository.findAll(userId)
+    override fun getCategories(organizationId: Long): List<Category> = categoryRepository.findAll(organizationId)
 
     override fun saveCategories(
         categories: List<Category>,
-        userId: Long,
-    ) = categoryRepository.saveAllIfAbsent(categories, userId)
+        organizationId: Long,
+    ) = categoryRepository.saveAllIfAbsent(categories, organizationId)
 }

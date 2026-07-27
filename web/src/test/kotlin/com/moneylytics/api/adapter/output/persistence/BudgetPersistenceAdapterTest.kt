@@ -11,22 +11,23 @@ import java.time.LocalDate
 class BudgetPersistenceAdapterTest {
     private val budgetJpaRepository: BudgetJpaRepository = mock()
     private val budgetTransactionJpaRepository: BudgetTransactionJpaRepository = mock()
-    private val userJpaRepository: UserJpaRepository = mock()
+    private val organizationJpaRepository: OrganizationJpaRepository = mock()
     private val transactionJpaRepository: TransactionJpaRepository = mock()
     private val adapter =
-        BudgetPersistenceAdapter(budgetJpaRepository, budgetTransactionJpaRepository, userJpaRepository, transactionJpaRepository)
+        BudgetPersistenceAdapter(budgetJpaRepository, budgetTransactionJpaRepository, organizationJpaRepository, transactionJpaRepository)
 
-    private val userId = 1L
+    private val organizationId = 1L
     private val date = LocalDate.of(2025, 1, 15)
-    private val userEntity = UserEntity(externalId = "test@test.de", id = userId)
-    private val accountEntity = AccountEntity(iban = "DE00TEST", name = "Test", user = userEntity, id = 10L)
+    private val organizationEntity = OrganizationEntity(name = "Test Org", id = organizationId)
+    private val accountEntity = AccountEntity(iban = "DE00TEST", name = "Test", organization = organizationEntity, id = 10L)
 
     @Test
     fun `should map budget entity to domain`() {
-        val entity = BudgetEntity(user = userEntity, name = "Urlaub", targetAmount = BigDecimal("1200"), note = "Sommer", id = 1L)
-        whenever(budgetJpaRepository.findByUserId(userId)).thenReturn(listOf(entity))
+        val entity =
+            BudgetEntity(organization = organizationEntity, name = "Urlaub", targetAmount = BigDecimal("1200"), note = "Sommer", id = 1L)
+        whenever(budgetJpaRepository.findByOrganizationId(organizationId)).thenReturn(listOf(entity))
 
-        val result = adapter.findAllByUserId(userId)
+        val result = adapter.findAllByOrganizationId(organizationId)
 
         assertThat(result).hasSize(1)
         assertThat(result[0].id).isEqualTo(1L)
@@ -37,12 +38,12 @@ class BudgetPersistenceAdapterTest {
 
     @Test
     fun `should update budget name, targetAmount and note`() {
-        val entity = BudgetEntity(user = userEntity, name = "Old", targetAmount = null, note = null, id = 1L)
-        whenever(budgetJpaRepository.findByUserId(userId)).thenReturn(listOf(entity))
+        val entity = BudgetEntity(organization = organizationEntity, name = "Old", targetAmount = null, note = null, id = 1L)
+        whenever(budgetJpaRepository.findByOrganizationId(organizationId)).thenReturn(listOf(entity))
         whenever(budgetJpaRepository.save(entity)).thenReturn(entity)
 
         val updated = Budget(id = 1L, name = "Neu", targetAmount = BigDecimal("2000"), note = "Notiz")
-        adapter.update(updated, userId)
+        adapter.update(updated, organizationId)
 
         assertThat(entity.name).isEqualTo("Neu")
         assertThat(entity.targetAmount).isEqualByComparingTo(BigDecimal("2000"))
@@ -54,13 +55,13 @@ class BudgetPersistenceAdapterTest {
         val txEntity = txEntity(42L)
         val linkEntity =
             BudgetTransactionEntity(
-                budget = BudgetEntity(user = userEntity, name = "Urlaub", id = 1L),
+                budget = BudgetEntity(organization = organizationEntity, name = "Urlaub", id = 1L),
                 transaction = txEntity,
                 id = 5L,
             )
-        whenever(budgetTransactionJpaRepository.findByBudgetIdAndUserId(1L, userId)).thenReturn(listOf(linkEntity))
+        whenever(budgetTransactionJpaRepository.findByBudgetIdAndOrganizationId(1L, organizationId)).thenReturn(listOf(linkEntity))
 
-        val result = adapter.findAssignedTransactionIdsByBudgetId(1L, userId)
+        val result = adapter.findAssignedTransactionIdsByBudgetId(1L, organizationId)
 
         assertThat(result).containsExactly(42L)
     }
@@ -68,11 +69,11 @@ class BudgetPersistenceAdapterTest {
     @Test
     fun `should map BudgetTransactionLink from entity`() {
         val txEntity = txEntity(42L, amount = BigDecimal("-300"), accountingDate = date)
-        val budgetEntity = BudgetEntity(user = userEntity, name = "Urlaub", id = 1L)
+        val budgetEntity = BudgetEntity(organization = organizationEntity, name = "Urlaub", id = 1L)
         val linkEntity = BudgetTransactionEntity(budget = budgetEntity, transaction = txEntity, amount = BigDecimal("150"), id = 7L)
-        whenever(budgetTransactionJpaRepository.findByBudgetIdAndUserId(1L, userId)).thenReturn(listOf(linkEntity))
+        whenever(budgetTransactionJpaRepository.findByBudgetIdAndOrganizationId(1L, organizationId)).thenReturn(listOf(linkEntity))
 
-        val result = adapter.findTransactionLinksByBudgetId(1L, userId)
+        val result = adapter.findTransactionLinksByBudgetId(1L, organizationId)
 
         assertThat(result).hasSize(1)
         val link = result[0]
@@ -99,6 +100,6 @@ class BudgetPersistenceAdapterTest {
         currency = "EUR",
         account = accountEntity,
         fingerprint = "fp$id",
-        user = userEntity,
+        organization = organizationEntity,
     )
 }

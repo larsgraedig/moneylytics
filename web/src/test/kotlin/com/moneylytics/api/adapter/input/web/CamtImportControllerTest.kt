@@ -5,7 +5,7 @@ import com.moneylytics.api.application.port.input.EnrichTransactionUseCase
 import com.moneylytics.api.application.port.input.FindIgnoredFingerprintsUseCase
 import com.moneylytics.api.application.port.input.GetAccountsUseCase
 import com.moneylytics.api.application.port.input.ImportTransactionsUseCase
-import com.moneylytics.api.application.port.input.ResolveUserUseCase
+import com.moneylytics.api.application.port.input.ResolveOrganizationUseCase
 import com.moneylytics.api.application.port.input.SaveCategoriesUseCase
 import com.moneylytics.api.application.port.input.UpdateIgnoredTransactionsUseCase
 import com.moneylytics.api.domain.Account
@@ -14,17 +14,18 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.any
 import org.mockito.kotlin.argumentCaptor
-import org.mockito.kotlin.doReturn
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import org.springframework.http.HttpStatus
 import org.springframework.security.core.userdetails.User
+import org.springframework.web.server.ServerWebExchange
 import java.math.BigDecimal
 
 class CamtImportControllerTest {
-    private val userId = 1L
-    private val resolveUserUseCase: ResolveUserUseCase = mock { on { resolveUser(any()) } doReturn userId }
+    private val organizationId = 1L
+    private val exchange: ServerWebExchange = mock()
+    private val resolveOrganizationUseCase: ResolveOrganizationUseCase = ResolveOrganizationUseCase { _, _ -> organizationId }
     private val camtParser: CamtParser = mock()
     private val checkDuplicatesUseCase: CheckDuplicatesUseCase = mock()
     private val findIgnoredFingerprintsUseCase: FindIgnoredFingerprintsUseCase = mock()
@@ -43,7 +44,7 @@ class CamtImportControllerTest {
             importTransactionsUseCase,
             saveCategoriesUseCase,
             enrichTransactionUseCase,
-            resolveUserUseCase,
+            resolveOrganizationUseCase,
         )
     private val principal =
         User
@@ -55,7 +56,7 @@ class CamtImportControllerTest {
     @Test
     fun `should import all rows when knownIbans is empty`() =
         runTest {
-            whenever(getAccountsUseCase.getAccounts(userId)).thenReturn(emptyList())
+            whenever(getAccountsUseCase.getAccounts(organizationId)).thenReturn(emptyList())
             whenever(importTransactionsUseCase.importTransactions(any())).thenReturn(2)
 
             val request =
@@ -66,7 +67,7 @@ class CamtImportControllerTest {
                             camtRow("DE02", "fp2"),
                         ),
                 )
-            val response = controller.importCamt(request, principal)
+            val response = controller.importCamt(request, principal, exchange)
 
             assertThat(response.statusCode).isEqualTo(HttpStatus.OK)
             assertThat((response.body as ImportSuccessResponse).importedCount).isEqualTo(2)
@@ -75,7 +76,7 @@ class CamtImportControllerTest {
     @Test
     fun `should filter out rows with unknown IBANs when knownIbans is non-empty`() =
         runTest {
-            whenever(getAccountsUseCase.getAccounts(userId)).thenReturn(listOf(Account(iban = "DE01", name = "Giro")))
+            whenever(getAccountsUseCase.getAccounts(organizationId)).thenReturn(listOf(Account(iban = "DE01", name = "Giro")))
             whenever(importTransactionsUseCase.importTransactions(any())).thenReturn(1)
 
             val request =
@@ -86,7 +87,7 @@ class CamtImportControllerTest {
                             camtRow("DE99", "fp2"),
                         ),
                 )
-            controller.importCamt(request, principal)
+            controller.importCamt(request, principal, exchange)
 
             val captor = argumentCaptor<com.moneylytics.api.application.port.input.ImportTransactionsCommand>()
             verify(importTransactionsUseCase).importTransactions(captor.capture())
@@ -97,7 +98,7 @@ class CamtImportControllerTest {
     @Test
     fun `should mark toImport fingerprints as toUnignore and toIgnore separately`() =
         runTest {
-            whenever(getAccountsUseCase.getAccounts(userId)).thenReturn(emptyList())
+            whenever(getAccountsUseCase.getAccounts(organizationId)).thenReturn(emptyList())
             whenever(importTransactionsUseCase.importTransactions(any())).thenReturn(1)
 
             val request =
@@ -105,19 +106,19 @@ class CamtImportControllerTest {
                     toImport = listOf(camtRow("DE01", "fp-import")),
                     toIgnore = listOf("fp-ignore"),
                 )
-            controller.importCamt(request, principal)
+            controller.importCamt(request, principal, exchange)
 
             verify(updateIgnoredTransactionsUseCase).update(
                 toIgnore = listOf("fp-ignore"),
                 toUnignore = listOf("fp-import"),
-                userId = userId,
+                organizationId = organizationId,
             )
         }
 
     @Test
     fun `should save distinct categories from imported rows`() =
         runTest {
-            whenever(getAccountsUseCase.getAccounts(userId)).thenReturn(emptyList())
+            whenever(getAccountsUseCase.getAccounts(organizationId)).thenReturn(emptyList())
             whenever(importTransactionsUseCase.importTransactions(any())).thenReturn(2)
 
             val request =
@@ -129,7 +130,7 @@ class CamtImportControllerTest {
                             camtRow("DE01", "fp3", category = "Transport", subcategory = "ÖPNV"),
                         ),
                 )
-            controller.importCamt(request, principal)
+            controller.importCamt(request, principal, exchange)
 
             val captor = argumentCaptor<List<com.moneylytics.api.domain.Category>>()
             verify(saveCategoriesUseCase).saveCategories(captor.capture(), any())
@@ -139,7 +140,7 @@ class CamtImportControllerTest {
     @Test
     fun `should call enrichByFingerprint for each toEnrich entry`() =
         runTest {
-            whenever(getAccountsUseCase.getAccounts(userId)).thenReturn(emptyList())
+            whenever(getAccountsUseCase.getAccounts(organizationId)).thenReturn(emptyList())
             whenever(importTransactionsUseCase.importTransactions(any())).thenReturn(0)
 
             val request =
@@ -155,9 +156,9 @@ class CamtImportControllerTest {
                             ),
                         ),
                 )
-            controller.importCamt(request, principal)
+            controller.importCamt(request, principal, exchange)
 
-            verify(enrichTransactionUseCase).enrichByFingerprint("fp1", userId, "Gehalt", "AG", null)
+            verify(enrichTransactionUseCase).enrichByFingerprint("fp1", organizationId, "Gehalt", "AG", null)
         }
 
     private fun importRequest(

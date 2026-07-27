@@ -13,7 +13,11 @@ import com.moneylytics.api.application.port.input.GetRecurringSeriesQuery
 import com.moneylytics.api.application.port.input.GetRecurringSeriesUseCase
 import com.moneylytics.api.application.port.input.GetRecurringSyncLogUseCase
 import com.moneylytics.api.application.port.input.RefreshRecurringSeriesCommand
+import com.moneylytics.api.application.port.input.RequireOrgRoleUseCase
+import com.moneylytics.api.application.port.input.ResolveOrganizationUseCase
 import com.moneylytics.api.application.port.input.ResolveUserUseCase
+import com.moneylytics.api.application.port.input.SyncRecurringSeriesUseCase
+import com.moneylytics.api.domain.OrgRole
 import com.moneylytics.api.domain.RecurrenceCadence
 import com.moneylytics.api.domain.RecurrenceDirection
 import com.moneylytics.api.domain.RecurringType
@@ -33,6 +37,7 @@ import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.server.ResponseStatusException
+import org.springframework.web.server.ServerWebExchange
 import java.math.BigDecimal
 import java.time.LocalDate
 
@@ -46,33 +51,39 @@ class RecurringSeriesController(
     private val createRecurringSeriesUseCase: CreateRecurringSeriesUseCase,
     private val deleteRecurringSeriesUseCase: DeleteRecurringSeriesUseCase,
     private val getRecurringSyncLogUseCase: GetRecurringSyncLogUseCase,
+    private val syncRecurringSeriesUseCase: SyncRecurringSeriesUseCase,
+    private val resolveOrganizationUseCase: ResolveOrganizationUseCase,
     private val resolveUserUseCase: ResolveUserUseCase,
+    private val requireOrgRoleUseCase: RequireOrgRoleUseCase,
 ) {
     @GetMapping("/recurring")
     suspend fun getRecurringSeries(
         @RequestParam(required = false) direction: RecurrenceDirection? = null,
         @RequestParam(required = false) type: RecurringType? = null,
         @AuthenticationPrincipal principal: UserDetails,
-    ): List<RecurringSeriesItem> =
-        withContext(Dispatchers.IO) {
-            val userId = resolveUserUseCase.resolveUser(principal.username)
+        exchange: ServerWebExchange,
+    ): List<RecurringSeriesItem> {
+        val organizationId = resolveOrganizationUseCase.resolveOrganization(principal, exchange)
+        return withContext(Dispatchers.IO) {
             getRecurringSeriesUseCase
-                .getRecurringSeries(GetRecurringSeriesQuery(userId = userId, direction = direction, type = type))
+                .getRecurringSeries(GetRecurringSeriesQuery(organizationId = organizationId, direction = direction, type = type))
                 .map { it.toItem() }
         }
+    }
 
     @PostMapping("/recurring")
     @ResponseStatus(HttpStatus.CREATED)
     suspend fun createRecurringSeries(
         @RequestBody body: CreateRecurringSeriesRequest,
         @AuthenticationPrincipal principal: UserDetails,
-    ): RecurringSeriesItem =
-        withContext(Dispatchers.IO) {
-            val userId = resolveUserUseCase.resolveUser(principal.username)
+        exchange: ServerWebExchange,
+    ): RecurringSeriesItem {
+        val organizationId = resolveOrganizationUseCase.resolveOrganization(principal, exchange)
+        return withContext(Dispatchers.IO) {
             createRecurringSeriesUseCase
                 .create(
                     CreateRecurringSeriesCommand(
-                        userId = userId,
+                        organizationId = organizationId,
                         label = body.label,
                         type = body.type,
                         direction = body.direction,
@@ -84,57 +95,85 @@ class RecurringSeriesController(
                     ),
                 ).toItem()
         }
+    }
 
     @DeleteMapping("/recurring/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     suspend fun deleteRecurringSeries(
         @PathVariable id: Long,
         @AuthenticationPrincipal principal: UserDetails,
-    ) = withContext(Dispatchers.IO) {
-        val userId = resolveUserUseCase.resolveUser(principal.username)
-        try {
-            deleteRecurringSeriesUseCase.delete(DeleteRecurringSeriesCommand(userId = userId, seriesId = id))
-        } catch (e: NoSuchElementException) {
-            throw ResponseStatusException(HttpStatus.NOT_FOUND, e.message, e)
+        exchange: ServerWebExchange,
+    ) {
+        val organizationId = resolveOrganizationUseCase.resolveOrganization(principal, exchange)
+        withContext(Dispatchers.IO) {
+            try {
+                deleteRecurringSeriesUseCase.delete(DeleteRecurringSeriesCommand(organizationId = organizationId, seriesId = id))
+            } catch (e: NoSuchElementException) {
+                throw ResponseStatusException(HttpStatus.NOT_FOUND, e.message, e)
+            }
         }
     }
 
     @PostMapping("/recurring/refresh")
     suspend fun refreshRecurringSeries(
         @AuthenticationPrincipal principal: UserDetails,
-    ): List<RecurringSeriesItem> =
-        withContext(Dispatchers.IO) {
-            val userId = resolveUserUseCase.resolveUser(principal.username)
+        exchange: ServerWebExchange,
+    ): List<RecurringSeriesItem> {
+        val organizationId = resolveOrganizationUseCase.resolveOrganization(principal, exchange)
+        return withContext(Dispatchers.IO) {
             detectRecurringSeriesUseCase
-                .detect(RefreshRecurringSeriesCommand(userId = userId))
+                .detect(RefreshRecurringSeriesCommand(organizationId = organizationId))
                 .map { it.toItem() }
         }
+    }
 
     @PostMapping("/recurring/confirm")
     suspend fun confirmRecurringSeries(
         @RequestBody body: ConfirmRecurringSeriesRequest,
         @AuthenticationPrincipal principal: UserDetails,
-    ): List<RecurringSeriesItem> =
-        withContext(Dispatchers.IO) {
-            val userId = resolveUserUseCase.resolveUser(principal.username)
+        exchange: ServerWebExchange,
+    ): List<RecurringSeriesItem> {
+        val organizationId = resolveOrganizationUseCase.resolveOrganization(principal, exchange)
+        return withContext(Dispatchers.IO) {
             confirmRecurringSeriesUseCase
                 .confirm(
                     ConfirmRecurringSeriesCommand(
-                        userId = userId,
+                        organizationId = organizationId,
                         confirmedFingerprints = body.confirmedFingerprints,
                         falsePositiveFingerprints = body.falsePositiveFingerprints,
                     ),
                 ).map { it.toItem() }
         }
+    }
 
     @GetMapping("/recurring/sync-log")
     suspend fun getSyncLog(
         @AuthenticationPrincipal principal: UserDetails,
-    ): List<RecurringSyncLogItem> =
+        exchange: ServerWebExchange,
+    ): List<RecurringSyncLogItem> {
+        val organizationId = resolveOrganizationUseCase.resolveOrganization(principal, exchange)
+        return withContext(Dispatchers.IO) {
+            getRecurringSyncLogUseCase.getRecentSyncLogs(organizationId).map { it.toItem() }
+        }
+    }
+
+    @PostMapping("/recurring/sync")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    suspend fun syncRecurringSeries(
+        @AuthenticationPrincipal principal: UserDetails,
+        exchange: ServerWebExchange,
+    ) {
+        val organizationId = resolveOrganizationUseCase.resolveOrganization(principal, exchange)
         withContext(Dispatchers.IO) {
             val userId = resolveUserUseCase.resolveUser(principal.username)
-            getRecurringSyncLogUseCase.getRecentSyncLogs(userId).map { it.toItem() }
+            try {
+                requireOrgRoleUseCase.requireOrgRole(organizationId, userId, OrgRole.ADMIN)
+            } catch (e: IllegalStateException) {
+                throw ResponseStatusException(HttpStatus.FORBIDDEN, e.message, e)
+            }
+            syncRecurringSeriesUseCase.syncForOrganization(organizationId)
         }
+    }
 
     @PatchMapping("/recurring/{id}/type")
     @ResponseStatus(HttpStatus.NO_CONTENT)
@@ -142,14 +181,17 @@ class RecurringSeriesController(
         @PathVariable id: Long,
         @RequestBody body: CorrectTypeRequest,
         @AuthenticationPrincipal principal: UserDetails,
-    ) = withContext(Dispatchers.IO) {
-        val userId = resolveUserUseCase.resolveUser(principal.username)
-        try {
-            correctRecurringSeriesTypeUseCase.correctType(
-                CorrectRecurringSeriesTypeCommand(seriesId = id, userId = userId, type = body.type),
-            )
-        } catch (e: NoSuchElementException) {
-            throw ResponseStatusException(HttpStatus.NOT_FOUND, e.message, e)
+        exchange: ServerWebExchange,
+    ) {
+        val organizationId = resolveOrganizationUseCase.resolveOrganization(principal, exchange)
+        withContext(Dispatchers.IO) {
+            try {
+                correctRecurringSeriesTypeUseCase.correctType(
+                    CorrectRecurringSeriesTypeCommand(seriesId = id, organizationId = organizationId, type = body.type),
+                )
+            } catch (e: NoSuchElementException) {
+                throw ResponseStatusException(HttpStatus.NOT_FOUND, e.message, e)
+            }
         }
     }
 }

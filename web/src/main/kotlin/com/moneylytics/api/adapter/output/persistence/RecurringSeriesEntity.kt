@@ -22,8 +22,8 @@ import java.time.LocalDate
 @Table(name = "recurring_series")
 class RecurringSeriesEntity(
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "user_id", nullable = false)
-    val user: UserEntity,
+    @JoinColumn(name = "organization_id", nullable = false)
+    val organization: OrganizationEntity,
     @Column(nullable = false)
     var label: String,
     @Enumerated(EnumType.STRING)

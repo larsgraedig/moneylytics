@@ -15,11 +15,11 @@ import jakarta.persistence.Table
 import java.math.BigDecimal
 
 @Entity
-@Table(name = "thresholds")
+@Table(name = "threshold")
 class ThresholdEntity(
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "user_id", nullable = false)
-    val user: UserEntity,
+    @JoinColumn(name = "organization_id", nullable = false)
+    val organization: OrganizationEntity,
     @Column(nullable = false)
     val category: String,
     val subcategory: String? = null,

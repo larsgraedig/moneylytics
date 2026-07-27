@@ -5,17 +5,17 @@ import org.springframework.data.jpa.repository.Modifying
 import org.springframework.data.jpa.repository.Query
 
 interface CollectionJpaRepository : JpaRepository<CollectionEntity, Long> {
-    fun findByUserId(userId: Long): List<CollectionEntity>
+    fun findByOrganizationId(organizationId: Long): List<CollectionEntity>
 
-    fun findByIdAndUserId(
+    fun findByIdAndOrganizationId(
         id: Long,
-        userId: Long,
+        organizationId: Long,
     ): CollectionEntity?
 
     @Modifying
-    @Query("DELETE FROM CollectionEntity c WHERE c.id = :id AND c.user.id = :userId")
-    fun deleteByIdAndUserId(
+    @Query("DELETE FROM CollectionEntity c WHERE c.id = :id AND c.organization.id = :organizationId")
+    fun deleteByIdAndOrganizationId(
         id: Long,
-        userId: Long,
+        organizationId: Long,
     )
 }

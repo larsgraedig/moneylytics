@@ -14,26 +14,26 @@ interface ManageTransactionOffsetUseCase {
 
     fun unlinkTransactions(
         linkId: Long,
-        userId: Long,
+        organizationId: Long,
     ): Boolean
 
     fun updateGroupMeta(
         groupId: Long,
-        userId: Long,
+        organizationId: Long,
         name: String?,
         comment: String?,
     )
 
     fun updateOffsetComment(
         linkId: Long,
-        userId: Long,
+        organizationId: Long,
         comment: String?,
     )
 
     fun removeTransactionFromGroup(
         txId: Long,
         groupId: Long,
-        userId: Long,
+        organizationId: Long,
     )
 }
 
@@ -42,7 +42,7 @@ data class LinkTransactionsCommand(
     val otherTransactionId: Long,
     val myAmount: BigDecimal?,
     val otherAmount: BigDecimal?,
-    val userId: Long,
+    val organizationId: Long,
     val targetGroupId: Long? = null,
     val forceNewGroup: Boolean = false,
 )

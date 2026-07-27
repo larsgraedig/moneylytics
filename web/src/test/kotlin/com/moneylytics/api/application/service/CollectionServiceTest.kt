@@ -19,7 +19,7 @@ class CollectionServiceTest {
     private val transactionRepository: TransactionRepository = mock()
     private val service = CollectionService(collectionRepository, transactionRepository)
 
-    private val userId = 1L
+    private val organizationId = 1L
     private val date = LocalDate.of(2025, 1, 1)
     private val urlaub = Collection(id = 1L, name = "Urlaub", note = "Sommer 2025")
     private val einkauf = Collection(id = 2L, name = "Einkauf", note = null)
@@ -27,11 +27,11 @@ class CollectionServiceTest {
     @Test
     fun `should return collections with their transactions`() {
         val tx = tx(id = 10L)
-        whenever(collectionRepository.findAllByUserId(userId)).thenReturn(listOf(urlaub))
-        whenever(collectionRepository.findTransactionIdsByCollectionId(1L, userId)).thenReturn(listOf(10L))
-        whenever(transactionRepository.findByIdsAndUserId(setOf(10L), userId)).thenReturn(listOf(tx))
+        whenever(collectionRepository.findAllByOrganizationId(organizationId)).thenReturn(listOf(urlaub))
+        whenever(collectionRepository.findTransactionIdsByCollectionId(1L, organizationId)).thenReturn(listOf(10L))
+        whenever(transactionRepository.findByIdsAndOrganizationId(setOf(10L), organizationId)).thenReturn(listOf(tx))
 
-        val result = service.getCollections(userId)
+        val result = service.getCollections(organizationId)
 
         assertThat(result).hasSize(1)
         assertThat(result[0].id).isEqualTo(1L)
@@ -40,20 +40,20 @@ class CollectionServiceTest {
 
     @Test
     fun `should return empty transactions when collection has no members`() {
-        whenever(collectionRepository.findAllByUserId(userId)).thenReturn(listOf(einkauf))
-        whenever(collectionRepository.findTransactionIdsByCollectionId(2L, userId)).thenReturn(emptyList())
+        whenever(collectionRepository.findAllByOrganizationId(organizationId)).thenReturn(listOf(einkauf))
+        whenever(collectionRepository.findTransactionIdsByCollectionId(2L, organizationId)).thenReturn(emptyList())
 
-        val result = service.getCollections(userId)
+        val result = service.getCollections(organizationId)
 
         assertThat(result[0].transactions).isEmpty()
-        verify(transactionRepository, never()).findByIdsAndUserId(any(), any())
+        verify(transactionRepository, never()).findByIdsAndOrganizationId(any(), any())
     }
 
     @Test
     fun `should return null when collection not found`() {
-        whenever(collectionRepository.findByIdAndUserId(99L, userId)).thenReturn(null)
+        whenever(collectionRepository.findByIdAndOrganizationId(99L, organizationId)).thenReturn(null)
 
-        val result = service.getCollection(99L, userId)
+        val result = service.getCollection(99L, organizationId)
 
         assertThat(result).isNull()
     }
@@ -61,11 +61,11 @@ class CollectionServiceTest {
     @Test
     fun `should return collection with transactions when found`() {
         val tx = tx(id = 10L)
-        whenever(collectionRepository.findByIdAndUserId(1L, userId)).thenReturn(urlaub)
-        whenever(collectionRepository.findTransactionIdsByCollectionId(1L, userId)).thenReturn(listOf(10L))
-        whenever(transactionRepository.findByIdsAndUserId(setOf(10L), userId)).thenReturn(listOf(tx))
+        whenever(collectionRepository.findByIdAndOrganizationId(1L, organizationId)).thenReturn(urlaub)
+        whenever(collectionRepository.findTransactionIdsByCollectionId(1L, organizationId)).thenReturn(listOf(10L))
+        whenever(transactionRepository.findByIdsAndOrganizationId(setOf(10L), organizationId)).thenReturn(listOf(tx))
 
-        val result = service.getCollection(1L, userId)
+        val result = service.getCollection(1L, organizationId)
 
         assertThat(result).isNotNull
         assertThat(result!!.name).isEqualTo("Urlaub")
@@ -76,20 +76,20 @@ class CollectionServiceTest {
     fun `should delegate create to repository`() {
         val newCollection = Collection(name = "Neu", note = null)
         val saved = Collection(id = 3L, name = "Neu", note = null)
-        whenever(collectionRepository.create(newCollection, userId)).thenReturn(saved)
+        whenever(collectionRepository.create(newCollection, organizationId)).thenReturn(saved)
 
-        val result = service.createCollection(newCollection, userId)
+        val result = service.createCollection(newCollection, organizationId)
 
         assertThat(result).isEqualTo(saved)
     }
 
     @Test
     fun `should add and remove transactions from collection`() {
-        service.addTransaction(1L, 10L, userId)
-        service.removeTransaction(1L, 10L, userId)
+        service.addTransaction(1L, 10L, organizationId)
+        service.removeTransaction(1L, 10L, organizationId)
 
-        verify(collectionRepository).addTransaction(1L, 10L, userId)
-        verify(collectionRepository).removeTransaction(1L, 10L, userId)
+        verify(collectionRepository).addTransaction(1L, 10L, organizationId)
+        verify(collectionRepository).removeTransaction(1L, 10L, organizationId)
     }
 
     private fun tx(id: Long) =

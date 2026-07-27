@@ -9,7 +9,7 @@ fun interface GetRecurringSeriesUseCase {
 }
 
 data class GetRecurringSeriesQuery(
-    val userId: Long,
+    val organizationId: Long,
     val direction: RecurrenceDirection? = null,
     val type: RecurringType? = null,
 )

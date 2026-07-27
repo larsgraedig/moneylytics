@@ -11,23 +11,23 @@ import org.mockito.kotlin.whenever
 
 class TransactionGroupPersistenceAdapterTest {
     private val groupJpaRepository: TransactionGroupJpaRepository = mock()
-    private val userJpaRepository: UserJpaRepository = mock()
+    private val organizationJpaRepository: OrganizationJpaRepository = mock()
     private val memberJpaRepository: TransactionGroupMemberJpaRepository = mock()
-    private val adapter = TransactionGroupPersistenceAdapter(groupJpaRepository, userJpaRepository, memberJpaRepository)
+    private val adapter = TransactionGroupPersistenceAdapter(groupJpaRepository, organizationJpaRepository, memberJpaRepository)
 
-    private val userId = 1L
-    private val userEntity = UserEntity(externalId = "test@test.de", id = userId)
+    private val organizationId = 1L
+    private val organizationEntity = OrganizationEntity(name = "Test Org", id = organizationId)
 
     @Test
     fun `should map group entity to domain`() {
-        val entity = TransactionGroupEntity(user = userEntity, name = "Rückerstattung", comment = "Arzt", id = 10L)
-        whenever(groupJpaRepository.findAllByUserId(userId)).thenReturn(listOf(entity))
+        val entity = TransactionGroupEntity(organization = organizationEntity, name = "Rückerstattung", comment = "Arzt", id = 10L)
+        whenever(groupJpaRepository.findAllByOrganizationId(organizationId)).thenReturn(listOf(entity))
 
-        val result = adapter.findAllByUserId(userId)
+        val result = adapter.findAllByOrganizationId(organizationId)
 
         assertThat(result).hasSize(1)
         assertThat(result[0].id).isEqualTo(10L)
-        assertThat(result[0].userId).isEqualTo(userId)
+        assertThat(result[0].organizationId).isEqualTo(organizationId)
         assertThat(result[0].name).isEqualTo("Rückerstattung")
         assertThat(result[0].comment).isEqualTo("Arzt")
     }
@@ -57,10 +57,10 @@ class TransactionGroupPersistenceAdapterTest {
 
     @Test
     fun `should set name and comment to null when blank on update`() {
-        val entity = TransactionGroupEntity(user = userEntity, name = "Old", comment = "Old Comment", id = 10L)
-        whenever(groupJpaRepository.findByIdAndUserId(10L, userId)).thenReturn(entity)
+        val entity = TransactionGroupEntity(organization = organizationEntity, name = "Old", comment = "Old Comment", id = 10L)
+        whenever(groupJpaRepository.findByIdAndOrganizationId(10L, organizationId)).thenReturn(entity)
 
-        adapter.update(10L, userId, name = "  ", comment = "")
+        adapter.update(10L, organizationId, name = "  ", comment = "")
 
         assertThat(entity.name).isNull()
         assertThat(entity.comment).isNull()
@@ -69,10 +69,10 @@ class TransactionGroupPersistenceAdapterTest {
 
     @Test
     fun `should update name and comment on update`() {
-        val entity = TransactionGroupEntity(user = userEntity, id = 10L)
-        whenever(groupJpaRepository.findByIdAndUserId(10L, userId)).thenReturn(entity)
+        val entity = TransactionGroupEntity(organization = organizationEntity, id = 10L)
+        whenever(groupJpaRepository.findByIdAndOrganizationId(10L, organizationId)).thenReturn(entity)
 
-        adapter.update(10L, userId, name = "Neu", comment = "Notiz")
+        adapter.update(10L, organizationId, name = "Neu", comment = "Notiz")
 
         assertThat(entity.name).isEqualTo("Neu")
         assertThat(entity.comment).isEqualTo("Notiz")
@@ -80,9 +80,9 @@ class TransactionGroupPersistenceAdapterTest {
 
     @Test
     fun `should do nothing on update when group not found`() {
-        whenever(groupJpaRepository.findByIdAndUserId(99L, userId)).thenReturn(null)
+        whenever(groupJpaRepository.findByIdAndOrganizationId(99L, organizationId)).thenReturn(null)
 
-        adapter.update(99L, userId, name = "Test", comment = null)
+        adapter.update(99L, organizationId, name = "Test", comment = null)
 
         verify(groupJpaRepository, never()).save(any())
     }

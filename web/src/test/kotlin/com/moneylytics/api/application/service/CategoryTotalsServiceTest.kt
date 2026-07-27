@@ -16,7 +16,7 @@ class CategoryTotalsServiceTest {
     private val budgetRepository: BudgetRepository = mock()
     private val service = TransactionQueryService(transactionRepository, budgetRepository)
 
-    private val userId = 1L
+    private val organizationId = 1L
     private val from = LocalDate.of(2025, 1, 1)
     private val to = LocalDate.of(2025, 1, 31)
 
@@ -28,10 +28,10 @@ class CategoryTotalsServiceTest {
 
     @Test
     fun `should return category totals sorted descending by value`() {
-        whenever(transactionRepository.findByAccountingDateBetween(from, to, userId, null))
+        whenever(transactionRepository.findByAccountingDateBetween(from, to, organizationId, null))
             .thenReturn(listOf(supermarkt, restaurant, oepnv, streaming, income))
 
-        val response = service.getCategoryTotals(GetCategoryTotalsQuery(from, to, userId))
+        val response = service.getCategoryTotals(GetCategoryTotalsQuery(from, to, organizationId))
 
         assertThat(response.items).hasSize(3)
         assertThat(response.items[0].name).isEqualTo("Lebensmittel")
@@ -44,10 +44,10 @@ class CategoryTotalsServiceTest {
 
     @Test
     fun `should return subcategory totals when category filter is applied`() {
-        whenever(transactionRepository.findByAccountingDateBetween(from, to, userId, null))
+        whenever(transactionRepository.findByAccountingDateBetween(from, to, organizationId, null))
             .thenReturn(listOf(supermarkt, restaurant, oepnv, streaming))
 
-        val response = service.getCategoryTotals(GetCategoryTotalsQuery(from, to, userId, category = "Lebensmittel"))
+        val response = service.getCategoryTotals(GetCategoryTotalsQuery(from, to, organizationId, category = "Lebensmittel"))
 
         assertThat(response.items).hasSize(2)
         assertThat(response.items[0].name).isEqualTo("Supermarkt")
@@ -58,10 +58,10 @@ class CategoryTotalsServiceTest {
 
     @Test
     fun `should exclude income transactions`() {
-        whenever(transactionRepository.findByAccountingDateBetween(from, to, userId, null))
+        whenever(transactionRepository.findByAccountingDateBetween(from, to, organizationId, null))
             .thenReturn(listOf(supermarkt, income))
 
-        val response = service.getCategoryTotals(GetCategoryTotalsQuery(from, to, userId))
+        val response = service.getCategoryTotals(GetCategoryTotalsQuery(from, to, organizationId))
 
         assertThat(response.items).hasSize(1)
         assertThat(response.items[0].name).isEqualTo("Lebensmittel")

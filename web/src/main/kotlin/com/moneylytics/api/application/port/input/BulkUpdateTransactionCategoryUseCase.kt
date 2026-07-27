@@ -12,6 +12,6 @@ data class BulkCategoryUpdate(
 interface BulkUpdateTransactionCategoryUseCase {
     fun bulkUpdateCategory(
         updates: List<BulkCategoryUpdate>,
-        userId: Long,
+        organizationId: Long,
     ): List<Transaction>
 }

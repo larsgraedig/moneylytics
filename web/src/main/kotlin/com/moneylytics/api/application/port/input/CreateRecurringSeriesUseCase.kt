@@ -12,7 +12,7 @@ fun interface CreateRecurringSeriesUseCase {
 }
 
 data class CreateRecurringSeriesCommand(
-    val userId: Long,
+    val organizationId: Long,
     val label: String,
     val type: RecurringType,
     val direction: RecurrenceDirection,

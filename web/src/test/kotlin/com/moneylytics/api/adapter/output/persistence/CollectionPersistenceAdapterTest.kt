@@ -13,18 +13,19 @@ import org.mockito.kotlin.whenever
 class CollectionPersistenceAdapterTest {
     private val collectionJpaRepository: CollectionJpaRepository = mock()
     private val collectionTransactionJpaRepository: CollectionTransactionJpaRepository = mock()
-    private val userJpaRepository: UserJpaRepository = mock()
-    private val adapter = CollectionPersistenceAdapter(collectionJpaRepository, collectionTransactionJpaRepository, userJpaRepository)
+    private val organizationJpaRepository: OrganizationJpaRepository = mock()
+    private val adapter =
+        CollectionPersistenceAdapter(collectionJpaRepository, collectionTransactionJpaRepository, organizationJpaRepository)
 
-    private val userId = 1L
-    private val userEntity = UserEntity(externalId = "test@test.de", id = userId)
+    private val organizationId = 1L
+    private val organizationEntity = OrganizationEntity(name = "Test Org", id = organizationId)
 
     @Test
     fun `should map entity to domain collection`() {
-        val entity = CollectionEntity(user = userEntity, name = "Urlaub", note = "Sommer", id = 1L)
-        whenever(collectionJpaRepository.findByUserId(userId)).thenReturn(listOf(entity))
+        val entity = CollectionEntity(organization = organizationEntity, name = "Urlaub", note = "Sommer", id = 1L)
+        whenever(collectionJpaRepository.findByOrganizationId(organizationId)).thenReturn(listOf(entity))
 
-        val result = adapter.findAllByUserId(userId)
+        val result = adapter.findAllByOrganizationId(organizationId)
 
         assertThat(result).hasSize(1)
         assertThat(result[0].id).isEqualTo(1L)
@@ -34,9 +35,9 @@ class CollectionPersistenceAdapterTest {
 
     @Test
     fun `should return null when collection not found`() {
-        whenever(collectionJpaRepository.findByIdAndUserId(99L, userId)).thenReturn(null)
+        whenever(collectionJpaRepository.findByIdAndOrganizationId(99L, organizationId)).thenReturn(null)
 
-        val result = adapter.findByIdAndUserId(99L, userId)
+        val result = adapter.findByIdAndOrganizationId(99L, organizationId)
 
         assertThat(result).isNull()
     }
@@ -45,7 +46,7 @@ class CollectionPersistenceAdapterTest {
     fun `should add transaction when not already member of collection`() {
         whenever(collectionTransactionJpaRepository.existsByCollectionIdAndTransactionId(1L, 10L)).thenReturn(false)
 
-        adapter.addTransaction(1L, 10L, userId)
+        adapter.addTransaction(1L, 10L, organizationId)
 
         val captor = argumentCaptor<CollectionTransactionEntity>()
         verify(collectionTransactionJpaRepository).save(captor.capture())
@@ -57,19 +58,19 @@ class CollectionPersistenceAdapterTest {
     fun `should skip saving transaction when already member of collection`() {
         whenever(collectionTransactionJpaRepository.existsByCollectionIdAndTransactionId(1L, 10L)).thenReturn(true)
 
-        adapter.addTransaction(1L, 10L, userId)
+        adapter.addTransaction(1L, 10L, organizationId)
 
         verify(collectionTransactionJpaRepository, never()).save(any())
     }
 
     @Test
     fun `should update collection name and note`() {
-        val entity = CollectionEntity(user = userEntity, name = "Old", note = null, id = 1L)
-        val updated = CollectionEntity(user = userEntity, name = "Neu", note = "Notiz", id = 1L)
-        whenever(collectionJpaRepository.findByUserId(userId)).thenReturn(listOf(entity))
+        val entity = CollectionEntity(organization = organizationEntity, name = "Old", note = null, id = 1L)
+        val updated = CollectionEntity(organization = organizationEntity, name = "Neu", note = "Notiz", id = 1L)
+        whenever(collectionJpaRepository.findByOrganizationId(organizationId)).thenReturn(listOf(entity))
         whenever(collectionJpaRepository.save(entity)).thenReturn(updated)
 
-        val result = adapter.update(Collection(id = 1L, name = "Neu", note = "Notiz"), userId)
+        val result = adapter.update(Collection(id = 1L, name = "Neu", note = "Notiz"), organizationId)
 
         assertThat(result.name).isEqualTo("Neu")
         assertThat(result.note).isEqualTo("Notiz")
@@ -77,7 +78,7 @@ class CollectionPersistenceAdapterTest {
 
     @Test
     fun `should delegate removeTransaction to repository`() {
-        adapter.removeTransaction(1L, 10L, userId)
+        adapter.removeTransaction(1L, 10L, organizationId)
 
         verify(collectionTransactionJpaRepository).deleteByCollectionIdAndTransactionId(1L, 10L)
     }

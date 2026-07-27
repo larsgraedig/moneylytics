@@ -1,7 +1,10 @@
 package com.moneylytics.api.adapter.output.persistence
 
+import com.moneylytics.api.domain.Role
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
+import jakarta.persistence.EnumType
+import jakarta.persistence.Enumerated
 import jakarta.persistence.FetchType
 import jakarta.persistence.GeneratedValue
 import jakarta.persistence.GenerationType
@@ -11,7 +14,7 @@ import jakarta.persistence.ManyToOne
 import jakarta.persistence.Table
 
 @Entity
-@Table(name = "users")
+@Table(name = "`user`")
 class UserEntity(
     @Column(nullable = false, unique = true)
     val externalId: String,
@@ -24,6 +27,9 @@ class UserEntity(
     var language: String? = null,
     @Column(nullable = true, length = 500)
     var transactionsColumnOrder: String? = null,
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    var role: Role = Role.USER,
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     var id: Long? = null,

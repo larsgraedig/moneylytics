@@ -13,43 +13,43 @@ import java.time.LocalDate
 class RecurringSeriesPersistenceAdapter(
     private val recurringSeriesJpaRepository: RecurringSeriesJpaRepository,
     private val recurringSeriesMemberJpaRepository: RecurringSeriesMemberJpaRepository,
-    private val userJpaRepository: UserJpaRepository,
+    private val organizationJpaRepository: OrganizationJpaRepository,
     private val transactionJpaRepository: TransactionJpaRepository,
 ) : RecurringSeriesRepository {
     @Transactional
-    override fun replaceAllForUser(
+    override fun replaceAllForOrganization(
         series: List<RecurringSeries>,
-        userId: Long,
+        organizationId: Long,
     ) {
-        val detected = recurringSeriesJpaRepository.findByUserId(userId).filter { it.status == RecurrenceStatus.DETECTED }
+        val detected = recurringSeriesJpaRepository.findByOrganizationId(organizationId).filter { it.status == RecurrenceStatus.DETECTED }
         if (detected.isNotEmpty()) {
             val detectedIds = detected.mapNotNull { it.id }
             recurringSeriesMemberJpaRepository.deleteBySeriesIdIn(detectedIds)
-            recurringSeriesJpaRepository.deleteByUserIdAndStatus(userId, RecurrenceStatus.DETECTED)
+            recurringSeriesJpaRepository.deleteByOrganizationIdAndStatus(organizationId, RecurrenceStatus.DETECTED)
         }
 
-        val user = userJpaRepository.getReferenceById(userId)
-        series.forEach { s -> persistSeries(s, user) }
+        val organization = organizationJpaRepository.getReferenceById(organizationId)
+        series.forEach { s -> persistSeries(s, organization) }
     }
 
     @Transactional
     override fun save(
         series: RecurringSeries,
-        userId: Long,
+        organizationId: Long,
     ): RecurringSeries {
-        val user = userJpaRepository.getReferenceById(userId)
-        val entity = persistSeries(series, user)
+        val organization = organizationJpaRepository.getReferenceById(organizationId)
+        val entity = persistSeries(series, organization)
         return entity.toDomain(emptyList(), emptyMap())
     }
 
     @Transactional
-    override fun deleteByIdAndUserId(
+    override fun deleteByIdAndOrganizationId(
         seriesId: Long,
-        userId: Long,
+        organizationId: Long,
     ) {
         val entity =
-            recurringSeriesJpaRepository.findByIdAndUserId(seriesId, userId)
-                ?: throw NoSuchElementException("Series $seriesId not found for user $userId")
+            recurringSeriesJpaRepository.findByIdAndOrganizationId(seriesId, organizationId)
+                ?: throw NoSuchElementException("Series $seriesId not found for organization $organizationId")
         val id = requireNotNull(entity.id)
         recurringSeriesMemberJpaRepository.deleteBySeriesIdIn(listOf(id))
         recurringSeriesJpaRepository.delete(entity)
@@ -65,8 +65,8 @@ class RecurringSeriesPersistenceAdapter(
         recurringSeriesJpaRepository.save(entity)
     }
 
-    override fun findByUserId(userId: Long): List<RecurringSeries> {
-        val entities = recurringSeriesJpaRepository.findByUserId(userId)
+    override fun findByOrganizationId(organizationId: Long): List<RecurringSeries> {
+        val entities = recurringSeriesJpaRepository.findByOrganizationId(organizationId)
         if (entities.isEmpty()) return emptyList()
 
         val entityIds = entities.mapNotNull { it.id }
@@ -84,7 +84,7 @@ class RecurringSeriesPersistenceAdapter(
         return entities.map { entity -> entity.toDomain(membersBySeriesId[entity.id] ?: emptyList(), transactionsById) }
     }
 
-    override fun findAllUserIds(): Set<Long> = recurringSeriesJpaRepository.findDistinctUserIds().toHashSet()
+    override fun findAllOrganizationIds(): Set<Long> = recurringSeriesJpaRepository.findDistinctOrganizationIds().toHashSet()
 
     override fun findMemberTransactionIds(seriesId: Long): Set<Long> =
         recurringSeriesMemberJpaRepository
@@ -118,12 +118,12 @@ class RecurringSeriesPersistenceAdapter(
 
     private fun persistSeries(
         s: RecurringSeries,
-        user: UserEntity,
+        organization: OrganizationEntity,
     ): RecurringSeriesEntity {
         val entity =
             recurringSeriesJpaRepository.save(
                 RecurringSeriesEntity(
-                    user = user,
+                    organization = organization,
                     label = s.label,
                     type = s.type,
                     direction = s.direction,

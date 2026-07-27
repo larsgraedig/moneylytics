@@ -18,8 +18,8 @@ import java.time.Instant
 @Table(name = "recurring_sync_log")
 class RecurringSyncLogEntity(
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "user_id", nullable = false)
-    val user: UserEntity,
+    @JoinColumn(name = "organization_id", nullable = false)
+    val organization: OrganizationEntity,
     @Column(nullable = false)
     val ranAt: Instant,
     @Enumerated(EnumType.STRING)

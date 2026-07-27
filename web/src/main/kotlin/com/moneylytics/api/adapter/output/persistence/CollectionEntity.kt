@@ -11,11 +11,11 @@ import jakarta.persistence.ManyToOne
 import jakarta.persistence.Table
 
 @Entity
-@Table(name = "collections")
+@Table(name = "collection")
 class CollectionEntity(
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "user_id", nullable = false)
-    val user: UserEntity,
+    @JoinColumn(name = "organization_id", nullable = false)
+    val organization: OrganizationEntity,
     @Column(nullable = false)
     var name: String,
     @Column(columnDefinition = "TEXT")

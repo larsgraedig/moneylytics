@@ -3,18 +3,18 @@ package com.moneylytics.api.application.port.output
 import com.moneylytics.api.domain.TransactionGroup
 
 interface TransactionGroupRepository {
-    fun findAllByUserId(userId: Long): List<TransactionGroup>
+    fun findAllByOrganizationId(organizationId: Long): List<TransactionGroup>
 
     fun findById(
         id: Long,
-        userId: Long,
+        organizationId: Long,
     ): TransactionGroup?
 
-    fun create(userId: Long): TransactionGroup
+    fun create(organizationId: Long): TransactionGroup
 
     fun update(
         id: Long,
-        userId: Long,
+        organizationId: Long,
         name: String?,
         comment: String?,
     )

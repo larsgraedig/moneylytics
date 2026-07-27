@@ -15,8 +15,8 @@ import java.time.LocalDate
 
 @Entity
 @Table(
-    name = "accounts",
-    uniqueConstraints = [UniqueConstraint(columnNames = ["iban", "user_id"])],
+    name = "account",
+    uniqueConstraints = [UniqueConstraint(columnNames = ["iban", "organization_id"])],
 )
 class AccountEntity(
     @Column(nullable = false)
@@ -24,8 +24,8 @@ class AccountEntity(
     @Column(nullable = false)
     val name: String,
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "user_id", nullable = false)
-    val user: UserEntity,
+    @JoinColumn(name = "organization_id", nullable = false)
+    val organization: OrganizationEntity,
     @Column(precision = 19, scale = 4)
     var balance: BigDecimal? = null,
     @Column(name = "balance_date")

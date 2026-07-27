@@ -4,7 +4,7 @@ import com.moneylytics.api.application.port.input.AllocationExceededException
 import com.moneylytics.api.application.port.input.GetLinkedTransactionsUseCase
 import com.moneylytics.api.application.port.input.LinkTransactionsCommand
 import com.moneylytics.api.application.port.input.ManageTransactionOffsetUseCase
-import com.moneylytics.api.application.port.input.ResolveUserUseCase
+import com.moneylytics.api.application.port.input.ResolveOrganizationUseCase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.springframework.http.ResponseEntity
@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
+import org.springframework.web.server.ServerWebExchange
 import java.math.BigDecimal
 
 data class LinkTransactionRequest(
@@ -71,7 +72,7 @@ data class UpdateOffsetCommentRequest(
 class TransactionOffsetController(
     private val manageTransactionOffsetUseCase: ManageTransactionOffsetUseCase,
     private val getLinkedTransactionsUseCase: GetLinkedTransactionsUseCase,
-    private val resolveUserUseCase: ResolveUserUseCase,
+    private val resolveOrganizationUseCase: ResolveOrganizationUseCase,
 ) {
     companion object {
         private const val HTTP_UNPROCESSABLE_ENTITY = 422
@@ -80,12 +81,13 @@ class TransactionOffsetController(
     @GetMapping("/linked")
     suspend fun getLinkedTransactions(
         @AuthenticationPrincipal principal: UserDetails,
-    ): LinkedGroupResponse =
-        withContext(Dispatchers.IO) {
-            val userId = resolveUserUseCase.resolveUser(principal.username)
+        exchange: ServerWebExchange,
+    ): LinkedGroupResponse {
+        val organizationId = resolveOrganizationUseCase.resolveOrganization(principal, exchange)
+        return withContext(Dispatchers.IO) {
             LinkedGroupResponse(
                 groups =
-                    getLinkedTransactionsUseCase.getLinkedGroups(userId).map { group ->
+                    getLinkedTransactionsUseCase.getLinkedGroups(organizationId).map { group ->
                         LinkedGroupItem(
                             groupId = group.groupId,
                             name = group.name,
@@ -95,16 +97,18 @@ class TransactionOffsetController(
                     },
             )
         }
+    }
 
     @GetMapping("/linked/{groupId}")
     suspend fun getLinkedGroup(
         @PathVariable groupId: Long,
         @AuthenticationPrincipal principal: UserDetails,
-    ): ResponseEntity<LinkedGroupItem> =
-        withContext(Dispatchers.IO) {
-            val userId = resolveUserUseCase.resolveUser(principal.username)
+        exchange: ServerWebExchange,
+    ): ResponseEntity<LinkedGroupItem> {
+        val organizationId = resolveOrganizationUseCase.resolveOrganization(principal, exchange)
+        return withContext(Dispatchers.IO) {
             val group =
-                getLinkedTransactionsUseCase.getLinkedGroup(groupId, userId)
+                getLinkedTransactionsUseCase.getLinkedGroup(groupId, organizationId)
                     ?: return@withContext ResponseEntity.notFound().build()
             ResponseEntity.ok(
                 LinkedGroupItem(
@@ -115,27 +119,31 @@ class TransactionOffsetController(
                 ),
             )
         }
+    }
 
     @PatchMapping("/linked/{groupId}")
     suspend fun updateGroupMeta(
         @PathVariable groupId: Long,
         @RequestBody request: UpdateGroupMetaRequest,
         @AuthenticationPrincipal principal: UserDetails,
-    ): ResponseEntity<Void> =
+        exchange: ServerWebExchange,
+    ): ResponseEntity<Void> {
+        val organizationId = resolveOrganizationUseCase.resolveOrganization(principal, exchange)
         withContext(Dispatchers.IO) {
-            val userId = resolveUserUseCase.resolveUser(principal.username)
-            manageTransactionOffsetUseCase.updateGroupMeta(groupId, userId, request.name, request.comment)
-            ResponseEntity.noContent().build()
+            manageTransactionOffsetUseCase.updateGroupMeta(groupId, organizationId, request.name, request.comment)
         }
+        return ResponseEntity.noContent().build()
+    }
 
     @PostMapping("/{id}/offsets")
     suspend fun linkTransaction(
         @PathVariable id: Long,
         @RequestBody request: LinkTransactionRequest,
         @AuthenticationPrincipal principal: UserDetails,
-    ): ResponseEntity<*> =
-        withContext(Dispatchers.IO) {
-            val userId = resolveUserUseCase.resolveUser(principal.username)
+        exchange: ServerWebExchange,
+    ): ResponseEntity<*> {
+        val organizationId = resolveOrganizationUseCase.resolveOrganization(principal, exchange)
+        return withContext(Dispatchers.IO) {
             val result =
                 runCatching {
                     manageTransactionOffsetUseCase.linkTransactions(
@@ -144,7 +152,7 @@ class TransactionOffsetController(
                             otherTransactionId = request.otherTransactionId,
                             myAmount = request.myAmount,
                             otherAmount = request.otherAmount,
-                            userId = userId,
+                            organizationId = organizationId,
                             targetGroupId = request.targetGroupId,
                             forceNewGroup = request.forceNewGroup,
                         ),
@@ -175,39 +183,47 @@ class TransactionOffsetController(
                 ),
             )
         }
+    }
 
     @PatchMapping("/offsets/{linkId}/comment")
     suspend fun updateOffsetComment(
         @PathVariable linkId: Long,
         @RequestBody request: UpdateOffsetCommentRequest,
         @AuthenticationPrincipal principal: UserDetails,
-    ): ResponseEntity<Void> =
+        exchange: ServerWebExchange,
+    ): ResponseEntity<Void> {
+        val organizationId = resolveOrganizationUseCase.resolveOrganization(principal, exchange)
         withContext(Dispatchers.IO) {
-            val userId = resolveUserUseCase.resolveUser(principal.username)
-            manageTransactionOffsetUseCase.updateOffsetComment(linkId, userId, request.comment)
-            ResponseEntity.noContent().build()
+            manageTransactionOffsetUseCase.updateOffsetComment(linkId, organizationId, request.comment)
         }
+        return ResponseEntity.noContent().build()
+    }
 
     @DeleteMapping("/{txId}/groups/{groupId}")
     suspend fun removeTransactionFromGroup(
         @PathVariable txId: Long,
         @PathVariable groupId: Long,
         @AuthenticationPrincipal principal: UserDetails,
-    ): ResponseEntity<Void> =
+        exchange: ServerWebExchange,
+    ): ResponseEntity<Void> {
+        val organizationId = resolveOrganizationUseCase.resolveOrganization(principal, exchange)
         withContext(Dispatchers.IO) {
-            val userId = resolveUserUseCase.resolveUser(principal.username)
-            manageTransactionOffsetUseCase.removeTransactionFromGroup(txId, groupId, userId)
-            ResponseEntity.noContent().build()
+            manageTransactionOffsetUseCase.removeTransactionFromGroup(txId, groupId, organizationId)
         }
+        return ResponseEntity.noContent().build()
+    }
 
     @DeleteMapping("/offsets/{linkId}")
     suspend fun unlinkTransaction(
         @PathVariable linkId: Long,
         @AuthenticationPrincipal principal: UserDetails,
-    ): ResponseEntity<Void> =
-        withContext(Dispatchers.IO) {
-            val userId = resolveUserUseCase.resolveUser(principal.username)
-            val deleted = manageTransactionOffsetUseCase.unlinkTransactions(linkId, userId)
-            if (deleted) ResponseEntity.noContent().build() else ResponseEntity.notFound().build()
-        }
+        exchange: ServerWebExchange,
+    ): ResponseEntity<Void> {
+        val organizationId = resolveOrganizationUseCase.resolveOrganization(principal, exchange)
+        val deleted =
+            withContext(Dispatchers.IO) {
+                manageTransactionOffsetUseCase.unlinkTransactions(linkId, organizationId)
+            }
+        return if (deleted) ResponseEntity.noContent().build() else ResponseEntity.notFound().build()
+    }
 }

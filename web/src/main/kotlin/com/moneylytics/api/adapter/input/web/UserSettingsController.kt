@@ -1,6 +1,7 @@
 package com.moneylytics.api.adapter.input.web
 
 import com.moneylytics.api.application.port.input.GetUserSettingsUseCase
+import com.moneylytics.api.application.port.input.ResolveOrganizationUseCase
 import com.moneylytics.api.application.port.input.ResolveUserUseCase
 import com.moneylytics.api.application.port.input.UpdateUserSettingsUseCase
 import kotlinx.coroutines.Dispatchers
@@ -12,11 +13,13 @@ import org.springframework.web.bind.annotation.PatchMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
+import org.springframework.web.server.ServerWebExchange
 
 @RestController
 @RequestMapping("/users/settings")
 class UserSettingsController(
     private val resolveUserUseCase: ResolveUserUseCase,
+    private val resolveOrganizationUseCase: ResolveOrganizationUseCase,
     private val getUserSettingsUseCase: GetUserSettingsUseCase,
     private val updateUserSettingsUseCase: UpdateUserSettingsUseCase,
 ) {
@@ -33,17 +36,21 @@ class UserSettingsController(
     suspend fun updateSettings(
         @AuthenticationPrincipal principal: UserDetails,
         @RequestBody request: UpdateUserSettingsRequest,
-    ): UserSettingsResponse =
-        withContext(Dispatchers.IO) {
-            val userId = resolveUserUseCase.resolveUser(principal.username)
+        exchange: ServerWebExchange,
+    ): UserSettingsResponse {
+        val userId = withContext(Dispatchers.IO) { resolveUserUseCase.resolveUser(principal.username) }
+        val organizationId = resolveOrganizationUseCase.resolveOrganization(principal, exchange)
+        return withContext(Dispatchers.IO) {
             updateUserSettingsUseCase
                 .updateSettings(
                     userId = userId,
+                    organizationId = organizationId,
                     defaultAccountIban = request.defaultAccountIban,
                     language = request.language,
                     transactionsColumnOrder = request.transactionsColumnOrder,
                 ).toResponse()
         }
+    }
 
     private fun com.moneylytics.api.domain.UserSettings.toResponse() =
         UserSettingsResponse(

@@ -6,7 +6,7 @@ import com.moneylytics.api.application.port.input.FindIgnoredFingerprintsUseCase
 import com.moneylytics.api.application.port.input.GetAccountsUseCase
 import com.moneylytics.api.application.port.input.ImportTransactionsCommand
 import com.moneylytics.api.application.port.input.ImportTransactionsUseCase
-import com.moneylytics.api.application.port.input.ResolveUserUseCase
+import com.moneylytics.api.application.port.input.ResolveOrganizationUseCase
 import com.moneylytics.api.application.port.input.SaveCategoriesUseCase
 import com.moneylytics.api.application.port.input.UpdateIgnoredTransactionsUseCase
 import com.moneylytics.api.domain.AccountBalance
@@ -39,7 +39,7 @@ class CamtImportController(
     private val importTransactionsUseCase: ImportTransactionsUseCase,
     private val saveCategoriesUseCase: SaveCategoriesUseCase,
     private val enrichTransactionUseCase: EnrichTransactionUseCase,
-    private val resolveUserUseCase: ResolveUserUseCase,
+    private val resolveOrganizationUseCase: ResolveOrganizationUseCase,
 ) {
     companion object {
         private const val HTTP_UNPROCESSABLE_ENTITY = 422
@@ -50,7 +50,7 @@ class CamtImportController(
         @AuthenticationPrincipal principal: UserDetails,
         exchange: ServerWebExchange,
     ): ResponseEntity<out Any> {
-        val userId = withContext(Dispatchers.IO) { resolveUserUseCase.resolveUser(principal.username) }
+        val organizationId = resolveOrganizationUseCase.resolveOrganization(principal, exchange)
 
         val parts = exchange.multipartData.awaitSingle()
         val fileParts = parts["files"]?.filterIsInstance<FilePart>() ?: emptyList()
@@ -87,11 +87,18 @@ class CamtImportController(
         val allFingerprints = rowFingerprints.values.toSet()
 
         val existingFingerprints =
-            if (allFingerprints.isEmpty()) emptySet() else checkDuplicatesUseCase.findExistingFingerprints(allFingerprints, userId)
+            if (allFingerprints.isEmpty()) emptySet() else checkDuplicatesUseCase.findExistingFingerprints(allFingerprints, organizationId)
         val ignoredFingerprints =
-            if (allFingerprints.isEmpty()) emptySet() else findIgnoredFingerprintsUseCase.findIgnoredFingerprints(allFingerprints, userId)
+            if (allFingerprints.isEmpty()) {
+                emptySet()
+            } else {
+                findIgnoredFingerprintsUseCase.findIgnoredFingerprints(
+                    allFingerprints,
+                    organizationId,
+                )
+            }
         val knownIbans =
-            withContext(Dispatchers.IO) { getAccountsUseCase.getAccounts(userId) }.map { it.iban }.toSet()
+            withContext(Dispatchers.IO) { getAccountsUseCase.getAccounts(organizationId) }.map { it.iban }.toSet()
 
         val accounts =
             allRows
@@ -128,10 +135,11 @@ class CamtImportController(
     suspend fun importCamt(
         @RequestBody request: CamtImportRequest,
         @AuthenticationPrincipal principal: UserDetails,
+        exchange: ServerWebExchange,
     ): ResponseEntity<out Any> {
-        val userId = withContext(Dispatchers.IO) { resolveUserUseCase.resolveUser(principal.username) }
+        val organizationId = resolveOrganizationUseCase.resolveOrganization(principal, exchange)
         val knownIbans =
-            withContext(Dispatchers.IO) { getAccountsUseCase.getAccounts(userId) }
+            withContext(Dispatchers.IO) { getAccountsUseCase.getAccounts(organizationId) }
                 .map { it.iban }
                 .toSet()
 
@@ -143,17 +151,19 @@ class CamtImportController(
             }
         val safeRequest = request.copy(toImport = safeToImport)
 
-        updateIgnoredTransactionsUseCase.update(
-            toIgnore = safeRequest.toIgnore,
-            toUnignore = safeRequest.toImport.map { it.fingerprint },
-            userId = userId,
-        )
+        withContext(Dispatchers.IO) {
+            updateIgnoredTransactionsUseCase.update(
+                toIgnore = safeRequest.toIgnore,
+                toUnignore = safeRequest.toImport.map { it.fingerprint },
+                organizationId = organizationId,
+            )
+        }
 
         val categories =
             safeRequest.toImport
                 .map { Category(name = it.category, subcategory = it.subcategory, group = it.categoryGroup) }
                 .distinct()
-        saveCategoriesUseCase.saveCategories(categories, userId)
+        withContext(Dispatchers.IO) { saveCategoriesUseCase.saveCategories(categories, organizationId) }
 
         val transactions =
             safeRequest.toImport.map { row ->
@@ -175,21 +185,31 @@ class CamtImportController(
 
         val accountBalances =
             safeRequest.accountBalances.mapValues { (_, b) ->
-                AccountBalance(amount = b.amount, date = java.time.LocalDate.parse(b.date))
+                AccountBalance(amount = b.amount, date = LocalDate.parse(b.date))
             }
 
         val importedCount =
-            importTransactionsUseCase.importTransactions(
-                ImportTransactionsCommand(
-                    transactions = transactions,
-                    accountNames = safeRequest.accountNames,
-                    accountBalances = accountBalances,
-                    userId = userId,
-                ),
-            )
+            withContext(Dispatchers.IO) {
+                importTransactionsUseCase.importTransactions(
+                    ImportTransactionsCommand(
+                        transactions = transactions,
+                        accountNames = safeRequest.accountNames,
+                        accountBalances = accountBalances,
+                        organizationId = organizationId,
+                    ),
+                )
+            }
 
         safeRequest.toEnrich.forEach { e ->
-            enrichTransactionUseCase.enrichByFingerprint(e.fingerprint, userId, e.purpose, e.counterpartyName, e.counterpartyIban)
+            withContext(Dispatchers.IO) {
+                enrichTransactionUseCase.enrichByFingerprint(
+                    e.fingerprint,
+                    organizationId,
+                    e.purpose,
+                    e.counterpartyName,
+                    e.counterpartyIban,
+                )
+            }
         }
 
         return ResponseEntity.ok(ImportSuccessResponse(importedCount = importedCount))

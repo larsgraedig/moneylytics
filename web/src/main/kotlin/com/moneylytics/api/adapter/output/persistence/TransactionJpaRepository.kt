@@ -7,60 +7,64 @@ import java.math.BigDecimal
 import java.time.LocalDate
 
 interface TransactionJpaRepository : JpaRepository<TransactionEntity, Long> {
-    fun findByUserIdAndAccountingDateBetween(
-        userId: Long,
+    fun findByOrganizationIdAndAccountingDateBetween(
+        organizationId: Long,
         from: LocalDate,
         to: LocalDate,
     ): List<TransactionEntity>
 
-    fun findByUserIdAndAccountingDateBetweenAndAmountLessThan(
-        userId: Long,
-        from: LocalDate,
-        to: LocalDate,
-        amount: BigDecimal,
-    ): List<TransactionEntity>
-
-    fun findByUserIdAndAccountIbanAndAccountingDateBetween(
-        userId: Long,
-        iban: String,
-        from: LocalDate,
-        to: LocalDate,
-    ): List<TransactionEntity>
-
-    fun findByUserIdAndAccountIbanAndAccountingDateBetweenAndAmountLessThan(
-        userId: Long,
-        iban: String,
+    fun findByOrganizationIdAndAccountingDateBetweenAndAmountLessThan(
+        organizationId: Long,
         from: LocalDate,
         to: LocalDate,
         amount: BigDecimal,
     ): List<TransactionEntity>
 
-    @Query("SELECT t FROM TransactionEntity t WHERE t.id = :id AND t.user.id = :userId")
-    fun findByIdAndUserId(
+    fun findByOrganizationIdAndAccountIbanAndAccountingDateBetween(
+        organizationId: Long,
+        iban: String,
+        from: LocalDate,
+        to: LocalDate,
+    ): List<TransactionEntity>
+
+    fun findByOrganizationIdAndAccountIbanAndAccountingDateBetweenAndAmountLessThan(
+        organizationId: Long,
+        iban: String,
+        from: LocalDate,
+        to: LocalDate,
+        amount: BigDecimal,
+    ): List<TransactionEntity>
+
+    @Query("SELECT t FROM TransactionEntity t WHERE t.id = :id AND t.organization.id = :organizationId")
+    fun findByIdAndOrganizationId(
         @Param("id") id: Long,
-        @Param("userId") userId: Long,
+        @Param("organizationId") organizationId: Long,
     ): TransactionEntity?
 
-    @Query("SELECT t.fingerprint FROM TransactionEntity t WHERE t.fingerprint IN :fingerprints AND t.user.id = :userId")
+    @Query(
+        "SELECT t.fingerprint FROM TransactionEntity t WHERE t.fingerprint IN :fingerprints AND t.organization.id = :organizationId",
+    )
     fun findExistingFingerprints(
         @Param("fingerprints") fingerprints: Collection<String>,
-        @Param("userId") userId: Long,
+        @Param("organizationId") organizationId: Long,
     ): List<String>
 
-    @Query("SELECT t FROM TransactionEntity t WHERE t.id IN :ids AND t.user.id = :userId")
-    fun findByIdsAndUserId(
+    @Query("SELECT t FROM TransactionEntity t WHERE t.id IN :ids AND t.organization.id = :organizationId")
+    fun findByIdsAndOrganizationId(
         @Param("ids") ids: Collection<Long>,
-        @Param("userId") userId: Long,
+        @Param("organizationId") organizationId: Long,
     ): List<TransactionEntity>
 
-    @Query("SELECT t FROM TransactionEntity t WHERE t.fingerprint = :fingerprint AND t.user.id = :userId")
-    fun findByFingerprintAndUserId(
+    @Query("SELECT t FROM TransactionEntity t WHERE t.fingerprint = :fingerprint AND t.organization.id = :organizationId")
+    fun findByFingerprintAndOrganizationId(
         @Param("fingerprint") fingerprint: String,
-        @Param("userId") userId: Long,
+        @Param("organizationId") organizationId: Long,
     ): TransactionEntity?
 
-    @Query("SELECT t.account.iban, MAX(t.accountingDate) FROM TransactionEntity t WHERE t.user.id = :userId GROUP BY t.account.iban")
+    @Query(
+        "SELECT t.account.iban, MAX(t.accountingDate) FROM TransactionEntity t WHERE t.organization.id = :organizationId GROUP BY t.account.iban",
+    )
     fun findLatestDatePerIban(
-        @Param("userId") userId: Long,
+        @Param("organizationId") organizationId: Long,
     ): List<Array<out Any?>>
 }

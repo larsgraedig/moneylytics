@@ -9,13 +9,13 @@ class IgnoredTransactionJpaRepositoryIT : AbstractJpaRepositoryIT() {
 
     @Test
     fun `should return fingerprints that exist for user`() {
-        ignoredRepo.save(IgnoredTransactionEntity(fingerprint = "fp-a", user = user))
-        ignoredRepo.save(IgnoredTransactionEntity(fingerprint = "fp-b", user = user))
+        ignoredRepo.save(IgnoredTransactionEntity(fingerprint = "fp-a", organization = organization))
+        ignoredRepo.save(IgnoredTransactionEntity(fingerprint = "fp-b", organization = organization))
 
         val result =
             ignoredRepo.findExistingFingerprints(
                 fingerprints = listOf("fp-a", "fp-b", "fp-unknown"),
-                userId = userId,
+                organizationId = organizationId,
             )
 
         assertThat(result).containsExactlyInAnyOrder("fp-a", "fp-b")
@@ -23,13 +23,13 @@ class IgnoredTransactionJpaRepositoryIT : AbstractJpaRepositoryIT() {
 
     @Test
     fun `should not return fingerprints belonging to other user`() {
-        ignoredRepo.save(IgnoredTransactionEntity(fingerprint = "fp-mine", user = user))
-        ignoredRepo.save(IgnoredTransactionEntity(fingerprint = "fp-theirs", user = otherUser))
+        ignoredRepo.save(IgnoredTransactionEntity(fingerprint = "fp-mine", organization = organization))
+        ignoredRepo.save(IgnoredTransactionEntity(fingerprint = "fp-theirs", organization = otherOrganization))
 
         val result =
             ignoredRepo.findExistingFingerprints(
                 fingerprints = listOf("fp-mine", "fp-theirs"),
-                userId = userId,
+                organizationId = organizationId,
             )
 
         assertThat(result).containsExactly("fp-mine")
@@ -37,12 +37,12 @@ class IgnoredTransactionJpaRepositoryIT : AbstractJpaRepositoryIT() {
 
     @Test
     fun `should return empty list when no fingerprints match`() {
-        ignoredRepo.save(IgnoredTransactionEntity(fingerprint = "fp-stored", user = user))
+        ignoredRepo.save(IgnoredTransactionEntity(fingerprint = "fp-stored", organization = organization))
 
         val result =
             ignoredRepo.findExistingFingerprints(
                 fingerprints = listOf("fp-not-stored"),
-                userId = userId,
+                organizationId = organizationId,
             )
 
         assertThat(result).isEmpty()
@@ -50,26 +50,26 @@ class IgnoredTransactionJpaRepositoryIT : AbstractJpaRepositoryIT() {
 
     @Test
     fun `should delete ignored transactions by fingerprints and user id`() {
-        ignoredRepo.save(IgnoredTransactionEntity(fingerprint = "fp-delete", user = user))
-        ignoredRepo.save(IgnoredTransactionEntity(fingerprint = "fp-keep", user = user))
+        ignoredRepo.save(IgnoredTransactionEntity(fingerprint = "fp-delete", organization = organization))
+        ignoredRepo.save(IgnoredTransactionEntity(fingerprint = "fp-keep", organization = organization))
         flushAndClear()
 
-        ignoredRepo.deleteByFingerprintInAndUserId(listOf("fp-delete"), userId)
+        ignoredRepo.deleteByFingerprintInAndOrganizationId(listOf("fp-delete"), organizationId)
         flushAndClear()
 
-        val remaining = ignoredRepo.findExistingFingerprints(listOf("fp-delete", "fp-keep"), userId)
+        val remaining = ignoredRepo.findExistingFingerprints(listOf("fp-delete", "fp-keep"), organizationId)
         assertThat(remaining).containsExactly("fp-keep")
     }
 
     @Test
     fun `should not delete ignored transactions belonging to other user`() {
-        ignoredRepo.save(IgnoredTransactionEntity(fingerprint = "fp-theirs", user = otherUser))
+        ignoredRepo.save(IgnoredTransactionEntity(fingerprint = "fp-theirs", organization = otherOrganization))
         flushAndClear()
 
-        ignoredRepo.deleteByFingerprintInAndUserId(listOf("fp-theirs"), userId)
+        ignoredRepo.deleteByFingerprintInAndOrganizationId(listOf("fp-theirs"), organizationId)
         flushAndClear()
 
-        val remaining = ignoredRepo.findExistingFingerprints(listOf("fp-theirs"), otherUserId)
+        val remaining = ignoredRepo.findExistingFingerprints(listOf("fp-theirs"), otherOrganizationId)
         assertThat(remaining).containsExactly("fp-theirs")
     }
 }

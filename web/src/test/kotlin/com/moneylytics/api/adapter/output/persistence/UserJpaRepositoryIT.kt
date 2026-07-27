@@ -1,5 +1,6 @@
 package com.moneylytics.api.adapter.output.persistence
 
+import com.moneylytics.api.domain.Role
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 
@@ -17,6 +18,13 @@ class UserJpaRepositoryIT : AbstractJpaRepositoryIT() {
         val result = userRepo.findByExternalId("unknown-user")
 
         assertThat(result).isNull()
+    }
+
+    @Test
+    fun `should default to USER role when no role specified`() {
+        val result = userRepo.findByExternalId("test-user-1")
+
+        assertThat(result?.role).isEqualTo(Role.USER)
     }
 
     @Test

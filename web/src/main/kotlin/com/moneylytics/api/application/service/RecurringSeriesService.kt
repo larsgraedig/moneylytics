@@ -72,15 +72,15 @@ class RecurringSeriesService(
     override fun detect(command: RefreshRecurringSeriesCommand): List<RecurringSeries> {
         val today = LocalDate.now()
         val from = today.minusMonths(command.lookbackMonths)
-        val transactions = transactionRepository.findByAccountingDateBetween(from, today, command.userId)
+        val transactions = transactionRepository.findByAccountingDateBetween(from, today, command.organizationId)
 
-        classifier.seedIfEmpty(command.userId)
+        classifier.seedIfEmpty(command.organizationId)
 
-        val falsePositiveFingerprints = falsePositiveRepository.findFingerprintsByUserId(command.userId)
+        val falsePositiveFingerprints = falsePositiveRepository.findFingerprintsByOrganizationId(command.organizationId)
 
         return detector
             .detect(transactions)
-            .map { s -> s.copy(type = classifier.classify(command.userId, s.toFeatures())) }
+            .map { s -> s.copy(type = classifier.classify(command.organizationId, s.toFeatures())) }
             .filter { s -> !(s.amountVariable && s.type == RecurringType.OTHER) }
             .map { s -> s.copy(isFalsePositive = s.fingerprint in falsePositiveFingerprints) }
             .map { s -> computeDeviation(s, today) }
@@ -89,43 +89,47 @@ class RecurringSeriesService(
     override fun confirm(command: ConfirmRecurringSeriesCommand): List<RecurringSeries> {
         val today = LocalDate.now()
         val from = today.minusMonths(command.lookbackMonths)
-        val transactions = transactionRepository.findByAccountingDateBetween(from, today, command.userId)
+        val transactions = transactionRepository.findByAccountingDateBetween(from, today, command.organizationId)
 
-        classifier.seedIfEmpty(command.userId)
+        classifier.seedIfEmpty(command.organizationId)
 
         val confirmedSet = command.confirmedFingerprints.toSet()
 
         val confirmed =
             detector
                 .detect(transactions)
-                .map { s -> s.copy(type = classifier.classify(command.userId, s.toFeatures())) }
+                .map { s -> s.copy(type = classifier.classify(command.organizationId, s.toFeatures())) }
                 .filter { s -> !(s.amountVariable && s.type == RecurringType.OTHER) }
                 .filter { s -> s.fingerprint in confirmedSet }
 
-        recurringSeriesRepository.replaceAllForUser(confirmed, command.userId)
+        recurringSeriesRepository.replaceAllForOrganization(confirmed, command.organizationId)
 
         if (command.falsePositiveFingerprints.isNotEmpty()) {
-            val existing = falsePositiveRepository.findFingerprintsByUserId(command.userId)
+            val existing = falsePositiveRepository.findFingerprintsByOrganizationId(command.organizationId)
             val newEntries =
                 command.falsePositiveFingerprints
                     .filter { it !in existing }
-                    .map { RecurringFalsePositive(userId = command.userId, fingerprint = it, createdAt = today) }
+                    .map { RecurringFalsePositive(organizationId = command.organizationId, fingerprint = it, createdAt = today) }
             if (newEntries.isNotEmpty()) falsePositiveRepository.saveAll(newEntries)
         }
 
         // If a previously false-positive series is now confirmed, remove it from the false positive list.
-        val toRemove = command.confirmedFingerprints.filter { it in falsePositiveRepository.findFingerprintsByUserId(command.userId) }
-        if (toRemove.isNotEmpty()) falsePositiveRepository.deleteByUserIdAndFingerprints(command.userId, toRemove)
+        val toRemove =
+            command.confirmedFingerprints.filter {
+                it in
+                    falsePositiveRepository.findFingerprintsByOrganizationId(command.organizationId)
+            }
+        if (toRemove.isNotEmpty()) falsePositiveRepository.deleteByOrganizationIdAndFingerprints(command.organizationId, toRemove)
 
-        val saved = recurringSeriesRepository.findByUserId(command.userId).map { computeDeviation(it, today) }
-        writeConfirmLog(confirmed, saved, command.userId)
+        val saved = recurringSeriesRepository.findByOrganizationId(command.organizationId).map { computeDeviation(it, today) }
+        writeConfirmLog(confirmed, saved, command.organizationId)
         return saved
     }
 
     private fun writeConfirmLog(
         confirmed: List<RecurringSeries>,
         saved: List<RecurringSeries>,
-        userId: Long,
+        organizationId: Long,
     ) {
         val savedById = saved.associateBy { it.fingerprint }
         val entries =
@@ -150,14 +154,14 @@ class RecurringSeriesService(
                 transactionsLinkedCount = entries.size,
                 entries = entries,
             ),
-            userId,
+            organizationId,
         )
     }
 
     override fun getRecurringSeries(query: GetRecurringSeriesQuery): List<RecurringSeries> {
         val today = LocalDate.now()
         return recurringSeriesRepository
-            .findByUserId(query.userId)
+            .findByOrganizationId(query.organizationId)
             .let { list -> query.direction?.let { d -> list.filter { it.direction == d } } ?: list }
             .let { list -> query.type?.let { t -> list.filter { it.type == t } } ?: list }
             .map { computeDeviation(it, today) }
@@ -184,19 +188,19 @@ class RecurringSeriesService(
                 status = RecurrenceStatus.MANUAL,
                 fingerprint = "manual:${UUID.randomUUID()}",
             )
-        return recurringSeriesRepository.save(series, command.userId)
+        return recurringSeriesRepository.save(series, command.organizationId)
     }
 
     override fun delete(command: DeleteRecurringSeriesCommand) {
-        recurringSeriesRepository.deleteByIdAndUserId(command.seriesId, command.userId)
+        recurringSeriesRepository.deleteByIdAndOrganizationId(command.seriesId, command.organizationId)
     }
 
     override fun correctType(command: CorrectRecurringSeriesTypeCommand) {
         val series =
-            recurringSeriesRepository.findByUserId(command.userId).find { it.id == command.seriesId }
-                ?: throw NoSuchElementException("Series ${command.seriesId} not found for user ${command.userId}")
+            recurringSeriesRepository.findByOrganizationId(command.organizationId).find { it.id == command.seriesId }
+                ?: throw NoSuchElementException("Series ${command.seriesId} not found for user ${command.organizationId}")
         recurringSeriesRepository.updateType(command.seriesId, command.type)
-        classifier.train(command.userId, command.type, series.toFeatures())
+        classifier.train(command.organizationId, command.type, series.toFeatures())
     }
 
     private fun computeDeviation(

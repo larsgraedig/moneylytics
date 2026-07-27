@@ -10,7 +10,7 @@ fun interface GetCategoryTotalsUseCase {
 data class GetCategoryTotalsQuery(
     val from: LocalDate,
     val to: LocalDate,
-    val userId: Long,
+    val organizationId: Long,
     val accountIban: String? = null,
     val category: String? = null,
 )

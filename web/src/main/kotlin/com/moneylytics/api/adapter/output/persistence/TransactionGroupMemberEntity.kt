@@ -8,7 +8,7 @@ import jakarta.persistence.Table
 import java.io.Serializable
 
 @Entity
-@Table(name = "transaction_group_members")
+@Table(name = "transaction_group_member")
 @IdClass(TransactionGroupMemberEntity.PK::class)
 class TransactionGroupMemberEntity(
     @Id

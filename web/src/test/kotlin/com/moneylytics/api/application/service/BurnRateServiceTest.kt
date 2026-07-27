@@ -16,7 +16,7 @@ class BurnRateServiceTest {
     private val budgetRepository: BudgetRepository = mock()
     private val service = TransactionQueryService(transactionRepository, budgetRepository)
 
-    private val userId = 1L
+    private val organizationId = 1L
     private val june = LocalDate.of(2025, 6, 1)
     private val juneEnd = LocalDate.of(2025, 6, 30)
 
@@ -28,10 +28,10 @@ class BurnRateServiceTest {
 
     @Test
     fun `should aggregate expenses by date and fill gaps with zero`() {
-        whenever(transactionRepository.findByAccountingDateBetween(june, juneEnd, userId, null))
+        whenever(transactionRepository.findByAccountingDateBetween(june, juneEnd, organizationId, null))
             .thenReturn(listOf(miete, lebensmittel, freizeit, gehalt))
 
-        val response = service.getBurnRate(GetBurnRateQuery(june, juneEnd, userId, rollingWindow = 3))
+        val response = service.getBurnRate(GetBurnRateQuery(june, juneEnd, organizationId, rollingWindow = 3))
 
         assertThat(response.points).hasSize(30)
         assertThat(response.points[0].expenses).isEqualByComparingTo(BigDecimal("950.00"))
@@ -43,10 +43,10 @@ class BurnRateServiceTest {
 
     @Test
     fun `should compute rolling average over configurable window`() {
-        whenever(transactionRepository.findByAccountingDateBetween(june, juneEnd, userId, null))
+        whenever(transactionRepository.findByAccountingDateBetween(june, juneEnd, organizationId, null))
             .thenReturn(listOf(miete, lebensmittel, freizeit, gehalt))
 
-        val response = service.getBurnRate(GetBurnRateQuery(june, juneEnd, userId, rollingWindow = 3))
+        val response = service.getBurnRate(GetBurnRateQuery(june, juneEnd, organizationId, rollingWindow = 3))
 
         // Jun 01: 950/1 = 950.00
         assertThat(response.points[0].rollingAvg).isEqualByComparingTo(BigDecimal("950.00"))
@@ -62,10 +62,10 @@ class BurnRateServiceTest {
 
     @Test
     fun `should compute cumulative expenses and income`() {
-        whenever(transactionRepository.findByAccountingDateBetween(june, juneEnd, userId, null))
+        whenever(transactionRepository.findByAccountingDateBetween(june, juneEnd, organizationId, null))
             .thenReturn(listOf(miete, lebensmittel, freizeit, gehalt))
 
-        val response = service.getBurnRate(GetBurnRateQuery(june, juneEnd, userId, rollingWindow = 3))
+        val response = service.getBurnRate(GetBurnRateQuery(june, juneEnd, organizationId, rollingWindow = 3))
 
         // Jun 01: cumulative=950.00
         assertThat(response.points[0].cumulative).isEqualByComparingTo(BigDecimal("950.00"))
@@ -88,10 +88,10 @@ class BurnRateServiceTest {
     fun `should exclude positive transactions from expenses and negative from income`() {
         val income = tx(LocalDate.of(2025, 6, 1), BigDecimal("500.00"))
         val expense = tx(LocalDate.of(2025, 6, 1), BigDecimal("-200.00"))
-        whenever(transactionRepository.findByAccountingDateBetween(june, juneEnd, userId, null))
+        whenever(transactionRepository.findByAccountingDateBetween(june, juneEnd, organizationId, null))
             .thenReturn(listOf(income, expense))
 
-        val response = service.getBurnRate(GetBurnRateQuery(june, juneEnd, userId, rollingWindow = 7))
+        val response = service.getBurnRate(GetBurnRateQuery(june, juneEnd, organizationId, rollingWindow = 7))
 
         assertThat(response.totalExpenses).isEqualByComparingTo(BigDecimal("200.00"))
         assertThat(response.totalIncome).isEqualByComparingTo(BigDecimal("500.00"))

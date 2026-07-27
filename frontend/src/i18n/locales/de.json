@@ -21,6 +21,7 @@
     "camt": "CAMT",
     "wiederkehrer": "Wiederkehrend",
     "admin": "Technisches",
+    "orgs": "Organisation",
     "collapse": "Menü einklappen",
     "expand": "Menü ausklappen"
   },
@@ -497,6 +498,9 @@
       "counterparty": "Gegenpartei",
       "purpose": "Verwendungszweck"
     },
+    "sync": "Sync",
+    "syncing": "Wird synchronisiert…",
+    "syncSuccess": "Synchronisiert",
     "addManual": "Hinzufügen",
     "status": {
       "MANUAL": "Manuell"
@@ -577,6 +581,26 @@
     "legendSoll": "Soll-Prognose"
   },
   "admin": {
+    "impersonation": {
+      "active": "Du agierst als {{username}}",
+      "stop": "Impersonation beenden",
+      "button": "Impersonieren",
+      "confirm": "Möchtest du wirklich als {{username}} handeln?"
+    },
+    "members": {
+      "title": "Organisationsmitgliedschaften",
+      "managementTitle": "Mitgliederverwaltung",
+      "selectUser": "Nutzer auswählen…",
+      "searchUser": "Nutzer suchen…",
+      "selectOrg": "Organisation auswählen…",
+      "add": "Hinzufügen",
+      "remove": "Entfernen",
+      "noMembers": "Keine Mitglieder in dieser Organisation.",
+      "confirmRemove": "Möchtest du {{username}} wirklich aus der Organisation entfernen?",
+      "addSuccess": "Nutzer erfolgreich hinzugefügt.",
+      "addError": "Hinzufügen fehlgeschlagen.",
+      "removeError": "Entfernen fehlgeschlagen."
+    },
     "recurring": {
       "title": "Wiederkehrende Transaktionen",
       "triggerSync": "Scheduler jetzt ausführen",
@@ -584,5 +608,74 @@
       "success": "Scheduler erfolgreich ausgeführt.",
       "description": "Startet den Abgleich neuer Transaktionen mit bestehenden Wiederkehrer-Definitionen — identisch zum täglichen Scheduler-Lauf (Protokolleintrag: Automatisch)."
     }
+  },
+  "orgs": {
+    "members": {
+      "title": "Mitglieder",
+      "email": "E-Mail",
+      "role": "Rolle",
+      "remove": "Entfernen"
+    },
+    "invite": {
+      "title": "Mitglied einladen",
+      "emailPlaceholder": "E-Mail",
+      "passwordPlaceholder": "Passwort",
+      "button": "Anlegen",
+      "success": "Mitglied erfolgreich eingeladen.",
+      "error": "Einladen fehlgeschlagen."
+    },
+    "create": {
+      "title": "Neue Organisation anlegen",
+      "namePlaceholder": "Name",
+      "button": "Anlegen",
+      "success": "Organisation erstellt.",
+      "error": "Erstellen fehlgeschlagen."
+    },
+    "errors": {
+      "loadMembers": "Mitglieder konnten nicht geladen werden.",
+      "removeMember": "Entfernen fehlgeschlagen.",
+      "updateRole": "Rolle konnte nicht aktualisiert werden."
+    },
+    "invite": {
+      "generateTitle": "Einladungslink generieren",
+      "emailPlaceholder": "E-Mail des Eingeladenen",
+      "generate": "Link generieren",
+      "copy": "Kopieren",
+      "expires": "Läuft ab",
+      "linkGenerated": "Einladungslink wurde erstellt.",
+      "error": "Einladung fehlgeschlagen."
+    },
+    "logo": {
+      "title": "Organisationslogo",
+      "upload": "Logo hochladen",
+      "remove": "Logo entfernen",
+      "uploadSuccess": "Logo erfolgreich hochgeladen.",
+      "removeSuccess": "Logo erfolgreich entfernt.",
+      "uploadError": "Logo hochladen fehlgeschlagen.",
+      "removeError": "Logo entfernen fehlgeschlagen."
+    }
+  },
+  "invite": {
+    "loading": "Einladung wird geladen…",
+    "invalid": "Dieser Einladungslink ist ungültig oder abgelaufen.",
+    "title": "Einladung zu {{org}}",
+    "roleLabel": "Sie werden als {{role}} hinzugefügt.",
+    "join": "Jetzt beitreten",
+    "accepted": "Erfolgreich beigetreten.",
+    "goToApp": "Zur App",
+    "acceptError": "Beitritt fehlgeschlagen.",
+    "alreadyHaveAccount": "Bereits einen Account?",
+    "createAccount": "Neu registrieren"
+  },
+  "onboarding": {
+    "title": "Willkommen!",
+    "subtitle": "Wie soll Ihre Organisation heißen?",
+    "placeholder": "Organisationsname",
+    "button": "Erstellen",
+    "error": "Organisation konnte nicht erstellt werden."
+  },
+  "orgSelect": {
+    "title": "Organisation auswählen",
+    "subtitle": "Sie gehören mehreren Organisationen an. Welche möchten Sie betreten?"
   }
 }

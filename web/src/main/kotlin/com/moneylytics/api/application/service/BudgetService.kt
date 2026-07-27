@@ -34,9 +34,9 @@ class BudgetService(
     DeleteBudgetUseCase,
     AssignTransactionToBudgetUseCase,
     RemoveTransactionFromBudgetUseCase {
-    override fun getBudgets(userId: Long): List<BudgetWithBalance> {
-        val budgets = budgetRepository.findAllByUserId(userId)
-        val allLinks = budgetRepository.findAllTransactionLinksByUserId(userId)
+    override fun getBudgets(organizationId: Long): List<BudgetWithBalance> {
+        val budgets = budgetRepository.findAllByOrganizationId(organizationId)
+        val allLinks = budgetRepository.findAllTransactionLinksByOrganizationId(organizationId)
         val linksByBudgetId = allLinks.groupBy { it.budgetId }
         return budgets.map { budget ->
             val links = linksByBudgetId[budget.id] ?: emptyList()
@@ -61,28 +61,28 @@ class BudgetService(
 
     override fun createBudget(
         budget: Budget,
-        userId: Long,
-    ): Budget = budgetRepository.create(budget, userId)
+        organizationId: Long,
+    ): Budget = budgetRepository.create(budget, organizationId)
 
     override fun updateBudget(
         budget: Budget,
-        userId: Long,
-    ): Budget = budgetRepository.update(budget, userId)
+        organizationId: Long,
+    ): Budget = budgetRepository.update(budget, organizationId)
 
     override fun deleteBudget(
         id: Long,
-        userId: Long,
-    ) = budgetRepository.deleteByIdAndUserId(id, userId)
+        organizationId: Long,
+    ) = budgetRepository.deleteByIdAndOrganizationId(id, organizationId)
 
     override fun assignTransaction(
         budgetId: Long,
         transactionId: Long,
         amount: BigDecimal?,
-        userId: Long,
-    ): BudgetTransactionLink = budgetRepository.assignTransaction(budgetId, transactionId, amount, userId)
+        organizationId: Long,
+    ): BudgetTransactionLink = budgetRepository.assignTransaction(budgetId, transactionId, amount, organizationId)
 
     override fun removeTransactionLink(
         linkId: Long,
-        userId: Long,
-    ) = budgetRepository.removeTransactionLink(linkId, userId)
+        organizationId: Long,
+    ) = budgetRepository.removeTransactionLink(linkId, organizationId)
 }
