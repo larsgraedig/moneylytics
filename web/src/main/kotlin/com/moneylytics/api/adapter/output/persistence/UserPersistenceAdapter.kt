@@ -14,6 +14,8 @@ class UserPersistenceAdapter(
 ) : UserRepository {
     override fun findByExternalId(externalId: String): User? = jpaRepository.findByExternalId(externalId)?.toDomain()
 
+    override fun findById(id: Long): User? = jpaRepository.findById(id).orElse(null)?.toDomain()
+
     @Transactional
     override fun save(
         externalId: String,

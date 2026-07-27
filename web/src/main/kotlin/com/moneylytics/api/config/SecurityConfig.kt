@@ -2,6 +2,7 @@ package com.moneylytics.api.config
 
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import org.springframework.http.HttpMethod
 import org.springframework.security.authentication.ReactiveAuthenticationManager
 import org.springframework.security.authentication.UserDetailsRepositoryReactiveAuthenticationManager
 import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity
@@ -35,6 +36,8 @@ class SecurityConfig(
             .securityContextRepository(securityContextRepository)
             .authorizeExchange { auth ->
                 auth
+                    .pathMatchers(HttpMethod.GET, "/invitations/*")
+                    .permitAll()
                     .pathMatchers("/auth/login", "/auth/register", "/oauth2/authorization/**", "/login/oauth2/code/**")
                     .permitAll()
                     .pathMatchers("/admin/**")

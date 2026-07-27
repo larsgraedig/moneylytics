@@ -624,6 +624,37 @@
       "loadMembers": "Failed to load members.",
       "removeMember": "Failed to remove member.",
       "updateRole": "Failed to update role."
+    },
+    "invite": {
+      "generateTitle": "Generate invitation link",
+      "emailPlaceholder": "Email of invitee",
+      "generate": "Generate link",
+      "copy": "Copy",
+      "linkGenerated": "Invitation link created.",
+      "error": "Failed to create invitation."
     }
+  },
+  "invite": {
+    "loading": "Loading invitation…",
+    "invalid": "This invitation link is invalid or has expired.",
+    "title": "Invitation to {{org}}",
+    "roleLabel": "You will be added as {{role}}.",
+    "join": "Join now",
+    "accepted": "Successfully joined.",
+    "goToApp": "Go to app",
+    "acceptError": "Failed to join.",
+    "alreadyHaveAccount": "Already have an account?",
+    "createAccount": "Create new account"
+  },
+  "onboarding": {
+    "title": "Welcome!",
+    "subtitle": "What should your organization be called?",
+    "placeholder": "Organization name",
+    "button": "Create",
+    "error": "Failed to create organization."
+  },
+  "orgSelect": {
+    "title": "Select organization",
+    "subtitle": "You belong to multiple organizations. Which one do you want to enter?"
   }
 }

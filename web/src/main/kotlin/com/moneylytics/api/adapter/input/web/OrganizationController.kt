@@ -1,15 +1,18 @@
 package com.moneylytics.api.adapter.input.web
 
 import com.moneylytics.api.application.port.input.ActivateOrganizationUseCase
+import com.moneylytics.api.application.port.input.CreateInvitationUseCase
 import com.moneylytics.api.application.port.input.GetOrganizationsUseCase
 import com.moneylytics.api.application.port.input.ManageOrganizationMembersUseCase
+import com.moneylytics.api.application.port.input.OnboardOrganizationUseCase
+import com.moneylytics.api.application.port.input.RequireOrgRoleUseCase
 import com.moneylytics.api.application.port.input.ResolveUserUseCase
-import com.moneylytics.api.application.service.UserAlreadyExistsException
 import com.moneylytics.api.domain.OrgRole
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.reactive.awaitSingle
 import kotlinx.coroutines.withContext
 import org.springframework.http.HttpStatus
+import org.springframework.http.ResponseEntity
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.security.core.userdetails.UserDetails
 import org.springframework.web.bind.annotation.DeleteMapping
@@ -23,6 +26,7 @@ import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.server.ResponseStatusException
 import org.springframework.web.server.ServerWebExchange
+import java.time.Instant
 
 @RestController
 @RequestMapping("/organizations")
@@ -30,6 +34,9 @@ class OrganizationController(
     private val getOrganizationsUseCase: GetOrganizationsUseCase,
     private val manageOrganizationMembersUseCase: ManageOrganizationMembersUseCase,
     private val activateOrganizationUseCase: ActivateOrganizationUseCase,
+    private val requireOrgRoleUseCase: RequireOrgRoleUseCase,
+    private val createInvitationUseCase: CreateInvitationUseCase,
+    private val onboardOrganizationUseCase: OnboardOrganizationUseCase,
     private val resolveUserUseCase: ResolveUserUseCase,
 ) {
     @GetMapping
@@ -42,6 +49,16 @@ class OrganizationController(
                 OrganizationResponse(id = it.organization.id, name = it.organization.name, role = it.role.name)
             }
         }
+    }
+
+    @PostMapping("/onboard")
+    suspend fun onboard(
+        @RequestBody request: CreateOrganizationRequest,
+        @AuthenticationPrincipal principal: UserDetails,
+    ): ResponseEntity<OrganizationResponse> {
+        val userId = withContext(Dispatchers.IO) { resolveUserUseCase.resolveUser(principal.username) }
+        val org = withContext(Dispatchers.IO) { onboardOrganizationUseCase.onboardOrganization(request.name, userId) }
+        return ResponseEntity.ok(OrganizationResponse(id = org.id, name = org.name, role = OrgRole.OWNER.name))
     }
 
     @PostMapping("/{id}/activate")
@@ -66,27 +83,30 @@ class OrganizationController(
             }
         }
 
-    @PostMapping("/{id}/members")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    suspend fun addMember(
+    @PostMapping("/{id}/invitations")
+    suspend fun createInvitation(
         @PathVariable id: Long,
-        @RequestBody request: AddMemberRequest,
+        @RequestBody request: CreateInvitationRequest,
         @AuthenticationPrincipal principal: UserDetails,
-    ) {
-        val userId = withContext(Dispatchers.IO) { resolveUserUseCase.resolveUser(principal.username) }
-        try {
+    ): ResponseEntity<InvitationResponse> {
+        val requestingUserId = withContext(Dispatchers.IO) { resolveUserUseCase.resolveUser(principal.username) }
+        val invitation =
             withContext(Dispatchers.IO) {
-                manageOrganizationMembersUseCase.addMember(
+                requireOrgRoleUseCase.requireOrgRole(id, requestingUserId, OrgRole.ADMIN)
+                createInvitationUseCase.createInvitation(
                     organizationId = id,
                     email = request.email,
-                    password = request.password,
                     role = OrgRole.valueOf(request.role),
-                    requestingUserId = userId,
+                    createdByUserId = requestingUserId,
                 )
             }
-        } catch (e: UserAlreadyExistsException) {
-            throw ResponseStatusException(HttpStatus.CONFLICT, e.message)
-        }
+        return ResponseEntity.ok(
+            InvitationResponse(
+                token = invitation.token,
+                link = "/invite/${invitation.token}",
+                expiresAt = invitation.expiresAt,
+            ),
+        )
     }
 
     @DeleteMapping("/{id}/members/{userId}")
@@ -150,10 +170,15 @@ data class MemberResponse(
     val role: String,
 )
 
-data class AddMemberRequest(
+data class CreateInvitationRequest(
     val email: String,
-    val password: String,
     val role: String,
+)
+
+data class InvitationResponse(
+    val token: String,
+    val link: String,
+    val expiresAt: Instant,
 )
 
 data class UpdateRoleRequest(

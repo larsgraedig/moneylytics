@@ -6,6 +6,8 @@ import com.moneylytics.api.domain.UserSettings
 interface UserRepository {
     fun findByExternalId(externalId: String): User?
 
+    fun findById(id: Long): User?
+
     fun save(
         externalId: String,
         passwordHash: String?,

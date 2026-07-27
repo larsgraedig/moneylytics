@@ -6,14 +6,6 @@ import com.moneylytics.api.domain.OrganizationMembership
 interface ManageOrganizationMembersUseCase {
     fun getMembers(organizationId: Long): List<OrganizationMembership>
 
-    fun addMember(
-        organizationId: Long,
-        email: String,
-        password: String,
-        role: OrgRole,
-        requestingUserId: Long,
-    )
-
     fun removeMember(
         organizationId: Long,
         targetUserId: Long,

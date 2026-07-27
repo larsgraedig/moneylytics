@@ -5,7 +5,7 @@ import com.moneylytics.api.application.port.input.CreateOrganizationUseCase
 import com.moneylytics.api.application.port.input.GetOrganizationsUseCase
 import com.moneylytics.api.application.port.input.ListUsersWithOrgsUseCase
 import com.moneylytics.api.application.port.input.ManageOrganizationMembersUseCase
-import com.moneylytics.api.application.port.input.RegisterUserUseCase
+import com.moneylytics.api.application.port.input.OnboardOrganizationUseCase
 import com.moneylytics.api.application.port.input.RequireOrgRoleUseCase
 import com.moneylytics.api.application.port.input.ResolveOrganizationUseCase
 import com.moneylytics.api.application.port.output.OrganizationRepository
@@ -16,8 +16,10 @@ import com.moneylytics.api.domain.OrganizationMembership
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.reactive.awaitSingle
 import kotlinx.coroutines.withContext
+import org.springframework.http.HttpStatus
 import org.springframework.security.core.userdetails.UserDetails
 import org.springframework.stereotype.Service
+import org.springframework.web.server.ResponseStatusException
 import org.springframework.web.server.ServerWebExchange
 import org.springframework.web.server.WebSession
 
@@ -27,14 +29,14 @@ const val SESSION_KEY_ACTIVE_ORG = "activeOrganizationId"
 class OrganizationService(
     private val organizationRepository: OrganizationRepository,
     private val userRepository: UserRepository,
-    private val registerUserUseCase: RegisterUserUseCase,
 ) : ResolveOrganizationUseCase,
     GetOrganizationsUseCase,
     CreateOrganizationUseCase,
     ManageOrganizationMembersUseCase,
     ActivateOrganizationUseCase,
     RequireOrgRoleUseCase,
-    ListUsersWithOrgsUseCase {
+    ListUsersWithOrgsUseCase,
+    OnboardOrganizationUseCase {
     override suspend fun resolveOrganization(
         principal: UserDetails,
         exchange: ServerWebExchange,
@@ -69,20 +71,19 @@ class OrganizationService(
         return org
     }
 
+    override fun onboardOrganization(
+        name: String,
+        userId: Long,
+    ): Organization {
+        val existing = organizationRepository.findByMemberUserId(userId)
+        if (existing.isNotEmpty()) {
+            throw ResponseStatusException(HttpStatus.CONFLICT, "User already belongs to an organization")
+        }
+        return createOrganization(name, userId)
+    }
+
     override fun getMembers(organizationId: Long): List<OrganizationMembership> =
         organizationRepository.findMembersByOrganizationId(organizationId)
-
-    override fun addMember(
-        organizationId: Long,
-        email: String,
-        password: String,
-        role: OrgRole,
-        requestingUserId: Long,
-    ) {
-        requireOrgRole(organizationId, requestingUserId, OrgRole.ADMIN)
-        val newUserId = registerUserUseCase.registerUser(email, password)
-        organizationRepository.addMember(organizationId, newUserId, role)
-    }
 
     override fun removeMember(
         organizationId: Long,

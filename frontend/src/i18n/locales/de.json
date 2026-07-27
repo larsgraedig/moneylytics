@@ -624,6 +624,37 @@
       "loadMembers": "Mitglieder konnten nicht geladen werden.",
       "removeMember": "Entfernen fehlgeschlagen.",
       "updateRole": "Rolle konnte nicht aktualisiert werden."
+    },
+    "invite": {
+      "generateTitle": "Einladungslink generieren",
+      "emailPlaceholder": "E-Mail des Eingeladenen",
+      "generate": "Link generieren",
+      "copy": "Kopieren",
+      "linkGenerated": "Einladungslink wurde erstellt.",
+      "error": "Einladung fehlgeschlagen."
     }
+  },
+  "invite": {
+    "loading": "Einladung wird geladen…",
+    "invalid": "Dieser Einladungslink ist ungültig oder abgelaufen.",
+    "title": "Einladung zu {{org}}",
+    "roleLabel": "Sie werden als {{role}} hinzugefügt.",
+    "join": "Jetzt beitreten",
+    "accepted": "Erfolgreich beigetreten.",
+    "goToApp": "Zur App",
+    "acceptError": "Beitritt fehlgeschlagen.",
+    "alreadyHaveAccount": "Bereits einen Account?",
+    "createAccount": "Neu registrieren"
+  },
+  "onboarding": {
+    "title": "Willkommen!",
+    "subtitle": "Wie soll Ihre Organisation heißen?",
+    "placeholder": "Organisationsname",
+    "button": "Erstellen",
+    "error": "Organisation konnte nicht erstellt werden."
+  },
+  "orgSelect": {
+    "title": "Organisation auswählen",
+    "subtitle": "Sie gehören mehreren Organisationen an. Welche möchten Sie betreten?"
   }
 }

@@ -26,6 +26,9 @@ import AdminPage from './components/AdminPage'
 import OrgsPage from './components/OrgsPage'
 import LoginPage from './components/LoginPage'
 import SettingsPanel from './components/SettingsPanel'
+import InvitePage from './components/InvitePage'
+import OnboardingModal from './components/OnboardingModal'
+import OrgSelectModal from './components/OrgSelectModal'
 import { fetchSankeyData, type SankeyResponse } from './api/transactions'
 import { fetchAccounts, type Account } from './api/accounts'
 import { fetchCategories, type CategoryGroup } from './api/rawImport'
@@ -85,7 +88,7 @@ const BASE_NAV: NavSection[] = [
 ]
 
 export default function App() {
-  const { username, isSystemAdmin, impersonating, deimpersonate, isLoading, logout, activeOrganization, organizations, activateOrganization } = useAuth()
+  const { username, isSystemAdmin, impersonating, deimpersonate, isLoading, logout, activeOrganization, organizations, activateOrganization, refreshAuth } = useAuth()
   const isOrgAdminOrOwner = activeOrganization?.role === 'ADMIN' || activeOrganization?.role === 'OWNER'
   const NAV = useMemo((): NavSection[] => {
     const sections = [...BASE_NAV]
@@ -174,8 +177,15 @@ export default function App() {
     })
   }, [username])
 
+  if (location.pathname.startsWith('/invite/')) {
+    const token = location.pathname.split('/')[2]
+    return <InvitePage token={token} />
+  }
+
   if (isLoading) return null
   if (!username) return <LoginPage />
+  if (organizations.length === 0) return <OnboardingModal onComplete={refreshAuth} />
+  if (organizations.length > 1 && !activeOrganization) return <OrgSelectModal organizations={organizations} onSelect={activateOrganization} />
 
   const iban = selectedIban || undefined
 
