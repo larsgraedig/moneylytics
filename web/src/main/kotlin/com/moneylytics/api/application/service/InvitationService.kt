@@ -3,6 +3,7 @@ package com.moneylytics.api.application.service
 import com.moneylytics.api.application.port.input.AcceptInvitationUseCase
 import com.moneylytics.api.application.port.input.CreateInvitationUseCase
 import com.moneylytics.api.application.port.input.GetInvitationUseCase
+import com.moneylytics.api.application.port.input.ListPendingInvitationsUseCase
 import com.moneylytics.api.application.port.output.InvitationRepository
 import com.moneylytics.api.application.port.output.OrganizationRepository
 import com.moneylytics.api.application.port.output.UserRepository
@@ -21,7 +22,11 @@ class InvitationService(
     private val userRepository: UserRepository,
 ) : CreateInvitationUseCase,
     GetInvitationUseCase,
-    AcceptInvitationUseCase {
+    AcceptInvitationUseCase,
+    ListPendingInvitationsUseCase {
+    override fun listPendingInvitations(organizationId: Long): List<Invitation> =
+        invitationRepository.findPendingByOrganizationId(organizationId)
+
     override fun createInvitation(
         organizationId: Long,
         email: String,

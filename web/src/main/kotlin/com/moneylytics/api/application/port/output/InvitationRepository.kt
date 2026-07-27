@@ -13,6 +13,8 @@ interface InvitationRepository {
 
     fun findByToken(token: String): Invitation?
 
+    fun findPendingByOrganizationId(organizationId: Long): List<Invitation>
+
     fun markAccepted(
         invitationId: Long,
         acceptedByUserId: Long,

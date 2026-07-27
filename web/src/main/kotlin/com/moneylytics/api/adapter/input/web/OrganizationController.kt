@@ -3,6 +3,7 @@ package com.moneylytics.api.adapter.input.web
 import com.moneylytics.api.application.port.input.ActivateOrganizationUseCase
 import com.moneylytics.api.application.port.input.CreateInvitationUseCase
 import com.moneylytics.api.application.port.input.GetOrganizationsUseCase
+import com.moneylytics.api.application.port.input.ListPendingInvitationsUseCase
 import com.moneylytics.api.application.port.input.ManageOrganizationMembersUseCase
 import com.moneylytics.api.application.port.input.OnboardOrganizationUseCase
 import com.moneylytics.api.application.port.input.RequireOrgRoleUseCase
@@ -36,6 +37,7 @@ class OrganizationController(
     private val activateOrganizationUseCase: ActivateOrganizationUseCase,
     private val requireOrgRoleUseCase: RequireOrgRoleUseCase,
     private val createInvitationUseCase: CreateInvitationUseCase,
+    private val listPendingInvitationsUseCase: ListPendingInvitationsUseCase,
     private val onboardOrganizationUseCase: OnboardOrganizationUseCase,
     private val resolveUserUseCase: ResolveUserUseCase,
 ) {
@@ -82,6 +84,25 @@ class OrganizationController(
                 MemberResponse(userId = it.userId, email = it.email, role = it.role.name)
             }
         }
+
+    @GetMapping("/{id}/invitations")
+    suspend fun listInvitations(
+        @PathVariable id: Long,
+        @AuthenticationPrincipal principal: UserDetails,
+    ): List<PendingInvitationResponse> {
+        val requestingUserId = withContext(Dispatchers.IO) { resolveUserUseCase.resolveUser(principal.username) }
+        return withContext(Dispatchers.IO) {
+            requireOrgRoleUseCase.requireOrgRole(id, requestingUserId, OrgRole.ADMIN)
+            listPendingInvitationsUseCase.listPendingInvitations(id).map {
+                PendingInvitationResponse(
+                    email = it.email,
+                    role = it.role.name,
+                    token = it.token,
+                    expiresAt = it.expiresAt,
+                )
+            }
+        }
+    }
 
     @PostMapping("/{id}/invitations")
     suspend fun createInvitation(
@@ -183,4 +204,11 @@ data class InvitationResponse(
 
 data class UpdateRoleRequest(
     val role: String,
+)
+
+data class PendingInvitationResponse(
+    val email: String,
+    val role: String,
+    val token: String,
+    val expiresAt: Instant,
 )

@@ -5276,6 +5276,51 @@ body {
 }
 .adm-deimpersonate-btn:hover { background: rgba(239, 68, 68, 0.15); }
 
+.adm-section--wide {
+  max-width: 680px;
+}
+
+.adm-org-block {
+  margin-top: 16px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.adm-org-block-name {
+  display: block;
+  padding: 6px 12px;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+
+.adm-org-members {
+  display: flex;
+  flex-direction: column;
+}
+
+.adm-org-member-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+}
+
+.adm-org-member-row:last-child {
+  border-bottom: none;
+}
+
+.adm-org-member-email {
+  color: var(--text);
+}
+
 .adm-user-select {
   background: var(--bg);
   border: 1px solid var(--border);
@@ -5328,6 +5373,21 @@ body {
 .org-cell-action {
   width: 40px;
   text-align: right;
+}
+
+.org-cell-expires {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.org-role-badge {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  text-transform: uppercase;
 }
 
 .org-role-select {

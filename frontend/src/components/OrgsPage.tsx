@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { UserMinus, Copy, Check } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { getMembers, removeMember, updateMemberRole, type OrgMember } from '../api/organizations'
-import { createInvitation } from '../api/invitations'
+import { createInvitation, listPendingInvitations, type PendingInvitation } from '../api/invitations'
 
 export default function OrgsPage() {
   const { t } = useTranslation()
@@ -13,15 +13,19 @@ export default function OrgsPage() {
   const [inviteEmail, setInviteEmail] = useState('')
   const [inviteRole, setInviteRole] = useState('MEMBER')
   const [inviteLink, setInviteLink] = useState<string | null>(null)
-  const [copied, setCopied] = useState(false)
+  const [pendingInvitations, setPendingInvitations] = useState<PendingInvitation[]>([])
+  const [copiedToken, setCopiedToken] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
 
   useEffect(() => {
     if (!activeOrganization) return
     setLoading(true)
-    getMembers(activeOrganization.id)
-      .then(setMembers)
+    Promise.all([
+      getMembers(activeOrganization.id),
+      listPendingInvitations(activeOrganization.id),
+    ])
+      .then(([m, inv]) => { setMembers(m); setPendingInvitations(inv) })
       .catch(() => setError(t('orgs.errors.loadMembers')))
       .finally(() => setLoading(false))
   }, [activeOrganization])
@@ -33,18 +37,24 @@ export default function OrgsPage() {
     setInviteLink(null)
     try {
       const result = await createInvitation(activeOrganization.id, inviteEmail.trim(), inviteRole)
-      setInviteLink(`${window.location.origin}${result.link}`)
+      const link = `${window.location.origin}${result.link}`
+      setInviteLink(link)
+      setInviteEmail('')
+      setPendingInvitations(prev => [
+        ...prev,
+        { email: inviteEmail.trim(), role: inviteRole, token: result.token, expiresAt: result.expiresAt },
+      ])
       setSuccess(t('orgs.invite.linkGenerated'))
     } catch {
       setError(t('orgs.invite.error'))
     }
   }
 
-  async function handleCopy() {
-    if (!inviteLink) return
-    await navigator.clipboard.writeText(inviteLink)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
+  async function handleCopy(token: string) {
+    const link = `${window.location.origin}/invite/${token}`
+    await navigator.clipboard.writeText(link)
+    setCopiedToken(token)
+    setTimeout(() => setCopiedToken(null), 2000)
   }
 
   async function handleRemove(userId: number) {
@@ -127,7 +137,7 @@ export default function OrgsPage() {
         )}
       </section>
 
-      <section className="adm-section">
+      <section className="adm-section org-section--wide">
         <h2 className="adm-section-title">{t('orgs.invite.generateTitle')}</h2>
         <div className="adm-action-row" style={{ flexWrap: 'wrap' }}>
           <input
@@ -156,10 +166,44 @@ export default function OrgsPage() {
         {inviteLink && (
           <div className="invite-link-row">
             <input className="acc-input invite-link-input" type="text" value={inviteLink} readOnly />
-            <button className="org-remove-btn invite-copy-btn" onClick={handleCopy} title={t('orgs.invite.copy')}>
-              {copied ? <Check size={13} /> : <Copy size={13} />}
+            <button className="org-remove-btn invite-copy-btn" onClick={() => handleCopy(inviteLink.split('/invite/')[1])} title={t('orgs.invite.copy')}>
+              {copiedToken === inviteLink.split('/invite/')[1] ? <Check size={13} /> : <Copy size={13} />}
             </button>
           </div>
+        )}
+        {pendingInvitations.length > 0 && (
+          <table className="org-table" style={{ marginTop: 16 }}>
+            <thead>
+              <tr>
+                <th>{t('orgs.members.email')}</th>
+                <th>{t('orgs.members.role')}</th>
+                <th>{t('orgs.invite.expires')}</th>
+                <th />
+              </tr>
+            </thead>
+            <tbody>
+              {pendingInvitations.map(inv => (
+                <tr key={inv.token} className="org-row">
+                  <td className="org-cell-email">{inv.email}</td>
+                  <td className="org-cell-role">
+                    <span className="org-role-badge">{inv.role.toLowerCase()}</span>
+                  </td>
+                  <td className="org-cell-expires">
+                    {new Date(inv.expiresAt).toLocaleDateString()}
+                  </td>
+                  <td className="org-cell-action">
+                    <button
+                      className="org-remove-btn invite-copy-btn"
+                      onClick={() => handleCopy(inv.token)}
+                      title={t('orgs.invite.copy')}
+                    >
+                      {copiedToken === inv.token ? <Check size={13} /> : <Copy size={13} />}
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         )}
       </section>
     </div>

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Play, UserCheck, LogOut } from 'lucide-react'
-import { triggerRecurringSync, listAdminUsers, type AdminUsersResponse } from '../api/admin'
+import { Play, UserCheck, LogOut, UserMinus, UserPlus } from 'lucide-react'
+import { triggerRecurringSync, listAdminUsers, adminAddMember, adminRemoveMember, type AdminUsersResponse } from '../api/admin'
 import { createOrganization } from '../api/organizations'
 import { useAuth } from '../context/AuthContext'
 
@@ -17,9 +17,22 @@ export default function AdminPage() {
   const [newOrgName, setNewOrgName] = useState('')
   const [orgSuccess, setOrgSuccess] = useState(false)
 
-  useEffect(() => {
+  const [addTargetOrg, setAddTargetOrg] = useState('')
+  const [addTargetUser, setAddTargetUser] = useState('')
+  const [addRole, setAddRole] = useState('MEMBER')
+  const [memberError, setMemberError] = useState<string | null>(null)
+  const [memberSuccess, setMemberSuccess] = useState<string | null>(null)
+
+  const allUsers = [
+    ...(usersData?.organizations.flatMap(o => o.members) ?? []),
+    ...(usersData?.unorganized ?? []),
+  ]
+
+  function refreshUsers() {
     listAdminUsers().then(setUsersData).catch(() => setUsersData(null))
-  }, [])
+  }
+
+  useEffect(() => { refreshUsers() }, [])
 
   async function handleTrigger() {
     setRunning(true)
@@ -50,6 +63,31 @@ export default function AdminPage() {
   async function handleDeimpersonate() {
     await deimpersonate()
     setSelectedUser('')
+  }
+
+  async function handleAdminAdd() {
+    if (!addTargetOrg || !addTargetUser) return
+    setMemberError(null)
+    setMemberSuccess(null)
+    try {
+      await adminAddMember(Number(addTargetOrg), addTargetUser, addRole)
+      setAddTargetUser('')
+      refreshUsers()
+      setMemberSuccess(t('admin.members.addSuccess'))
+    } catch {
+      setMemberError(t('admin.members.addError'))
+    }
+  }
+
+  async function handleAdminRemove(orgId: number, externalId: string) {
+    setMemberError(null)
+    setMemberSuccess(null)
+    try {
+      await adminRemoveMember(orgId, externalId)
+      refreshUsers()
+    } catch {
+      setMemberError(t('admin.members.removeError'))
+    }
   }
 
   return (
@@ -101,6 +139,70 @@ export default function AdminPage() {
         </div>
       </section>
 
+      <section className="adm-section adm-section--wide">
+        <h2 className="adm-section-title">{t('admin.members.title')}</h2>
+        {memberError && <p className="adm-feedback adm-feedback--error">{memberError}</p>}
+        {memberSuccess && <p className="adm-feedback adm-feedback--ok">{memberSuccess}</p>}
+
+        <div className="adm-action-row" style={{ flexWrap: 'wrap' }}>
+          <select
+            className="adm-user-select"
+            value={addTargetUser}
+            onChange={e => setAddTargetUser(e.target.value)}
+          >
+            <option value="">{t('admin.members.selectUser')}</option>
+            {allUsers.map(u => <option key={u} value={u}>{u}</option>)}
+          </select>
+          <select
+            className="adm-user-select"
+            value={addTargetOrg}
+            onChange={e => setAddTargetOrg(e.target.value)}
+          >
+            <option value="">{t('admin.members.selectOrg')}</option>
+            {usersData?.organizations.map(o => (
+              <option key={o.id} value={o.id}>{o.name}</option>
+            ))}
+          </select>
+          <select
+            className="org-role-select"
+            value={addRole}
+            onChange={e => setAddRole(e.target.value)}
+          >
+            <option value="MEMBER">Member</option>
+            <option value="ADMIN">Admin</option>
+            <option value="OWNER">Owner</option>
+          </select>
+          <button
+            className="adm-trigger-btn"
+            onClick={handleAdminAdd}
+            disabled={!addTargetUser || !addTargetOrg}
+          >
+            <UserPlus size={14} />
+            {t('admin.members.add')}
+          </button>
+        </div>
+
+        {usersData?.organizations.map(org => (
+          <div key={org.id} className="adm-org-block">
+            <span className="adm-org-block-name">{org.name}</span>
+            <div className="adm-org-members">
+              {org.members.map(email => (
+                <div key={email} className="adm-org-member-row">
+                  <span className="adm-org-member-email">{email}</span>
+                  <button
+                    className="org-remove-btn"
+                    title={t('admin.members.remove')}
+                    onClick={() => handleAdminRemove(org.id, email)}
+                  >
+                    <UserMinus size={13} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </section>
+
       <section className="adm-section">
         <h2 className="adm-section-title">{t('admin.recurring.title')}</h2>
         <p className="adm-description">{t('admin.recurring.description')}</p>
@@ -133,6 +235,7 @@ export default function AdminPage() {
                 await createOrganization(newOrgName.trim())
                 setNewOrgName('')
                 setOrgSuccess(true)
+                refreshUsers()
               } catch {
                 setOrgSuccess(false)
               }

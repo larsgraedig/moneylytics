@@ -1,5 +1,6 @@
 package com.moneylytics.api.adapter.input.web
 
+import com.moneylytics.api.application.port.input.AdminManageOrgMembersUseCase
 import com.moneylytics.api.application.port.input.CreateOrganizationUseCase
 import com.moneylytics.api.application.port.input.ListUsersUseCase
 import com.moneylytics.api.application.port.input.ListUsersWithOrgsUseCase
@@ -24,6 +25,8 @@ import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.server.ResponseStatusException
 import org.springframework.web.server.ServerWebExchange
+import java.net.URLDecoder
+import java.nio.charset.StandardCharsets
 
 @RestController
 @RequestMapping("/admin")
@@ -32,6 +35,7 @@ class AdminController(
     private val listUsersUseCase: ListUsersUseCase,
     private val listUsersWithOrgsUseCase: ListUsersWithOrgsUseCase,
     private val createOrganizationUseCase: CreateOrganizationUseCase,
+    private val adminManageOrgMembersUseCase: AdminManageOrgMembersUseCase,
     private val resolveUserUseCase: ResolveUserUseCase,
 ) {
     @PostMapping("/recurring/sync")
@@ -72,6 +76,27 @@ class AdminController(
         return ResponseEntity.ok(OrganizationResponse(id = org.id, name = org.name, role = OrgRole.OWNER.name))
     }
 
+    @PostMapping("/organizations/{orgId}/members")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    suspend fun adminAddMember(
+        @PathVariable orgId: Long,
+        @RequestBody request: AdminMemberRequest,
+    ) = withContext(Dispatchers.IO) {
+        adminManageOrgMembersUseCase.adminAddMember(orgId, request.externalId, OrgRole.valueOf(request.role))
+    }
+
+    @DeleteMapping("/organizations/{orgId}/members/{externalId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    suspend fun adminRemoveMember(
+        @PathVariable orgId: Long,
+        @PathVariable externalId: String,
+    ) = withContext(Dispatchers.IO) {
+        adminManageOrgMembersUseCase.adminRemoveMember(
+            orgId,
+            URLDecoder.decode(externalId, StandardCharsets.UTF_8),
+        )
+    }
+
     @DeleteMapping("/impersonate")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     suspend fun deimpersonate(exchange: ServerWebExchange) {
@@ -91,4 +116,9 @@ data class AdminOrgGroupDto(
 data class AdminUsersResponse(
     val organizations: List<AdminOrgGroupDto>,
     val unorganized: List<String>,
+)
+
+data class AdminMemberRequest(
+    val externalId: String,
+    val role: String,
 )

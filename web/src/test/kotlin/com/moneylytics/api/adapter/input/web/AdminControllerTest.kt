@@ -1,5 +1,6 @@
 package com.moneylytics.api.adapter.input.web
 
+import com.moneylytics.api.application.port.input.AdminManageOrgMembersUseCase
 import com.moneylytics.api.application.port.input.CreateOrganizationUseCase
 import com.moneylytics.api.application.port.input.ListUsersUseCase
 import com.moneylytics.api.application.port.input.ListUsersWithOrgsUseCase
@@ -24,6 +25,7 @@ class AdminControllerTest {
     private val listUsersUseCase: ListUsersUseCase = mock()
     private val listUsersWithOrgsUseCase: ListUsersWithOrgsUseCase = mock()
     private val createOrganizationUseCase: CreateOrganizationUseCase = mock()
+    private val adminManageOrgMembersUseCase: AdminManageOrgMembersUseCase = mock()
     private val resolveUserUseCase: ResolveUserUseCase = mock()
     private val controller =
         AdminController(
@@ -31,6 +33,7 @@ class AdminControllerTest {
             listUsersUseCase,
             listUsersWithOrgsUseCase,
             createOrganizationUseCase,
+            adminManageOrgMembersUseCase,
             resolveUserUseCase,
         )
 

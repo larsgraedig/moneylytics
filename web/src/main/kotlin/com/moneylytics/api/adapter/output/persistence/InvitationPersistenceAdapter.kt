@@ -24,7 +24,7 @@ class InvitationPersistenceAdapter(
     ): Invitation {
         val org = organizationJpaRepository.getReferenceById(organizationId)
         val creator = userJpaRepository.getReferenceById(createdByUserId)
-        val token = UUID.randomUUID().toString().replace("-", "")
+        val token = UUID.randomUUID().toString()
         val entity =
             invitationJpaRepository.save(
                 InvitationEntity(
@@ -41,6 +41,12 @@ class InvitationPersistenceAdapter(
 
     @Transactional(readOnly = true)
     override fun findByToken(token: String): Invitation? = invitationJpaRepository.findByToken(token)?.toDomain()
+
+    @Transactional(readOnly = true)
+    override fun findPendingByOrganizationId(organizationId: Long): List<Invitation> =
+        invitationJpaRepository
+            .findByOrganizationIdAndAcceptedAtIsNullAndExpiresAtAfter(organizationId, Instant.now())
+            .map { it.toDomain() }
 
     @Transactional
     override fun markAccepted(

@@ -1,6 +1,7 @@
 package com.moneylytics.api.application.service
 
 import com.moneylytics.api.application.port.input.ActivateOrganizationUseCase
+import com.moneylytics.api.application.port.input.AdminManageOrgMembersUseCase
 import com.moneylytics.api.application.port.input.CreateOrganizationUseCase
 import com.moneylytics.api.application.port.input.GetOrganizationsUseCase
 import com.moneylytics.api.application.port.input.ListUsersWithOrgsUseCase
@@ -36,7 +37,8 @@ class OrganizationService(
     ActivateOrganizationUseCase,
     RequireOrgRoleUseCase,
     ListUsersWithOrgsUseCase,
-    OnboardOrganizationUseCase {
+    OnboardOrganizationUseCase,
+    AdminManageOrgMembersUseCase {
     override suspend fun resolveOrganization(
         principal: UserDetails,
         exchange: ServerWebExchange,
@@ -126,6 +128,27 @@ class OrganizationService(
         val organizedEmails = orgGroups.flatMap { it.members }.toSet()
         val unorganized = userRepository.findAll().map { it.externalId }.filter { it !in organizedEmails }
         return ListUsersWithOrgsUseCase.UsersWithOrgs(organizations = orgGroups, unorganized = unorganized)
+    }
+
+    override fun adminAddMember(
+        orgId: Long,
+        externalId: String,
+        role: OrgRole,
+    ) {
+        val userId =
+            userRepository.findByExternalId(externalId)?.id
+                ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "User not found: $externalId")
+        organizationRepository.addMember(orgId, userId, role)
+    }
+
+    override fun adminRemoveMember(
+        orgId: Long,
+        externalId: String,
+    ) {
+        val userId =
+            userRepository.findByExternalId(externalId)?.id
+                ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "User not found: $externalId")
+        organizationRepository.removeMember(orgId, userId)
     }
 
     override fun requireOrgRole(

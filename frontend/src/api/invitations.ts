@@ -25,6 +25,19 @@ export async function acceptInvitation(token: string): Promise<void> {
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
 }
 
+export interface PendingInvitation {
+  email: string
+  role: string
+  token: string
+  expiresAt: string
+}
+
+export async function listPendingInvitations(orgId: number): Promise<PendingInvitation[]> {
+  const res = await fetchWithUser(`/organizations/${orgId}/invitations`)
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  return res.json() as Promise<PendingInvitation[]>
+}
+
 export async function createInvitation(orgId: number, email: string, role: string): Promise<CreatedInvitation> {
   const res = await fetchWithUser(`/organizations/${orgId}/invitations`, {
     method: 'POST',

@@ -30,3 +30,19 @@ export async function impersonateUser(externalId: string): Promise<void> {
 export async function deimpersonateUser(): Promise<void> {
   await fetchWithUser('/admin/impersonate', { method: 'DELETE' })
 }
+
+export async function adminAddMember(orgId: number, externalId: string, role: string): Promise<void> {
+  const res = await fetchWithUser(`/admin/organizations/${orgId}/members`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ externalId, role }),
+  })
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+}
+
+export async function adminRemoveMember(orgId: number, externalId: string): Promise<void> {
+  const res = await fetchWithUser(`/admin/organizations/${orgId}/members/${encodeURIComponent(externalId)}`, {
+    method: 'DELETE',
+  })
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+}

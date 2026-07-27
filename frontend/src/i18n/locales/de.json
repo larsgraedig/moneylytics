@@ -590,6 +590,16 @@
       "stop": "Impersonation beenden",
       "noOrg": "Ohne Organisation"
     },
+    "members": {
+      "title": "Organisationsmitgliedschaften",
+      "selectUser": "Nutzer auswählen…",
+      "selectOrg": "Organisation auswählen…",
+      "add": "Hinzufügen",
+      "remove": "Entfernen",
+      "addSuccess": "Nutzer erfolgreich hinzugefügt.",
+      "addError": "Hinzufügen fehlgeschlagen.",
+      "removeError": "Entfernen fehlgeschlagen."
+    },
     "recurring": {
       "title": "Wiederkehrende Transaktionen",
       "triggerSync": "Scheduler jetzt ausführen",
@@ -630,6 +640,7 @@
       "emailPlaceholder": "E-Mail des Eingeladenen",
       "generate": "Link generieren",
       "copy": "Kopieren",
+      "expires": "Läuft ab",
       "linkGenerated": "Einladungslink wurde erstellt.",
       "error": "Einladung fehlgeschlagen."
     }

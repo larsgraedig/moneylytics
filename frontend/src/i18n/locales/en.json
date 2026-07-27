@@ -590,6 +590,16 @@
       "stop": "End impersonation",
       "noOrg": "Without organization"
     },
+    "members": {
+      "title": "Organization memberships",
+      "selectUser": "Select user…",
+      "selectOrg": "Select organization…",
+      "add": "Add",
+      "remove": "Remove",
+      "addSuccess": "User added successfully.",
+      "addError": "Failed to add user.",
+      "removeError": "Failed to remove user."
+    },
     "recurring": {
       "title": "Recurring Transactions",
       "triggerSync": "Run scheduler now",
@@ -630,6 +640,7 @@
       "emailPlaceholder": "Email of invitee",
       "generate": "Generate link",
       "copy": "Copy",
+      "expires": "Expires",
       "linkGenerated": "Invitation link created.",
       "error": "Failed to create invitation."
     }
