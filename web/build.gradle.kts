@@ -82,3 +82,30 @@ tasks.jacocoTestReport {
         html.required = true
     }
 }
+
+val skipFrontend = project.findProperty("skipFrontend") == "true"
+
+val buildFrontend =
+    tasks.register<Exec>("buildFrontend") {
+        enabled = !skipFrontend
+        workingDir(file("${rootProject.projectDir}/frontend"))
+        commandLine("sh", "-c", "npm ci && npm run build")
+        inputs.dir("${rootProject.projectDir}/frontend/src")
+        inputs.files(
+            "${rootProject.projectDir}/frontend/package.json",
+            "${rootProject.projectDir}/frontend/package-lock.json",
+        )
+        outputs.dir("${rootProject.projectDir}/frontend/dist")
+    }
+
+val copyFrontendResources =
+    tasks.register<Copy>("copyFrontendResources") {
+        enabled = !skipFrontend
+        dependsOn(buildFrontend)
+        from("${rootProject.projectDir}/frontend/dist")
+        into("${layout.buildDirectory.get()}/resources/main/static")
+    }
+
+tasks.named("processResources") {
+    dependsOn(copyFrontendResources)
+}
