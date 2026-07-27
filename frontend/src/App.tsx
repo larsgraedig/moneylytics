@@ -85,7 +85,7 @@ const BASE_NAV: NavSection[] = [
 ]
 
 export default function App() {
-  const { username, isSystemAdmin, isLoading, logout, activeOrganization, organizations, activateOrganization } = useAuth()
+  const { username, isSystemAdmin, impersonating, deimpersonate, isLoading, logout, activeOrganization, organizations, activateOrganization } = useAuth()
   const isOrgAdminOrOwner = activeOrganization?.role === 'ADMIN' || activeOrganization?.role === 'OWNER'
   const NAV = useMemo((): NavSection[] => {
     const sections = [...BASE_NAV]
@@ -223,9 +223,19 @@ export default function App() {
 
       {/* ── main column ── */}
       <div className="main-col">
-        <header className="bar">
+        <header className={`bar${impersonating ? ' bar--impersonating' : ''}`}>
           <span className="wordmark">moneylytics</span>
           <div className="session">
+            {impersonating && (
+              <>
+                <span className="impersonate-badge">
+                  {t('admin.impersonation.active', { username: impersonating })}
+                </span>
+                <button className="deimpersonate-btn" onClick={deimpersonate}>
+                  {t('admin.impersonation.stop')}
+                </button>
+              </>
+            )}
             {organizations.length > 1 && (
               <select
                 className="org-select"

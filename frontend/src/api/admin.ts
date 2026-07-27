@@ -1,15 +1,25 @@
 import { fetchWithUser } from './client'
 
+export interface AdminOrgGroup {
+  id: number
+  name: string
+  members: string[]
+}
+
+export interface AdminUsersResponse {
+  organizations: AdminOrgGroup[]
+  unorganized: string[]
+}
+
 export async function triggerRecurringSync(): Promise<void> {
   const res = await fetchWithUser('/admin/recurring/sync', { method: 'POST' })
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
 }
 
-export async function listAdminUsers(): Promise<string[]> {
+export async function listAdminUsers(): Promise<AdminUsersResponse> {
   const res = await fetchWithUser('/admin/users')
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
-  const data = await res.json() as { users: string[] }
-  return data.users
+  return res.json() as Promise<AdminUsersResponse>
 }
 
 export async function impersonateUser(externalId: string): Promise<void> {

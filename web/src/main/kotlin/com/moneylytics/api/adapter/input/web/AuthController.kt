@@ -1,5 +1,6 @@
 package com.moneylytics.api.adapter.input.web
 
+import com.fasterxml.jackson.annotation.JsonProperty
 import com.moneylytics.api.application.port.input.GetOrganizationsUseCase
 import com.moneylytics.api.application.port.input.RegisterUserUseCase
 import com.moneylytics.api.application.port.input.ResolveUserUseCase
@@ -141,7 +142,7 @@ data class OrganizationInfo(
 
 data class AuthResponse(
     val username: String,
-    val isSystemAdmin: Boolean = false,
+    @JsonProperty("isSystemAdmin") val isSystemAdmin: Boolean = false,
     val activeOrganizationId: Long? = null,
     val organizations: List<OrganizationInfo> = emptyList(),
     val impersonating: String? = null,

@@ -1,7 +1,6 @@
 package com.moneylytics.api.adapter.input.web
 
 import com.moneylytics.api.application.port.input.ActivateOrganizationUseCase
-import com.moneylytics.api.application.port.input.CreateOrganizationUseCase
 import com.moneylytics.api.application.port.input.GetOrganizationsUseCase
 import com.moneylytics.api.application.port.input.ManageOrganizationMembersUseCase
 import com.moneylytics.api.application.port.input.ResolveUserUseCase
@@ -11,7 +10,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.reactive.awaitSingle
 import kotlinx.coroutines.withContext
 import org.springframework.http.HttpStatus
-import org.springframework.http.ResponseEntity
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.security.core.userdetails.UserDetails
 import org.springframework.web.bind.annotation.DeleteMapping
@@ -30,7 +28,6 @@ import org.springframework.web.server.ServerWebExchange
 @RequestMapping("/organizations")
 class OrganizationController(
     private val getOrganizationsUseCase: GetOrganizationsUseCase,
-    private val createOrganizationUseCase: CreateOrganizationUseCase,
     private val manageOrganizationMembersUseCase: ManageOrganizationMembersUseCase,
     private val activateOrganizationUseCase: ActivateOrganizationUseCase,
     private val resolveUserUseCase: ResolveUserUseCase,
@@ -45,16 +42,6 @@ class OrganizationController(
                 OrganizationResponse(id = it.organization.id, name = it.organization.name, role = it.role.name)
             }
         }
-    }
-
-    @PostMapping
-    suspend fun createOrganization(
-        @RequestBody request: CreateOrganizationRequest,
-        @AuthenticationPrincipal principal: UserDetails,
-    ): ResponseEntity<OrganizationResponse> {
-        val userId = withContext(Dispatchers.IO) { resolveUserUseCase.resolveUser(principal.username) }
-        val org = withContext(Dispatchers.IO) { createOrganizationUseCase.createOrganization(request.name, userId) }
-        return ResponseEntity.ok(OrganizationResponse(id = org.id, name = org.name, role = OrgRole.OWNER.name))
     }
 
     @PostMapping("/{id}/activate")
@@ -110,12 +97,16 @@ class OrganizationController(
         @AuthenticationPrincipal principal: UserDetails,
     ) {
         val requestingUserId = withContext(Dispatchers.IO) { resolveUserUseCase.resolveUser(principal.username) }
-        withContext(Dispatchers.IO) {
-            manageOrganizationMembersUseCase.removeMember(
-                organizationId = id,
-                targetUserId = userId,
-                requestingUserId = requestingUserId,
-            )
+        try {
+            withContext(Dispatchers.IO) {
+                manageOrganizationMembersUseCase.removeMember(
+                    organizationId = id,
+                    targetUserId = userId,
+                    requestingUserId = requestingUserId,
+                )
+            }
+        } catch (e: IllegalStateException) {
+            throw ResponseStatusException(HttpStatus.FORBIDDEN, e.message)
         }
     }
 
@@ -128,13 +119,17 @@ class OrganizationController(
         @AuthenticationPrincipal principal: UserDetails,
     ) {
         val requestingUserId = withContext(Dispatchers.IO) { resolveUserUseCase.resolveUser(principal.username) }
-        withContext(Dispatchers.IO) {
-            manageOrganizationMembersUseCase.updateMemberRole(
-                organizationId = id,
-                targetUserId = userId,
-                role = OrgRole.valueOf(request.role),
-                requestingUserId = requestingUserId,
-            )
+        try {
+            withContext(Dispatchers.IO) {
+                manageOrganizationMembersUseCase.updateMemberRole(
+                    organizationId = id,
+                    targetUserId = userId,
+                    role = OrgRole.valueOf(request.role),
+                    requestingUserId = requestingUserId,
+                )
+            }
+        } catch (e: IllegalStateException) {
+            throw ResponseStatusException(HttpStatus.FORBIDDEN, e.message)
         }
     }
 }

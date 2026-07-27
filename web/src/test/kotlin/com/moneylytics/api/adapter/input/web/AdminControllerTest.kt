@@ -1,6 +1,9 @@
 package com.moneylytics.api.adapter.input.web
 
+import com.moneylytics.api.application.port.input.CreateOrganizationUseCase
 import com.moneylytics.api.application.port.input.ListUsersUseCase
+import com.moneylytics.api.application.port.input.ListUsersWithOrgsUseCase
+import com.moneylytics.api.application.port.input.ResolveUserUseCase
 import com.moneylytics.api.application.port.input.SyncRecurringSeriesUseCase
 import com.moneylytics.api.config.ImpersonationWebFilter.Companion.IMPERSONATED_USER_ID_KEY
 import com.moneylytics.api.domain.Role
@@ -19,7 +22,17 @@ import reactor.core.publisher.Mono
 class AdminControllerTest {
     private val syncRecurringSeriesUseCase: SyncRecurringSeriesUseCase = mock()
     private val listUsersUseCase: ListUsersUseCase = mock()
-    private val controller = AdminController(syncRecurringSeriesUseCase, listUsersUseCase)
+    private val listUsersWithOrgsUseCase: ListUsersWithOrgsUseCase = mock()
+    private val createOrganizationUseCase: CreateOrganizationUseCase = mock()
+    private val resolveUserUseCase: ResolveUserUseCase = mock()
+    private val controller =
+        AdminController(
+            syncRecurringSeriesUseCase,
+            listUsersUseCase,
+            listUsersWithOrgsUseCase,
+            createOrganizationUseCase,
+            resolveUserUseCase,
+        )
 
     private val sessionAttributes = mutableMapOf<String, Any>()
     private val session: WebSession =

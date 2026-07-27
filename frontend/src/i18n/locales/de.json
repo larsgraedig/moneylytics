@@ -587,7 +587,8 @@
       "selectUser": "Nutzer auswählen…",
       "button": "Als Nutzer handeln",
       "active": "Du agierst als {{username}}",
-      "stop": "Impersonation beenden"
+      "stop": "Impersonation beenden",
+      "noOrg": "Ohne Organisation"
     },
     "recurring": {
       "title": "Wiederkehrende Transaktionen",
@@ -595,6 +596,34 @@
       "triggering": "Wird ausgeführt…",
       "success": "Scheduler erfolgreich ausgeführt.",
       "description": "Startet den Abgleich neuer Transaktionen mit bestehenden Wiederkehrer-Definitionen — identisch zum täglichen Scheduler-Lauf (Protokolleintrag: Automatisch)."
+    }
+  },
+  "orgs": {
+    "members": {
+      "title": "Mitglieder",
+      "email": "E-Mail",
+      "role": "Rolle",
+      "remove": "Entfernen"
+    },
+    "invite": {
+      "title": "Mitglied einladen",
+      "emailPlaceholder": "E-Mail",
+      "passwordPlaceholder": "Passwort",
+      "button": "Anlegen",
+      "success": "Mitglied erfolgreich eingeladen.",
+      "error": "Einladen fehlgeschlagen."
+    },
+    "create": {
+      "title": "Neue Organisation anlegen",
+      "namePlaceholder": "Name",
+      "button": "Anlegen",
+      "success": "Organisation erstellt.",
+      "error": "Erstellen fehlgeschlagen."
+    },
+    "errors": {
+      "loadMembers": "Mitglieder konnten nicht geladen werden.",
+      "removeMember": "Entfernen fehlgeschlagen.",
+      "updateRole": "Rolle konnte nicht aktualisiert werden."
     }
   }
 }

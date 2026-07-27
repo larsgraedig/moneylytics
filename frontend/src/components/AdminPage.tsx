@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Play, UserCheck, LogOut } from 'lucide-react'
-import { triggerRecurringSync, listAdminUsers } from '../api/admin'
+import { triggerRecurringSync, listAdminUsers, type AdminUsersResponse } from '../api/admin'
+import { createOrganization } from '../api/organizations'
 import { useAuth } from '../context/AuthContext'
 
 export default function AdminPage() {
@@ -10,12 +11,14 @@ export default function AdminPage() {
   const [running, setRunning] = useState(false)
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [users, setUsers] = useState<string[]>([])
+  const [usersData, setUsersData] = useState<AdminUsersResponse | null>(null)
   const [selectedUser, setSelectedUser] = useState('')
   const [impersonating_, setImpersonating_] = useState(false)
+  const [newOrgName, setNewOrgName] = useState('')
+  const [orgSuccess, setOrgSuccess] = useState(false)
 
   useEffect(() => {
-    listAdminUsers().then(setUsers).catch(() => setUsers([]))
+    listAdminUsers().then(setUsersData).catch(() => setUsersData(null))
   }, [])
 
   async function handleTrigger() {
@@ -72,9 +75,20 @@ export default function AdminPage() {
             disabled={!!impersonating}
           >
             <option value="">{t('admin.impersonation.selectUser')}</option>
-            {users.map(u => (
-              <option key={u} value={u}>{u}</option>
+            {usersData?.organizations.map(org => (
+              <optgroup key={org.id} label={org.name}>
+                {org.members.map(u => (
+                  <option key={u} value={u}>{u}</option>
+                ))}
+              </optgroup>
             ))}
+            {(usersData?.unorganized.length ?? 0) > 0 && (
+              <optgroup label={t('admin.impersonation.noOrg')}>
+                {usersData!.unorganized.map(u => (
+                  <option key={u} value={u}>{u}</option>
+                ))}
+              </optgroup>
+            )}
           </select>
           <button
             className="adm-trigger-btn"
@@ -97,6 +111,36 @@ export default function AdminPage() {
           </button>
           {success && <span className="adm-feedback adm-feedback--ok">{t('admin.recurring.success')}</span>}
           {error && <span className="adm-feedback adm-feedback--error">{error}</span>}
+        </div>
+      </section>
+
+      <section className="adm-section">
+        <h2 className="adm-section-title">{t('orgs.create.title')}</h2>
+        <div className="adm-action-row">
+          <input
+            className="acc-input"
+            type="text"
+            placeholder={t('orgs.create.namePlaceholder')}
+            value={newOrgName}
+            onChange={e => { setNewOrgName(e.target.value); setOrgSuccess(false) }}
+          />
+          <button
+            className="adm-trigger-btn"
+            disabled={!newOrgName.trim()}
+            onClick={async () => {
+              if (!newOrgName.trim()) return
+              try {
+                await createOrganization(newOrgName.trim())
+                setNewOrgName('')
+                setOrgSuccess(true)
+              } catch {
+                setOrgSuccess(false)
+              }
+            }}
+          >
+            {t('orgs.create.button')}
+          </button>
+          {orgSuccess && <span className="adm-feedback adm-feedback--ok">{t('orgs.create.success')}</span>}
         </div>
       </section>
     </div>

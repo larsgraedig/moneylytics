@@ -587,7 +587,8 @@
       "selectUser": "Select user…",
       "button": "Act as user",
       "active": "You are acting as {{username}}",
-      "stop": "End impersonation"
+      "stop": "End impersonation",
+      "noOrg": "Without organization"
     },
     "recurring": {
       "title": "Recurring Transactions",
@@ -595,6 +596,34 @@
       "triggering": "Running…",
       "success": "Scheduler executed successfully.",
       "description": "Triggers the matching of new transactions against existing recurring series — identical to the daily scheduled run (log entry: Automatic)."
+    }
+  },
+  "orgs": {
+    "members": {
+      "title": "Members",
+      "email": "Email",
+      "role": "Role",
+      "remove": "Remove"
+    },
+    "invite": {
+      "title": "Invite member",
+      "emailPlaceholder": "Email",
+      "passwordPlaceholder": "Password",
+      "button": "Create",
+      "success": "Member invited successfully.",
+      "error": "Failed to invite member."
+    },
+    "create": {
+      "title": "Create new organization",
+      "namePlaceholder": "Name",
+      "button": "Create",
+      "success": "Organization created.",
+      "error": "Failed to create organization."
+    },
+    "errors": {
+      "loadMembers": "Failed to load members.",
+      "removeMember": "Failed to remove member.",
+      "updateRole": "Failed to update role."
     }
   }
 }

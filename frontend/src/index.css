@@ -5,18 +5,20 @@
 }
 
 :root {
-  --bg:           #09090b;
-  --surface:      #111114;
-  --border:       #222228;
-  --border-hi:    #36363f;
-  --accent:       #f59e0b;
-  --accent-glow:  rgba(245, 158, 11, 0.10);
-  --accent-dim:   rgba(245, 158, 11, 0.40);
-  --text:         #e4e4ea;
-  --text-muted:   #6b6b78;
-  --text-dim:     #303038;
-  --error:        #f87171;
-  --mono:         ui-monospace, 'SF Mono', SFMono-Regular, Consolas, 'Liberation Mono', monospace;
+  --bg:              #09090b;
+  --surface:         #111114;
+  --border:          #222228;
+  --border-hi:       #36363f;
+  --accent:          #f59e0b;
+  --accent-glow:     rgba(245, 158, 11, 0.10);
+  --accent-dim:      rgba(245, 158, 11, 0.40);
+  --text:            #e4e4ea;
+  --text-muted:      #6b6b78;
+  --text-dim:        #303038;
+  --error:           #f87171;
+  --impersonate:     #f97316;
+  --impersonate-dim: rgba(249, 115, 22, 0.15);
+  --mono:            ui-monospace, 'SF Mono', SFMono-Regular, Consolas, 'Liberation Mono', monospace;
 }
 
 html, body, #root {
@@ -463,6 +465,43 @@ body {
 .logout-btn:hover {
   border-color: var(--border-hi);
   color: var(--text);
+}
+
+.bar--impersonating {
+  border-top: 3px solid var(--impersonate);
+  background: color-mix(in srgb, var(--surface) 92%, var(--impersonate) 8%);
+}
+
+.impersonate-badge {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: var(--impersonate);
+  background: var(--impersonate-dim);
+  border: 1px solid var(--impersonate);
+  border-radius: 4px;
+  padding: 2px 8px;
+  white-space: nowrap;
+}
+
+.deimpersonate-btn {
+  height: 28px;
+  padding: 0 12px;
+  background: var(--impersonate-dim);
+  border: 1px solid var(--impersonate);
+  border-radius: 4px;
+  color: var(--impersonate);
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+  white-space: nowrap;
+}
+
+.deimpersonate-btn:hover {
+  background: var(--impersonate);
+  color: #000;
 }
 
 /* ── settings panel ──────────────────────── */
@@ -5238,11 +5277,92 @@ body {
 .adm-deimpersonate-btn:hover { background: rgba(239, 68, 68, 0.15); }
 
 .adm-user-select {
-  background: var(--bg-2);
+  background: var(--bg);
   border: 1px solid var(--border);
   border-radius: 4px;
-  color: var(--fg);
+  color: var(--text);
   font-size: 13px;
   padding: 6px 10px;
   min-width: 220px;
+}
+
+/* ── organizations page ──────────────────── */
+
+.org-section--wide {
+  max-width: 680px;
+}
+
+.org-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.org-table th {
+  text-align: left;
+  padding: 0 12px 8px;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  border-bottom: 1px solid var(--border);
+}
+
+.org-row td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+
+.org-row:last-child td { border-bottom: none; }
+
+.org-cell-email {
+  color: var(--text);
+}
+
+.org-cell-role {
+  width: 140px;
+}
+
+.org-cell-action {
+  width: 40px;
+  text-align: right;
+}
+
+.org-role-select {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  font-size: 12px;
+  padding: 4px 8px;
+  cursor: pointer;
+  transition: border-color 0.12s;
+}
+
+.org-role-select:focus { border-color: var(--accent); outline: none; }
+
+.org-remove-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: border-color 0.12s, color 0.12s;
+}
+
+.org-remove-btn:hover:not(:disabled) {
+  border-color: var(--error);
+  color: var(--error);
+}
+
+.org-remove-btn:disabled {
+  opacity: 0.3;
+  cursor: default;
 }

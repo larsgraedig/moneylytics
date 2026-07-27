@@ -41,4 +41,6 @@ interface OrganizationRepository {
     ): OrgRole?
 
     fun findAllOrganizationIds(): Set<Long>
+
+    fun findAll(): List<Organization>
 }

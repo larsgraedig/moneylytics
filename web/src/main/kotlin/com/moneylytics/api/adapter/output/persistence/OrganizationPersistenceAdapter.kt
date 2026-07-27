@@ -64,6 +64,8 @@ class OrganizationPersistenceAdapter(
 
     override fun findAllOrganizationIds(): Set<Long> = organizationJpaRepository.findAll().mapNotNull { it.id }.toHashSet()
 
+    override fun findAll(): List<Organization> = organizationJpaRepository.findAll().map { it.toDomain() }
+
     private fun OrganizationEntity.toDomain() = Organization(id = id!!, name = name)
 
     private fun OrganizationMemberEntity.toMembership() =

@@ -1,7 +1,6 @@
 package com.moneylytics.api.adapter.input.web
 
 import com.moneylytics.api.application.port.input.ActivateOrganizationUseCase
-import com.moneylytics.api.application.port.input.CreateOrganizationUseCase
 import com.moneylytics.api.application.port.input.GetOrganizationsUseCase
 import com.moneylytics.api.application.port.input.ManageOrganizationMembersUseCase
 import com.moneylytics.api.application.port.input.ResolveUserUseCase
@@ -27,13 +26,11 @@ class OrganizationControllerTest {
     private val orgId = 6L
     private val resolveUserUseCase: ResolveUserUseCase = ResolveUserUseCase { userId }
     private val getOrganizationsUseCase: GetOrganizationsUseCase = mock()
-    private val createOrganizationUseCase: CreateOrganizationUseCase = mock()
     private val manageOrganizationMembersUseCase: ManageOrganizationMembersUseCase = mock()
     private val activateOrganizationUseCase: ActivateOrganizationUseCase = mock()
     private val controller =
         OrganizationController(
             getOrganizationsUseCase = getOrganizationsUseCase,
-            createOrganizationUseCase = createOrganizationUseCase,
             manageOrganizationMembersUseCase = manageOrganizationMembersUseCase,
             activateOrganizationUseCase = activateOrganizationUseCase,
             resolveUserUseCase = resolveUserUseCase,

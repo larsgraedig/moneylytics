@@ -3,6 +3,7 @@ package com.moneylytics.api.application.service
 import com.moneylytics.api.application.port.input.ActivateOrganizationUseCase
 import com.moneylytics.api.application.port.input.CreateOrganizationUseCase
 import com.moneylytics.api.application.port.input.GetOrganizationsUseCase
+import com.moneylytics.api.application.port.input.ListUsersWithOrgsUseCase
 import com.moneylytics.api.application.port.input.ManageOrganizationMembersUseCase
 import com.moneylytics.api.application.port.input.RegisterUserUseCase
 import com.moneylytics.api.application.port.input.RequireOrgRoleUseCase
@@ -32,7 +33,8 @@ class OrganizationService(
     CreateOrganizationUseCase,
     ManageOrganizationMembersUseCase,
     ActivateOrganizationUseCase,
-    RequireOrgRoleUseCase {
+    RequireOrgRoleUseCase,
+    ListUsersWithOrgsUseCase {
     override suspend fun resolveOrganization(
         principal: UserDetails,
         exchange: ServerWebExchange,
@@ -87,6 +89,7 @@ class OrganizationService(
         targetUserId: Long,
         requestingUserId: Long,
     ) {
+        check(targetUserId != requestingUserId) { "Users cannot remove themselves from an organization" }
         requireOrgRole(organizationId, requestingUserId, OrgRole.ADMIN)
         organizationRepository.removeMember(organizationId, targetUserId)
     }
@@ -97,6 +100,7 @@ class OrganizationService(
         role: OrgRole,
         requestingUserId: Long,
     ) {
+        check(targetUserId != requestingUserId) { "Users cannot change their own role" }
         requireOrgRole(organizationId, requestingUserId, OrgRole.ADMIN)
         organizationRepository.updateMemberRole(organizationId, targetUserId, role)
     }
@@ -110,6 +114,17 @@ class OrganizationService(
             "User $userId is not a member of organization $organizationId"
         }
         session.attributes[SESSION_KEY_ACTIVE_ORG] = organizationId
+    }
+
+    override fun listUsersWithOrgs(): ListUsersWithOrgsUseCase.UsersWithOrgs {
+        val orgGroups =
+            organizationRepository.findAll().map { org ->
+                val members = organizationRepository.findMembersByOrganizationId(org.id).map { it.email }
+                ListUsersWithOrgsUseCase.OrgGroup(id = org.id, name = org.name, members = members)
+            }
+        val organizedEmails = orgGroups.flatMap { it.members }.toSet()
+        val unorganized = userRepository.findAll().map { it.externalId }.filter { it !in organizedEmails }
+        return ListUsersWithOrgsUseCase.UsersWithOrgs(organizations = orgGroups, unorganized = unorganized)
     }
 
     override fun requireOrgRole(

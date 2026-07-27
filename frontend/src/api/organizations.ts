@@ -7,7 +7,7 @@ export interface OrgMember {
 }
 
 export async function createOrganization(name: string): Promise<{ id: number; name: string; role: string }> {
-  const res = await fetchWithUser('/organizations', {
+  const res = await fetchWithUser('/admin/organizations', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ name }),
