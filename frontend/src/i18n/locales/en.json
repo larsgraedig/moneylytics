@@ -582,20 +582,21 @@
   },
   "admin": {
     "impersonation": {
-      "title": "Impersonate user",
-      "description": "Act as another user to provide support. Admin actions remain executed as yourself.",
-      "selectUser": "Select user…",
-      "button": "Act as user",
       "active": "You are acting as {{username}}",
       "stop": "End impersonation",
-      "noOrg": "Without organization"
+      "button": "Impersonate",
+      "confirm": "Do you really want to act as {{username}}?"
     },
     "members": {
       "title": "Organization memberships",
+      "managementTitle": "Member management",
       "selectUser": "Select user…",
+      "searchUser": "Search user…",
       "selectOrg": "Select organization…",
       "add": "Add",
       "remove": "Remove",
+      "noMembers": "No members in this organization.",
+      "confirmRemove": "Do you really want to remove {{username}} from the organization?",
       "addSuccess": "User added successfully.",
       "addError": "Failed to add user.",
       "removeError": "Failed to remove user."

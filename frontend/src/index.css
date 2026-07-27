@@ -5276,6 +5276,69 @@ body {
 }
 .adm-deimpersonate-btn:hover { background: rgba(239, 68, 68, 0.15); }
 
+.adm-divider {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 8px 0 0;
+}
+
+.adm-user-search-wrap {
+  position: relative;
+}
+
+.adm-user-list {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  min-width: 220px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  max-height: 220px;
+  overflow-y: auto;
+  z-index: 50;
+}
+
+.adm-user-list-item {
+  padding: 7px 10px;
+  font-size: 13px;
+  color: var(--text);
+  cursor: pointer;
+  border-bottom: 1px solid var(--border);
+}
+
+.adm-user-list-item:last-child { border-bottom: none; }
+
+.adm-user-list-item:hover { background: var(--accent-glow); color: var(--accent); }
+
+.adm-tab-bar {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 24px;
+}
+
+.adm-tab-btn {
+  padding: 8px 16px;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-muted);
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  margin-bottom: -1px;
+  transition: color 0.12s, border-color 0.12s;
+}
+
+.adm-tab-btn:hover:not(.adm-tab-btn--active) { color: var(--text); }
+
+.adm-tab-btn--active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
 .adm-section--wide {
   max-width: 680px;
 }
@@ -5319,6 +5382,11 @@ body {
 
 .adm-org-member-email {
   color: var(--text);
+}
+
+.adm-org-member-actions {
+  display: flex;
+  gap: 6px;
 }
 
 .adm-user-select {

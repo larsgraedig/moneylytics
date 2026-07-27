@@ -582,20 +582,21 @@
   },
   "admin": {
     "impersonation": {
-      "title": "Nutzer impersonieren",
-      "description": "Als ein anderer Nutzer handeln, um Support leisten zu können. Admin-Aktionen bleiben weiterhin als du selbst ausgeführt.",
-      "selectUser": "Nutzer auswählen…",
-      "button": "Als Nutzer handeln",
       "active": "Du agierst als {{username}}",
       "stop": "Impersonation beenden",
-      "noOrg": "Ohne Organisation"
+      "button": "Impersonieren",
+      "confirm": "Möchtest du wirklich als {{username}} handeln?"
     },
     "members": {
       "title": "Organisationsmitgliedschaften",
+      "managementTitle": "Mitgliederverwaltung",
       "selectUser": "Nutzer auswählen…",
+      "searchUser": "Nutzer suchen…",
       "selectOrg": "Organisation auswählen…",
       "add": "Hinzufügen",
       "remove": "Entfernen",
+      "noMembers": "Keine Mitglieder in dieser Organisation.",
+      "confirmRemove": "Möchtest du {{username}} wirklich aus der Organisation entfernen?",
       "addSuccess": "Nutzer erfolgreich hinzugefügt.",
       "addError": "Hinzufügen fehlgeschlagen.",
       "removeError": "Entfernen fehlgeschlagen."
