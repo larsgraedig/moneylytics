@@ -2,9 +2,6 @@
 
 publish:
 	./gradlew :web:jib
-	docker buildx build --platform linux/arm64 --push \
-		-t larsu/moneylytics-frontend:$$(git rev-parse --short HEAD) \
-		./frontend
 
 docker-build:
 	./gradlew :web:jibDockerBuild
@@ -17,8 +14,7 @@ ENV ?= prod
 deploy:
 	helm upgrade moneylytics deployment/api \
 		--namespace moneylytics-$(ENV) \
-		--set image.tag=$$(git rev-parse --short HEAD) \
-		--set frontend.image.tag=$$(git rev-parse --short HEAD)
+		--set image.tag=$$(git rev-parse --short HEAD)
 
 release:
 	./deployment/release.sh $(ENV)

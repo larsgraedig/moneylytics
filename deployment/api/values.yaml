@@ -163,13 +163,6 @@ affinity: { }
 
 frontendUrl: "http://moneylytics.larsupilami.de:32600"
 
-frontend:
-  image:
-    repository: larsu/moneylytics-frontend
-    tag: "latest"
-  service:
-    type: NodePort
-
 postgres:
   image: postgres:16-alpine
   database: moneylyticsdb
