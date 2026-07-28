@@ -6,6 +6,7 @@ import com.moneylytics.api.application.port.input.GetOrganizationsUseCase
 import com.moneylytics.api.application.port.input.ListPendingInvitationsUseCase
 import com.moneylytics.api.application.port.input.ManageOrganizationMembersUseCase
 import com.moneylytics.api.application.port.input.OnboardOrganizationUseCase
+import com.moneylytics.api.application.port.input.OrganizationLogoUseCase
 import com.moneylytics.api.application.port.input.RequireOrgRoleUseCase
 import com.moneylytics.api.application.port.input.ResolveUserUseCase
 import com.moneylytics.api.domain.OrgRole
@@ -29,6 +30,7 @@ class OrganizationControllerTest {
     private val createInvitationUseCase: CreateInvitationUseCase = mock()
     private val listPendingInvitationsUseCase: ListPendingInvitationsUseCase = mock()
     private val onboardOrganizationUseCase: OnboardOrganizationUseCase = mock()
+    private val organizationLogoUseCase: OrganizationLogoUseCase = mock()
     private val controller =
         OrganizationController(
             getOrganizationsUseCase = getOrganizationsUseCase,
@@ -39,6 +41,7 @@ class OrganizationControllerTest {
             listPendingInvitationsUseCase = listPendingInvitationsUseCase,
             onboardOrganizationUseCase = onboardOrganizationUseCase,
             resolveUserUseCase = resolveUserUseCase,
+            organizationLogoUseCase = organizationLogoUseCase,
         )
     private val principal =
         User

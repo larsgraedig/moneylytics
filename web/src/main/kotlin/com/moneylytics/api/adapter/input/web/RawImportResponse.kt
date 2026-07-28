@@ -55,8 +55,8 @@ data class CamtImportRequest(
     val accountNames: Map<String, String>,
     val toImport: List<CamtTransactionImport>,
     val toIgnore: List<String>,
-    val toEnrich: List<TransactionEnrichRequest> = emptyList(),
-    val accountBalances: Map<String, CamtAccountBalance> = emptyMap(),
+    val toEnrich: List<TransactionEnrichRequest>? = null,
+    val accountBalances: Map<String, CamtAccountBalance>? = null,
 )
 
 data class CamtTransactionImport(

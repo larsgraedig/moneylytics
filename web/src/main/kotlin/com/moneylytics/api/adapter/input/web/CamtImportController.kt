@@ -184,7 +184,7 @@ class CamtImportController(
             }
 
         val accountBalances =
-            safeRequest.accountBalances.mapValues { (_, b) ->
+            safeRequest.accountBalances.orEmpty().mapValues { (_, b) ->
                 AccountBalance(amount = b.amount, date = LocalDate.parse(b.date))
             }
 
@@ -200,7 +200,7 @@ class CamtImportController(
                 )
             }
 
-        safeRequest.toEnrich.forEach { e ->
+        safeRequest.toEnrich.orEmpty().forEach { e ->
             withContext(Dispatchers.IO) {
                 enrichTransactionUseCase.enrichByFingerprint(
                     e.fingerprint,

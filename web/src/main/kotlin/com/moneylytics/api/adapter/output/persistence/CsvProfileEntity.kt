@@ -12,7 +12,7 @@ import jakarta.persistence.Table
 class CsvProfileEntity(
     @Column(nullable = false)
     val organizationId: Long,
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "TEXT")
     val fingerprint: String,
     @Column(nullable = false, columnDefinition = "TEXT")
     var mappingJson: String,

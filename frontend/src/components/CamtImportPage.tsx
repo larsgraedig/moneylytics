@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import {
   importCamt,
   previewCamtImport,
+  type CamtAccountBalance,
   type CamtAccountInfo,
   type RawPreviewRow,
 } from '../api/camtImport'
@@ -12,7 +13,7 @@ type PageState =
   | { phase: 'idle' }
   | { phase: 'loading' }
   | { phase: 'error'; message: string }
-  | { phase: 'preview'; rows: RawPreviewRow[]; accounts: CamtAccountInfo[] }
+  | { phase: 'preview'; rows: RawPreviewRow[]; accounts: CamtAccountInfo[]; accountBalances: Record<string, CamtAccountBalance> }
   | { phase: 'imported'; importedCount: number; ignoredCount: number; skippedCount: number }
 
 type RowDecision =
@@ -58,7 +59,7 @@ export default function CamtImportPage({ categories }: { categories: CategoryGro
     setState({ phase: 'loading' })
     try {
       const result = await previewCamtImport(files)
-      const { rows, accounts } = result
+      const { rows, accounts, accountBalances } = result
       if (rows.length === 0) {
         setState({ phase: 'error', message: t('camtImport.noRows') })
         return
@@ -67,7 +68,7 @@ export default function CamtImportPage({ categories }: { categories: CategoryGro
       for (const acc of accounts) {
         names[acc.iban] = acc.suggestedName
       }
-      setState({ phase: 'preview', rows, accounts })
+      setState({ phase: 'preview', rows, accounts, accountBalances: accountBalances ?? {} })
       setDecisions(initDecisions(rows))
       setAccountNames(names)
     } catch (e) {
@@ -146,7 +147,7 @@ export default function CamtImportPage({ categories }: { categories: CategoryGro
 
     setImporting(true)
     try {
-      const result = await importCamt({ accountNames, toImport, toIgnore, toEnrich })
+      const result = await importCamt({ accountNames, toImport, toIgnore, toEnrich, accountBalances: state.accountBalances })
       setState({ phase: 'imported', importedCount: result.importedCount, ignoredCount: toIgnore.length, skippedCount })
     } catch (e) {
       setState({ phase: 'error', message: e instanceof Error ? e.message : 'Import failed' })

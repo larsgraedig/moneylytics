@@ -10,7 +10,7 @@ spring:
     password: ${SPRING_DATASOURCE_PASSWORD:moneylytics}
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: none
 
   security:
     oauth2:
