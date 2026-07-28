@@ -26,13 +26,13 @@ import org.springframework.web.server.ServerWebExchange
 import java.math.BigDecimal
 import java.time.LocalDate
 
-@RestController
-@RequestMapping("/transactions/csv")
 data class GenericCsvImportRequest(
     val toImport: List<GenericRowToImport>,
     val toEnrich: List<TransactionEnrichRequest> = emptyList(),
 )
 
+@RestController
+@RequestMapping("/transactions/csv")
 class GenericCsvController(
     private val detector: GenericCsvDetector,
     private val parser: GenericCsvParser,
