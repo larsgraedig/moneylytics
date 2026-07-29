@@ -2756,6 +2756,32 @@ body {
   cursor: default;
 }
 
+/* ── merge child ghost rows ─────────────────── */
+
+.txnv-row--merge-child-ghost {
+  opacity: 0.5;
+  pointer-events: none;
+}
+.txnv-row--merge-child-ghost td {
+  border-bottom: 1px dashed rgba(52, 211, 153, 0.15);
+  padding-top: 2px;
+  padding-bottom: 2px;
+}
+.txnv-row--merge-child-ghost td.txn-cell-date {
+  border-left: 2px solid rgba(52, 211, 153, 0.5);
+}
+.txnv-row--merge-child-ghost .txnv-cell-actions {
+  pointer-events: auto;
+}
+.txnv-row--merge-child-ghost .ri-cat-input {
+  border: none;
+  background: none;
+  padding: 0;
+  font-size: 13px;
+  color: inherit;
+  cursor: default;
+}
+
 /* ── offset / linking ─────────────────────── */
 
 .txnv-row--linking-source {

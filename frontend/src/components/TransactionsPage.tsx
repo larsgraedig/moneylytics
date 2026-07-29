@@ -130,6 +130,7 @@ export default function TransactionsPage({
   const [splitModalTx, setSplitModalTx] = useState<TransactionItem | null>(null)
   const [mergeModalTxs, setMergeModalTxs] = useState<TransactionItem[] | null>(null)
   const [parentTxMap, setParentTxMap] = useState<Map<number, TransactionItem>>(new Map())
+  const [mergeChildrenMap, setMergeChildrenMap] = useState<Map<number, TransactionItem[]>>(new Map())
 
   useEffect(() => {
     fetchBudgets().then(setBudgets).catch(() => {})
@@ -235,6 +236,21 @@ export default function TransactionsPage({
         setParentTxMap(map)
       } else {
         setParentTxMap(new Map())
+      }
+
+      // Fetch children for merged virtual transactions so they can be shown as ghost rows
+      const mergeVirtualIds = data.transactions
+        .filter(tx => tx.isVirtual && tx.parentId == null)
+        .map(tx => tx.id)
+      if (mergeVirtualIds.length > 0) {
+        const results = await Promise.allSettled(
+          mergeVirtualIds.map(id => fetchSubTransactionGroup(id).then(g => g ? ({ id, children: g.children }) : null)),
+        )
+        const map = new Map<number, TransactionItem[]>()
+        results.forEach(r => { if (r.status === 'fulfilled' && r.value) map.set(r.value.id, r.value.children) })
+        setMergeChildrenMap(map)
+      } else {
+        setMergeChildrenMap(new Map())
       }
     } catch (e) {
       setPage({ phase: 'error', message: e instanceof Error ? e.message : t('common.requestFailed') })
@@ -526,6 +542,7 @@ export default function TransactionsPage({
 
   type DisplayItem =
     | { type: 'ghost'; parentTx: TransactionItem; parentId: number }
+    | { type: 'merge-child-ghost'; childTx: TransactionItem; parentVirtualId: number }
     | { type: 'row'; row: RowState; i: number }
 
   const displayItems = useMemo((): DisplayItem[] => {
@@ -553,11 +570,20 @@ export default function TransactionsPage({
       } else {
         seenIds.add(row.original.id)
         result.push({ type: 'row', row, i })
+        // For merged virtual transactions, show their original children as ghost rows below
+        if (row.original.isVirtual && row.original.parentId == null) {
+          const children = mergeChildrenMap.get(row.original.id)
+          if (children) {
+            children.forEach(child => {
+              result.push({ type: 'merge-child-ghost', childTx: child, parentVirtualId: row.original.id })
+            })
+          }
+        }
       }
     }
 
     return result
-  }, [filteredRows, parentTxMap])
+  }, [filteredRows, parentTxMap, mergeChildrenMap])
 
   const uniqueRowCategories = useMemo(() => {
     const seen = new Set<string>()
@@ -1465,6 +1491,17 @@ export default function TransactionsPage({
                     </tr>
                   )
                 }
+                if (item.type === 'merge-child-ghost') {
+                  return (
+                    <tr key={`merge-child-${item.childTx.id}`} className="txnv-row--merge-child-ghost">
+                      <td className="txnv-col-check" />
+                      {colOrder.map(col => renderGhostCell(col, item.childTx))}
+                      <td className="txnv-cell-actions">
+                        <span className="txnv-sub-badge txnv-sub-badge--merged-child">{t('transactions.merge.mergedBadge')}</span>
+                      </td>
+                    </tr>
+                  )
+                }
                 const { row, i } = item
                 const rowLinkColor = (() => {
                   for (const group of row.original.groups) {
@@ -1558,6 +1595,7 @@ export default function TransactionsPage({
       {splitModalTx && (
         <SplitTransactionModal
           transaction={splitModalTx}
+          categories={categories}
           onClose={() => setSplitModalTx(null)}
           onSplit={() => { setSplitModalTx(null); doLoad() }}
         />
