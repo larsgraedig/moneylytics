@@ -18,7 +18,7 @@ class TransactionJpaRepositoryIT : AbstractJpaRepositoryIT() {
         savedTransaction("fp-2", accountingDate = dec31)
         savedTransaction("fp-3", accountingDate = feb1)
 
-        val result = transactionRepo.findByOrganizationIdAndAccountingDateBetween(organizationId, jan1, jan31)
+        val result = transactionRepo.findByOrganizationIdAndAccountingDateBetweenAndExcludedFalse(organizationId, jan1, jan31)
 
         assertThat(result).hasSize(1)
         assertThat(result.first().fingerprint).isEqualTo("fp-1")
@@ -30,10 +30,21 @@ class TransactionJpaRepositoryIT : AbstractJpaRepositoryIT() {
         savedTransaction("fp-1", accountingDate = jan15)
         savedTransaction("fp-2", accountingDate = jan15, forAccount = otherAccount, forOrganization = otherOrganization)
 
-        val result = transactionRepo.findByOrganizationIdAndAccountingDateBetween(organizationId, jan1, jan31)
+        val result = transactionRepo.findByOrganizationIdAndAccountingDateBetweenAndExcludedFalse(organizationId, jan1, jan31)
 
         assertThat(result).hasSize(1)
         assertThat(result.first().fingerprint).isEqualTo("fp-1")
+    }
+
+    @Test
+    fun `should not return excluded transactions in date range`() {
+        savedTransaction("fp-active", accountingDate = jan15)
+        savedTransaction("fp-excluded", accountingDate = jan15, excluded = true)
+
+        val result = transactionRepo.findByOrganizationIdAndAccountingDateBetweenAndExcludedFalse(organizationId, jan1, jan31)
+
+        assertThat(result).hasSize(1)
+        assertThat(result.first().fingerprint).isEqualTo("fp-active")
     }
 
     @Test
@@ -42,7 +53,7 @@ class TransactionJpaRepositoryIT : AbstractJpaRepositoryIT() {
         savedTransaction("fp-income", accountingDate = jan15, amount = BigDecimal("1000.00"))
 
         val result =
-            transactionRepo.findByOrganizationIdAndAccountingDateBetweenAndAmountLessThan(
+            transactionRepo.findByOrganizationIdAndAccountingDateBetweenAndAmountLessThanAndExcludedFalse(
                 organizationId = organizationId,
                 from = jan1,
                 to = jan31,
@@ -60,7 +71,7 @@ class TransactionJpaRepositoryIT : AbstractJpaRepositoryIT() {
         savedTransaction("fp-2", accountingDate = jan15, forAccount = secondAccount)
 
         val result =
-            transactionRepo.findByOrganizationIdAndAccountIbanAndAccountingDateBetween(
+            transactionRepo.findByOrganizationIdAndAccountIbanAndAccountingDateBetweenAndExcludedFalse(
                 organizationId = organizationId,
                 iban = account.iban,
                 from = jan1,
@@ -79,7 +90,7 @@ class TransactionJpaRepositoryIT : AbstractJpaRepositoryIT() {
         savedTransaction("fp-other", accountingDate = jan15, amount = BigDecimal("-25.00"), forAccount = secondAccount)
 
         val result =
-            transactionRepo.findByOrganizationIdAndAccountIbanAndAccountingDateBetweenAndAmountLessThan(
+            transactionRepo.findByOrganizationIdAndAccountIbanAndAccountingDateBetweenAndAmountLessThanAndExcludedFalse(
                 organizationId = organizationId,
                 iban = account.iban,
                 from = jan1,

@@ -8,6 +8,8 @@ import {
   fetchAllTransactions,
   fetchLinkedGroup,
   linkTransactions,
+  unsplitTransaction,
+  unmergeTransactions,
   updateTransactionAccountingDate,
   updateTransactionCategory,
   updateTransactionComment,
@@ -18,6 +20,8 @@ import {
   type TransactionItem,
 } from '../api/transactions'
 import { GroupCard } from './GroupCard'
+import { SplitTransactionModal } from './SplitTransactionModal'
+import { MergeTransactionModal } from './MergeTransactionModal'
 import {
   assignTransaction as assignToBudget,
   fetchBudgets,
@@ -121,6 +125,8 @@ export default function TransactionsPage({
   const [bulkApplying, setBulkApplying] = useState(false)
   const [dragCol, setDragCol] = useState<ColumnKey | null>(null)
   const [dragOverCol, setDragOverCol] = useState<ColumnKey | null>(null)
+  const [splitModalTx, setSplitModalTx] = useState<TransactionItem | null>(null)
+  const [mergeModalTxs, setMergeModalTxs] = useState<TransactionItem[] | null>(null)
 
   useEffect(() => {
     fetchBudgets().then(setBudgets).catch(() => {})
@@ -1396,6 +1402,53 @@ export default function TransactionsPage({
                           {row.saving ? '…' : t('common.save')}
                         </button>
                       )}
+                      {row.original.isVirtual && row.original.parentId == null && (
+                        <span
+                          className="txnv-sub-badge txnv-sub-badge--merge"
+                          title={t('transactions.merge.undoConfirm')}
+                          onClick={() => {
+                            if (confirm(t('transactions.merge.undoConfirm'))) {
+                              unmergeTransactions(row.original.id).then(() => doLoad()).catch(() => {})
+                            }
+                          }}
+                          style={{ cursor: 'pointer' }}
+                        >
+                          {t('transactions.merge.virtualBadge')} ×
+                        </span>
+                      )}
+                      {row.original.isVirtual && row.original.parentId != null && (
+                        <span className="txnv-sub-badge txnv-sub-badge--split-child">
+                          {t('transactions.split.virtualBadge')}
+                        </span>
+                      )}
+                      {!row.original.isVirtual && row.original.excluded && row.original.parentId != null && (
+                        <span className="txnv-sub-badge txnv-sub-badge--merged-child">
+                          {t('transactions.merge.mergedBadge')}
+                        </span>
+                      )}
+                      {!row.original.isVirtual && row.original.excluded && row.original.parentId == null && (
+                        <span
+                          className="txnv-sub-badge txnv-sub-badge--split"
+                          title={t('transactions.split.undoConfirm')}
+                          onClick={() => {
+                            if (confirm(t('transactions.split.undoConfirm'))) {
+                              unsplitTransaction(row.original.id).then(() => doLoad()).catch(() => {})
+                            }
+                          }}
+                          style={{ cursor: 'pointer' }}
+                        >
+                          {t('transactions.split.splitBadge')} ×
+                        </span>
+                      )}
+                      {!row.original.isVirtual && !row.original.excluded && row.original.parentId == null && (
+                        <button
+                          className="txnv-sub-split-btn"
+                          onClick={() => setSplitModalTx(row.original)}
+                          title={t('transactions.split.button')}
+                        >
+                          ÷
+                        </button>
+                      )}
                     </td>
                   </tr>
                 )
@@ -1407,6 +1460,20 @@ export default function TransactionsPage({
 
       {renderLinkModal()}
       {renderGroupModal()}
+      {splitModalTx && (
+        <SplitTransactionModal
+          transaction={splitModalTx}
+          onClose={() => setSplitModalTx(null)}
+          onSplit={() => { setSplitModalTx(null); doLoad() }}
+        />
+      )}
+      {mergeModalTxs && (
+        <MergeTransactionModal
+          transactions={mergeModalTxs}
+          onClose={() => setMergeModalTxs(null)}
+          onMerge={() => { setMergeModalTxs(null); doLoad() }}
+        />
+      )}
 
       {selectedCount > 0 && (
         <div className="txnv-bulk-bar">
@@ -1441,6 +1508,19 @@ export default function TransactionsPage({
           >
             {bulkApplying ? '…' : t('transactions.applyBulk')}
           </button>
+          {selectedCount >= 2 && (
+            <button
+              className="txnv-bulk-apply-btn"
+              style={{ background: '#10b981' }}
+              onClick={() => {
+                const selected = rows.filter(r => r.selected).map(r => r.original)
+                setMergeModalTxs(selected)
+              }}
+              disabled={bulkApplying}
+            >
+              {t('transactions.merge.button')}
+            </button>
+          )}
           <button className="txnv-bulk-cancel-btn" onClick={clearSelection} disabled={bulkApplying}>
             ✕
           </button>

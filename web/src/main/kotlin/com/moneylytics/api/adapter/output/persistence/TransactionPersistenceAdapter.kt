@@ -71,9 +71,14 @@ class TransactionPersistenceAdapter(
     ): List<Transaction> {
         val entities =
             if (accountIban != null) {
-                jpaRepository.findByOrganizationIdAndAccountIbanAndAccountingDateBetween(organizationId, accountIban, from, to)
+                jpaRepository.findByOrganizationIdAndAccountIbanAndAccountingDateBetweenAndExcludedFalse(
+                    organizationId,
+                    accountIban,
+                    from,
+                    to,
+                )
             } else {
-                jpaRepository.findByOrganizationIdAndAccountingDateBetween(organizationId, from, to)
+                jpaRepository.findByOrganizationIdAndAccountingDateBetweenAndExcludedFalse(organizationId, from, to)
             }
         return enrichWithOffsetLinks(entities)
     }
@@ -87,7 +92,7 @@ class TransactionPersistenceAdapter(
     ): List<Transaction> {
         val entities =
             if (accountIban != null) {
-                jpaRepository.findByOrganizationIdAndAccountIbanAndAccountingDateBetweenAndAmountLessThan(
+                jpaRepository.findByOrganizationIdAndAccountIbanAndAccountingDateBetweenAndAmountLessThanAndExcludedFalse(
                     organizationId,
                     accountIban,
                     from,
@@ -95,7 +100,7 @@ class TransactionPersistenceAdapter(
                     BigDecimal.ZERO,
                 )
             } else {
-                jpaRepository.findByOrganizationIdAndAccountingDateBetweenAndAmountLessThan(
+                jpaRepository.findByOrganizationIdAndAccountingDateBetweenAndAmountLessThanAndExcludedFalse(
                     organizationId,
                     from,
                     to,
@@ -305,6 +310,7 @@ class TransactionPersistenceAdapter(
         groups: List<TransactionGroupSummary> = emptyList(),
         collections: List<CollectionSummary> = emptyList(),
         budgetLinks: List<BudgetTransactionSummary> = emptyList(),
+        children: List<Transaction> = emptyList(),
     ) = Transaction(
         category = category,
         subcategory = subcategory,
@@ -324,10 +330,14 @@ class TransactionPersistenceAdapter(
         counterpartyName = counterpartyName,
         counterpartyIban = counterpartyIban,
         budgetLinks = budgetLinks,
+        parentId = parentId,
+        isVirtual = isVirtual,
+        excluded = excluded,
+        children = children,
     )
 
     private fun Transaction.toEntity(
-        fingerprint: String,
+        fingerprint: String?,
         organizationId: Long,
     ): TransactionEntity {
         val account =
@@ -350,6 +360,9 @@ class TransactionPersistenceAdapter(
             purpose = purpose?.takeIf { it.isNotBlank() },
             counterpartyName = counterpartyName?.takeIf { it.isNotBlank() },
             counterpartyIban = counterpartyIban?.takeIf { it.isNotBlank() },
+            parentId = parentId,
+            isVirtual = isVirtual,
+            excluded = excluded,
         )
     }
 
