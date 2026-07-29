@@ -27,9 +27,7 @@ import java.time.LocalDate
 
 data class SplitItemRequest(
     val amount: BigDecimal,
-    val category: String?,
-    val subcategory: String?,
-    val categoryGroup: String? = null,
+    val categoryId: Long? = null,
     val comment: String? = null,
 )
 
@@ -51,8 +49,7 @@ data class CreateVirtualTransactionRequest(
     val accountIban: String,
     @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
     val accountingDate: LocalDate,
-    val category: String? = null,
-    val subcategory: String? = null,
+    val categoryId: Long? = null,
     val counterpartyName: String? = null,
     val purpose: String? = null,
 )
@@ -88,7 +85,7 @@ class SubTransactionController(
                 manageSubTransactionUseCase.splitTransaction(
                     SplitTransactionCommand(
                         transactionId = id,
-                        splits = request.splits.map { SplitItem(it.amount, it.category, it.subcategory, it.categoryGroup, it.comment) },
+                        splits = request.splits.map { SplitItem(it.amount, it.categoryId, it.comment) },
                         organizationId = organizationId,
                     ),
                 )
@@ -246,8 +243,7 @@ class SubTransactionController(
                         currency = request.currency,
                         accountIban = request.accountIban,
                         accountingDate = request.accountingDate,
-                        category = request.category,
-                        subcategory = request.subcategory,
+                        categoryId = request.categoryId,
                         counterpartyName = request.counterpartyName,
                         purpose = request.purpose,
                         organizationId = organizationId,

@@ -190,7 +190,7 @@ function AddToCollectionModal({
   const [adding, setAdding] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  const subcategoriesFor = (cat: string) => categories.find(c => c.name === cat)?.subcategories ?? []
+  const subcategoriesFor = (cat: string) => categories.find(c => c.name === cat)?.subcategories.map(s => s.name) ?? []
 
   async function loadWith(from: string, to: string) {
     setLoadingTx(true)

@@ -8,10 +8,10 @@ class CategoryJpaRepositoryIT : AbstractJpaRepositoryIT() {
     @Autowired private lateinit var categoryRepo: CategoryJpaRepository
 
     @Test
-    fun `should find all categories for given user`() {
-        categoryRepo.save(CategoryEntity(name = "Lebensmittel", subcategory = "Supermarkt", organization = organization))
-        categoryRepo.save(CategoryEntity(name = "Wohnen", subcategory = "Miete", organization = organization))
-        categoryRepo.save(CategoryEntity(name = "Einnahmen", subcategory = "Gehalt", organization = otherOrganization))
+    fun `should find all categories for given organization`() {
+        categoryRepo.save(CategoryEntity(name = "Lebensmittel", subcategory = null, groupName = "Supermarkt", organization = organization))
+        categoryRepo.save(CategoryEntity(name = "Wohnen", subcategory = null, groupName = "Miete", organization = organization))
+        categoryRepo.save(CategoryEntity(name = "Einnahmen", subcategory = null, groupName = "Gehalt", organization = otherOrganization))
 
         val result = categoryRepo.findAllByOrganizationId(organizationId)
 
@@ -20,20 +20,21 @@ class CategoryJpaRepositoryIT : AbstractJpaRepositoryIT() {
     }
 
     @Test
-    fun `should return empty list when user has no categories`() {
+    fun `should return empty list when organization has no categories`() {
         val result = categoryRepo.findAllByOrganizationId(otherOrganizationId)
 
         assertThat(result).isEmpty()
     }
 
     @Test
-    fun `should store and return category group`() {
+    fun `should store and return subcategory`() {
         categoryRepo.save(
-            CategoryEntity(name = "Lebensmittel", subcategory = "Supermarkt", organization = organization, categoryGroup = "Konsum"),
+            CategoryEntity(name = "Lebensmittel", subcategory = "Konsum", groupName = "Supermarkt", organization = organization),
         )
 
         val result = categoryRepo.findAllByOrganizationId(organizationId)
 
-        assertThat(result.first().categoryGroup).isEqualTo("Konsum")
+        assertThat(result.first().subcategory).isEqualTo("Konsum")
+        assertThat(result.first().groupName).isEqualTo("Supermarkt")
     }
 }

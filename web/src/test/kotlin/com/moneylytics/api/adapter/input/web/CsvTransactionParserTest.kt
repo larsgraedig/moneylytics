@@ -145,9 +145,9 @@ class CsvTransactionParserTest {
         assertThat(result).isInstanceOf(CsvParseResult.Valid::class.java)
         val valid = result as CsvParseResult.Valid
         assertThat(valid.transactions[0].category).isEqualTo("Unterhaltung")
-        assertThat(valid.transactions[0].subcategory).isEqualTo("Netflix und Spotify")
+        assertThat(valid.transactions[0].group).isEqualTo("Netflix und Spotify")
         assertThat(valid.transactions[1].category).isEqualTo("Miete")
-        assertThat(valid.transactions[1].subcategory).isEqualTo("Wohnung+Garage")
+        assertThat(valid.transactions[1].group).isEqualTo("Wohnung+Garage")
     }
 
     @Test

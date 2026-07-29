@@ -17,7 +17,7 @@ data class GetTransactionsQuery(
     val accountIban: String? = null,
     val category: String? = null,
     val subcategory: String? = null,
-    val categoryGroup: String? = null,
+    val group: String? = null,
     val uncategorized: Boolean = false,
     val excludeCollectionId: Long? = null,
     val excludeBudgetId: Long? = null,

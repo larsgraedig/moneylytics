@@ -4,15 +4,16 @@ import java.math.BigDecimal
 import java.time.LocalDate
 
 data class Transaction(
-    val category: String?,
-    val subcategory: String?,
-    val categoryGroup: String? = null,
+    val category: String? = null,
+    val subcategory: String? = null,
+    val group: String? = null,
     val bookingDate: LocalDate,
     val valueDate: LocalDate,
     val accountingDate: LocalDate,
     val amount: BigDecimal,
     val currency: String,
     val accountIban: String,
+    val categoryId: Long? = null,
     val id: Long? = null,
     val offsetLinks: List<TransactionOffsetLink> = emptyList(),
     val groups: List<TransactionGroupSummary> = emptyList(),

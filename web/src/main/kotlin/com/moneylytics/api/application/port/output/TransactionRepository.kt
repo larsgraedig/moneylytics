@@ -5,9 +5,7 @@ import java.time.LocalDate
 
 data class CategoryUpdateEntry(
     val id: Long,
-    val category: String,
-    val subcategory: String,
-    val categoryGroup: String?,
+    val categoryId: Long?,
 )
 
 interface TransactionRepository {
@@ -49,9 +47,7 @@ interface TransactionRepository {
     fun updateCategory(
         id: Long,
         organizationId: Long,
-        category: String,
-        subcategory: String,
-        categoryGroup: String? = null,
+        categoryId: Long?,
     ): Transaction?
 
     fun updateComment(
@@ -71,7 +67,6 @@ interface TransactionRepository {
         purpose: String?,
         counterpartyName: String?,
         counterpartyIban: String?,
-        categoryGroup: String? = null,
     )
 
     fun latestTransactionDatesByOrganizationId(organizationId: Long): Map<String, LocalDate>

@@ -141,7 +141,7 @@ class GenericCsvController(
                 Transaction(
                     category = row.category,
                     subcategory = row.subcategory,
-                    categoryGroup = row.categoryGroup,
+                    group = row.group,
                     bookingDate = LocalDate.parse(row.date),
                     valueDate = LocalDate.parse(row.date),
                     accountingDate = LocalDate.parse(row.date),

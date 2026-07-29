@@ -26,15 +26,20 @@ export interface RawPreviewRow {
   counterpartyIban: string | null
 }
 
+export interface CategoryLeaf {
+  id: number
+  name: string
+}
+
 export interface CategorySubGroup {
   name: string
-  subcategories: string[]
+  groups: CategoryLeaf[]
 }
 
 export interface CategoryGroup {
   name: string
-  groups: CategorySubGroup[]
-  subcategories: string[]
+  subcategories: CategorySubGroup[]
+  directGroups: CategoryLeaf[]
 }
 
 export interface CategoriesResponse {

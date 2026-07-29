@@ -29,21 +29,35 @@ class CategoryController(
                     .getCategories(organizationId)
                     .groupBy { it.name }
                     .map { (name, cats) ->
-                        val withGroup = cats.filter { it.group != null }
-                        val withoutGroup = cats.filter { it.group == null }
-                        val groups =
-                            withGroup
-                                .groupBy { it.group!! }
-                                .map { (groupName, groupCats) ->
+                        val withSub = cats.filter { it.subcategory != null }
+                        val withoutSub = cats.filter { it.subcategory == null }
+                        val subcategories =
+                            withSub
+                                .groupBy { it.subcategory!! }
+                                .map { (subName, subCats) ->
                                     CategorySubGroupResponse(
-                                        name = groupName,
-                                        subcategories = groupCats.map { it.subcategory }.sorted(),
+                                        name = subName,
+                                        groups =
+                                            subCats
+                                                .map {
+                                                    CategoryLeafResponse(
+                                                        id = requireNotNull(it.id),
+                                                        name = it.group,
+                                                    )
+                                                }.sortedBy { it.name },
                                     )
                                 }.sortedBy { it.name }
                         CategoryGroupResponse(
                             name = name,
-                            groups = groups,
-                            subcategories = withoutGroup.map { it.subcategory }.sorted(),
+                            subcategories = subcategories,
+                            directGroups =
+                                withoutSub
+                                    .map {
+                                        CategoryLeafResponse(
+                                            id = requireNotNull(it.id),
+                                            name = it.group,
+                                        )
+                                    }.sortedBy { it.name },
                         )
                     }.sortedBy { it.name }
             }

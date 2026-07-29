@@ -7,10 +7,8 @@ import com.moneylytics.api.application.port.input.GetAccountsUseCase
 import com.moneylytics.api.application.port.input.ImportTransactionsCommand
 import com.moneylytics.api.application.port.input.ImportTransactionsUseCase
 import com.moneylytics.api.application.port.input.ResolveOrganizationUseCase
-import com.moneylytics.api.application.port.input.SaveCategoriesUseCase
 import com.moneylytics.api.application.port.input.UpdateIgnoredTransactionsUseCase
 import com.moneylytics.api.domain.AccountBalance
-import com.moneylytics.api.domain.Category
 import com.moneylytics.api.domain.Transaction
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.reactive.awaitSingle
@@ -37,7 +35,6 @@ class CamtImportController(
     private val getAccountsUseCase: GetAccountsUseCase,
     private val updateIgnoredTransactionsUseCase: UpdateIgnoredTransactionsUseCase,
     private val importTransactionsUseCase: ImportTransactionsUseCase,
-    private val saveCategoriesUseCase: SaveCategoriesUseCase,
     private val enrichTransactionUseCase: EnrichTransactionUseCase,
     private val resolveOrganizationUseCase: ResolveOrganizationUseCase,
 ) {
@@ -159,18 +156,12 @@ class CamtImportController(
             )
         }
 
-        val categories =
-            safeRequest.toImport
-                .map { Category(name = it.category, subcategory = it.subcategory, group = it.categoryGroup) }
-                .distinct()
-        withContext(Dispatchers.IO) { saveCategoriesUseCase.saveCategories(categories, organizationId) }
-
         val transactions =
             safeRequest.toImport.map { row ->
                 Transaction(
                     category = row.category,
                     subcategory = row.subcategory,
-                    categoryGroup = row.categoryGroup,
+                    group = row.group,
                     bookingDate = LocalDate.parse(row.bookingDate),
                     valueDate = LocalDate.parse(row.valueDate),
                     accountingDate = LocalDate.parse(row.bookingDate),

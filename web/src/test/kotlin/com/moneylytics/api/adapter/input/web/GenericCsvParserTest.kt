@@ -17,7 +17,7 @@ class GenericCsvParserTest {
             amountFormat = AmountFormat.GERMAN,
             purposeColumn = null,
             categoryColumn = null,
-            subcategoryColumn = null,
+            groupColumn = null,
             accountIbanColumn = null,
             currencyColumn = null,
             fixedAccountIban = "DE00TEST",
@@ -202,25 +202,25 @@ class GenericCsvParserTest {
     }
 
     @Test
-    fun `should default category and subcategory to Sonstiges when blank`() {
+    fun `should default category and group to Sonstiges when blank`() {
         val content = "Datum;Betrag;Kat;UnterKat\n15.01.2025;-100,00;;"
-        val mapping = basicMapping.copy(categoryColumn = "Kat", subcategoryColumn = "UnterKat")
+        val mapping = basicMapping.copy(categoryColumn = "Kat", groupColumn = "UnterKat")
 
         val (transactions, _) = parser.parse(content, mapping)
 
         assertThat(transactions[0].category).isEqualTo("Sonstiges")
-        assertThat(transactions[0].subcategory).isEqualTo("Sonstiges")
+        assertThat(transactions[0].group).isEqualTo("Sonstiges")
     }
 
     @Test
-    fun `should map category and subcategory when present`() {
+    fun `should map category and group when present`() {
         val content = "Datum;Betrag;Kat;UnterKat\n15.01.2025;-100,00;Lebensmittel;Supermarkt"
-        val mapping = basicMapping.copy(categoryColumn = "Kat", subcategoryColumn = "UnterKat")
+        val mapping = basicMapping.copy(categoryColumn = "Kat", groupColumn = "UnterKat")
 
         val (transactions, _) = parser.parse(content, mapping)
 
         assertThat(transactions[0].category).isEqualTo("Lebensmittel")
-        assertThat(transactions[0].subcategory).isEqualTo("Supermarkt")
+        assertThat(transactions[0].group).isEqualTo("Supermarkt")
     }
 
     @Test

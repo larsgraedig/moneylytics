@@ -21,9 +21,9 @@ class CategoryPersistenceAdapterTest {
         val entity =
             CategoryEntity(
                 name = "Lebensmittel",
-                subcategory = "Supermarkt",
+                subcategory = "Konsum",
+                groupName = "Supermarkt",
                 organization = organizationEntity,
-                categoryGroup = "Konsum",
                 id = 1L,
             )
         whenever(jpaRepository.findAllByOrganizationId(organizationId)).thenReturn(listOf(entity))
@@ -32,20 +32,21 @@ class CategoryPersistenceAdapterTest {
 
         assertThat(result).hasSize(1)
         assertThat(result[0].name).isEqualTo("Lebensmittel")
-        assertThat(result[0].subcategory).isEqualTo("Supermarkt")
-        assertThat(result[0].group).isEqualTo("Konsum")
+        assertThat(result[0].subcategory).isEqualTo("Konsum")
+        assertThat(result[0].group).isEqualTo("Supermarkt")
     }
 
     @Test
     fun `should save only categories not already present`() {
-        val existing = CategoryEntity(name = "Lebensmittel", subcategory = "Supermarkt", organization = organizationEntity, id = 1L)
+        val existing =
+            CategoryEntity(name = "Lebensmittel", subcategory = null, groupName = "Supermarkt", organization = organizationEntity, id = 1L)
         whenever(jpaRepository.findAllByOrganizationId(organizationId)).thenReturn(listOf(existing))
         whenever(organizationJpaRepository.getReferenceById(organizationId)).thenReturn(organizationEntity)
 
         val toSave =
             listOf(
-                Category(name = "Lebensmittel", subcategory = "Supermarkt"),
-                Category(name = "Transport", subcategory = "ÖPNV"),
+                Category(name = "Lebensmittel", subcategory = null, group = "Supermarkt"),
+                Category(name = "Transport", subcategory = null, group = "ÖPNV"),
             )
         adapter.saveAllIfAbsent(toSave, organizationId)
 
@@ -57,11 +58,12 @@ class CategoryPersistenceAdapterTest {
 
     @Test
     fun `should save nothing when all categories already exist`() {
-        val existing = CategoryEntity(name = "Lebensmittel", subcategory = "Supermarkt", organization = organizationEntity, id = 1L)
+        val existing =
+            CategoryEntity(name = "Lebensmittel", subcategory = null, groupName = "Supermarkt", organization = organizationEntity, id = 1L)
         whenever(jpaRepository.findAllByOrganizationId(organizationId)).thenReturn(listOf(existing))
         whenever(organizationJpaRepository.getReferenceById(organizationId)).thenReturn(organizationEntity)
 
-        adapter.saveAllIfAbsent(listOf(Category(name = "Lebensmittel", subcategory = "Supermarkt")), organizationId)
+        adapter.saveAllIfAbsent(listOf(Category(name = "Lebensmittel", subcategory = null, group = "Supermarkt")), organizationId)
 
         val captor = argumentCaptor<List<CategoryEntity>>()
         verify(jpaRepository).saveAll(captor.capture())
@@ -74,8 +76,8 @@ class CategoryPersistenceAdapterTest {
         whenever(organizationJpaRepository.getReferenceById(organizationId)).thenReturn(organizationEntity)
         val categories =
             listOf(
-                Category(name = "Transport", subcategory = "ÖPNV"),
-                Category(name = "Freizeit", subcategory = "Kino"),
+                Category(name = "Transport", subcategory = null, group = "ÖPNV"),
+                Category(name = "Freizeit", subcategory = null, group = "Kino"),
             )
 
         adapter.saveAllIfAbsent(categories, organizationId)
@@ -86,20 +88,20 @@ class CategoryPersistenceAdapterTest {
     }
 
     @Test
-    fun `should distinguish categories by group when deduplicating`() {
-        val existingNoGroup =
+    fun `should distinguish categories by subcategory when deduplicating`() {
+        val existingNoSub =
             CategoryEntity(
                 name = "Lebensmittel",
-                subcategory = "Supermarkt",
+                subcategory = null,
+                groupName = "Supermarkt",
                 organization = organizationEntity,
-                categoryGroup = null,
                 id = 1L,
             )
-        whenever(jpaRepository.findAllByOrganizationId(organizationId)).thenReturn(listOf(existingNoGroup))
+        whenever(jpaRepository.findAllByOrganizationId(organizationId)).thenReturn(listOf(existingNoSub))
         whenever(organizationJpaRepository.getReferenceById(organizationId)).thenReturn(organizationEntity)
 
-        val withGroup = listOf(Category(name = "Lebensmittel", subcategory = "Supermarkt", group = "Konsum"))
-        adapter.saveAllIfAbsent(withGroup, organizationId)
+        val withSub = listOf(Category(name = "Lebensmittel", subcategory = "Konsum", group = "Supermarkt"))
+        adapter.saveAllIfAbsent(withSub, organizationId)
 
         val captor = argumentCaptor<List<CategoryEntity>>()
         verify(jpaRepository).saveAll(captor.capture())

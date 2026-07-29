@@ -87,7 +87,8 @@ class CsvTransactionParser {
                 transactions.add(
                     Transaction(
                         category = if (hasCategoryColumn) record[config.category!!].takeIf { it.isNotBlank() } else null,
-                        subcategory = if (hasSubcategoryColumn) record[config.subcategory!!].takeIf { it.isNotBlank() } else null,
+                        subcategory = null,
+                        group = if (hasSubcategoryColumn) record[config.subcategory!!].takeIf { it.isNotBlank() } else null,
                         bookingDate = bookingDate,
                         valueDate = valueDate,
                         accountingDate = bookingDate,

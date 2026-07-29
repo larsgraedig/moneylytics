@@ -23,6 +23,7 @@ class TransactionPersistenceAdapterTest {
     private val collectionTransactionJpaRepository: CollectionTransactionJpaRepository = mock()
     private val collectionJpaRepository: CollectionJpaRepository = mock()
     private val budgetTransactionJpaRepository: BudgetTransactionJpaRepository = mock()
+    private val categoryJpaRepository: CategoryJpaRepository = mock()
     private val adapter =
         TransactionPersistenceAdapter(
             jpaRepository,
@@ -34,6 +35,7 @@ class TransactionPersistenceAdapterTest {
             collectionTransactionJpaRepository,
             collectionJpaRepository,
             budgetTransactionJpaRepository,
+            categoryJpaRepository,
         )
 
     private val organizationId = 1L
@@ -122,24 +124,22 @@ class TransactionPersistenceAdapterTest {
     fun `should return null from updateCategory when entity not found`() {
         whenever(jpaRepository.findByIdAndOrganizationId(99L, organizationId)).thenReturn(null)
 
-        val result = adapter.updateCategory(99L, organizationId, "Lebensmittel", "Supermarkt", null)
+        val result = adapter.updateCategory(99L, organizationId, null)
 
         assertThat(result).isNull()
     }
 
     @Test
-    fun `should convert blank category strings to null on updateCategory`() {
+    fun `should set category to null when categoryId is null on updateCategory`() {
         val entity = txEntity(1L)
         val savedEntity = txEntity(1L)
         whenever(jpaRepository.findByIdAndOrganizationId(1L, organizationId)).thenReturn(entity)
         whenever(jpaRepository.save(entity)).thenReturn(savedEntity)
         stubEnrichEmpty(listOf(1L))
 
-        adapter.updateCategory(1L, organizationId, "  ", "  ", "  ")
+        adapter.updateCategory(1L, organizationId, null)
 
         assertThat(entity.category).isNull()
-        assertThat(entity.subcategory).isNull()
-        assertThat(entity.categoryGroup).isNull()
     }
 
     @Test
@@ -179,12 +179,11 @@ class TransactionPersistenceAdapterTest {
         stubEnrichEmpty(listOf(1L))
 
         adapter.bulkUpdateCategory(
-            listOf(CategoryUpdateEntry(id = 1L, category = "Transport", subcategory = "ÖPNV", categoryGroup = null)),
+            listOf(CategoryUpdateEntry(id = 1L, categoryId = null)),
             organizationId,
         )
 
-        assertThat(entity.category).isEqualTo("Transport")
-        assertThat(entity.subcategory).isEqualTo("ÖPNV")
+        assertThat(entity.category).isNull()
     }
 
     @Test
@@ -332,8 +331,6 @@ class TransactionPersistenceAdapterTest {
         counterpartyName: String? = null,
     ) = TransactionEntity(
         id = id,
-        category = null,
-        subcategory = null,
         bookingDate = date,
         valueDate = date,
         accountingDate = date,

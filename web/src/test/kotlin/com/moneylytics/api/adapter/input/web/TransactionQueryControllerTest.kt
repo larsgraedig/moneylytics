@@ -3,7 +3,6 @@ package com.moneylytics.api.adapter.input.web
 import com.moneylytics.api.application.port.input.BulkUpdateTransactionCategoryUseCase
 import com.moneylytics.api.application.port.input.GetBurnRateUseCase
 import com.moneylytics.api.application.port.input.GetCashflowUseCase
-import com.moneylytics.api.application.port.input.GetCategoriesUseCase
 import com.moneylytics.api.application.port.input.GetCategoryTotalsUseCase
 import com.moneylytics.api.application.port.input.GetTransactionsQuery
 import com.moneylytics.api.application.port.input.GetTransactionsUseCase
@@ -16,8 +15,6 @@ import com.moneylytics.api.domain.Transaction
 import kotlinx.coroutines.test.runTest
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
-import org.mockito.kotlin.any
-import org.mockito.kotlin.doReturn
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.whenever
 import org.springframework.security.core.userdetails.User
@@ -29,7 +26,6 @@ class TransactionQueryControllerTest {
     private val getTransactionsUseCase: GetTransactionsUseCase = mock()
     private val getCashflowUseCase: GetCashflowUseCase = mock()
     private val getBurnRateUseCase: GetBurnRateUseCase = mock()
-    private val getCategoriesUseCase: GetCategoriesUseCase = mock { on { getCategories(any()) } doReturn emptyList() }
     private val getCategoryTotalsUseCase: GetCategoryTotalsUseCase = mock()
     private val resolveOrganizationUseCase: ResolveOrganizationUseCase = ResolveOrganizationUseCase { _, _ -> ORG_ID }
     private val exchange: ServerWebExchange = mock()
@@ -48,7 +44,6 @@ class TransactionQueryControllerTest {
             getTransactionsUseCase,
             getCashflowUseCase,
             getBurnRateUseCase,
-            getCategoriesUseCase,
             getCategoryTotalsUseCase,
             resolveOrganizationUseCase,
             updateTransactionCategoryUseCase,
@@ -248,7 +243,7 @@ class TransactionQueryControllerTest {
         amount: BigDecimal,
     ) = Transaction(
         category = category,
-        subcategory = subcategory,
+        group = subcategory,
         bookingDate = from,
         valueDate = from,
         accountingDate = from,

@@ -15,12 +15,9 @@ import java.time.LocalDate
 @Entity
 @Table(name = "transaction")
 class TransactionEntity(
-    @Column(nullable = true)
-    var category: String?,
-    @Column(nullable = true)
-    var subcategory: String?,
-    @Column(nullable = true, name = "category_group")
-    var categoryGroup: String? = null,
+    @ManyToOne(fetch = FetchType.LAZY, optional = true)
+    @JoinColumn(name = "category_id", nullable = true)
+    var category: CategoryEntity? = null,
     @Column(nullable = false)
     val bookingDate: LocalDate,
     @Column(nullable = false)

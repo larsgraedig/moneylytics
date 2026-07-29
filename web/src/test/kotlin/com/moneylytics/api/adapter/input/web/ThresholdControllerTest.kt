@@ -75,14 +75,14 @@ class ThresholdControllerTest {
         }
 
     @Test
-    fun `should convert blank categoryGroup to null in toDomain`() =
+    fun `should convert blank group to null in toDomain`() =
         runTest {
             whenever(saveThresholdUseCase.saveThreshold(any(), any())).thenReturn(stubThreshold)
             val request =
                 SaveThresholdRequest(
                     category = "Transport",
                     subcategory = null,
-                    categoryGroup = "  ",
+                    group = "  ",
                     period = ThresholdPeriod.MONTHLY,
                     notice = null,
                     warning = null,
@@ -95,7 +95,7 @@ class ThresholdControllerTest {
             org.mockito.kotlin
                 .verify(saveThresholdUseCase)
                 .saveThreshold(captor.capture(), any())
-            assertThat(captor.firstValue.categoryGroup).isNull()
+            assertThat(captor.firstValue.group).isNull()
         }
 
     @Test
@@ -129,7 +129,7 @@ class ThresholdControllerTest {
                     id = 5L,
                     category = "Lebensmittel",
                     subcategory = "Supermarkt",
-                    categoryGroup = "Konsum",
+                    group = "Konsum",
                     period = ThresholdPeriod.WEEKLY,
                     notice = BigDecimal("80"),
                     warning = BigDecimal("120"),
@@ -144,7 +144,7 @@ class ThresholdControllerTest {
             assertThat(dto.id).isEqualTo(5L)
             assertThat(dto.category).isEqualTo("Lebensmittel")
             assertThat(dto.subcategory).isEqualTo("Supermarkt")
-            assertThat(dto.categoryGroup).isEqualTo("Konsum")
+            assertThat(dto.group).isEqualTo("Konsum")
             assertThat(dto.period).isEqualTo(ThresholdPeriod.WEEKLY)
             assertThat(dto.notice).isEqualByComparingTo(BigDecimal("80"))
             assertThat(dto.warning).isEqualByComparingTo(BigDecimal("120"))

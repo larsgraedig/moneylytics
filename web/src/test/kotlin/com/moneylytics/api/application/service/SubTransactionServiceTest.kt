@@ -84,8 +84,8 @@ class SubTransactionServiceTest {
                     transactionId = 1L,
                     splits =
                         listOf(
-                            SplitItem(BigDecimal("-60"), "Auto", "Benzin", null, null),
-                            SplitItem(BigDecimal("-40"), "Lebensmittel", null, null, null),
+                            SplitItem(BigDecimal("-60"), null, null),
+                            SplitItem(BigDecimal("-40"), null, null),
                         ),
                     organizationId = orgId,
                 ),
@@ -107,8 +107,8 @@ class SubTransactionServiceTest {
                     transactionId = 1L,
                     splits =
                         listOf(
-                            SplitItem(BigDecimal("-60"), null, null, null, null),
-                            SplitItem(BigDecimal("-30"), null, null, null, null),
+                            SplitItem(BigDecimal("-60"), null, null),
+                            SplitItem(BigDecimal("-30"), null, null),
                         ),
                     organizationId = orgId,
                 ),
@@ -126,7 +126,7 @@ class SubTransactionServiceTest {
             service.splitTransaction(
                 SplitTransactionCommand(
                     transactionId = 1L,
-                    splits = listOf(SplitItem(BigDecimal("-100"), null, null, null, null)),
+                    splits = listOf(SplitItem(BigDecimal("-100"), null, null)),
                     organizationId = orgId,
                 ),
             )
@@ -144,8 +144,8 @@ class SubTransactionServiceTest {
                     transactionId = 1L,
                     splits =
                         listOf(
-                            SplitItem(BigDecimal("-50"), null, null, null, null),
-                            SplitItem(BigDecimal("-50"), null, null, null, null),
+                            SplitItem(BigDecimal("-50"), null, null),
+                            SplitItem(BigDecimal("-50"), null, null),
                         ),
                     organizationId = orgId,
                 ),
@@ -175,8 +175,8 @@ class SubTransactionServiceTest {
                     transactionId = 1L,
                     splits =
                         listOf(
-                            SplitItem(BigDecimal("-50"), null, null, null, null),
-                            SplitItem(BigDecimal("-50"), null, null, null, null),
+                            SplitItem(BigDecimal("-50"), null, null),
+                            SplitItem(BigDecimal("-50"), null, null),
                         ),
                     organizationId = orgId,
                 ),
@@ -331,8 +331,7 @@ class SubTransactionServiceTest {
                 currency = "EUR",
                 accountIban = iban,
                 accountingDate = date,
-                category = "Auto",
-                subcategory = "Benzin",
+                categoryId = null,
                 counterpartyName = "Shell",
                 purpose = "Tankstelle",
                 organizationId = orgId,
@@ -346,8 +345,7 @@ class SubTransactionServiceTest {
                     currency = "EUR",
                     accountIban = iban,
                     accountingDate = date,
-                    category = "Auto",
-                    subcategory = "Benzin",
+                    categoryId = null,
                     counterpartyName = "Shell",
                     purpose = "Tankstelle",
                     organizationId = orgId,
@@ -367,8 +365,7 @@ class SubTransactionServiceTest {
                     currency = "EUR",
                     accountIban = "",
                     accountingDate = date,
-                    category = null,
-                    subcategory = null,
+                    categoryId = null,
                     counterpartyName = null,
                     purpose = null,
                     organizationId = orgId,

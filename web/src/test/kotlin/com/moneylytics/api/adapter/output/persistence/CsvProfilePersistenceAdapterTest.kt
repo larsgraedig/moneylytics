@@ -25,7 +25,7 @@ class CsvProfilePersistenceAdapterTest {
             amountFormat = AmountFormat.GERMAN,
             purposeColumn = null,
             categoryColumn = null,
-            subcategoryColumn = null,
+            groupColumn = null,
             accountIbanColumn = null,
             currencyColumn = null,
             fixedAccountIban = "DE00TEST",

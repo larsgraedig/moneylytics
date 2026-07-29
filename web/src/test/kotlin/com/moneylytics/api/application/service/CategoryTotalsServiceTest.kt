@@ -20,11 +20,11 @@ class CategoryTotalsServiceTest {
     private val from = LocalDate.of(2025, 1, 1)
     private val to = LocalDate.of(2025, 1, 31)
 
-    private val supermarkt = tx(category = "Lebensmittel", subcategory = "Supermarkt", amount = BigDecimal("-80.00"))
-    private val restaurant = tx(category = "Lebensmittel", subcategory = "Restaurant", amount = BigDecimal("-45.00"))
-    private val oepnv = tx(category = "Transport", subcategory = "ÖPNV", amount = BigDecimal("-86.00"))
-    private val streaming = tx(category = "Freizeit", subcategory = "Streaming", amount = BigDecimal("-18.00"))
-    private val income = tx(category = "Einnahmen", subcategory = "Gehalt", amount = BigDecimal("2500.00"))
+    private val supermarkt = tx(category = "Lebensmittel", group = "Supermarkt", amount = BigDecimal("-80.00"))
+    private val restaurant = tx(category = "Lebensmittel", group = "Restaurant", amount = BigDecimal("-45.00"))
+    private val oepnv = tx(category = "Transport", group = "ÖPNV", amount = BigDecimal("-86.00"))
+    private val streaming = tx(category = "Freizeit", group = "Streaming", amount = BigDecimal("-18.00"))
+    private val income = tx(category = "Einnahmen", group = "Gehalt", amount = BigDecimal("2500.00"))
 
     @Test
     fun `should return category totals sorted descending by value`() {
@@ -69,11 +69,11 @@ class CategoryTotalsServiceTest {
 
     private fun tx(
         category: String,
-        subcategory: String,
+        group: String,
         amount: BigDecimal,
     ) = Transaction(
         category = category,
-        subcategory = subcategory,
+        group = group,
         bookingDate = from,
         valueDate = from,
         accountingDate = from,

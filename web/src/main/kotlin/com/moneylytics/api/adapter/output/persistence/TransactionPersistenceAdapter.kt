@@ -24,6 +24,7 @@ class TransactionPersistenceAdapter(
     private val collectionTransactionJpaRepository: CollectionTransactionJpaRepository,
     private val collectionJpaRepository: CollectionJpaRepository,
     private val budgetTransactionJpaRepository: BudgetTransactionJpaRepository,
+    private val categoryJpaRepository: CategoryJpaRepository,
 ) : TransactionRepository {
     @Transactional
     override fun saveAll(
@@ -32,6 +33,7 @@ class TransactionPersistenceAdapter(
     ): Int {
         if (transactions.isEmpty()) return 0
 
+        val categoryMap = buildCategoryMap(transactions, organizationId)
         val withFingerprints = assignFingerprints(transactions)
         val existing =
             jpaRepository
@@ -41,10 +43,28 @@ class TransactionPersistenceAdapter(
         val newEntities =
             withFingerprints
                 .filter { (_, fp) -> fp !in existing }
-                .map { (tx, fp) -> tx.toEntity(fp, organizationId) }
+                .map { (tx, fp) -> tx.toEntity(fp, organizationId, categoryMap) }
 
         jpaRepository.saveAll(newEntities)
         return newEntities.size
+    }
+
+    private fun buildCategoryMap(
+        transactions: List<Transaction>,
+        organizationId: Long,
+    ): Map<Triple<String, String?, String>, CategoryEntity> {
+        val keys =
+            transactions
+                .filter { it.category != null && it.group != null }
+                .map { Triple(it.category!!, it.subcategory, it.group!!) }
+                .toSet()
+        if (keys.isEmpty()) return emptyMap()
+
+        val org = organizationJpaRepository.getReferenceById(organizationId)
+        return keys.associateWith { (name, sub, group) ->
+            categoryJpaRepository.findByNameAndSubcategoryAndGroupNameAndOrganizationId(name, sub, group, organizationId)
+                ?: categoryJpaRepository.save(CategoryEntity(name = name, subcategory = sub, groupName = group, organization = org))
+        }
     }
 
     private fun assignFingerprints(transactions: List<Transaction>): List<Pair<Transaction, String>> {
@@ -134,14 +154,11 @@ class TransactionPersistenceAdapter(
     override fun updateCategory(
         id: Long,
         organizationId: Long,
-        category: String,
-        subcategory: String,
-        categoryGroup: String?,
+        categoryId: Long?,
     ): Transaction? {
         val entity = jpaRepository.findByIdAndOrganizationId(id, organizationId) ?: return null
-        entity.category = category.takeIf { it.isNotBlank() }
-        entity.subcategory = subcategory.takeIf { it.isNotBlank() }
-        entity.categoryGroup = categoryGroup?.takeIf { it.isNotBlank() }
+        entity.category =
+            if (categoryId != null) categoryJpaRepository.getReferenceById(categoryId) else null
         return enrichWithOffsetLinks(listOf(jpaRepository.save(entity))).first()
     }
 
@@ -172,13 +189,11 @@ class TransactionPersistenceAdapter(
         purpose: String?,
         counterpartyName: String?,
         counterpartyIban: String?,
-        categoryGroup: String?,
     ) {
         val entity = jpaRepository.findByFingerprintAndOrganizationId(fingerprint, organizationId) ?: return
         if (entity.purpose == null && !purpose.isNullOrBlank()) entity.purpose = purpose
         if (entity.counterpartyName == null && !counterpartyName.isNullOrBlank()) entity.counterpartyName = counterpartyName
         if (entity.counterpartyIban == null && !counterpartyIban.isNullOrBlank()) entity.counterpartyIban = counterpartyIban
-        if (entity.categoryGroup == null && !categoryGroup.isNullOrBlank()) entity.categoryGroup = categoryGroup
         jpaRepository.save(entity)
     }
 
@@ -204,9 +219,8 @@ class TransactionPersistenceAdapter(
         val toSave =
             entities.mapNotNull { (id, entity) ->
                 val u = updateMap[id] ?: return@mapNotNull null
-                entity.category = u.category.takeIf { it.isNotBlank() }
-                entity.subcategory = u.subcategory.takeIf { it.isNotBlank() }
-                entity.categoryGroup = u.categoryGroup?.takeIf { it.isNotBlank() }
+                entity.category =
+                    if (u.categoryId != null) categoryJpaRepository.getReferenceById(u.categoryId) else null
                 entity
             }
         return enrichWithOffsetLinks(jpaRepository.saveAll(toSave))
@@ -312,9 +326,10 @@ class TransactionPersistenceAdapter(
         budgetLinks: List<BudgetTransactionSummary> = emptyList(),
         children: List<Transaction> = emptyList(),
     ) = Transaction(
-        category = category,
-        subcategory = subcategory,
-        categoryGroup = categoryGroup,
+        categoryId = category?.id,
+        category = category?.name,
+        subcategory = category?.subcategory,
+        group = category?.groupName,
         bookingDate = bookingDate,
         valueDate = valueDate,
         accountingDate = accountingDate,
@@ -339,16 +354,17 @@ class TransactionPersistenceAdapter(
     private fun Transaction.toEntity(
         fingerprint: String?,
         organizationId: Long,
+        categoryMap: Map<Triple<String, String?, String>, CategoryEntity>,
     ): TransactionEntity {
         val account =
             accountJpaRepository.findByIbanAndOrganizationId(accountIban, organizationId)
                 ?: error(
                     "Account not found for IBAN $accountIban and organizationId $organizationId — ensure accounts are created before importing transactions",
                 )
+        val categoryEntity =
+            if (category != null && group != null) categoryMap[Triple(category, subcategory, group)] else null
         return TransactionEntity(
-            category = category?.takeIf { it.isNotBlank() },
-            subcategory = subcategory?.takeIf { it.isNotBlank() },
-            categoryGroup = categoryGroup?.takeIf { it.isNotBlank() },
+            category = categoryEntity,
             bookingDate = bookingDate,
             valueDate = valueDate,
             accountingDate = accountingDate,

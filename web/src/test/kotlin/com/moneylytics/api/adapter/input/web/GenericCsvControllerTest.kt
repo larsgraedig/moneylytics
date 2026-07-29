@@ -138,6 +138,6 @@ class GenericCsvControllerTest {
             accountIban = iban,
             purpose = null,
             category = "Sonstiges",
-            subcategory = "Sonstiges",
+            group = "Sonstiges",
         )
 }

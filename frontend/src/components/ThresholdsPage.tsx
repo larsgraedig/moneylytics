@@ -149,7 +149,7 @@ export default function ThresholdsPage({ from, to, iban, categories }: { from: s
     for (const cg of categories) {
       if (!catSubcats.has(cg.name)) catSubcats.set(cg.name, new Set())
       hasCategoryRow.add(cg.name)
-      for (const s of cg.subcategories) catSubcats.get(cg.name)!.add(s)
+      for (const s of cg.subcategories) catSubcats.get(cg.name)!.add(s.name)
     }
 
     for (const t of thresholds) {

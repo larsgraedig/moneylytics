@@ -296,10 +296,10 @@ class LocalDataInitializer(
         from: LocalDate,
         to: LocalDate,
         category: String,
-        subcategory: String,
+        group: String,
     ): List<Transaction> =
         getTransactionsUseCase.getTransactions(
-            GetTransactionsQuery(from = from, to = to, organizationId = orgId, category = category, subcategory = subcategory),
+            GetTransactionsQuery(from = from, to = to, organizationId = orgId, category = category, group = group),
         )
 
     private fun generateFixedTransactions(): List<Transaction> =
@@ -321,12 +321,13 @@ class LocalDataInitializer(
 
     private fun tx(
         category: String,
-        subcategory: String,
+        group: String,
         date: LocalDate,
         amount: BigDecimal,
     ) = Transaction(
         category = category,
-        subcategory = subcategory,
+        subcategory = null,
+        group = group,
         bookingDate = date,
         valueDate = date,
         accountingDate = date,
@@ -360,13 +361,14 @@ class LocalDataInitializer(
 
             fun tx(
                 category: String,
-                subcategory: String,
+                group: String,
                 date: LocalDate,
                 amount: BigDecimal,
                 counterpartyName: String? = null,
             ) = Transaction(
                 category = category,
-                subcategory = subcategory,
+                subcategory = null,
+                group = group,
                 bookingDate = date,
                 valueDate = date,
                 accountingDate = date,
@@ -445,12 +447,13 @@ class LocalDataInitializer(
 
             fun tx(
                 category: String,
-                subcategory: String,
+                group: String,
                 date: LocalDate,
                 amount: BigDecimal,
             ) = Transaction(
                 category = category,
-                subcategory = subcategory,
+                subcategory = null,
+                group = group,
                 bookingDate = date,
                 valueDate = date,
                 accountingDate = date,

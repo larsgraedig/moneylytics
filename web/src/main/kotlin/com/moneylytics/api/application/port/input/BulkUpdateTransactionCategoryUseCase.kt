@@ -4,9 +4,7 @@ import com.moneylytics.api.domain.Transaction
 
 data class BulkCategoryUpdate(
     val id: Long,
-    val category: String,
-    val subcategory: String,
-    val categoryGroup: String? = null,
+    val categoryId: Long?,
 )
 
 interface BulkUpdateTransactionCategoryUseCase {

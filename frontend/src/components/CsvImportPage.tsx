@@ -381,7 +381,7 @@ export default function CsvImportPage({ categories }: { categories: CategoryGrou
     const { rows, detection, mapping, file } = phase
     const importing = phase.step === 'importing-rows'
     const allCategoryNames = categories.map(g => g.name)
-    const subcategoriesFor = (cat: string) => categories.find(g => g.name === cat)?.subcategories ?? []
+    const subcategoriesFor = (cat: string) => categories.find(g => g.name === cat)?.subcategories.map(s => s.name) ?? []
 
     const setDecision = (rowIndex: number, d: RowDecision) =>
       setDecisions(prev => ({ ...prev, [rowIndex]: d }))

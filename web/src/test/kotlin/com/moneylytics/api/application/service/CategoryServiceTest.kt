@@ -16,7 +16,7 @@ class CategoryServiceTest {
 
     @Test
     fun `should return all categories for user`() {
-        val categories = listOf(Category(name = "Lebensmittel", subcategory = "Supermarkt"))
+        val categories = listOf(Category(name = "Lebensmittel", subcategory = null, group = "Supermarkt"))
         whenever(categoryRepository.findAll(organizationId)).thenReturn(categories)
 
         val result = service.getCategories(organizationId)
@@ -26,7 +26,7 @@ class CategoryServiceTest {
 
     @Test
     fun `should delegate save to repository`() {
-        val categories = listOf(Category(name = "Lebensmittel", subcategory = "Supermarkt"))
+        val categories = listOf(Category(name = "Lebensmittel", subcategory = null, group = "Supermarkt"))
 
         service.saveCategories(categories, organizationId)
 
