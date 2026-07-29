@@ -1,5 +1,6 @@
 package com.moneylytics.api.adapter.input.web
 
+import com.fasterxml.jackson.annotation.JsonProperty
 import com.moneylytics.api.domain.Transaction
 import java.math.BigDecimal
 
@@ -35,6 +36,7 @@ data class TransactionItem(
     val counterpartyName: String?,
     val counterpartyIban: String?,
     val parentId: Long?,
+    @get:JsonProperty("isVirtual")
     val isVirtual: Boolean,
     val excluded: Boolean,
 )
