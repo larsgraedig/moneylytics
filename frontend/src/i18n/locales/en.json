@@ -710,5 +710,22 @@
   "orgSelect": {
     "title": "Select organization",
     "subtitle": "You belong to multiple organizations. Which one do you want to enter?"
+  },
+  "virtualTransaction": {
+    "title": "Create manual entry",
+    "button": "Manual",
+    "badge": "Manual entry",
+    "deleteConfirm": "Really delete this manual entry?",
+    "amount": "Amount",
+    "counterpartyName": "Counterparty",
+    "purpose": "Purpose",
+    "category": "Category",
+    "subcategory": "Subcategory",
+    "confirm": "Create",
+    "cancel": "Cancel",
+    "errorNoAccount": "No account selected.",
+    "errorNoDate": "No date provided.",
+    "errorNoAmount": "Please enter a valid amount.",
+    "errorSave": "Error creating the entry."
   }
 }

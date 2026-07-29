@@ -424,6 +424,25 @@ export async function unmergeTransactions(parentId: number): Promise<void> {
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
 }
 
+export async function createVirtualTransaction(data: {
+  amount: number
+  currency?: string
+  accountIban: string
+  accountingDate: string
+  category?: string | null
+  subcategory?: string | null
+  counterpartyName?: string | null
+  purpose?: string | null
+}): Promise<TransactionItem> {
+  const res = await fetchWithUser('/transactions/virtual', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ currency: 'EUR', ...data }),
+  })
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  return res.json() as Promise<TransactionItem>
+}
+
 export async function fetchSubTransactionGroup(transactionId: number): Promise<SubTransactionGroupResponse | null> {
   const res = await fetchWithUser(`/transactions/${transactionId}/sub-group`)
   if (res.status === 404) return null

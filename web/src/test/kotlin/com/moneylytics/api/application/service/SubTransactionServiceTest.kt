@@ -1,5 +1,6 @@
 package com.moneylytics.api.application.service
 
+import com.moneylytics.api.application.port.input.CreateVirtualTransactionCommand
 import com.moneylytics.api.application.port.input.MergeTransactionsCommand
 import com.moneylytics.api.application.port.input.SplitTransactionCommand
 import com.moneylytics.api.application.port.output.SubTransactionPort
@@ -319,6 +320,62 @@ class SubTransactionServiceTest {
         verify(subTransactionPort).setExcluded(1L, orgId, false)
         verify(subTransactionPort).setExcluded(2L, orgId, false)
         verify(subTransactionPort).deleteVirtual(99L, orgId)
+    }
+
+    @Test
+    fun `createVirtualTransaction should delegate to port and return result`() {
+        val created = virtualTx(42L, BigDecimal("-55"))
+        whenever(
+            subTransactionPort.createStandaloneVirtual(
+                amount = BigDecimal("-55"),
+                currency = "EUR",
+                accountIban = iban,
+                accountingDate = date,
+                category = "Auto",
+                subcategory = "Benzin",
+                counterpartyName = "Shell",
+                purpose = "Tankstelle",
+                organizationId = orgId,
+            ),
+        ).thenReturn(created)
+
+        val result =
+            service.createVirtualTransaction(
+                CreateVirtualTransactionCommand(
+                    amount = BigDecimal("-55"),
+                    currency = "EUR",
+                    accountIban = iban,
+                    accountingDate = date,
+                    category = "Auto",
+                    subcategory = "Benzin",
+                    counterpartyName = "Shell",
+                    purpose = "Tankstelle",
+                    organizationId = orgId,
+                ),
+            )
+
+        assertThat(result.id).isEqualTo(42L)
+        assertThat(result.amount).isEqualByComparingTo(BigDecimal("-55"))
+    }
+
+    @Test
+    fun `createVirtualTransaction should fail when IBAN is blank`() {
+        assertThatThrownBy {
+            service.createVirtualTransaction(
+                CreateVirtualTransactionCommand(
+                    amount = BigDecimal("-10"),
+                    currency = "EUR",
+                    accountIban = "",
+                    accountingDate = date,
+                    category = null,
+                    subcategory = null,
+                    counterpartyName = null,
+                    purpose = null,
+                    organizationId = orgId,
+                ),
+            )
+        }.isInstanceOf(IllegalArgumentException::class.java)
+            .hasMessageContaining("IBAN")
     }
 
     @Test

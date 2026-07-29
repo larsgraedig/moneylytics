@@ -710,5 +710,22 @@
   "orgSelect": {
     "title": "Organisation auswählen",
     "subtitle": "Sie gehören mehreren Organisationen an. Welche möchten Sie betreten?"
+  },
+  "virtualTransaction": {
+    "title": "Manuelle Buchung anlegen",
+    "button": "Manuell",
+    "badge": "Manuelle Buchung",
+    "deleteConfirm": "Manuelle Buchung wirklich löschen?",
+    "amount": "Betrag",
+    "counterpartyName": "Gegenpartei",
+    "purpose": "Verwendungszweck",
+    "category": "Kategorie",
+    "subcategory": "Unterkategorie",
+    "confirm": "Anlegen",
+    "cancel": "Abbrechen",
+    "errorNoAccount": "Kein Konto ausgewählt.",
+    "errorNoDate": "Kein Datum angegeben.",
+    "errorNoAmount": "Bitte einen gültigen Betrag eingeben.",
+    "errorSave": "Fehler beim Anlegen der Buchung."
   }
 }

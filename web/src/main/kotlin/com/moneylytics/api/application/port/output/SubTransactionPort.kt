@@ -47,4 +47,16 @@ interface SubTransactionPort {
         organizationId: Long,
         amount: BigDecimal,
     )
+
+    fun createStandaloneVirtual(
+        amount: BigDecimal,
+        currency: String,
+        accountIban: String,
+        accountingDate: LocalDate,
+        category: String?,
+        subcategory: String?,
+        counterpartyName: String?,
+        purpose: String?,
+        organizationId: Long,
+    ): Transaction
 }

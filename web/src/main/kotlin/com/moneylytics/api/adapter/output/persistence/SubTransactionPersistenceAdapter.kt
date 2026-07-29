@@ -132,6 +132,41 @@ class SubTransactionPersistenceAdapter(
         jpaRepository.save(entity)
     }
 
+    @Transactional
+    override fun createStandaloneVirtual(
+        amount: BigDecimal,
+        currency: String,
+        accountIban: String,
+        accountingDate: LocalDate,
+        category: String?,
+        subcategory: String?,
+        counterpartyName: String?,
+        purpose: String?,
+        organizationId: Long,
+    ): Transaction {
+        val account =
+            accountJpaRepository.findByIbanAndOrganizationId(accountIban, organizationId)
+                ?: error("Account not found for IBAN $accountIban")
+        val org = organizationJpaRepository.getReferenceById(organizationId)
+        val entity =
+            TransactionEntity(
+                category = category?.takeIf { it.isNotBlank() },
+                subcategory = subcategory?.takeIf { it.isNotBlank() },
+                bookingDate = accountingDate,
+                valueDate = accountingDate,
+                accountingDate = accountingDate,
+                amount = amount,
+                currency = currency,
+                account = account,
+                fingerprint = null,
+                organization = org,
+                counterpartyName = counterpartyName?.takeIf { it.isNotBlank() },
+                purpose = purpose?.takeIf { it.isNotBlank() },
+                isVirtual = true,
+            )
+        return jpaRepository.save(entity).toSimpleDomain()
+    }
+
     private fun TransactionEntity.toSimpleDomain() =
         Transaction(
             category = category,

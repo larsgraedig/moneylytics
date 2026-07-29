@@ -2,6 +2,8 @@ package com.moneylytics.api.application.port.input
 
 import com.moneylytics.api.domain.SplitItem
 import com.moneylytics.api.domain.SubTransactionGroup
+import com.moneylytics.api.domain.Transaction
+import java.math.BigDecimal
 import java.time.LocalDate
 
 data class SplitTransactionCommand(
@@ -15,6 +17,18 @@ data class MergeTransactionsCommand(
     val accountingDate: LocalDate,
     val name: String?,
     val comment: String?,
+    val organizationId: Long,
+)
+
+data class CreateVirtualTransactionCommand(
+    val amount: BigDecimal,
+    val currency: String,
+    val accountIban: String,
+    val accountingDate: LocalDate,
+    val category: String?,
+    val subcategory: String?,
+    val counterpartyName: String?,
+    val purpose: String?,
     val organizationId: Long,
 )
 
@@ -43,6 +57,8 @@ interface ManageSubTransactionUseCase {
         parentId: Long,
         organizationId: Long,
     )
+
+    fun createVirtualTransaction(command: CreateVirtualTransactionCommand): Transaction
 }
 
 interface GetSubTransactionGroupUseCase {

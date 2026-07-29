@@ -21,6 +21,7 @@ import {
   type LinkedGroupItem,
   type TransactionItem,
 } from '../api/transactions'
+import { CreateVirtualTransactionModal } from './CreateVirtualTransactionModal'
 import { GroupCard } from './GroupCard'
 import { SplitTransactionModal } from './SplitTransactionModal'
 import { MergeTransactionModal } from './MergeTransactionModal'
@@ -131,6 +132,7 @@ export default function TransactionsPage({
   const [mergeModalTxs, setMergeModalTxs] = useState<TransactionItem[] | null>(null)
   const [parentTxMap, setParentTxMap] = useState<Map<number, TransactionItem>>(new Map())
   const [mergeChildrenMap, setMergeChildrenMap] = useState<Map<number, TransactionItem[]>>(new Map())
+  const [createVirtualOpen, setCreateVirtualOpen] = useState(false)
 
   useEffect(() => {
     fetchBudgets().then(setBudgets).catch(() => {})
@@ -1349,6 +1351,12 @@ export default function TransactionsPage({
         >
           {page.phase === 'loading' ? '…' : t('common.load')}
         </button>
+        <button
+          className="load-btn"
+          onClick={() => setCreateVirtualOpen(true)}
+        >
+          + {t('virtualTransaction.button')}
+        </button>
         {allCategoryNames.length > 0 && (
           <select
             className="account-select"
@@ -1534,20 +1542,40 @@ export default function TransactionsPage({
                           {row.saving ? '…' : t('common.save')}
                         </button>
                       )}
-                      {row.original.isVirtual && row.original.parentId == null && (
-                        <span
-                          className="txnv-sub-badge txnv-sub-badge--merge"
-                          title={t('transactions.merge.undoConfirm')}
-                          onClick={() => {
-                            if (confirm(t('transactions.merge.undoConfirm'))) {
-                              unmergeTransactions(row.original.id).then(() => doLoad()).catch(() => {})
-                            }
-                          }}
-                          style={{ cursor: 'pointer' }}
-                        >
-                          {t('transactions.merge.virtualBadge')} ×
-                        </span>
-                      )}
+                      {row.original.isVirtual && row.original.parentId == null && (() => {
+                        const children = mergeChildrenMap.get(row.original.id)
+                        const isStandalone = children != null && children.length === 0
+                        if (isStandalone) {
+                          return (
+                            <span
+                              className="txnv-sub-badge txnv-sub-badge--merge"
+                              title={t('virtualTransaction.deleteConfirm')}
+                              onClick={() => {
+                                if (confirm(t('virtualTransaction.deleteConfirm'))) {
+                                  unmergeTransactions(row.original.id).then(() => doLoad()).catch(() => {})
+                                }
+                              }}
+                              style={{ cursor: 'pointer' }}
+                            >
+                              {t('virtualTransaction.badge')} ×
+                            </span>
+                          )
+                        }
+                        return (
+                          <span
+                            className="txnv-sub-badge txnv-sub-badge--merge"
+                            title={t('transactions.merge.undoConfirm')}
+                            onClick={() => {
+                              if (confirm(t('transactions.merge.undoConfirm'))) {
+                                unmergeTransactions(row.original.id).then(() => doLoad()).catch(() => {})
+                              }
+                            }}
+                            style={{ cursor: 'pointer' }}
+                          >
+                            {t('transactions.merge.virtualBadge')} ×
+                          </span>
+                        )
+                      })()}
                       {row.original.isVirtual && row.original.parentId != null && (
                         <span className="txnv-sub-badge txnv-sub-badge--split-child">
                           {t('transactions.split.virtualBadge')}
@@ -1592,6 +1620,15 @@ export default function TransactionsPage({
 
       {renderLinkModal()}
       {renderGroupModal()}
+      {createVirtualOpen && (
+        <CreateVirtualTransactionModal
+          accounts={accounts}
+          categories={categories}
+          defaultDate={to}
+          onClose={() => setCreateVirtualOpen(false)}
+          onCreate={() => { setCreateVirtualOpen(false); doLoad() }}
+        />
+      )}
       {splitModalTx && (
         <SplitTransactionModal
           transaction={splitModalTx}

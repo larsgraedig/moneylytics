@@ -1,5 +1,6 @@
 package com.moneylytics.api.adapter.input.web
 
+import com.moneylytics.api.application.port.input.CreateVirtualTransactionCommand
 import com.moneylytics.api.application.port.input.GetSubTransactionGroupUseCase
 import com.moneylytics.api.application.port.input.ManageSubTransactionUseCase
 import com.moneylytics.api.application.port.input.MergeTransactionsCommand
@@ -42,6 +43,18 @@ data class MergeRequest(
     val accountingDate: LocalDate,
     val name: String? = null,
     val comment: String? = null,
+)
+
+data class CreateVirtualTransactionRequest(
+    val amount: BigDecimal,
+    val currency: String = "EUR",
+    val accountIban: String,
+    @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+    val accountingDate: LocalDate,
+    val category: String? = null,
+    val subcategory: String? = null,
+    val counterpartyName: String? = null,
+    val purpose: String? = null,
 )
 
 data class SubTransactionGroupResponse(
@@ -211,6 +224,42 @@ class SubTransactionController(
                     when (e) {
                         is IllegalArgumentException -> ResponseEntity.badRequest().build()
                         is IllegalStateException -> ResponseEntity.badRequest().build()
+                        else -> throw e
+                    }
+                },
+            )
+        }
+    }
+
+    @PostMapping("/virtual")
+    suspend fun createVirtualTransaction(
+        @RequestBody request: CreateVirtualTransactionRequest,
+        @AuthenticationPrincipal principal: UserDetails,
+        exchange: ServerWebExchange,
+    ): ResponseEntity<TransactionItem> {
+        val organizationId = resolveOrganizationUseCase.resolveOrganization(principal, exchange)
+        return withContext(Dispatchers.IO) {
+            runCatching {
+                manageSubTransactionUseCase.createVirtualTransaction(
+                    CreateVirtualTransactionCommand(
+                        amount = request.amount,
+                        currency = request.currency,
+                        accountIban = request.accountIban,
+                        accountingDate = request.accountingDate,
+                        category = request.category,
+                        subcategory = request.subcategory,
+                        counterpartyName = request.counterpartyName,
+                        purpose = request.purpose,
+                        organizationId = organizationId,
+                    ),
+                )
+            }.fold(
+                onSuccess = { ResponseEntity.ok(it.toItem()) },
+                onFailure = { e ->
+                    when (e) {
+                        is IllegalArgumentException -> ResponseEntity.badRequest().build()
+                        is IllegalStateException -> ResponseEntity.badRequest().build()
+                        is NoSuchElementException -> ResponseEntity.notFound().build()
                         else -> throw e
                     }
                 },

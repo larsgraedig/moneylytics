@@ -1,5 +1,6 @@
 package com.moneylytics.api.application.service
 
+import com.moneylytics.api.application.port.input.CreateVirtualTransactionCommand
 import com.moneylytics.api.application.port.input.GetSubTransactionGroupUseCase
 import com.moneylytics.api.application.port.input.ManageSubTransactionUseCase
 import com.moneylytics.api.application.port.input.MergeTransactionsCommand
@@ -159,6 +160,22 @@ class SubTransactionService(
         }
 
         subTransactionPort.deleteVirtual(parentId, organizationId)
+    }
+
+    @Transactional
+    override fun createVirtualTransaction(command: CreateVirtualTransactionCommand): Transaction {
+        require(command.accountIban.isNotBlank()) { "Account IBAN is required" }
+        return subTransactionPort.createStandaloneVirtual(
+            amount = command.amount,
+            currency = command.currency,
+            accountIban = command.accountIban,
+            accountingDate = command.accountingDate,
+            category = command.category,
+            subcategory = command.subcategory,
+            counterpartyName = command.counterpartyName,
+            purpose = command.purpose,
+            organizationId = command.organizationId,
+        )
     }
 
     override fun getGroup(
