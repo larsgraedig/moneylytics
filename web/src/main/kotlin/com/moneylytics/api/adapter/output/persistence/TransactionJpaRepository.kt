@@ -7,32 +7,37 @@ import java.math.BigDecimal
 import java.time.LocalDate
 
 interface TransactionJpaRepository : JpaRepository<TransactionEntity, Long> {
-    fun findByOrganizationIdAndAccountingDateBetween(
+    fun findByOrganizationIdAndAccountingDateBetweenAndExcludedFalse(
         organizationId: Long,
         from: LocalDate,
         to: LocalDate,
     ): List<TransactionEntity>
 
-    fun findByOrganizationIdAndAccountingDateBetweenAndAmountLessThan(
+    fun findByOrganizationIdAndAccountingDateBetweenAndAmountLessThanAndExcludedFalse(
         organizationId: Long,
         from: LocalDate,
         to: LocalDate,
         amount: BigDecimal,
     ): List<TransactionEntity>
 
-    fun findByOrganizationIdAndAccountIbanAndAccountingDateBetween(
+    fun findByOrganizationIdAndAccountIbanAndAccountingDateBetweenAndExcludedFalse(
         organizationId: Long,
         iban: String,
         from: LocalDate,
         to: LocalDate,
     ): List<TransactionEntity>
 
-    fun findByOrganizationIdAndAccountIbanAndAccountingDateBetweenAndAmountLessThan(
+    fun findByOrganizationIdAndAccountIbanAndAccountingDateBetweenAndAmountLessThanAndExcludedFalse(
         organizationId: Long,
         iban: String,
         from: LocalDate,
         to: LocalDate,
         amount: BigDecimal,
+    ): List<TransactionEntity>
+
+    fun findByParentIdAndOrganizationId(
+        parentId: Long,
+        organizationId: Long,
     ): List<TransactionEntity>
 
     @Query("SELECT t FROM TransactionEntity t WHERE t.id = :id AND t.organization.id = :organizationId")

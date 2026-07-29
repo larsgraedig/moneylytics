@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { Trans, useTranslation } from 'react-i18next'
@@ -7,7 +8,10 @@ import {
   bulkUpdateTransactionCategory,
   fetchAllTransactions,
   fetchLinkedGroup,
+  fetchSubTransactionGroup,
   linkTransactions,
+  unsplitTransaction,
+  unmergeTransactions,
   updateTransactionAccountingDate,
   updateTransactionCategory,
   updateTransactionComment,
@@ -17,7 +21,10 @@ import {
   type LinkedGroupItem,
   type TransactionItem,
 } from '../api/transactions'
+import { CreateVirtualTransactionModal } from './CreateVirtualTransactionModal'
 import { GroupCard } from './GroupCard'
+import { SplitTransactionModal } from './SplitTransactionModal'
+import { MergeTransactionModal } from './MergeTransactionModal'
 import {
   assignTransaction as assignToBudget,
   fetchBudgets,
@@ -121,6 +128,11 @@ export default function TransactionsPage({
   const [bulkApplying, setBulkApplying] = useState(false)
   const [dragCol, setDragCol] = useState<ColumnKey | null>(null)
   const [dragOverCol, setDragOverCol] = useState<ColumnKey | null>(null)
+  const [splitModalTx, setSplitModalTx] = useState<TransactionItem | null>(null)
+  const [mergeModalTxs, setMergeModalTxs] = useState<TransactionItem[] | null>(null)
+  const [parentTxMap, setParentTxMap] = useState<Map<number, TransactionItem>>(new Map())
+  const [mergeChildrenMap, setMergeChildrenMap] = useState<Map<number, TransactionItem[]>>(new Map())
+  const [createVirtualOpen, setCreateVirtualOpen] = useState(false)
 
   useEffect(() => {
     fetchBudgets().then(setBudgets).catch(() => {})
@@ -211,6 +223,37 @@ export default function TransactionsPage({
         })),
       )
       setPage({ phase: 'ready' })
+
+      // Fetch parent transactions for virtual split children so they can be shown as ghost rows
+      const parentIds = new Set<number>()
+      data.transactions.forEach(tx => {
+        if (tx.isVirtual && tx.parentId != null) parentIds.add(tx.parentId)
+      })
+      if (parentIds.size > 0) {
+        const results = await Promise.allSettled(
+          [...parentIds].map(id => fetchSubTransactionGroup(id).then(g => g ? ({ id, tx: g.parent }) : null)),
+        )
+        const map = new Map<number, TransactionItem>()
+        results.forEach(r => { if (r.status === 'fulfilled' && r.value) map.set(r.value.id, r.value.tx) })
+        setParentTxMap(map)
+      } else {
+        setParentTxMap(new Map())
+      }
+
+      // Fetch children for merged virtual transactions so they can be shown as ghost rows
+      const mergeVirtualIds = data.transactions
+        .filter(tx => tx.isVirtual && tx.parentId == null)
+        .map(tx => tx.id)
+      if (mergeVirtualIds.length > 0) {
+        const results = await Promise.allSettled(
+          mergeVirtualIds.map(id => fetchSubTransactionGroup(id).then(g => g ? ({ id, children: g.children }) : null)),
+        )
+        const map = new Map<number, TransactionItem[]>()
+        results.forEach(r => { if (r.status === 'fulfilled' && r.value) map.set(r.value.id, r.value.children) })
+        setMergeChildrenMap(map)
+      } else {
+        setMergeChildrenMap(new Map())
+      }
     } catch (e) {
       setPage({ phase: 'error', message: e instanceof Error ? e.message : t('common.requestFailed') })
     }
@@ -498,6 +541,51 @@ export default function TransactionsPage({
     `txnv-sub-${category.replace(/\s+/g, '-').toLowerCase()}`
 
   const filteredRows = useMemo(() => rows.map((row, i) => ({ row, i })), [rows])
+
+  type DisplayItem =
+    | { type: 'ghost'; parentTx: TransactionItem; parentId: number }
+    | { type: 'merge-child-ghost'; childTx: TransactionItem; parentVirtualId: number }
+    | { type: 'row'; row: RowState; i: number }
+
+  const displayItems = useMemo((): DisplayItem[] => {
+    const seenParentIds = new Set<number>()
+    const seenIds = new Set<number>()
+    const result: DisplayItem[] = []
+
+    for (const { row, i } of filteredRows) {
+      if (seenIds.has(row.original.id)) continue
+
+      if (row.original.isVirtual && row.original.parentId != null) {
+        const parentId = row.original.parentId
+        if (!seenParentIds.has(parentId)) {
+          seenParentIds.add(parentId)
+          const parentTx = parentTxMap.get(parentId)
+          if (parentTx) result.push({ type: 'ghost', parentTx, parentId })
+          // Collect ALL siblings together regardless of their position in filteredRows
+          for (const sibling of filteredRows) {
+            if (sibling.row.original.isVirtual && sibling.row.original.parentId === parentId) {
+              seenIds.add(sibling.row.original.id)
+              result.push({ type: 'row', row: sibling.row, i: sibling.i })
+            }
+          }
+        }
+      } else {
+        seenIds.add(row.original.id)
+        result.push({ type: 'row', row, i })
+        // For merged virtual transactions, show their original children as ghost rows below
+        if (row.original.isVirtual && row.original.parentId == null) {
+          const children = mergeChildrenMap.get(row.original.id)
+          if (children) {
+            children.forEach(child => {
+              result.push({ type: 'merge-child-ghost', childTx: child, parentVirtualId: row.original.id })
+            })
+          }
+        }
+      }
+    }
+
+    return result
+  }, [filteredRows, parentTxMap, mergeChildrenMap])
 
   const uniqueRowCategories = useMemo(() => {
     const seen = new Set<string>()
@@ -1060,6 +1148,35 @@ export default function TransactionsPage({
     )
   }
 
+  function renderGhostCell(col: ColumnKey, tx: TransactionItem): ReactNode {
+    switch (col) {
+      case 'date':
+        return <td key={col} className="txn-cell-date">{formatDate(tx.accountingDate)}</td>
+      case 'account':
+        return <td key={col} className="txnv-cell-account">{accountMap.get(tx.accountIban) ?? tx.accountIban}</td>
+      case 'amount':
+        return (
+          <td key={col} className={`txn-cell-amount txnv-col-amount${tx.amount < 0 ? ' negative' : ' positive'}`}>
+            {EUR.format(tx.amount)}
+          </td>
+        )
+      case 'category':
+        return <td key={col}><span className="ri-cat-input" style={{ display: 'inline-block' }}>{tx.category ?? ''}</span></td>
+      case 'group':
+        return <td key={col}><span className="ri-cat-input" style={{ display: 'inline-block' }}>{tx.categoryGroup ?? ''}</span></td>
+      case 'subcategory':
+        return <td key={col}><span className="ri-cat-input" style={{ display: 'inline-block' }}>{tx.subcategory ?? ''}</span></td>
+      case 'counterparty':
+        return <td key={col} className="txnv-cell-counterparty"><span className="txnv-counterparty-name">{tx.counterpartyName ?? ''}</span></td>
+      case 'purpose':
+        return <td key={col} className="txnv-cell-purpose"><span className="txnv-purpose-text">{tx.purpose ?? ''}</span></td>
+      case 'comment':
+        return <td key={col} className="txnv-cell-comment"><span style={{ color: 'inherit', fontSize: 12 }}>{tx.comment ?? ''}</span></td>
+      default:
+        return <td key={col} />
+    }
+  }
+
   function renderColumnHeader(col: ColumnKey) {
     const isDragging = dragCol === col
     const isDragOver = dragOverCol === col
@@ -1234,6 +1351,12 @@ export default function TransactionsPage({
         >
           {page.phase === 'loading' ? '…' : t('common.load')}
         </button>
+        <button
+          className="load-btn"
+          onClick={() => setCreateVirtualOpen(true)}
+        >
+          + {t('virtualTransaction.button')}
+        </button>
         {allCategoryNames.length > 0 && (
           <select
             className="account-select"
@@ -1364,7 +1487,30 @@ export default function TransactionsPage({
               </tr>
             </thead>
             <tbody>
-              {filteredRows.map(({ row, i }) => {
+              {displayItems.map(item => {
+                if (item.type === 'ghost') {
+                  return (
+                    <tr key={`ghost-${item.parentId}`} className="txnv-row--parent-ghost">
+                      <td className="txnv-col-check" />
+                      {colOrder.map(col => renderGhostCell(col, item.parentTx))}
+                      <td className="txnv-cell-actions">
+                        <span className="txnv-sub-badge txnv-sub-badge--split">{t('transactions.split.splitBadge')}</span>
+                      </td>
+                    </tr>
+                  )
+                }
+                if (item.type === 'merge-child-ghost') {
+                  return (
+                    <tr key={`merge-child-${item.childTx.id}`} className="txnv-row--merge-child-ghost">
+                      <td className="txnv-col-check" />
+                      {colOrder.map(col => renderGhostCell(col, item.childTx))}
+                      <td className="txnv-cell-actions">
+                        <span className="txnv-sub-badge txnv-sub-badge--merged-child">{t('transactions.merge.mergedBadge')}</span>
+                      </td>
+                    </tr>
+                  )
+                }
+                const { row, i } = item
                 const rowLinkColor = (() => {
                   for (const group of row.original.groups) {
                     const idx = groupColorMap.get(group.id)
@@ -1396,6 +1542,73 @@ export default function TransactionsPage({
                           {row.saving ? '…' : t('common.save')}
                         </button>
                       )}
+                      {row.original.isVirtual && row.original.parentId == null && (() => {
+                        const children = mergeChildrenMap.get(row.original.id)
+                        const isStandalone = children != null && children.length === 0
+                        if (isStandalone) {
+                          return (
+                            <span
+                              className="txnv-sub-badge txnv-sub-badge--merge"
+                              title={t('virtualTransaction.deleteConfirm')}
+                              onClick={() => {
+                                if (confirm(t('virtualTransaction.deleteConfirm'))) {
+                                  unmergeTransactions(row.original.id).then(() => doLoad()).catch(() => {})
+                                }
+                              }}
+                              style={{ cursor: 'pointer' }}
+                            >
+                              {t('virtualTransaction.badge')} ×
+                            </span>
+                          )
+                        }
+                        return (
+                          <span
+                            className="txnv-sub-badge txnv-sub-badge--merge"
+                            title={t('transactions.merge.undoConfirm')}
+                            onClick={() => {
+                              if (confirm(t('transactions.merge.undoConfirm'))) {
+                                unmergeTransactions(row.original.id).then(() => doLoad()).catch(() => {})
+                              }
+                            }}
+                            style={{ cursor: 'pointer' }}
+                          >
+                            {t('transactions.merge.virtualBadge')} ×
+                          </span>
+                        )
+                      })()}
+                      {row.original.isVirtual && row.original.parentId != null && (
+                        <span className="txnv-sub-badge txnv-sub-badge--split-child">
+                          {t('transactions.split.virtualBadge')}
+                        </span>
+                      )}
+                      {!row.original.isVirtual && row.original.excluded && row.original.parentId != null && (
+                        <span className="txnv-sub-badge txnv-sub-badge--merged-child">
+                          {t('transactions.merge.mergedBadge')}
+                        </span>
+                      )}
+                      {!row.original.isVirtual && row.original.excluded && row.original.parentId == null && (
+                        <span
+                          className="txnv-sub-badge txnv-sub-badge--split"
+                          title={t('transactions.split.undoConfirm')}
+                          onClick={() => {
+                            if (confirm(t('transactions.split.undoConfirm'))) {
+                              unsplitTransaction(row.original.id).then(() => doLoad()).catch(() => {})
+                            }
+                          }}
+                          style={{ cursor: 'pointer' }}
+                        >
+                          {t('transactions.split.splitBadge')} ×
+                        </span>
+                      )}
+                      {!row.original.isVirtual && !row.original.excluded && row.original.parentId == null && (
+                        <button
+                          className="txnv-sub-split-btn"
+                          onClick={() => setSplitModalTx(row.original)}
+                          title={t('transactions.split.button')}
+                        >
+                          ÷
+                        </button>
+                      )}
                     </td>
                   </tr>
                 )
@@ -1407,6 +1620,30 @@ export default function TransactionsPage({
 
       {renderLinkModal()}
       {renderGroupModal()}
+      {createVirtualOpen && (
+        <CreateVirtualTransactionModal
+          accounts={accounts}
+          categories={categories}
+          defaultDate={to}
+          onClose={() => setCreateVirtualOpen(false)}
+          onCreate={() => { setCreateVirtualOpen(false); doLoad() }}
+        />
+      )}
+      {splitModalTx && (
+        <SplitTransactionModal
+          transaction={splitModalTx}
+          categories={categories}
+          onClose={() => setSplitModalTx(null)}
+          onSplit={() => { setSplitModalTx(null); doLoad() }}
+        />
+      )}
+      {mergeModalTxs && (
+        <MergeTransactionModal
+          transactions={mergeModalTxs}
+          onClose={() => setMergeModalTxs(null)}
+          onMerge={() => { setMergeModalTxs(null); doLoad() }}
+        />
+      )}
 
       {selectedCount > 0 && (
         <div className="txnv-bulk-bar">
@@ -1441,6 +1678,19 @@ export default function TransactionsPage({
           >
             {bulkApplying ? '…' : t('transactions.applyBulk')}
           </button>
+          {selectedCount >= 2 && (
+            <button
+              className="txnv-bulk-apply-btn"
+              style={{ background: '#10b981' }}
+              onClick={() => {
+                const selected = rows.filter(r => r.selected).map(r => r.original)
+                setMergeModalTxs(selected)
+              }}
+              disabled={bulkApplying}
+            >
+              {t('transactions.merge.button')}
+            </button>
+          )}
           <button className="txnv-bulk-cancel-btn" onClick={clearSelection} disabled={bulkApplying}>
             ✕
           </button>

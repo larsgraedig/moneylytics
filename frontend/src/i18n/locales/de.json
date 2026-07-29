@@ -182,6 +182,39 @@
       "title": "Verknüpfung erstellen"
     },
     "bookingDateTitle": "reales Buchungsdatum",
+    "split": {
+      "button": "Aufteilen",
+      "title": "Transaktion aufteilen",
+      "addSplit": "Eintrag hinzufügen",
+      "removeSplit": "Entfernen",
+      "category": "Kategorie",
+      "subcategory": "Unterkategorie",
+      "comment": "Kommentar",
+      "amount": "Betrag",
+      "remaining": "Verbleibend",
+      "confirm": "Aufteilen",
+      "cancel": "Abbrechen",
+      "sumMismatch": "Die Summe der Einträge muss dem Gesamtbetrag entsprechen.",
+      "minSplits": "Mindestens 2 Einträge erforderlich.",
+      "undo": "Aufteilung aufheben",
+      "undoConfirm": "Aufteilung wirklich aufheben? Die virtuellen Einträge werden gelöscht.",
+      "virtualBadge": "Teil einer Aufteilung",
+      "splitBadge": "Aufgeteilt"
+    },
+    "merge": {
+      "button": "Zusammenfassen",
+      "title": "Transaktionen zusammenfassen",
+      "name": "Name (optional)",
+      "comment": "Kommentar (optional)",
+      "accountingDate": "Buchungsdatum der Sammelposition",
+      "total": "Gesamtbetrag",
+      "confirm": "Zusammenfassen",
+      "cancel": "Abbrechen",
+      "undo": "Zusammenfassung aufheben",
+      "undoConfirm": "Zusammenfassung wirklich aufheben? Die virtuelle Sammelposition wird gelöscht.",
+      "virtualBadge": "Sammelposition",
+      "mergedBadge": "Teil einer Sammelposition"
+    },
     "panel": {
       "close": "Schließen",
       "loading": "Lädt…",
@@ -677,5 +710,22 @@
   "orgSelect": {
     "title": "Organisation auswählen",
     "subtitle": "Sie gehören mehreren Organisationen an. Welche möchten Sie betreten?"
+  },
+  "virtualTransaction": {
+    "title": "Manuelle Buchung anlegen",
+    "button": "Manuell",
+    "badge": "Manuelle Buchung",
+    "deleteConfirm": "Manuelle Buchung wirklich löschen?",
+    "amount": "Betrag",
+    "counterpartyName": "Gegenpartei",
+    "purpose": "Verwendungszweck",
+    "category": "Kategorie",
+    "subcategory": "Unterkategorie",
+    "confirm": "Anlegen",
+    "cancel": "Abbrechen",
+    "errorNoAccount": "Kein Konto ausgewählt.",
+    "errorNoDate": "Kein Datum angegeben.",
+    "errorNoAmount": "Bitte einen gültigen Betrag eingeben.",
+    "errorSave": "Fehler beim Anlegen der Buchung."
   }
 }

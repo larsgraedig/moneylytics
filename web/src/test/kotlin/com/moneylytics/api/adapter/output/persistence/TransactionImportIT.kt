@@ -27,7 +27,7 @@ class TransactionImportIT : AbstractServiceIT() {
 
         assertThat(count).isEqualTo(3)
         flushAndClear()
-        assertThat(transactionRepo.findByOrganizationIdAndAccountingDateBetween(organizationId, date, date)).hasSize(3)
+        assertThat(transactionRepo.findByOrganizationIdAndAccountingDateBetweenAndExcludedFalse(organizationId, date, date)).hasSize(3)
     }
 
     @Test
@@ -39,7 +39,7 @@ class TransactionImportIT : AbstractServiceIT() {
         val count = importService.importTransactions(command)
 
         assertThat(count).isEqualTo(0)
-        assertThat(transactionRepo.findByOrganizationIdAndAccountingDateBetween(organizationId, date, date)).hasSize(3)
+        assertThat(transactionRepo.findByOrganizationIdAndAccountingDateBetweenAndExcludedFalse(organizationId, date, date)).hasSize(3)
     }
 
     @Test
@@ -51,7 +51,7 @@ class TransactionImportIT : AbstractServiceIT() {
         val count = importService.importTransactions(command(existing, tx("-200"), tx("-50")))
 
         assertThat(count).isEqualTo(2)
-        assertThat(transactionRepo.findByOrganizationIdAndAccountingDateBetween(organizationId, date, date)).hasSize(3)
+        assertThat(transactionRepo.findByOrganizationIdAndAccountingDateBetweenAndExcludedFalse(organizationId, date, date)).hasSize(3)
     }
 
     @Test

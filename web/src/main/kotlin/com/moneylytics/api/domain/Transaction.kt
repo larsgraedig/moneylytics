@@ -22,6 +22,10 @@ data class Transaction(
     val counterpartyName: String? = null,
     val counterpartyIban: String? = null,
     val budgetLinks: List<BudgetTransactionSummary> = emptyList(),
+    val parentId: Long? = null,
+    val isVirtual: Boolean = false,
+    val excluded: Boolean = false,
+    val children: List<Transaction> = emptyList(),
 ) {
     fun effectiveAmount(): BigDecimal {
         if (offsetLinks.isEmpty()) return amount

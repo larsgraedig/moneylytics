@@ -28,14 +28,14 @@ class TransactionEntity(
     @Column(nullable = false, name = "accounting_date")
     var accountingDate: LocalDate,
     @Column(nullable = false, precision = 19, scale = 4)
-    val amount: BigDecimal,
+    var amount: BigDecimal,
     @Column(nullable = false, length = 3)
     val currency: String,
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "account_id", nullable = false)
     val account: AccountEntity,
-    @Column(nullable = false, unique = true, length = 64)
-    val fingerprint: String,
+    @Column(nullable = true, unique = true, length = 64)
+    val fingerprint: String?,
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "organization_id", nullable = false)
     val organization: OrganizationEntity,
@@ -47,6 +47,12 @@ class TransactionEntity(
     var counterpartyName: String? = null,
     @Column(nullable = true, length = 34)
     var counterpartyIban: String? = null,
+    @Column(nullable = true, name = "parent_id")
+    var parentId: Long? = null,
+    @Column(nullable = false, name = "is_virtual")
+    val isVirtual: Boolean = false,
+    @Column(nullable = false)
+    var excluded: Boolean = false,
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     var id: Long? = null,

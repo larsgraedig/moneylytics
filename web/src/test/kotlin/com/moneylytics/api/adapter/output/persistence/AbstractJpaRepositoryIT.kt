@@ -51,6 +51,9 @@ abstract class AbstractJpaRepositoryIT {
         amount: BigDecimal = BigDecimal("-25.00"),
         forAccount: AccountEntity = account,
         forOrganization: OrganizationEntity = organization,
+        excluded: Boolean = false,
+        isVirtual: Boolean = false,
+        parentId: Long? = null,
     ): TransactionEntity =
         transactionRepo.save(
             TransactionEntity(
@@ -64,6 +67,9 @@ abstract class AbstractJpaRepositoryIT {
                 account = forAccount,
                 fingerprint = fingerprint,
                 organization = forOrganization,
+                excluded = excluded,
+                isVirtual = isVirtual,
+                parentId = parentId,
             ),
         )
 

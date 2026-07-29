@@ -182,6 +182,39 @@
       "title": "Create link"
     },
     "bookingDateTitle": "original booking date",
+    "split": {
+      "button": "Split",
+      "title": "Split transaction",
+      "addSplit": "Add entry",
+      "removeSplit": "Remove",
+      "category": "Category",
+      "subcategory": "Subcategory",
+      "comment": "Comment",
+      "amount": "Amount",
+      "remaining": "Remaining",
+      "confirm": "Split",
+      "cancel": "Cancel",
+      "sumMismatch": "The sum of entries must equal the total amount.",
+      "minSplits": "At least 2 entries required.",
+      "undo": "Undo split",
+      "undoConfirm": "Really undo split? The virtual entries will be deleted.",
+      "virtualBadge": "Part of a split",
+      "splitBadge": "Split"
+    },
+    "merge": {
+      "button": "Merge",
+      "title": "Merge transactions",
+      "name": "Name (optional)",
+      "comment": "Comment (optional)",
+      "accountingDate": "Accounting date of merged entry",
+      "total": "Total amount",
+      "confirm": "Merge",
+      "cancel": "Cancel",
+      "undo": "Undo merge",
+      "undoConfirm": "Really undo merge? The virtual merged entry will be deleted.",
+      "virtualBadge": "Merged entry",
+      "mergedBadge": "Part of a merged entry"
+    },
     "panel": {
       "close": "Close",
       "loading": "loading…",
@@ -677,5 +710,22 @@
   "orgSelect": {
     "title": "Select organization",
     "subtitle": "You belong to multiple organizations. Which one do you want to enter?"
+  },
+  "virtualTransaction": {
+    "title": "Create manual entry",
+    "button": "Manual",
+    "badge": "Manual entry",
+    "deleteConfirm": "Really delete this manual entry?",
+    "amount": "Amount",
+    "counterpartyName": "Counterparty",
+    "purpose": "Purpose",
+    "category": "Category",
+    "subcategory": "Subcategory",
+    "confirm": "Create",
+    "cancel": "Cancel",
+    "errorNoAccount": "No account selected.",
+    "errorNoDate": "No date provided.",
+    "errorNoAmount": "Please enter a valid amount.",
+    "errorSave": "Error creating the entry."
   }
 }

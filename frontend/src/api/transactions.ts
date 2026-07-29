@@ -88,6 +88,22 @@ export interface TransactionItem {
   purpose: string | null
   counterpartyName: string | null
   counterpartyIban: string | null
+  parentId: number | null
+  isVirtual: boolean
+  excluded: boolean
+}
+
+export interface SplitItemRequest {
+  amount: number
+  category: string | null
+  subcategory: string | null
+  categoryGroup?: string | null
+  comment?: string | null
+}
+
+export interface SubTransactionGroupResponse {
+  parent: TransactionItem
+  children: TransactionItem[]
 }
 
 export interface TransactionListResponse {
@@ -356,4 +372,80 @@ export async function fetchSankeyData(from: string, to: string, iban?: string): 
   const res = await fetchWithUser(`/transactions/sankey?${params}`)
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
   return res.json() as Promise<SankeyResponse>
+}
+
+export async function splitTransaction(
+  transactionId: number,
+  splits: SplitItemRequest[],
+): Promise<SubTransactionGroupResponse> {
+  const res = await fetchWithUser(`/transactions/${transactionId}/split`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ splits }),
+  })
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  return res.json() as Promise<SubTransactionGroupResponse>
+}
+
+export async function unsplitTransaction(transactionId: number): Promise<void> {
+  const res = await fetchWithUser(`/transactions/${transactionId}/split`, { method: 'DELETE' })
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+}
+
+export async function mergeTransactions(
+  transactionIds: number[],
+  accountingDate: string,
+  name?: string | null,
+  comment?: string | null,
+): Promise<SubTransactionGroupResponse> {
+  const res = await fetchWithUser('/transactions/merge', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ transactionIds, accountingDate, name: name ?? null, comment: comment ?? null }),
+  })
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  return res.json() as Promise<SubTransactionGroupResponse>
+}
+
+export async function addToMerge(parentId: number, transactionId: number): Promise<SubTransactionGroupResponse> {
+  const res = await fetchWithUser(`/transactions/${parentId}/merge/${transactionId}`, { method: 'POST' })
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  return res.json() as Promise<SubTransactionGroupResponse>
+}
+
+export async function removeFromMerge(parentId: number, transactionId: number): Promise<SubTransactionGroupResponse> {
+  const res = await fetchWithUser(`/transactions/${parentId}/merge/${transactionId}`, { method: 'DELETE' })
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  return res.json() as Promise<SubTransactionGroupResponse>
+}
+
+export async function unmergeTransactions(parentId: number): Promise<void> {
+  const res = await fetchWithUser(`/transactions/${parentId}/merge`, { method: 'DELETE' })
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+}
+
+export async function createVirtualTransaction(data: {
+  amount: number
+  currency?: string
+  accountIban: string
+  accountingDate: string
+  category?: string | null
+  subcategory?: string | null
+  counterpartyName?: string | null
+  purpose?: string | null
+}): Promise<TransactionItem> {
+  const res = await fetchWithUser('/transactions/virtual', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ currency: 'EUR', ...data }),
+  })
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  return res.json() as Promise<TransactionItem>
+}
+
+export async function fetchSubTransactionGroup(transactionId: number): Promise<SubTransactionGroupResponse | null> {
+  const res = await fetchWithUser(`/transactions/${transactionId}/sub-group`)
+  if (res.status === 404) return null
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  return res.json() as Promise<SubTransactionGroupResponse>
 }

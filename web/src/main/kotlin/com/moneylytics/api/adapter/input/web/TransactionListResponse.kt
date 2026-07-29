@@ -1,5 +1,6 @@
 package com.moneylytics.api.adapter.input.web
 
+import com.fasterxml.jackson.annotation.JsonProperty
 import com.moneylytics.api.domain.Transaction
 import java.math.BigDecimal
 
@@ -34,6 +35,10 @@ data class TransactionItem(
     val purpose: String?,
     val counterpartyName: String?,
     val counterpartyIban: String?,
+    val parentId: Long?,
+    @get:JsonProperty("isVirtual")
+    val isVirtual: Boolean,
+    val excluded: Boolean,
 )
 
 data class GroupSummaryDto(
@@ -89,4 +94,7 @@ fun Transaction.toItem() =
         purpose = purpose,
         counterpartyName = counterpartyName,
         counterpartyIban = counterpartyIban,
+        parentId = parentId,
+        isVirtual = isVirtual,
+        excluded = excluded,
     )

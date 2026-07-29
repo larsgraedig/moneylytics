@@ -190,24 +190,37 @@ class TransactionPersistenceAdapterTest {
     @Test
     fun `should use account-specific query when IBAN provided in findByAccountingDateBetween`() {
         stubEnrichEmpty(emptyList())
-        whenever(jpaRepository.findByOrganizationIdAndAccountIbanAndAccountingDateBetween(organizationId, "DE00TEST", date, date))
-            .thenReturn(emptyList())
+        whenever(
+            jpaRepository.findByOrganizationIdAndAccountIbanAndAccountingDateBetweenAndExcludedFalse(
+                organizationId,
+                "DE00TEST",
+                date,
+                date,
+            ),
+        ).thenReturn(emptyList())
 
         adapter.findByAccountingDateBetween(date, date, organizationId, accountIban = "DE00TEST")
 
-        verify(jpaRepository).findByOrganizationIdAndAccountIbanAndAccountingDateBetween(organizationId, "DE00TEST", date, date)
-        verify(jpaRepository, never()).findByOrganizationIdAndAccountingDateBetween(any(), any(), any())
+        verify(
+            jpaRepository,
+        ).findByOrganizationIdAndAccountIbanAndAccountingDateBetweenAndExcludedFalse(organizationId, "DE00TEST", date, date)
+        verify(jpaRepository, never()).findByOrganizationIdAndAccountingDateBetweenAndExcludedFalse(any(), any(), any())
     }
 
     @Test
     fun `should use general query when no IBAN in findByAccountingDateBetween`() {
         stubEnrichEmpty(emptyList())
-        whenever(jpaRepository.findByOrganizationIdAndAccountingDateBetween(organizationId, date, date)).thenReturn(emptyList())
+        whenever(
+            jpaRepository.findByOrganizationIdAndAccountingDateBetweenAndExcludedFalse(organizationId, date, date),
+        ).thenReturn(emptyList())
 
         adapter.findByAccountingDateBetween(date, date, organizationId, accountIban = null)
 
-        verify(jpaRepository).findByOrganizationIdAndAccountingDateBetween(organizationId, date, date)
-        verify(jpaRepository, never()).findByOrganizationIdAndAccountIbanAndAccountingDateBetween(any(), any(), any(), any())
+        verify(jpaRepository).findByOrganizationIdAndAccountingDateBetweenAndExcludedFalse(organizationId, date, date)
+        verify(
+            jpaRepository,
+            never(),
+        ).findByOrganizationIdAndAccountIbanAndAccountingDateBetweenAndExcludedFalse(any(), any(), any(), any())
     }
 
     @Test
@@ -223,7 +236,9 @@ class TransactionPersistenceAdapterTest {
                 groupId = 10L,
                 id = 5L,
             )
-        whenever(jpaRepository.findByOrganizationIdAndAccountingDateBetween(organizationId, date, date)).thenReturn(listOf(txA))
+        whenever(
+            jpaRepository.findByOrganizationIdAndAccountingDateBetweenAndExcludedFalse(organizationId, date, date),
+        ).thenReturn(listOf(txA))
         whenever(offsetJpaRepository.findByTransactionIds(listOf(1L))).thenReturn(listOf(offsetEntity))
         stubGroupsAndCollectionsEmpty(listOf(1L))
 
@@ -249,7 +264,9 @@ class TransactionPersistenceAdapterTest {
                 groupId = 10L,
                 id = 5L,
             )
-        whenever(jpaRepository.findByOrganizationIdAndAccountingDateBetween(organizationId, date, date)).thenReturn(listOf(txB))
+        whenever(
+            jpaRepository.findByOrganizationIdAndAccountingDateBetweenAndExcludedFalse(organizationId, date, date),
+        ).thenReturn(listOf(txB))
         whenever(offsetJpaRepository.findByTransactionIds(listOf(2L))).thenReturn(listOf(offsetEntity))
         stubGroupsAndCollectionsEmpty(listOf(2L))
 
@@ -267,7 +284,9 @@ class TransactionPersistenceAdapterTest {
         val txB = txEntity(2L, amount = BigDecimal("50"))
         val offsetEntity =
             TransactionOffsetEntity(transactionA = txA, transactionB = txB, amountA = null, amountB = null, groupId = null, id = 5L)
-        whenever(jpaRepository.findByOrganizationIdAndAccountingDateBetween(organizationId, date, date)).thenReturn(listOf(txA))
+        whenever(
+            jpaRepository.findByOrganizationIdAndAccountingDateBetweenAndExcludedFalse(organizationId, date, date),
+        ).thenReturn(listOf(txA))
         whenever(offsetJpaRepository.findByTransactionIds(listOf(1L))).thenReturn(listOf(offsetEntity))
         stubGroupsAndCollectionsEmpty(listOf(1L))
 
