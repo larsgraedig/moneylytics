@@ -16,8 +16,8 @@ import org.springframework.web.server.ServerWebExchange
 
 data class CreateCategoryRequest(
     val name: String,
-    val subcategory: String?,
-    val group: String,
+    val subcategory: String,
+    val group: String?,
 )
 
 @RestController
@@ -39,11 +39,11 @@ class CategoryController(
                     .getCategories(organizationId)
                     .groupBy { it.name }
                     .map { (name, cats) ->
-                        val withSub = cats.filter { it.subcategory != null }
-                        val withoutSub = cats.filter { it.subcategory == null }
+                        val withGroup = cats.filter { it.group != null }
+                        val withoutGroup = cats.filter { it.group == null }
                         val subcategories =
-                            withSub
-                                .groupBy { it.subcategory!! }
+                            withGroup
+                                .groupBy { it.subcategory }
                                 .map { (subName, subCats) ->
                                     CategorySubGroupResponse(
                                         name = subName,
@@ -52,7 +52,7 @@ class CategoryController(
                                                 .map {
                                                     CategoryLeafResponse(
                                                         id = requireNotNull(it.id),
-                                                        name = it.group,
+                                                        name = requireNotNull(it.group),
                                                     )
                                                 }.sortedBy { it.name },
                                     )
@@ -61,11 +61,11 @@ class CategoryController(
                             name = name,
                             subcategories = subcategories,
                             directGroups =
-                                withoutSub
+                                withoutGroup
                                     .map {
                                         CategoryLeafResponse(
                                             id = requireNotNull(it.id),
-                                            name = it.group,
+                                            name = it.subcategory,
                                         )
                                     }.sortedBy { it.name },
                         )
@@ -90,6 +90,6 @@ class CategoryController(
                     organizationId = organizationId,
                 )
             }
-        return CategoryLeafResponse(id = requireNotNull(category.id), name = category.group)
+        return CategoryLeafResponse(id = requireNotNull(category.id), name = category.group ?: category.subcategory)
     }
 }

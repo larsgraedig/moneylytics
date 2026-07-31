@@ -12,8 +12,8 @@ interface CategoryRepository {
 
     fun findOrCreate(
         name: String,
-        subcategory: String?,
-        group: String,
+        subcategory: String,
+        group: String?,
         organizationId: Long,
     ): Category
 }

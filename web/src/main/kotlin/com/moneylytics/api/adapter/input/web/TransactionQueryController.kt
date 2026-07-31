@@ -365,38 +365,38 @@ class TransactionQueryController(
                 .mapValues { (_, txns) -> txns.sumOf { it.effectiveAmount().abs() } }
 
         aggregated.keys.forEach { k -> indexFor("cat:${k.category ?: ""}") }
-        aggregated.keys.forEach { k -> indexFor("grp:${k.category ?: ""}:${k.group ?: ""}") }
-        aggregated.keys.filter { it.subcategory != null }.forEach { k ->
-            indexFor("leaf:${k.category ?: ""}:${k.group ?: ""}:${k.subcategory}")
+        aggregated.keys.forEach { k -> indexFor("grp:${k.category ?: ""}:${k.subcategory ?: ""}") }
+        aggregated.keys.filter { it.group != null }.forEach { k ->
+            indexFor("leaf:${k.category ?: ""}:${k.subcategory ?: ""}:${k.group}")
         }
 
         val catGrpAmounts = mutableMapOf<Pair<String?, String?>, BigDecimal>()
         val grpLeafAmounts = mutableMapOf<Triple<String?, String?, String?>, BigDecimal>()
 
         aggregated.forEach { (key, amount) ->
-            catGrpAmounts.merge(key.category to key.group, amount, BigDecimal::add)
-            if (key.subcategory != null) {
-                grpLeafAmounts.merge(Triple(key.category, key.group, key.subcategory), amount, BigDecimal::add)
+            catGrpAmounts.merge(key.category to key.subcategory, amount, BigDecimal::add)
+            if (key.group != null) {
+                grpLeafAmounts.merge(Triple(key.category, key.subcategory, key.group), amount, BigDecimal::add)
             }
         }
 
         val links = mutableListOf<SankeyLink>()
         catGrpAmounts.forEach { (catGrp, amt) ->
-            val (cat, grp) = catGrp
+            val (cat, sub) = catGrp
             links.add(
                 SankeyLink(
                     source = nodeIndex.getValue("cat:${cat ?: ""}"),
-                    target = nodeIndex.getValue("grp:${cat ?: ""}:${grp ?: ""}"),
+                    target = nodeIndex.getValue("grp:${cat ?: ""}:${sub ?: ""}"),
                     value = amt,
                 ),
             )
         }
         grpLeafAmounts.forEach { (triple, amt) ->
-            val (cat, grp, sub) = triple
+            val (cat, sub, grp) = triple
             links.add(
                 SankeyLink(
-                    source = nodeIndex.getValue("grp:${cat ?: ""}:${grp ?: ""}"),
-                    target = nodeIndex.getValue("leaf:${cat ?: ""}:${grp ?: ""}:$sub"),
+                    source = nodeIndex.getValue("grp:${cat ?: ""}:${sub ?: ""}"),
+                    target = nodeIndex.getValue("leaf:${cat ?: ""}:${sub ?: ""}:$grp"),
                     value = amt,
                 ),
             )

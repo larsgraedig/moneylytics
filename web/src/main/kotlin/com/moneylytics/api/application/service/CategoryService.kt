@@ -22,8 +22,8 @@ class CategoryService(
 
     override fun findOrCreateCategory(
         name: String,
-        subcategory: String?,
-        group: String,
+        subcategory: String,
+        group: String?,
         organizationId: Long,
     ): Category = categoryRepository.findOrCreate(name, subcategory, group, organizationId)
 }

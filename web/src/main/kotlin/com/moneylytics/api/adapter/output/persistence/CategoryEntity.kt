@@ -15,10 +15,10 @@ import jakarta.persistence.Table
 class CategoryEntity(
     @Column(nullable = false)
     val name: String,
-    @Column(nullable = true)
-    val subcategory: String?,
-    @Column(nullable = false, name = "group_name")
-    val groupName: String,
+    @Column(nullable = false)
+    val subcategory: String,
+    @Column(nullable = true, name = "group_name")
+    val groupName: String?,
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "organization_id", nullable = false)
     val organization: OrganizationEntity,

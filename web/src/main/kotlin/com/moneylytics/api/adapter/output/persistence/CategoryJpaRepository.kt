@@ -7,8 +7,8 @@ interface CategoryJpaRepository : JpaRepository<CategoryEntity, Long> {
 
     fun findByNameAndSubcategoryAndGroupNameAndOrganizationId(
         name: String,
-        subcategory: String?,
-        groupName: String,
+        subcategory: String,
+        groupName: String?,
         organizationId: Long,
     ): CategoryEntity?
 }

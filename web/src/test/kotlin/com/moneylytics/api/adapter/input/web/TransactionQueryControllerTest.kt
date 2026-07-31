@@ -223,7 +223,7 @@ class TransactionQueryControllerTest {
         }
 
     @Test
-    fun `should add leaf node and group-to-leaf link when subcategory is set`() =
+    fun `should add leaf node and group-to-leaf link when group is set`() =
         runTest {
             whenever(
                 getTransactionsUseCase.getTransactions(
@@ -231,9 +231,9 @@ class TransactionQueryControllerTest {
                 ),
             ).thenReturn(
                 listOf(
-                    transaction(category = "Food", group = "Supermarkt", amount = BigDecimal("-60.00"), subcategory = "Bio"),
-                    transaction(category = "Food", group = "Supermarkt", amount = BigDecimal("-40.00"), subcategory = "Konventionell"),
-                    transaction(category = "Food", group = "Restaurant", amount = BigDecimal("-50.00")),
+                    transaction(category = "Food", group = "Bio", amount = BigDecimal("-60.00"), subcategory = "Supermarkt"),
+                    transaction(category = "Food", group = "Konventionell", amount = BigDecimal("-40.00"), subcategory = "Supermarkt"),
+                    transaction(category = "Food", group = null, amount = BigDecimal("-50.00"), subcategory = "Restaurant"),
                 ),
             )
 
@@ -286,13 +286,13 @@ class TransactionQueryControllerTest {
 
     private fun transaction(
         category: String,
-        group: String,
+        group: String?,
         amount: BigDecimal,
         subcategory: String? = null,
     ) = Transaction(
         category = category,
-        group = group,
-        subcategory = subcategory,
+        subcategory = subcategory ?: group,
+        group = if (subcategory != null) group else null,
         bookingDate = from,
         valueDate = from,
         accountingDate = from,

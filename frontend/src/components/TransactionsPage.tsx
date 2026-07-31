@@ -198,8 +198,8 @@ export default function TransactionsPage({
   function findCategoryId(category: string, subcategory: string, group: string): number | null {
     const cat = categories.find(c => c.name === category)
     if (!cat) return null
-    if (!subcategory.trim()) {
-      return cat.directGroups.find(g => g.name === group)?.id ?? null
+    if (!group.trim()) {
+      return cat.directGroups.find(g => g.name === subcategory)?.id ?? null
     }
     return cat.subcategories.find(s => s.name === subcategory)?.groups.find(g => g.name === group)?.id ?? null
   }
@@ -288,10 +288,10 @@ export default function TransactionsPage({
   }
 
   async function resolveCategoryId(category: string, subcategory: string, group: string): Promise<number | null> {
-    if (!category || !group) return null
+    if (!category || !subcategory) return null
     const found = findCategoryId(category, subcategory, group)
     if (found !== null) return found
-    const created = await findOrCreateCategory(category, subcategory.trim() || null, group)
+    const created = await findOrCreateCategory(category, subcategory.trim(), group.trim() || null)
     return created.id
   }
 

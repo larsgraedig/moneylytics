@@ -5,8 +5,8 @@ import com.moneylytics.api.domain.Category
 fun interface FindOrCreateCategoryUseCase {
     fun findOrCreateCategory(
         name: String,
-        subcategory: String?,
-        group: String,
+        subcategory: String,
+        group: String?,
         organizationId: Long,
     ): Category
 }

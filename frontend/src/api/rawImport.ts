@@ -54,8 +54,8 @@ export async function fetchCategories(): Promise<CategoriesResponse> {
 
 export async function findOrCreateCategory(
   name: string,
-  subcategory: string | null,
-  group: string,
+  subcategory: string,
+  group: string | null,
 ): Promise<CategoryLeaf> {
   const res = await fetchWithUser('/categories', {
     method: 'POST',

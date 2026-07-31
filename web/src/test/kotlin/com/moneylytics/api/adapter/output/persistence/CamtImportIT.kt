@@ -72,8 +72,8 @@ class CamtImportIT : AbstractServiceIT() {
     fun `should save categories only once even when saved multiple times`() {
         val categories =
             listOf(
-                Category(name = "Lebensmittel", subcategory = null, group = "Supermarkt"),
-                Category(name = "Transport", subcategory = null, group = "ÖPNV"),
+                Category(name = "Lebensmittel", subcategory = "Supermarkt", group = null),
+                Category(name = "Transport", subcategory = "ÖPNV", group = null),
             )
         categoryService.saveCategories(categories, organizationId)
         categoryService.saveCategories(categories, organizationId)
@@ -83,10 +83,10 @@ class CamtImportIT : AbstractServiceIT() {
     }
 
     @Test
-    fun `should treat category as distinct when subcategory differs`() {
-        categoryService.saveCategories(listOf(Category(name = "Lebensmittel", subcategory = null, group = "Supermarkt")), organizationId)
+    fun `should treat category as distinct when group differs`() {
+        categoryService.saveCategories(listOf(Category(name = "Lebensmittel", subcategory = "Supermarkt", group = null)), organizationId)
         categoryService.saveCategories(
-            listOf(Category(name = "Lebensmittel", subcategory = "Konsum", group = "Supermarkt")),
+            listOf(Category(name = "Lebensmittel", subcategory = "Supermarkt", group = "Konsum")),
             organizationId,
         )
         flushAndClear()
@@ -96,7 +96,7 @@ class CamtImportIT : AbstractServiceIT() {
 
     @Test
     fun `should isolate categories per organization`() {
-        categoryService.saveCategories(listOf(Category(name = "Lebensmittel", subcategory = null, group = "Supermarkt")), organizationId)
+        categoryService.saveCategories(listOf(Category(name = "Lebensmittel", subcategory = "Supermarkt", group = null)), organizationId)
         flushAndClear()
 
         assertThat(categoryService.getCategories(otherOrganizationId)).isEmpty()

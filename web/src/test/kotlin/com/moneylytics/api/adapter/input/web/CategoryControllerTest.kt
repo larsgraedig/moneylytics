@@ -31,9 +31,9 @@ class CategoryControllerTest {
         runTest {
             whenever(getCategoriesUseCase.getCategories(organizationId)).thenReturn(
                 listOf(
-                    Category(name = "Transport", subcategory = null, group = "ÖPNV", id = 1L),
-                    Category(name = "Transport", subcategory = null, group = "Auto", id = 2L),
-                    Category(name = "Lebensmittel", subcategory = null, group = "Supermarkt", id = 3L),
+                    Category(name = "Transport", subcategory = "ÖPNV", group = null, id = 1L),
+                    Category(name = "Transport", subcategory = "Auto", group = null, id = 2L),
+                    Category(name = "Lebensmittel", subcategory = "Supermarkt", group = null, id = 3L),
                 ),
             )
 
@@ -48,9 +48,9 @@ class CategoryControllerTest {
         runTest {
             whenever(getCategoriesUseCase.getCategories(organizationId)).thenReturn(
                 listOf(
-                    Category(name = "Wohnen", subcategory = null, group = "Miete", id = 1L),
-                    Category(name = "Auto", subcategory = null, group = "Versicherung", id = 2L),
-                    Category(name = "Lebensmittel", subcategory = null, group = "Supermarkt", id = 3L),
+                    Category(name = "Wohnen", subcategory = "Miete", group = null, id = 1L),
+                    Category(name = "Auto", subcategory = "Versicherung", group = null, id = 2L),
+                    Category(name = "Lebensmittel", subcategory = "Supermarkt", group = null, id = 3L),
                 ),
             )
 
@@ -60,7 +60,7 @@ class CategoryControllerTest {
         }
 
     @Test
-    fun `should put groups with subcategory into CategorySubGroupResponse`() =
+    fun `should put groups with group into CategorySubGroupResponse`() =
         runTest {
             whenever(getCategoriesUseCase.getCategories(organizationId)).thenReturn(
                 listOf(
@@ -79,12 +79,12 @@ class CategoryControllerTest {
         }
 
     @Test
-    fun `should put groups without subcategory into directGroups list`() =
+    fun `should put groups without group into directGroups list`() =
         runTest {
             whenever(getCategoriesUseCase.getCategories(organizationId)).thenReturn(
                 listOf(
-                    Category(name = "Transport", subcategory = null, group = "ÖPNV", id = 1L),
-                    Category(name = "Transport", subcategory = null, group = "Auto", id = 2L),
+                    Category(name = "Transport", subcategory = "ÖPNV", group = null, id = 1L),
+                    Category(name = "Transport", subcategory = "Auto", group = null, id = 2L),
                 ),
             )
 
@@ -96,11 +96,11 @@ class CategoryControllerTest {
         }
 
     @Test
-    fun `should separate subcategory-grouped and direct groups within same category`() =
+    fun `should separate group-grouped and direct groups within same category`() =
         runTest {
             whenever(getCategoriesUseCase.getCategories(organizationId)).thenReturn(
                 listOf(
-                    Category(name = "Lebensmittel", subcategory = null, group = "Supermarkt", id = 1L),
+                    Category(name = "Lebensmittel", subcategory = "Supermarkt", group = null, id = 1L),
                     Category(name = "Lebensmittel", subcategory = "Auswärts", group = "Restaurant", id = 2L),
                     Category(name = "Lebensmittel", subcategory = "Auswärts", group = "Lieferdienst", id = 3L),
                 ),
@@ -176,12 +176,12 @@ class CategoryControllerTest {
         }
 
     @Test
-    fun `should return existing category when posting already existing combination`() =
+    fun `should return existing category when posting subcategory-only combination`() =
         runTest {
-            val request = CreateCategoryRequest(name = "Transport", subcategory = null, group = "ÖPNV")
+            val request = CreateCategoryRequest(name = "Transport", subcategory = "ÖPNV", group = null)
             whenever(
-                findOrCreateCategoryUseCase.findOrCreateCategory("Transport", null, "ÖPNV", organizationId),
-            ).thenReturn(Category(name = "Transport", subcategory = null, group = "ÖPNV", id = 7L))
+                findOrCreateCategoryUseCase.findOrCreateCategory("Transport", "ÖPNV", null, organizationId),
+            ).thenReturn(Category(name = "Transport", subcategory = "ÖPNV", group = null, id = 7L))
 
             val response = controller.createCategory(request, principal, exchange)
 

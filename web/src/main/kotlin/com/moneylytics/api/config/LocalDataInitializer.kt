@@ -296,10 +296,10 @@ class LocalDataInitializer(
         from: LocalDate,
         to: LocalDate,
         category: String,
-        group: String,
+        subcategory: String,
     ): List<Transaction> =
         getTransactionsUseCase.getTransactions(
-            GetTransactionsQuery(from = from, to = to, organizationId = orgId, category = category, group = group),
+            GetTransactionsQuery(from = from, to = to, organizationId = orgId, category = category, subcategory = subcategory),
         )
 
     private fun generateFixedTransactions(): List<Transaction> =
@@ -321,13 +321,13 @@ class LocalDataInitializer(
 
     private fun tx(
         category: String,
-        group: String,
+        subcategory: String,
         date: LocalDate,
         amount: BigDecimal,
     ) = Transaction(
         category = category,
-        subcategory = null,
-        group = group,
+        subcategory = subcategory,
+        group = null,
         bookingDate = date,
         valueDate = date,
         accountingDate = date,
@@ -361,14 +361,14 @@ class LocalDataInitializer(
 
             fun tx(
                 category: String,
-                group: String,
+                subcategory: String,
                 date: LocalDate,
                 amount: BigDecimal,
                 counterpartyName: String? = null,
             ) = Transaction(
                 category = category,
-                subcategory = null,
-                group = group,
+                subcategory = subcategory,
+                group = null,
                 bookingDate = date,
                 valueDate = date,
                 accountingDate = date,
@@ -447,13 +447,13 @@ class LocalDataInitializer(
 
             fun tx(
                 category: String,
-                group: String,
+                subcategory: String,
                 date: LocalDate,
                 amount: BigDecimal,
             ) = Transaction(
                 category = category,
-                subcategory = null,
-                group = group,
+                subcategory = subcategory,
+                group = null,
                 bookingDate = date,
                 valueDate = date,
                 accountingDate = date,

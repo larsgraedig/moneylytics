@@ -62,8 +62,13 @@ export default function TransactionListPanel({ nodeKey, from, to, iban, onClose 
   useEffect(() => {
     setState({ phase: 'loading' })
     const category = info.category
-    const group = info.type === 'grp' || info.type === 'leaf' ? info.group : undefined
-    const subcategory = info.type === 'leaf' ? info.subcategory : info.type === 'sub' ? info.subcategory : undefined
+    const subcategory =
+      info.type === 'grp' || info.type === 'leaf'
+        ? info.group
+        : info.type === 'sub'
+        ? info.subcategory
+        : undefined
+    const group = info.type === 'leaf' ? info.subcategory : undefined
     fetchTransactionList(from, to, category, subcategory, iban, group)
       .then(r => setState({ phase: 'ready', transactions: r.transactions, total: r.total }))
       .catch(e => setState({ phase: 'error', message: e instanceof Error ? e.message : 'Failed to load' }))
@@ -132,8 +137,8 @@ export default function TransactionListPanel({ nodeKey, from, to, iban, onClose 
                   {state.transactions.map((tx, i) => (
                     <tr key={i}>
                       <td className="txn-cell-date">{formatDate(tx.accountingDate)}</td>
-                      {showGroupCol && <td className="txn-cell-sub">{tx.group}</td>}
-                      {showSubcategoryCol && <td className="txn-cell-sub">{tx.subcategory}</td>}
+                      {showGroupCol && <td className="txn-cell-sub">{tx.subcategory}</td>}
+                      {showSubcategoryCol && <td className="txn-cell-sub">{tx.group}</td>}
                       <td className={`txn-cell-amount${tx.amount < 0 ? ' negative' : ''}`}>
                         {EUR.format(tx.amount)}
                       </td>
