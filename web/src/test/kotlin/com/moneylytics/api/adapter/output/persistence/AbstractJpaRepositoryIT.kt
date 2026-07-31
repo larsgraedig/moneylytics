@@ -45,8 +45,7 @@ abstract class AbstractJpaRepositoryIT {
 
     protected fun savedTransaction(
         fingerprint: String,
-        category: String? = "Lebensmittel",
-        subcategory: String? = "Supermarkt",
+        category: CategoryEntity? = null,
         accountingDate: LocalDate = LocalDate.of(2025, 1, 15),
         amount: BigDecimal = BigDecimal("-25.00"),
         forAccount: AccountEntity = account,
@@ -58,7 +57,6 @@ abstract class AbstractJpaRepositoryIT {
         transactionRepo.save(
             TransactionEntity(
                 category = category,
-                subcategory = subcategory,
                 bookingDate = accountingDate,
                 valueDate = accountingDate,
                 accountingDate = accountingDate,

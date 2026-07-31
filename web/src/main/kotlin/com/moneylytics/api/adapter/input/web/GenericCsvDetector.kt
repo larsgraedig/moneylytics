@@ -210,7 +210,7 @@ class GenericCsvDetector {
                 ),
             accountIban = find("iban", "konto", "account", "kontonummer"),
             category = find("kategorie", "category"),
-            subcategory = find("unterkategorie", "subcategory"),
+            group = find("unterkategorie", "subcategory"),
         )
     }
 

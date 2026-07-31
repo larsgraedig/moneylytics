@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { Trans, useTranslation } from 'react-i18next'
-import type { CategoryGroup } from '../api/rawImport'
+import { findOrCreateCategory, type CategoryGroup } from '../api/rawImport'
 import {
   AllocationExceededError,
   bulkUpdateTransactionCategory,
@@ -63,8 +63,8 @@ interface BudgetAssignment {
 interface RowState {
   original: TransactionItem
   category: string
-  categoryGroup: string
   subcategory: string
+  group: string
   comment: string
   accountingDate: string
   selected: boolean
@@ -118,13 +118,13 @@ export default function TransactionsPage({
   const [groupModal, setGroupModal] = useState<{ groupId: number; group: LinkedGroupItem | null } | null>(null)
   const [highlightedId] = useState<number | null>(null)
   const [filterCategory, setFilterCategory] = useState('')
-  const [filterCategoryGroup, setFilterCategoryGroup] = useState('')
   const [filterSubcategory, setFilterSubcategory] = useState('')
+  const [filterGroup, setFilterGroup] = useState('')
   const [filterUncategorized, setFilterUncategorized] = useState(false)
   const [filterType, setFilterType] = useState<'all' | 'income' | 'expenses'>('all')
   const [bulkCategory, setBulkCategory] = useState('')
-  const [bulkCategoryGroup, setBulkCategoryGroup] = useState('')
   const [bulkSubcategory, setBulkSubcategory] = useState('')
+  const [bulkGroup, setBulkGroup] = useState('')
   const [bulkApplying, setBulkApplying] = useState(false)
   const [dragCol, setDragCol] = useState<ColumnKey | null>(null)
   const [dragOverCol, setDragOverCol] = useState<ColumnKey | null>(null)
@@ -146,10 +146,13 @@ export default function TransactionsPage({
 
   const allCategoryNames = useMemo(() => categories.map(c => c.name), [categories])
 
-  const allSubcategoryNames = useMemo(() => {
-    const subs = new Set<string>()
-    categories.forEach(c => c.subcategories.forEach(s => subs.add(s)))
-    return [...subs].sort()
+  const allGroupNames = useMemo(() => {
+    const names = new Set<string>()
+    categories.forEach(c => {
+      c.directGroups.forEach(g => names.add(g.name))
+      c.subcategories.forEach(s => s.groups.forEach(g => names.add(g.name)))
+    })
+    return [...names].sort()
   }, [categories])
 
   const colOrder = useMemo<ColumnKey[]>(() => {
@@ -181,15 +184,24 @@ export default function TransactionsPage({
     saveColumnOrder(newOrder)
   }
 
-  function subcategoriesFor(category: string): string[] {
+  function groupsFor(category: string): string[] {
     const cat = categories.find(c => c.name === category)
     if (!cat) return []
-    const fromGroups = cat.groups.flatMap(g => g.subcategories)
-    return [...cat.subcategories, ...fromGroups].sort()
+    const fromSubs = cat.subcategories.flatMap(s => s.groups.map(g => g.name))
+    return [...cat.directGroups.map(g => g.name), ...fromSubs].sort()
   }
 
-  function groupsFor(category: string): string[] {
-    return categories.find(c => c.name === category)?.groups.map(g => g.name) ?? []
+  function subcategoriesFor(category: string): string[] {
+    return categories.find(c => c.name === category)?.subcategories.map(s => s.name) ?? []
+  }
+
+  function findCategoryId(category: string, subcategory: string, group: string): number | null {
+    const cat = categories.find(c => c.name === category)
+    if (!cat) return null
+    if (!group.trim()) {
+      return cat.directGroups.find(g => g.name === subcategory)?.id ?? null
+    }
+    return cat.subcategories.find(s => s.name === subcategory)?.groups.find(g => g.name === group)?.id ?? null
   }
 
   function toApiType(t: 'all' | 'income' | 'expenses'): 'ALL' | 'INCOME' | 'EXPENSES' {
@@ -198,17 +210,17 @@ export default function TransactionsPage({
     return 'ALL'
   }
 
-  async function doLoad(category?: string, subcategory?: string, uncategorized?: boolean, categoryGroup?: string, type?: 'ALL' | 'INCOME' | 'EXPENSES') {
+  async function doLoad(category?: string, group?: string, uncategorized?: boolean, subcategory?: string, type?: 'ALL' | 'INCOME' | 'EXPENSES') {
     setPage({ phase: 'loading' })
     setLinkingState(null)
     try {
-      const data = await fetchAllTransactions(from, to, iban, category, subcategory, uncategorized, categoryGroup, type ?? toApiType(filterType))
+      const data = await fetchAllTransactions(from, to, iban, category, subcategory, uncategorized, group, type ?? toApiType(filterType))
       setRows(
         data.transactions.map(tx => ({
           original: tx,
-          category: tx.category,
-          categoryGroup: tx.categoryGroup ?? '',
-          subcategory: tx.subcategory,
+          category: tx.category ?? '',
+          subcategory: tx.subcategory ?? '',
+          group: tx.group ?? '',
           comment: tx.comment ?? '',
           accountingDate: tx.accountingDate,
           selected: false,
@@ -261,18 +273,26 @@ export default function TransactionsPage({
 
   function load() {
     setFilterCategory('')
-    setFilterCategoryGroup('')
     setFilterSubcategory('')
+    setFilterGroup('')
     setFilterUncategorized(false)
     doLoad()
   }
 
-  function updateRow(index: number, field: 'category' | 'categoryGroup' | 'subcategory' | 'comment' | 'accountingDate', value: string) {
+  function updateRow(index: number, field: 'category' | 'subcategory' | 'group' | 'comment' | 'accountingDate', value: string) {
     setRows(prev => {
       const next = [...prev]
       next[index] = { ...next[index], [field]: value }
       return next
     })
+  }
+
+  async function resolveCategoryId(category: string, subcategory: string, group: string): Promise<number | null> {
+    if (!category || !subcategory) return null
+    const found = findCategoryId(category, subcategory, group)
+    if (found !== null) return found
+    const created = await findOrCreateCategory(category, subcategory.trim(), group.trim() || null)
+    return created.id
   }
 
   async function saveRow(index: number) {
@@ -283,15 +303,16 @@ export default function TransactionsPage({
       return next
     })
     try {
-      const updated = await updateTransactionCategory(row.original.id, row.category, row.subcategory, row.categoryGroup || null)
+      const categoryId = await resolveCategoryId(row.category, row.subcategory, row.group)
+      const updated = await updateTransactionCategory(row.original.id, categoryId)
       setRows(prev => {
         const next = [...prev]
         next[index] = {
           ...next[index],
           original: updated,
-          category: updated.category,
-          categoryGroup: updated.categoryGroup ?? '',
-          subcategory: updated.subcategory,
+          category: updated.category ?? '',
+          subcategory: updated.subcategory ?? '',
+          group: updated.group ?? '',
           saving: false,
           error: null,
         }
@@ -495,20 +516,21 @@ export default function TransactionsPage({
   function clearSelection() {
     setRows(prev => prev.map(r => ({ ...r, selected: false })))
     setBulkCategory('')
-    setBulkCategoryGroup('')
     setBulkSubcategory('')
+    setBulkGroup('')
   }
 
   async function applyBulk() {
     if (!bulkCategory.trim() || selectedCount === 0) return
     setBulkApplying(true)
     const cat = bulkCategory.trim()
-    const grp = bulkCategoryGroup.trim() || null
     const sub = bulkSubcategory.trim()
+    const grp = bulkGroup.trim()
+    const categoryId = cat && grp ? await resolveCategoryId(cat, sub, grp) : null
     const indices = rows.map((r, i) => ({ r, i })).filter(({ r }) => r.selected).map(({ i }) => i)
     try {
       const updated = await bulkUpdateTransactionCategory(
-        indices.map(i => ({ id: rows[i].original.id, category: cat, subcategory: sub, categoryGroup: grp })),
+        indices.map(i => ({ id: rows[i].original.id, categoryId })),
       )
       const updatedById = new Map(updated.map(tx => [tx.id, tx]))
       setRows(prev => {
@@ -520,8 +542,8 @@ export default function TransactionsPage({
               ...next[i],
               original: tx,
               category: tx.category ?? '',
-              categoryGroup: tx.categoryGroup ?? '',
               subcategory: tx.subcategory ?? '',
+              group: tx.group ?? '',
               selected: false,
             }
           }
@@ -533,12 +555,15 @@ export default function TransactionsPage({
     }
     setBulkApplying(false)
     setBulkCategory('')
-    setBulkCategoryGroup('')
     setBulkSubcategory('')
+    setBulkGroup('')
   }
 
   const sublistId = (category: string) =>
     `txnv-sub-${category.replace(/\s+/g, '-').toLowerCase()}`
+
+  const grpSublistId = (category: string, subcategory: string) =>
+    `txnv-grp-${category.replace(/\s+/g, '-').toLowerCase()}-${subcategory.replace(/\s+/g, '-').toLowerCase()}`
 
   const filteredRows = useMemo(() => rows.map((row, i) => ({ row, i })), [rows])
 
@@ -612,8 +637,9 @@ export default function TransactionsPage({
     const classes: string[] = []
     const commentDirty = row.comment.trim() !== (row.original.comment ?? '')
     const accountingDateDirty = row.accountingDate !== row.original.accountingDate
-    const groupDirty = row.categoryGroup !== (row.original.categoryGroup ?? '')
-    if (row.category !== row.original.category || groupDirty || row.subcategory !== row.original.subcategory || commentDirty || accountingDateDirty)
+    const subcategoryDirty = row.subcategory !== (row.original.subcategory ?? '')
+    const groupDirty = row.group !== (row.original.group ?? '')
+    if (row.category !== row.original.category || subcategoryDirty || groupDirty || commentDirty || accountingDateDirty)
       classes.push('txnv-row--dirty')
     if (linkingState?.sourceIndex === i)
       classes.push('txnv-row--linking-source')
@@ -1163,7 +1189,7 @@ export default function TransactionsPage({
       case 'category':
         return <td key={col}><span className="ri-cat-input" style={{ display: 'inline-block' }}>{tx.category ?? ''}</span></td>
       case 'group':
-        return <td key={col}><span className="ri-cat-input" style={{ display: 'inline-block' }}>{tx.categoryGroup ?? ''}</span></td>
+        return <td key={col}><span className="ri-cat-input" style={{ display: 'inline-block' }}>{tx.group ?? ''}</span></td>
       case 'subcategory':
         return <td key={col}><span className="ri-cat-input" style={{ display: 'inline-block' }}>{tx.subcategory ?? ''}</span></td>
       case 'counterparty':
@@ -1271,9 +1297,15 @@ export default function TransactionsPage({
           <td key={col}>
             <input
               className="ri-cat-input"
-              value={row.categoryGroup}
-              list={row.category ? `txnv-grp-${row.category.replace(/\s+/g, '-').toLowerCase()}` : undefined}
-              onChange={e => updateRow(i, 'categoryGroup', e.target.value)}
+              value={row.group}
+              list={
+                row.category && row.subcategory
+                  ? grpSublistId(row.category, row.subcategory)
+                  : row.category
+                  ? `txnv-grp-${row.category.replace(/\s+/g, '-').toLowerCase()}`
+                  : undefined
+              }
+              onChange={e => updateRow(i, 'group', e.target.value)}
             />
           </td>
         )
@@ -1365,8 +1397,8 @@ export default function TransactionsPage({
             onChange={e => {
               const cat = e.target.value
               setFilterCategory(cat)
-              setFilterCategoryGroup('')
               setFilterSubcategory('')
+              setFilterGroup('')
               setLinkingState(null)
               if (page.phase === 'ready') doLoad(cat || undefined)
             }}
@@ -1375,36 +1407,36 @@ export default function TransactionsPage({
             {allCategoryNames.map(c => <option key={c} value={c}>{c}</option>)}
           </select>
         )}
-        {filterCategory && groupsFor(filterCategory).length > 0 && (
-          <select
-            className="account-select"
-            value={filterCategoryGroup}
-            disabled={filterUncategorized}
-            onChange={e => {
-              const grp = e.target.value
-              setFilterCategoryGroup(grp)
-              setFilterSubcategory('')
-              setLinkingState(null)
-              if (page.phase === 'ready') doLoad(filterCategory, undefined, undefined, grp || undefined)
-            }}
-          >
-            <option value="">{t('common.allGroups')}</option>
-            {groupsFor(filterCategory).map(g => <option key={g} value={g}>{g}</option>)}
-          </select>
-        )}
         {filterCategory && subcategoriesFor(filterCategory).length > 0 && (
           <select
             className="account-select"
             value={filterSubcategory}
+            disabled={filterUncategorized}
             onChange={e => {
               const sub = e.target.value
               setFilterSubcategory(sub)
+              setFilterGroup('')
               setLinkingState(null)
-              if (page.phase === 'ready') doLoad(filterCategory, sub || undefined, undefined, filterCategoryGroup || undefined)
+              if (page.phase === 'ready') doLoad(filterCategory, undefined, undefined, sub || undefined)
             }}
           >
             <option value="">{t('transactions.allSubcategories')}</option>
             {subcategoriesFor(filterCategory).map(s => <option key={s} value={s}>{s}</option>)}
+          </select>
+        )}
+        {filterCategory && groupsFor(filterCategory).length > 0 && (
+          <select
+            className="account-select"
+            value={filterGroup}
+            onChange={e => {
+              const grp = e.target.value
+              setFilterGroup(grp)
+              setLinkingState(null)
+              if (page.phase === 'ready') doLoad(filterCategory, grp || undefined, undefined, filterSubcategory || undefined)
+            }}
+          >
+            <option value="">{t('common.allGroups')}</option>
+            {groupsFor(filterCategory).map(g => <option key={g} value={g}>{g}</option>)}
           </select>
         )}
         <button
@@ -1427,7 +1459,7 @@ export default function TransactionsPage({
               className={`txnv-type-btn${filterType === type ? ' txnv-type-btn--active' : ''}`}
               onClick={() => {
                 setFilterType(type)
-                doLoad(filterCategory || undefined, filterSubcategory || undefined, filterUncategorized || undefined, filterCategoryGroup || undefined, toApiType(type))
+                doLoad(filterCategory || undefined, filterGroup || undefined, filterUncategorized || undefined, filterSubcategory || undefined, toApiType(type))
               }}
             >
               {t(`transactions.filter${type.charAt(0).toUpperCase() + type.slice(1)}`)}
@@ -1443,7 +1475,7 @@ export default function TransactionsPage({
         {allCategoryNames.map(c => <option key={c} value={c} />)}
       </datalist>
       <datalist id="txnv-sub-all">
-        {allSubcategoryNames.map(s => <option key={s} value={s} />)}
+        {allGroupNames.map(s => <option key={s} value={s} />)}
       </datalist>
       {uniqueRowCategories.map(cat => (
         <datalist key={cat} id={sublistId(cat)}>
@@ -1455,6 +1487,13 @@ export default function TransactionsPage({
           {groupsFor(cat).map(g => <option key={g} value={g} />)}
         </datalist>
       ))}
+      {categories.flatMap(cat =>
+        cat.subcategories.map(sub => (
+          <datalist key={grpSublistId(cat.name, sub.name)} id={grpSublistId(cat.name, sub.name)}>
+            {sub.groups.map(g => <option key={g.name} value={g.name} />)}
+          </datalist>
+        ))
+      )}
 
       <div className="txnv-body">
         {page.phase === 'idle' && (
@@ -1533,7 +1572,7 @@ export default function TransactionsPage({
                       {row.error && (
                         <span className="txnv-row-error">{row.error}</span>
                       )}
-                      {(row.category !== row.original.category || row.categoryGroup !== (row.original.categoryGroup ?? '') || row.subcategory !== row.original.subcategory) && (
+                      {(row.category !== row.original.category || row.subcategory !== (row.original.subcategory ?? '') || row.group !== (row.original.group ?? '')) && (
                         <button
                           className="txnv-save-btn"
                           onClick={() => saveRow(i)}
@@ -1654,21 +1693,27 @@ export default function TransactionsPage({
               placeholder={t('common.category')}
               value={bulkCategory}
               list="txnv-cat-list"
-              onChange={e => { setBulkCategory(e.target.value); setBulkCategoryGroup(''); setBulkSubcategory('') }}
-            />
-            <input
-              className="ri-cat-input txnv-bulk-cat"
-              placeholder={t('common.group')}
-              value={bulkCategoryGroup}
-              list={bulkCategory ? `txnv-grp-${bulkCategory.replace(/\s+/g, '-').toLowerCase()}` : undefined}
-              onChange={e => setBulkCategoryGroup(e.target.value)}
+              onChange={e => { setBulkCategory(e.target.value); setBulkSubcategory(''); setBulkGroup('') }}
             />
             <input
               className="ri-cat-input txnv-bulk-cat"
               placeholder={t('common.subcategory')}
               value={bulkSubcategory}
-              list={bulkCategory ? sublistId(bulkCategory) : 'txnv-sub-all'}
+              list={bulkCategory ? `txnv-sub-${bulkCategory.replace(/\s+/g, '-').toLowerCase()}` : undefined}
               onChange={e => setBulkSubcategory(e.target.value)}
+            />
+            <input
+              className="ri-cat-input txnv-bulk-cat"
+              placeholder={t('common.group')}
+              value={bulkGroup}
+              list={
+                bulkCategory && bulkSubcategory
+                  ? grpSublistId(bulkCategory, bulkSubcategory)
+                  : bulkCategory
+                  ? `txnv-grp-${bulkCategory.replace(/\s+/g, '-').toLowerCase()}`
+                  : 'txnv-sub-all'
+              }
+              onChange={e => setBulkGroup(e.target.value)}
             />
           </div>
           <button

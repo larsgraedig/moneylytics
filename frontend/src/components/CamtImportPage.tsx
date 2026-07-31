@@ -117,12 +117,12 @@ export default function CamtImportPage({ categories }: { categories: CategoryGro
           amount: r.amount!,
           currency: r.currency,
           category: d.category,
-          subcategory: d.subcategory,
+          group: d.subcategory,
           accountIban: r.accountIban,
           purpose: r.purpose || null,
           counterpartyName: r.counterparty ?? null,
           counterpartyIban: r.counterpartyIban ?? null,
-          categoryGroup: d.group || null,
+          subcategory: d.group || null,
         }]
       })
 
@@ -156,7 +156,7 @@ export default function CamtImportPage({ categories }: { categories: CategoryGro
   }
 
   const allCategoryNames = categories.map(g => g.name)
-  const subcategoriesFor = (cat: string) => categories.find(g => g.name === cat)?.subcategories ?? []
+  const subcategoriesFor = (cat: string) => categories.find(g => g.name === cat)?.subcategories.map(s => s.name) ?? []
 
   const actionableRows = (rows: RawPreviewRow[]) =>
     rows.filter(r => r.status === 'NEW' || r.status === 'PREVIOUSLY_IGNORED')

@@ -40,11 +40,11 @@ export function CreateVirtualTransactionModal({
 
   const allCategoryNames = useMemo(() => categories.map(c => c.name), [categories])
 
-  function subcategoriesFor(cat: string): string[] {
+  function groupsFor(cat: string): string[] {
     const found = categories.find(c => c.name === cat)
     if (!found) return []
-    const fromGroups = found.groups.flatMap(g => g.subcategories)
-    return [...found.subcategories, ...fromGroups].sort()
+    const fromSubs = found.subcategories.flatMap(s => s.groups.map(g => g.name))
+    return [...found.directGroups.map(g => g.name), ...fromSubs].sort()
   }
 
   const sublistId = category
@@ -72,8 +72,7 @@ export function CreateVirtualTransactionModal({
         amount: parsedAmount,
         accountIban,
         accountingDate,
-        category: category || null,
-        subcategory: subcategory || null,
+        categoryId: null,
         counterpartyName: counterpartyName || null,
         purpose: purpose || null,
       })
@@ -98,7 +97,7 @@ export function CreateVirtualTransactionModal({
       </datalist>
       {category && sublistId && (
         <datalist id={sublistId}>
-          {subcategoriesFor(category).map(s => <option key={s} value={s} />)}
+          {groupsFor(category).map(s => <option key={s} value={s} />)}
         </datalist>
       )}
 

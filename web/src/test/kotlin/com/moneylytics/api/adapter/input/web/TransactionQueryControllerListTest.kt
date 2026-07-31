@@ -4,7 +4,6 @@ import com.moneylytics.api.application.port.input.BulkCategoryUpdate
 import com.moneylytics.api.application.port.input.BulkUpdateTransactionCategoryUseCase
 import com.moneylytics.api.application.port.input.GetBurnRateUseCase
 import com.moneylytics.api.application.port.input.GetCashflowUseCase
-import com.moneylytics.api.application.port.input.GetCategoriesUseCase
 import com.moneylytics.api.application.port.input.GetCategoryTotalsUseCase
 import com.moneylytics.api.application.port.input.GetTransactionsQuery
 import com.moneylytics.api.application.port.input.GetTransactionsUseCase
@@ -18,9 +17,7 @@ import kotlinx.coroutines.test.runTest
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.any
-import org.mockito.kotlin.anyOrNull
 import org.mockito.kotlin.argumentCaptor
-import org.mockito.kotlin.doReturn
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
@@ -37,7 +34,6 @@ class TransactionQueryControllerListTest {
     private val getTransactionsUseCase: GetTransactionsUseCase = mock()
     private val getCashflowUseCase: GetCashflowUseCase = mock()
     private val getBurnRateUseCase: GetBurnRateUseCase = mock()
-    private val getCategoriesUseCase: GetCategoriesUseCase = mock { on { getCategories(any()) } doReturn emptyList() }
     private val getCategoryTotalsUseCase: GetCategoryTotalsUseCase = mock()
     private val updateTransactionCategoryUseCase: UpdateTransactionCategoryUseCase = mock()
     private val updateTransactionCommentUseCase: UpdateTransactionCommentUseCase = mock()
@@ -48,7 +44,6 @@ class TransactionQueryControllerListTest {
             getTransactionsUseCase,
             getCashflowUseCase,
             getBurnRateUseCase,
-            getCategoriesUseCase,
             getCategoryTotalsUseCase,
             resolveOrganizationUseCase,
             updateTransactionCategoryUseCase,
@@ -104,8 +99,8 @@ class TransactionQueryControllerListTest {
                 from,
                 to,
                 category = "Lebensmittel",
-                subcategory = "Supermarkt",
-                categoryGroup = "Konsum",
+                subcategory = "Konsum",
+                group = "Supermarkt",
                 iban = "DE00TEST",
                 uncategorized = true,
                 excludeCollectionId = 5L,
@@ -118,8 +113,8 @@ class TransactionQueryControllerListTest {
             verify(getTransactionsUseCase).getTransactions(captor.capture())
             val query = captor.firstValue
             assertThat(query.category).isEqualTo("Lebensmittel")
-            assertThat(query.subcategory).isEqualTo("Supermarkt")
-            assertThat(query.categoryGroup).isEqualTo("Konsum")
+            assertThat(query.subcategory).isEqualTo("Konsum")
+            assertThat(query.group).isEqualTo("Supermarkt")
             assertThat(query.accountIban).isEqualTo("DE00TEST")
             assertThat(query.uncategorized).isTrue()
             assertThat(query.excludeCollectionId).isEqualTo(5L)
@@ -129,9 +124,9 @@ class TransactionQueryControllerListTest {
     @Test
     fun `should return 404 when updateTransactionCategory returns null`() =
         runTest {
-            whenever(updateTransactionCategoryUseCase.updateCategory(any(), any(), any(), any(), anyOrNull())).thenReturn(null)
+            whenever(updateTransactionCategoryUseCase.updateCategory(any(), any(), any())).thenReturn(null)
 
-            val response = controller.updateTransactionCategory(99L, UpdateCategoryRequest("Kat", "Sub"), principal, exchange)
+            val response = controller.updateTransactionCategory(99L, UpdateCategoryRequest(null), principal, exchange)
 
             assertThat(response.statusCode).isEqualTo(HttpStatus.NOT_FOUND)
         }
@@ -140,12 +135,12 @@ class TransactionQueryControllerListTest {
     fun `should return 200 with item when updateTransactionCategory succeeds`() =
         runTest {
             val updated = tx(id = 1L)
-            whenever(updateTransactionCategoryUseCase.updateCategory(any(), any(), any(), any(), anyOrNull())).thenReturn(updated)
+            whenever(updateTransactionCategoryUseCase.updateCategory(any(), any(), any())).thenReturn(updated)
 
             val response =
                 controller.updateTransactionCategory(
                     1L,
-                    UpdateCategoryRequest("Lebensmittel", "Supermarkt"),
+                    UpdateCategoryRequest(42L),
                     principal,
                     exchange,
                 )
@@ -184,8 +179,8 @@ class TransactionQueryControllerListTest {
                     BulkUpdateCategoryRequestDto(
                         updates =
                             listOf(
-                                BulkCategoryUpdateDto(id = 1L, category = "Lebensmittel", subcategory = "Supermarkt"),
-                                BulkCategoryUpdateDto(id = 2L, category = "Transport", subcategory = "ÖPNV"),
+                                BulkCategoryUpdateDto(id = 1L, categoryId = 10L),
+                                BulkCategoryUpdateDto(id = 2L, categoryId = null),
                             ),
                     ),
                     principal,
@@ -196,11 +191,11 @@ class TransactionQueryControllerListTest {
             val captor = argumentCaptor<List<BulkCategoryUpdate>>()
             verify(bulkUpdateTransactionCategoryUseCase).bulkUpdateCategory(captor.capture(), any())
             assertThat(captor.firstValue[0].id).isEqualTo(1L)
-            assertThat(captor.firstValue[1].category).isEqualTo("Transport")
+            assertThat(captor.firstValue[0].categoryId).isEqualTo(10L)
         }
 
     @Test
-    fun `should parse 3-part series spec category colon group colon sub`() =
+    fun `should parse 3-part series spec category colon subcategory colon group`() =
         runTest {
             whenever(getTransactionsUseCase.getTransactions(any())).thenReturn(emptyList())
 
@@ -209,11 +204,11 @@ class TransactionQueryControllerListTest {
             val captor = argumentCaptor<GetTransactionsQuery>()
             verify(getTransactionsUseCase).getTransactions(captor.capture())
             assertThat(captor.firstValue.category).isEqualTo("Lebensmittel")
-            assertThat(captor.firstValue.categoryGroup).isEqualTo("Konsum")
+            assertThat(captor.firstValue.subcategory).isEqualTo("Konsum")
         }
 
     @Test
-    fun `should parse 2-part series spec as category colon subcategory`() =
+    fun `should parse 2-part series spec as category colon group`() =
         runTest {
             whenever(getTransactionsUseCase.getTransactions(any())).thenReturn(emptyList())
 
@@ -222,7 +217,7 @@ class TransactionQueryControllerListTest {
             val captor = argumentCaptor<GetTransactionsQuery>()
             verify(getTransactionsUseCase).getTransactions(captor.capture())
             assertThat(captor.firstValue.category).isEqualTo("Transport")
-            assertThat(captor.firstValue.categoryGroup).isNull()
+            assertThat(captor.firstValue.subcategory).isNull()
         }
 
     @Test
@@ -235,7 +230,7 @@ class TransactionQueryControllerListTest {
             val captor = argumentCaptor<GetTransactionsQuery>()
             verify(getTransactionsUseCase).getTransactions(captor.capture())
             assertThat(captor.firstValue.category).isEqualTo("Freizeit")
-            assertThat(captor.firstValue.categoryGroup).isNull()
+            assertThat(captor.firstValue.subcategory).isNull()
         }
 
     private fun tx(
@@ -246,7 +241,7 @@ class TransactionQueryControllerListTest {
     ) = Transaction(
         id = id,
         category = "Test",
-        subcategory = "Test",
+        group = "Test",
         bookingDate = from,
         valueDate = from,
         accountingDate = accountingDate,

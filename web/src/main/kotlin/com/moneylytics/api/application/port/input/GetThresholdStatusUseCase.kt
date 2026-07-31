@@ -16,7 +16,7 @@ data class ThresholdStatusItem(
     val thresholdId: Long,
     val category: String,
     val subcategory: String?,
-    val categoryGroup: String?,
+    val group: String?,
     val period: ThresholdPeriod,
     val notice: BigDecimal?,
     val warning: BigDecimal?,

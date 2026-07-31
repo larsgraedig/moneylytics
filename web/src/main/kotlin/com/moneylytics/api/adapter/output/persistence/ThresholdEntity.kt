@@ -23,8 +23,8 @@ class ThresholdEntity(
     @Column(nullable = false)
     val category: String,
     val subcategory: String? = null,
-    @Column(nullable = true, name = "category_group")
-    val categoryGroup: String? = null,
+    @Column(nullable = true, name = "group_name")
+    val groupName: String? = null,
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     val period: ThresholdPeriod,

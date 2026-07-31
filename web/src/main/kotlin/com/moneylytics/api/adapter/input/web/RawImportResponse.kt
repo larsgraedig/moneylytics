@@ -66,12 +66,12 @@ data class CamtTransactionImport(
     val amount: java.math.BigDecimal,
     val currency: String,
     val category: String,
-    val subcategory: String,
+    val group: String,
     val accountIban: String,
     val purpose: String?,
     val counterpartyName: String? = null,
     val counterpartyIban: String? = null,
-    val categoryGroup: String? = null,
+    val subcategory: String? = null,
 )
 
 data class CategoriesResponse(
@@ -80,11 +80,16 @@ data class CategoriesResponse(
 
 data class CategoryGroupResponse(
     val name: String,
-    val groups: List<CategorySubGroupResponse>,
-    val subcategories: List<String>,
+    val subcategories: List<CategorySubGroupResponse>,
+    val directGroups: List<CategoryLeafResponse>,
 )
 
 data class CategorySubGroupResponse(
     val name: String,
-    val subcategories: List<String>,
+    val groups: List<CategoryLeafResponse>,
+)
+
+data class CategoryLeafResponse(
+    val id: Long,
+    val name: String,
 )

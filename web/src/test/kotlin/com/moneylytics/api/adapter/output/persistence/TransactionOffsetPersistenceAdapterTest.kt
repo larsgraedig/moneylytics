@@ -115,8 +115,6 @@ class TransactionOffsetPersistenceAdapterTest {
     private fun txEntity(id: Long) =
         TransactionEntity(
             id = id,
-            category = null,
-            subcategory = null,
             bookingDate = date,
             valueDate = date,
             accountingDate = date,

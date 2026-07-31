@@ -31,6 +31,7 @@ class ServiceLayerTestConfig {
         collectionTransactionJpaRepository: CollectionTransactionJpaRepository,
         collectionJpaRepository: CollectionJpaRepository,
         budgetTransactionJpaRepository: BudgetTransactionJpaRepository,
+        categoryJpaRepository: CategoryJpaRepository,
     ): TransactionPersistenceAdapter =
         TransactionPersistenceAdapter(
             jpaRepository,
@@ -42,6 +43,7 @@ class ServiceLayerTestConfig {
             collectionTransactionJpaRepository,
             collectionJpaRepository,
             budgetTransactionJpaRepository,
+            categoryJpaRepository,
         )
 
     @Bean

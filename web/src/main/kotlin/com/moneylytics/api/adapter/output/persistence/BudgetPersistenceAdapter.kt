@@ -114,8 +114,8 @@ class BudgetPersistenceAdapter(
             amount = amount,
             transactionAmount = transaction.amount,
             transactionDate = transaction.accountingDate,
-            transactionCategory = transaction.category,
-            transactionSubcategory = transaction.subcategory,
+            transactionCategory = transaction.category?.name,
+            transactionSubcategory = transaction.category?.groupName,
             transactionPurpose = transaction.purpose,
             transactionComment = transaction.comment,
         )

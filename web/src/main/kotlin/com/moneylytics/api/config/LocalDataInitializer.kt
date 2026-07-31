@@ -327,6 +327,7 @@ class LocalDataInitializer(
     ) = Transaction(
         category = category,
         subcategory = subcategory,
+        group = null,
         bookingDate = date,
         valueDate = date,
         accountingDate = date,
@@ -367,6 +368,7 @@ class LocalDataInitializer(
             ) = Transaction(
                 category = category,
                 subcategory = subcategory,
+                group = null,
                 bookingDate = date,
                 valueDate = date,
                 accountingDate = date,
@@ -451,6 +453,7 @@ class LocalDataInitializer(
             ) = Transaction(
                 category = category,
                 subcategory = subcategory,
+                group = null,
                 bookingDate = date,
                 valueDate = date,
                 accountingDate = date,

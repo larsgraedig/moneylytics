@@ -187,6 +187,7 @@ class CsvTransactionParserTest {
         val valid = result as CsvParseResult.Valid
         assertThat(valid.transactions[0].category).isNull()
         assertThat(valid.transactions[0].subcategory).isNull()
+        assertThat(valid.transactions[0].group).isNull()
     }
 
     @Test

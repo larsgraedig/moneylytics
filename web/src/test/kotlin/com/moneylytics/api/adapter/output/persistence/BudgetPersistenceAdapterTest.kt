@@ -91,8 +91,6 @@ class BudgetPersistenceAdapterTest {
         accountingDate: LocalDate = date,
     ) = TransactionEntity(
         id = id,
-        category = null,
-        subcategory = null,
         bookingDate = date,
         valueDate = date,
         accountingDate = accountingDate,

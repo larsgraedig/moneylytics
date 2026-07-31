@@ -29,8 +29,8 @@ class GenericCsvParser {
         val amountIdx = idx(mapping.amountColumn) ?: return emptyList()
         val purposeIdx = idx(mapping.purposeColumn)
         val categoryIdx = idx(mapping.categoryColumn)
+        val groupIdx = idx(mapping.groupColumn)
         val subcategoryIdx = idx(mapping.subcategoryColumn)
-        val categoryGroupIdx = idx(mapping.categoryGroupColumn)
         val ibanIdx = idx(mapping.accountIbanColumn)
         val currencyIdx = idx(mapping.currencyColumn)
         val counterpartyNameIdx = idx(mapping.counterpartyNameColumn)
@@ -67,8 +67,8 @@ class GenericCsvParser {
                 status = RowStatus.NEW,
                 unknownAccount = false,
                 mappedCategory = get(categoryIdx).ifBlank { null },
+                mappedGroup = get(groupIdx).ifBlank { null },
                 mappedSubcategory = get(subcategoryIdx).ifBlank { null },
-                mappedCategoryGroup = get(categoryGroupIdx).ifBlank { null },
                 counterpartyName = get(counterpartyNameIdx).ifBlank { null },
                 counterpartyIban = get(counterpartyIbanIdx).ifBlank { null },
             )
@@ -92,8 +92,8 @@ class GenericCsvParser {
         val amountIdx = idx(mapping.amountColumn) ?: return emptyList<Transaction>() to emptyMap()
         val purposeIdx = idx(mapping.purposeColumn)
         val categoryIdx = idx(mapping.categoryColumn)
+        val groupIdx = idx(mapping.groupColumn)
         val subcategoryIdx = idx(mapping.subcategoryColumn)
-        val categoryGroupIdx = idx(mapping.categoryGroupColumn)
         val ibanIdx = idx(mapping.accountIbanColumn)
         val currencyIdx = idx(mapping.currencyColumn)
         val counterpartyNameIdx = idx(mapping.counterpartyNameColumn)
@@ -133,8 +133,8 @@ class GenericCsvParser {
             transactions.add(
                 Transaction(
                     category = get(categoryIdx).ifBlank { "Sonstiges" },
-                    subcategory = get(subcategoryIdx).ifBlank { "Sonstiges" },
-                    categoryGroup = get(categoryGroupIdx).ifBlank { null },
+                    subcategory = get(subcategoryIdx).ifBlank { null },
+                    group = get(groupIdx).ifBlank { "Sonstiges" },
                     bookingDate = date,
                     valueDate = date,
                     accountingDate = date,

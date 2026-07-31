@@ -9,4 +9,11 @@ interface CategoryRepository {
         categories: List<Category>,
         organizationId: Long,
     )
+
+    fun findOrCreate(
+        name: String,
+        subcategory: String,
+        group: String?,
+        organizationId: Long,
+    ): Category
 }

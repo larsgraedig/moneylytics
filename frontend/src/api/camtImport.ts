@@ -20,12 +20,12 @@ export interface CamtTransactionImport {
   amount: number
   currency: string
   category: string
-  subcategory: string
+  group: string
   accountIban: string
   purpose: string | null
   counterpartyName: string | null
   counterpartyIban: string | null
-  categoryGroup: string | null
+  subcategory: string | null
 }
 
 export interface TransactionEnrichRequest {

@@ -15,20 +15,39 @@ type State =
   | { phase: 'error'; message: string }
   | { phase: 'ready'; transactions: TransactionItem[]; total: number }
 
-const EUR = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' })
+type NodeInfo =
+  | { type: 'cat'; category: string }
+  | { type: 'grp'; category: string; group: string }
+  | { type: 'leaf'; category: string; group: string; subcategory: string }
+  | { type: 'sub'; category: string; subcategory: string }
 
-function parseNodeKey(nodeKey: string): { isCat: boolean; category: string; subcategory?: string; label: string } {
+function parseNodeKey(nodeKey: string): NodeInfo {
   if (nodeKey.startsWith('cat:')) {
-    const category = nodeKey.slice(4)
-    return { isCat: true, category, label: category }
+    return { type: 'cat', category: nodeKey.slice(4) }
   }
-  // sub:Category:Subcategory
+  if (nodeKey.startsWith('grp:')) {
+    const rest = nodeKey.slice(4)
+    const colon = rest.indexOf(':')
+    return { type: 'grp', category: rest.slice(0, colon), group: rest.slice(colon + 1) }
+  }
+  if (nodeKey.startsWith('leaf:')) {
+    const rest = nodeKey.slice(5)
+    const first = rest.indexOf(':')
+    const second = rest.indexOf(':', first + 1)
+    return {
+      type: 'leaf',
+      category: rest.slice(0, first),
+      group: rest.slice(first + 1, second),
+      subcategory: rest.slice(second + 1),
+    }
+  }
+  // sub: — PiePage format: sub:{category}:{subcategory}
   const rest = nodeKey.slice(4)
   const colon = rest.indexOf(':')
-  const category = rest.slice(0, colon)
-  const subcategory = rest.slice(colon + 1)
-  return { isCat: false, category, subcategory, label: subcategory }
+  return { type: 'sub', category: rest.slice(0, colon), subcategory: rest.slice(colon + 1) }
 }
+
+const EUR = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' })
 
 function formatDate(iso: string): string {
   const [y, m, d] = iso.split('-')
@@ -38,14 +57,25 @@ function formatDate(iso: string): string {
 export default function TransactionListPanel({ nodeKey, from, to, iban, onClose }: Props) {
   const { t } = useTranslation()
   const [state, setState] = useState<State>({ phase: 'loading' })
-  const { isCat, category, subcategory, label } = parseNodeKey(nodeKey)
+  const info = parseNodeKey(nodeKey)
 
   useEffect(() => {
     setState({ phase: 'loading' })
-    fetchTransactionList(from, to, category, subcategory, iban)
+    const category = info.category
+    const subcategory =
+      info.type === 'grp' || info.type === 'leaf'
+        ? info.group
+        : info.type === 'sub'
+        ? info.subcategory
+        : undefined
+    const group = info.type === 'leaf' ? info.subcategory : undefined
+    fetchTransactionList(from, to, category, subcategory, iban, group)
       .then(r => setState({ phase: 'ready', transactions: r.transactions, total: r.total }))
       .catch(e => setState({ phase: 'error', message: e instanceof Error ? e.message : 'Failed to load' }))
-  }, [nodeKey, from, to, iban, category, subcategory])
+  }, [nodeKey, from, to, iban])
+
+  const showGroupCol = info.type === 'cat'
+  const showSubcategoryCol = info.type === 'grp'
 
   return (
     <>
@@ -53,13 +83,30 @@ export default function TransactionListPanel({ nodeKey, from, to, iban, onClose 
       <div className="txn-panel">
         <div className="txn-panel-header">
           <div className="txn-panel-title">
-            {isCat ? (
-              <span className="txn-panel-name">{label}</span>
-            ) : (
+            {info.type === 'cat' && (
+              <span className="txn-panel-name">{info.category}</span>
+            )}
+            {info.type === 'grp' && (
               <>
-                <span className="txn-panel-breadcrumb">{category}</span>
+                <span className="txn-panel-breadcrumb">{info.category}</span>
                 <span className="txn-panel-sep">›</span>
-                <span className="txn-panel-name">{label}</span>
+                <span className="txn-panel-name">{info.group}</span>
+              </>
+            )}
+            {info.type === 'leaf' && (
+              <>
+                <span className="txn-panel-breadcrumb">{info.category}</span>
+                <span className="txn-panel-sep">›</span>
+                <span className="txn-panel-breadcrumb">{info.group}</span>
+                <span className="txn-panel-sep">›</span>
+                <span className="txn-panel-name">{info.subcategory}</span>
+              </>
+            )}
+            {info.type === 'sub' && (
+              <>
+                <span className="txn-panel-breadcrumb">{info.category}</span>
+                <span className="txn-panel-sep">›</span>
+                <span className="txn-panel-name">{info.subcategory}</span>
               </>
             )}
           </div>
@@ -81,7 +128,8 @@ export default function TransactionListPanel({ nodeKey, from, to, iban, onClose 
                 <thead>
                   <tr>
                     <th>{t('transactions.panel.date')}</th>
-                    {isCat && <th>{t('transactions.panel.subcategory')}</th>}
+                    {showGroupCol && <th>{t('transactions.columns.group')}</th>}
+                    {showSubcategoryCol && <th>{t('transactions.columns.subcategory')}</th>}
                     <th className="txn-col-amount">{t('transactions.panel.amount')}</th>
                   </tr>
                 </thead>
@@ -89,7 +137,8 @@ export default function TransactionListPanel({ nodeKey, from, to, iban, onClose 
                   {state.transactions.map((tx, i) => (
                     <tr key={i}>
                       <td className="txn-cell-date">{formatDate(tx.accountingDate)}</td>
-                      {isCat && <td className="txn-cell-sub">{tx.subcategory}</td>}
+                      {showGroupCol && <td className="txn-cell-sub">{tx.subcategory}</td>}
+                      {showSubcategoryCol && <td className="txn-cell-sub">{tx.group}</td>}
                       <td className={`txn-cell-amount${tx.amount < 0 ? ' negative' : ''}`}>
                         {EUR.format(tx.amount)}
                       </td>

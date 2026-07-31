@@ -9,7 +9,6 @@ import com.moneylytics.api.application.port.input.GetBurnRateQuery
 import com.moneylytics.api.application.port.input.GetBurnRateUseCase
 import com.moneylytics.api.application.port.input.GetCashflowQuery
 import com.moneylytics.api.application.port.input.GetCashflowUseCase
-import com.moneylytics.api.application.port.input.GetCategoriesUseCase
 import com.moneylytics.api.application.port.input.GetCategoryTotalsQuery
 import com.moneylytics.api.application.port.input.GetCategoryTotalsUseCase
 import com.moneylytics.api.application.port.input.GetTransactionsQuery
@@ -22,7 +21,6 @@ import com.moneylytics.api.application.port.input.UpdateTransactionCategoryUseCa
 import com.moneylytics.api.application.port.input.UpdateTransactionCommentUseCase
 import com.moneylytics.api.application.port.input.bucketKey
 import com.moneylytics.api.application.port.input.generateBuckets
-import com.moneylytics.api.domain.Category
 import com.moneylytics.api.domain.Transaction
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -47,15 +45,11 @@ data class BulkUpdateCategoryRequestDto(
 
 data class BulkCategoryUpdateDto(
     val id: Long,
-    val category: String,
-    val subcategory: String,
-    val categoryGroup: String? = null,
+    val categoryId: Long?,
 )
 
 data class UpdateCategoryRequest(
-    val category: String,
-    val subcategory: String,
-    val categoryGroup: String? = null,
+    val categoryId: Long?,
 )
 
 data class UpdateCommentRequest(
@@ -73,7 +67,6 @@ class TransactionQueryController(
     private val getTransactionsUseCase: GetTransactionsUseCase,
     private val getCashflowUseCase: GetCashflowUseCase,
     private val getBurnRateUseCase: GetBurnRateUseCase,
-    private val getCategoriesUseCase: GetCategoriesUseCase,
     private val getCategoryTotalsUseCase: GetCategoryTotalsUseCase,
     private val resolveOrganizationUseCase: ResolveOrganizationUseCase,
     private val updateTransactionCategoryUseCase: UpdateTransactionCategoryUseCase,
@@ -82,7 +75,7 @@ class TransactionQueryController(
     private val bulkUpdateTransactionCategoryUseCase: BulkUpdateTransactionCategoryUseCase,
 ) {
     companion object {
-        private const val SERIES_SPEC_PARTS_WITH_GROUP = 3
+        private const val SERIES_SPEC_PARTS_WITH_SUB = 3
     }
 
     @GetMapping("/sankey")
@@ -94,22 +87,14 @@ class TransactionQueryController(
         exchange: ServerWebExchange,
     ): SankeyResponse {
         val organizationId = resolveOrganizationUseCase.resolveOrganization(principal, exchange)
-        val (transactions, groupLookup) =
+        val transactions =
             withContext(Dispatchers.IO) {
-                val txns =
-                    getTransactionsUseCase.getTransactions(
-                        GetTransactionsQuery(from, to, organizationId, type = TransactionType.EXPENSES, accountIban = iban),
-                    )
-                val lookup = buildGroupLookup(getCategoriesUseCase.getCategories(organizationId))
-                txns to lookup
+                getTransactionsUseCase.getTransactions(
+                    GetTransactionsQuery(from, to, organizationId, type = TransactionType.EXPENSES, accountIban = iban),
+                )
             }
-        return transactions.toSankeyResponse(groupLookup)
+        return transactions.toSankeyResponse()
     }
-
-    private fun buildGroupLookup(categories: List<Category>): Map<Pair<String?, String?>, String> =
-        categories
-            .filter { it.group != null }
-            .associate { (it.name to it.subcategory) to it.group!! }
 
     @GetMapping("/list")
     suspend fun listTransactions(
@@ -117,7 +102,7 @@ class TransactionQueryController(
         @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) to: LocalDate,
         @RequestParam(required = false) category: String? = null,
         @RequestParam(required = false) subcategory: String? = null,
-        @RequestParam(required = false) categoryGroup: String? = null,
+        @RequestParam(required = false) group: String? = null,
         @RequestParam(required = false) iban: String? = null,
         @RequestParam(required = false) type: TransactionType = TransactionType.ALL,
         @RequestParam(required = false) uncategorized: Boolean = false,
@@ -138,7 +123,7 @@ class TransactionQueryController(
                         accountIban = iban,
                         category = category,
                         subcategory = subcategory,
-                        categoryGroup = categoryGroup,
+                        group = group,
                         uncategorized = uncategorized,
                         excludeCollectionId = excludeCollectionId,
                         excludeBudgetId = excludeBudgetId,
@@ -163,14 +148,7 @@ class TransactionQueryController(
     ): ResponseEntity<TransactionItem> {
         val organizationId = resolveOrganizationUseCase.resolveOrganization(principal, exchange)
         return withContext(Dispatchers.IO) {
-            val updated =
-                updateTransactionCategoryUseCase.updateCategory(
-                    id,
-                    organizationId,
-                    request.category,
-                    request.subcategory,
-                    request.categoryGroup,
-                )
+            val updated = updateTransactionCategoryUseCase.updateCategory(id, organizationId, request.categoryId)
             if (updated != null) ResponseEntity.ok(updated.toItem()) else ResponseEntity.notFound().build()
         }
     }
@@ -213,7 +191,7 @@ class TransactionQueryController(
         return withContext(Dispatchers.IO) {
             bulkUpdateTransactionCategoryUseCase
                 .bulkUpdateCategory(
-                    request.updates.map { BulkCategoryUpdate(it.id, it.category, it.subcategory, it.categoryGroup) },
+                    request.updates.map { BulkCategoryUpdate(it.id, it.categoryId) },
                     organizationId,
                 ).map { it.toItem() }
         }
@@ -237,20 +215,20 @@ class TransactionQueryController(
             effectiveSeries.map { spec ->
                 val parts = spec.split(":")
                 val category = parts[0]
-                val selectedGroup: String?
                 val selectedSub: String?
+                val selectedGroup: String?
                 when (parts.size) {
-                    SERIES_SPEC_PARTS_WITH_GROUP -> {
-                        selectedGroup = parts[1].ifEmpty { null }
-                        selectedSub = parts[2].ifEmpty { null }
+                    SERIES_SPEC_PARTS_WITH_SUB -> {
+                        selectedSub = parts[1].ifEmpty { null }
+                        selectedGroup = parts[2].ifEmpty { null }
                     }
                     2 -> {
-                        selectedGroup = null
-                        selectedSub = parts[1].ifEmpty { null }
+                        selectedSub = null
+                        selectedGroup = parts[1].ifEmpty { null }
                     }
                     else -> {
-                        selectedGroup = null
                         selectedSub = null
+                        selectedGroup = null
                     }
                 }
 
@@ -264,7 +242,7 @@ class TransactionQueryController(
                                 type = TransactionType.EXPENSES,
                                 accountIban = iban,
                                 category = category,
-                                categoryGroup = selectedGroup,
+                                subcategory = selectedSub,
                             ),
                         )
                     }
@@ -274,26 +252,26 @@ class TransactionQueryController(
                     return buckets.map { bucket -> byBucket[bucket]?.sumOf { it.effectiveAmount().abs() } ?: BigDecimal.ZERO }
                 }
 
-                val mainLabel = if (selectedGroup != null) selectedGroup else category
-                val hasSubSelection = selectedSub != null
+                val mainLabel = if (selectedSub != null) selectedSub else category
+                val hasGroupSelection = selectedGroup != null
 
                 val mainEntry =
                     TrendSeriesEntry(
                         label = mainLabel,
                         data = bucketSums(allTransactions),
-                        role = if (hasSubSelection) SeriesRole.MAIN_CONTEXT else SeriesRole.MAIN_SELECTED,
+                        role = if (hasGroupSelection) SeriesRole.MAIN_CONTEXT else SeriesRole.MAIN_SELECTED,
                     )
 
                 val subEntries =
                     allTransactions
-                        .groupBy { it.subcategory }
+                        .groupBy { it.group }
                         .entries
                         .sortedBy { it.key }
-                        .map { (subName, txns) ->
+                        .map { (groupName, txns) ->
                             TrendSeriesEntry(
-                                label = subName,
+                                label = groupName,
                                 data = bucketSums(txns),
-                                role = if (subName == selectedSub) SeriesRole.SUB_SELECTED else SeriesRole.SUB_CONTEXT,
+                                role = if (groupName == selectedGroup) SeriesRole.SUB_SELECTED else SeriesRole.SUB_CONTEXT,
                             )
                         }
 
@@ -372,74 +350,53 @@ class TransactionQueryController(
         }
     }
 
-    private fun List<Transaction>.toSankeyResponse(groupLookup: Map<Pair<String?, String?>, String> = emptyMap()): SankeyResponse {
+    private fun List<Transaction>.toSankeyResponse(): SankeyResponse {
         val nodeIndex = linkedMapOf<String, Int>()
 
         fun indexFor(key: String) = nodeIndex.getOrPut(key) { nodeIndex.size }
 
         data class TxKey(
             val category: String?,
-            val group: String?,
             val subcategory: String?,
+            val group: String?,
         )
         val aggregated =
-            groupBy {
-                val resolvedGroup =
-                    it.categoryGroup
-                        ?: groupLookup[it.category to it.subcategory]
-                TxKey(it.category, resolvedGroup, it.subcategory)
-            }.mapValues { (_, txns) -> txns.sumOf { it.effectiveAmount().abs() } }
+            groupBy { TxKey(it.category, it.subcategory, it.group) }
+                .mapValues { (_, txns) -> txns.sumOf { it.effectiveAmount().abs() } }
 
         aggregated.keys.forEach { k -> indexFor("cat:${k.category ?: ""}") }
-        aggregated.keys.filter { it.group != null }.forEach { k -> indexFor("grp:${k.category ?: ""}:${k.group}") }
-        aggregated.keys.forEach { k ->
-            if (k.group != null) {
-                indexFor("sub:${k.category ?: ""}:${k.group}:${k.subcategory ?: ""}")
-            } else {
-                indexFor("sub:${k.category ?: ""}::${k.subcategory ?: ""}")
-            }
+        aggregated.keys.forEach { k -> indexFor("grp:${k.category ?: ""}:${k.subcategory ?: ""}") }
+        aggregated.keys.filter { it.group != null }.forEach { k ->
+            indexFor("leaf:${k.category ?: ""}:${k.subcategory ?: ""}:${k.group}")
         }
 
         val catGrpAmounts = mutableMapOf<Pair<String?, String?>, BigDecimal>()
-        val grpSubAmounts = mutableMapOf<Triple<String?, String?, String?>, BigDecimal>()
-        val catSubAmounts = mutableMapOf<Pair<String?, String?>, BigDecimal>()
+        val grpLeafAmounts = mutableMapOf<Triple<String?, String?, String?>, BigDecimal>()
 
         aggregated.forEach { (key, amount) ->
+            catGrpAmounts.merge(key.category to key.subcategory, amount, BigDecimal::add)
             if (key.group != null) {
-                catGrpAmounts.merge(key.category to key.group, amount, BigDecimal::add)
-                grpSubAmounts.merge(Triple(key.category, key.group, key.subcategory), amount, BigDecimal::add)
-            } else {
-                catSubAmounts.merge(key.category to key.subcategory, amount, BigDecimal::add)
+                grpLeafAmounts.merge(Triple(key.category, key.subcategory, key.group), amount, BigDecimal::add)
             }
         }
 
         val links = mutableListOf<SankeyLink>()
         catGrpAmounts.forEach { (catGrp, amt) ->
-            val (cat, grp) = catGrp
+            val (cat, sub) = catGrp
             links.add(
                 SankeyLink(
                     source = nodeIndex.getValue("cat:${cat ?: ""}"),
-                    target = nodeIndex.getValue("grp:${cat ?: ""}:$grp"),
+                    target = nodeIndex.getValue("grp:${cat ?: ""}:${sub ?: ""}"),
                     value = amt,
                 ),
             )
         }
-        grpSubAmounts.forEach { (triple, amt) ->
-            val (cat, grp, sub) = triple
+        grpLeafAmounts.forEach { (triple, amt) ->
+            val (cat, sub, grp) = triple
             links.add(
                 SankeyLink(
-                    source = nodeIndex.getValue("grp:${cat ?: ""}:$grp"),
-                    target = nodeIndex.getValue("sub:${cat ?: ""}:$grp:${sub ?: ""}"),
-                    value = amt,
-                ),
-            )
-        }
-        catSubAmounts.forEach { (catSub, amt) ->
-            val (cat, sub) = catSub
-            links.add(
-                SankeyLink(
-                    source = nodeIndex.getValue("cat:${cat ?: ""}"),
-                    target = nodeIndex.getValue("sub:${cat ?: ""}::${sub ?: ""}"),
+                    source = nodeIndex.getValue("grp:${cat ?: ""}:${sub ?: ""}"),
+                    target = nodeIndex.getValue("leaf:${cat ?: ""}:${sub ?: ""}:$grp"),
                     value = amt,
                 ),
             )

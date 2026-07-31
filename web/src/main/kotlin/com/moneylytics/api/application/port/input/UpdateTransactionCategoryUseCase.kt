@@ -6,8 +6,6 @@ interface UpdateTransactionCategoryUseCase {
     fun updateCategory(
         id: Long,
         organizationId: Long,
-        category: String,
-        subcategory: String,
-        categoryGroup: String? = null,
+        categoryId: Long?,
     ): Transaction?
 }

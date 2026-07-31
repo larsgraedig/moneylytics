@@ -25,8 +25,8 @@ class ThresholdPersistenceAdapterTest {
             ThresholdEntity(
                 organization = organizationEntity,
                 category = "Lebensmittel",
-                subcategory = "Supermarkt",
-                categoryGroup = "Konsum",
+                subcategory = "Konsum",
+                groupName = "Supermarkt",
                 period = ThresholdPeriod.MONTHLY,
                 notice = BigDecimal("80"),
                 warning = BigDecimal("120"),
@@ -41,8 +41,8 @@ class ThresholdPersistenceAdapterTest {
         val t = result[0]
         assertThat(t.id).isEqualTo(1L)
         assertThat(t.category).isEqualTo("Lebensmittel")
-        assertThat(t.subcategory).isEqualTo("Supermarkt")
-        assertThat(t.categoryGroup).isEqualTo("Konsum")
+        assertThat(t.subcategory).isEqualTo("Konsum")
+        assertThat(t.group).isEqualTo("Supermarkt")
         assertThat(t.period).isEqualTo(ThresholdPeriod.MONTHLY)
         assertThat(t.notice).isEqualByComparingTo(BigDecimal("80"))
         assertThat(t.critical).isEqualByComparingTo(BigDecimal("200"))

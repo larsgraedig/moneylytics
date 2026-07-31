@@ -4,8 +4,6 @@ import java.math.BigDecimal
 
 data class SplitItem(
     val amount: BigDecimal,
-    val category: String?,
-    val subcategory: String?,
-    val categoryGroup: String?,
+    val categoryId: Long?,
     val comment: String?,
 )

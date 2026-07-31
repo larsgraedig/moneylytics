@@ -335,7 +335,7 @@ export default function TrendsPage({ from, to, iban, categories }: { from: strin
 
       <div className="tr-series-list">
         {series.map((s, i) => {
-          const subcatOptions = categories.find(c => c.name === s.category)?.subcategories ?? []
+          const subcatOptions = categories.find(c => c.name === s.category)?.subcategories.map(sub => sub.name) ?? []
           return (
             <div key={s.id} className="tr-series-row">
               <div className="tr-series-dot" style={{ background: COLORS[i % COLORS.length] }} />

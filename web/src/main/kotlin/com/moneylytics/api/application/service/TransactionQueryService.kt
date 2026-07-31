@@ -58,7 +58,7 @@ class TransactionQueryService(
             }.let { list -> if (query.uncategorized) list.filter { it.category == null } else list }
             .let { list -> query.category?.let { cat -> list.filter { it.category == cat } } ?: list }
             .let { list -> query.subcategory?.let { sub -> list.filter { it.subcategory == sub } } ?: list }
-            .let { list -> query.categoryGroup?.let { grp -> list.filter { it.categoryGroup == grp } } ?: list }
+            .let { list -> query.group?.let { grp -> list.filter { it.group == grp } } ?: list }
             .let { list ->
                 query.excludeCollectionId?.let { collectionId ->
                     val assigned = transactionRepository.findAssignedTransactionIdsByCollectionId(collectionId)
@@ -170,7 +170,7 @@ class TransactionQueryService(
                     .map { (name, txns) -> CategoryTotal(name = name, value = txns.sumOf { it.effectiveAmount().abs() }) }
             } else {
                 transactions
-                    .groupBy { it.subcategory ?: "" }
+                    .groupBy { it.group ?: "" }
                     .map { (name, txns) -> CategoryTotal(name = name, value = txns.sumOf { it.effectiveAmount().abs() }) }
             }
         return CategoryTotalsResponse(items = items.sortedByDescending { it.value })
@@ -179,10 +179,8 @@ class TransactionQueryService(
     override fun updateCategory(
         id: Long,
         organizationId: Long,
-        category: String,
-        subcategory: String,
-        categoryGroup: String?,
-    ): Transaction? = transactionRepository.updateCategory(id, organizationId, category, subcategory, categoryGroup)
+        categoryId: Long?,
+    ): Transaction? = transactionRepository.updateCategory(id, organizationId, categoryId)
 
     override fun updateComment(
         id: Long,
@@ -202,14 +200,14 @@ class TransactionQueryService(
         purpose: String?,
         counterpartyName: String?,
         counterpartyIban: String?,
-    ) = transactionRepository.enrichByFingerprint(fingerprint, organizationId, purpose, counterpartyName, counterpartyIban, null)
+    ) = transactionRepository.enrichByFingerprint(fingerprint, organizationId, purpose, counterpartyName, counterpartyIban)
 
     override fun bulkUpdateCategory(
         updates: List<BulkCategoryUpdate>,
         organizationId: Long,
     ): List<Transaction> =
         transactionRepository.bulkUpdateCategory(
-            updates.map { CategoryUpdateEntry(it.id, it.category, it.subcategory, it.categoryGroup) },
+            updates.map { CategoryUpdateEntry(it.id, it.categoryId) },
             organizationId,
         )
 }

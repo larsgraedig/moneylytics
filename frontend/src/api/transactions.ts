@@ -64,9 +64,7 @@ export interface BudgetLinkSummary {
 
 export interface BulkCategoryUpdate {
   id: number
-  category: string
-  subcategory: string
-  categoryGroup?: string | null
+  categoryId: number | null
 }
 
 export interface TransactionItem {
@@ -74,9 +72,10 @@ export interface TransactionItem {
   bookingDate: string
   accountingDate: string
   accountIban: string
-  category: string
-  subcategory: string
-  categoryGroup: string | null
+  categoryId: number | null
+  category: string | null
+  subcategory: string | null
+  group: string | null
   amount: number
   effectiveAmount: number
   currency: string
@@ -95,9 +94,7 @@ export interface TransactionItem {
 
 export interface SplitItemRequest {
   amount: number
-  category: string | null
-  subcategory: string | null
-  categoryGroup?: string | null
+  categoryId?: number | null
   comment?: string | null
 }
 
@@ -117,10 +114,12 @@ export async function fetchTransactionList(
   category?: string,
   subcategory?: string,
   iban?: string,
+  group?: string,
 ): Promise<TransactionListResponse> {
   const params = new URLSearchParams({ from, to, type: 'EXPENSES' })
   if (category) params.set('category', category)
   if (subcategory) params.set('subcategory', subcategory)
+  if (group) params.set('group', group)
   if (iban) params.set('iban', iban)
   const res = await fetchWithUser(`/transactions/list?${params}`)
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
@@ -134,7 +133,7 @@ export async function fetchAllTransactions(
   category?: string,
   subcategory?: string,
   uncategorized?: boolean,
-  categoryGroup?: string,
+  group?: string,
   type?: 'ALL' | 'INCOME' | 'EXPENSES',
   excludeCollectionId?: number,
   excludeBudgetId?: number,
@@ -143,7 +142,7 @@ export async function fetchAllTransactions(
   if (iban) params.set('iban', iban)
   if (category) params.set('category', category)
   if (subcategory) params.set('subcategory', subcategory)
-  if (categoryGroup) params.set('categoryGroup', categoryGroup)
+  if (group) params.set('group', group)
   if (uncategorized) params.set('uncategorized', 'true')
   if (type) params.set('type', type)
   if (excludeCollectionId != null) params.set('excludeCollectionId', String(excludeCollectionId))
@@ -155,14 +154,12 @@ export async function fetchAllTransactions(
 
 export async function updateTransactionCategory(
   id: number,
-  category: string,
-  subcategory: string,
-  categoryGroup?: string | null,
+  categoryId: number | null,
 ): Promise<TransactionItem> {
   const res = await fetchWithUser(`/transactions/${id}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ category, subcategory, categoryGroup: categoryGroup ?? null }),
+    body: JSON.stringify({ categoryId }),
   })
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
   return res.json() as Promise<TransactionItem>
@@ -429,8 +426,7 @@ export async function createVirtualTransaction(data: {
   currency?: string
   accountIban: string
   accountingDate: string
-  category?: string | null
-  subcategory?: string | null
+  categoryId?: number | null
   counterpartyName?: string | null
   purpose?: string | null
 }): Promise<TransactionItem> {

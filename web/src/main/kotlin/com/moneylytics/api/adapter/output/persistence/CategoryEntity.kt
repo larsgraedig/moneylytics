@@ -17,11 +17,11 @@ class CategoryEntity(
     val name: String,
     @Column(nullable = false)
     val subcategory: String,
+    @Column(nullable = true, name = "group_name")
+    val groupName: String?,
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "organization_id", nullable = false)
     val organization: OrganizationEntity,
-    @Column(nullable = true, name = "category_group")
-    val categoryGroup: String? = null,
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     var id: Long? = null,

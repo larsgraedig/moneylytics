@@ -46,11 +46,11 @@ export function SplitTransactionModal({
     return [...seen]
   }, [entries])
 
-  function subcategoriesFor(category: string): string[] {
+  function groupsFor(category: string): string[] {
     const cat = categories.find(c => c.name === category)
     if (!cat) return []
-    const fromGroups = cat.groups.flatMap(g => g.subcategories)
-    return [...cat.subcategories, ...fromGroups].sort()
+    const fromSubs = cat.subcategories.flatMap(s => s.groups.map(g => g.name))
+    return [...cat.directGroups.map(g => g.name), ...fromSubs].sort()
   }
 
   const sublistId = (category: string) =>
@@ -86,8 +86,7 @@ export function SplitTransactionModal({
     }
     const splits: SplitItemRequest[] = entries.map(e => ({
       amount: parseFloat(e.amount.replace(',', '.')),
-      category: e.category || null,
-      subcategory: e.subcategory || null,
+      categoryId: null,
       comment: e.comment || null,
     }))
     const sum = splits.reduce((a, s) => a + s.amount, 0)
@@ -121,7 +120,7 @@ export function SplitTransactionModal({
       </datalist>
       {uniqueEntryCategories.map(cat => (
         <datalist key={cat} id={sublistId(cat)}>
-          {subcategoriesFor(cat).map(s => <option key={s} value={s} />)}
+          {groupsFor(cat).map(s => <option key={s} value={s} />)}
         </datalist>
       ))}
 

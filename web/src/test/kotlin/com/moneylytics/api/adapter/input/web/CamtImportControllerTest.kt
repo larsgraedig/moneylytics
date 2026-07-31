@@ -6,7 +6,6 @@ import com.moneylytics.api.application.port.input.FindIgnoredFingerprintsUseCase
 import com.moneylytics.api.application.port.input.GetAccountsUseCase
 import com.moneylytics.api.application.port.input.ImportTransactionsUseCase
 import com.moneylytics.api.application.port.input.ResolveOrganizationUseCase
-import com.moneylytics.api.application.port.input.SaveCategoriesUseCase
 import com.moneylytics.api.application.port.input.UpdateIgnoredTransactionsUseCase
 import com.moneylytics.api.domain.Account
 import kotlinx.coroutines.test.runTest
@@ -32,7 +31,6 @@ class CamtImportControllerTest {
     private val getAccountsUseCase: GetAccountsUseCase = mock()
     private val updateIgnoredTransactionsUseCase: UpdateIgnoredTransactionsUseCase = mock()
     private val importTransactionsUseCase: ImportTransactionsUseCase = mock()
-    private val saveCategoriesUseCase: SaveCategoriesUseCase = mock()
     private val enrichTransactionUseCase: EnrichTransactionUseCase = mock()
     private val controller =
         CamtImportController(
@@ -42,7 +40,6 @@ class CamtImportControllerTest {
             getAccountsUseCase,
             updateIgnoredTransactionsUseCase,
             importTransactionsUseCase,
-            saveCategoriesUseCase,
             enrichTransactionUseCase,
             resolveOrganizationUseCase,
         )
@@ -116,28 +113,6 @@ class CamtImportControllerTest {
         }
 
     @Test
-    fun `should save distinct categories from imported rows`() =
-        runTest {
-            whenever(getAccountsUseCase.getAccounts(organizationId)).thenReturn(emptyList())
-            whenever(importTransactionsUseCase.importTransactions(any())).thenReturn(2)
-
-            val request =
-                importRequest(
-                    toImport =
-                        listOf(
-                            camtRow("DE01", "fp1", category = "Lebensmittel", subcategory = "Supermarkt"),
-                            camtRow("DE01", "fp2", category = "Lebensmittel", subcategory = "Supermarkt"),
-                            camtRow("DE01", "fp3", category = "Transport", subcategory = "ÖPNV"),
-                        ),
-                )
-            controller.importCamt(request, principal, exchange)
-
-            val captor = argumentCaptor<List<com.moneylytics.api.domain.Category>>()
-            verify(saveCategoriesUseCase).saveCategories(captor.capture(), any())
-            assertThat(captor.firstValue).hasSize(2)
-        }
-
-    @Test
     fun `should call enrichByFingerprint for each toEnrich entry`() =
         runTest {
             whenever(getAccountsUseCase.getAccounts(organizationId)).thenReturn(emptyList())
@@ -176,7 +151,7 @@ class CamtImportControllerTest {
         iban: String,
         fingerprint: String,
         category: String = "Sonstiges",
-        subcategory: String = "Sonstiges",
+        group: String = "Sonstiges",
     ) = CamtTransactionImport(
         fingerprint = fingerprint,
         bookingDate = "2025-01-15",
@@ -184,7 +159,7 @@ class CamtImportControllerTest {
         amount = BigDecimal("-100.00"),
         currency = "EUR",
         category = category,
-        subcategory = subcategory,
+        group = group,
         accountIban = iban,
         purpose = null,
     )

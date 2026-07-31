@@ -150,7 +150,7 @@ class ThresholdService(
             thresholdId = threshold.id,
             category = threshold.category,
             subcategory = threshold.subcategory,
-            categoryGroup = threshold.categoryGroup,
+            group = threshold.group,
             period = threshold.period,
             notice = threshold.notice,
             warning = threshold.warning,

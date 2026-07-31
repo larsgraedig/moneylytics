@@ -13,6 +13,7 @@ class SubTransactionPersistenceAdapter(
     private val jpaRepository: TransactionJpaRepository,
     private val accountJpaRepository: AccountJpaRepository,
     private val organizationJpaRepository: OrganizationJpaRepository,
+    private val categoryJpaRepository: CategoryJpaRepository,
 ) : SubTransactionPort {
     @Transactional
     override fun createVirtualChildren(
@@ -28,9 +29,8 @@ class SubTransactionPersistenceAdapter(
         val entities =
             splits.map { split ->
                 TransactionEntity(
-                    category = split.category?.takeIf { it.isNotBlank() },
-                    subcategory = split.subcategory?.takeIf { it.isNotBlank() },
-                    categoryGroup = split.categoryGroup?.takeIf { it.isNotBlank() },
+                    category =
+                        if (split.categoryId != null) categoryJpaRepository.getReferenceById(split.categoryId) else null,
                     bookingDate = parent.bookingDate,
                     valueDate = parent.valueDate,
                     accountingDate = parent.accountingDate,
@@ -63,8 +63,6 @@ class SubTransactionPersistenceAdapter(
         val totalAmount = children.sumOf { it.amount }
         val entity =
             TransactionEntity(
-                category = null,
-                subcategory = null,
                 bookingDate = accountingDate,
                 valueDate = accountingDate,
                 accountingDate = accountingDate,
@@ -138,8 +136,7 @@ class SubTransactionPersistenceAdapter(
         currency: String,
         accountIban: String,
         accountingDate: LocalDate,
-        category: String?,
-        subcategory: String?,
+        categoryId: Long?,
         counterpartyName: String?,
         purpose: String?,
         organizationId: Long,
@@ -150,8 +147,7 @@ class SubTransactionPersistenceAdapter(
         val org = organizationJpaRepository.getReferenceById(organizationId)
         val entity =
             TransactionEntity(
-                category = category?.takeIf { it.isNotBlank() },
-                subcategory = subcategory?.takeIf { it.isNotBlank() },
+                category = if (categoryId != null) categoryJpaRepository.getReferenceById(categoryId) else null,
                 bookingDate = accountingDate,
                 valueDate = accountingDate,
                 accountingDate = accountingDate,
@@ -169,9 +165,10 @@ class SubTransactionPersistenceAdapter(
 
     private fun TransactionEntity.toSimpleDomain() =
         Transaction(
-            category = category,
-            subcategory = subcategory,
-            categoryGroup = categoryGroup,
+            categoryId = category?.id,
+            category = category?.name,
+            subcategory = category?.subcategory,
+            group = category?.groupName,
             bookingDate = bookingDate,
             valueDate = valueDate,
             accountingDate = accountingDate,
