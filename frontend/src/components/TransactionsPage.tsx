@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { Trans, useTranslation } from 'react-i18next'
-import type { CategoryGroup } from '../api/rawImport'
+import { findOrCreateCategory, type CategoryGroup } from '../api/rawImport'
 import {
   AllocationExceededError,
   bulkUpdateTransactionCategory,
@@ -287,6 +287,14 @@ export default function TransactionsPage({
     })
   }
 
+  async function resolveCategoryId(category: string, subcategory: string, group: string): Promise<number | null> {
+    if (!category || !group) return null
+    const found = findCategoryId(category, subcategory, group)
+    if (found !== null) return found
+    const created = await findOrCreateCategory(category, subcategory.trim() || null, group)
+    return created.id
+  }
+
   async function saveRow(index: number) {
     const row = rows[index]
     setRows(prev => {
@@ -295,7 +303,7 @@ export default function TransactionsPage({
       return next
     })
     try {
-      const categoryId = row.category && row.group ? findCategoryId(row.category, row.subcategory, row.group) : null
+      const categoryId = await resolveCategoryId(row.category, row.subcategory, row.group)
       const updated = await updateTransactionCategory(row.original.id, categoryId)
       setRows(prev => {
         const next = [...prev]
@@ -518,7 +526,7 @@ export default function TransactionsPage({
     const cat = bulkCategory.trim()
     const sub = bulkSubcategory.trim()
     const grp = bulkGroup.trim()
-    const categoryId = cat && grp ? findCategoryId(cat, sub, grp) : null
+    const categoryId = cat && grp ? await resolveCategoryId(cat, sub, grp) : null
     const indices = rows.map((r, i) => ({ r, i })).filter(({ r }) => r.selected).map(({ i }) => i)
     try {
       const updated = await bulkUpdateTransactionCategory(
@@ -553,6 +561,9 @@ export default function TransactionsPage({
 
   const sublistId = (category: string) =>
     `txnv-sub-${category.replace(/\s+/g, '-').toLowerCase()}`
+
+  const grpSublistId = (category: string, subcategory: string) =>
+    `txnv-grp-${category.replace(/\s+/g, '-').toLowerCase()}-${subcategory.replace(/\s+/g, '-').toLowerCase()}`
 
   const filteredRows = useMemo(() => rows.map((row, i) => ({ row, i })), [rows])
 
@@ -1287,7 +1298,13 @@ export default function TransactionsPage({
             <input
               className="ri-cat-input"
               value={row.group}
-              list={row.category ? `txnv-grp-${row.category.replace(/\s+/g, '-').toLowerCase()}` : undefined}
+              list={
+                row.category && row.subcategory
+                  ? grpSublistId(row.category, row.subcategory)
+                  : row.category
+                  ? `txnv-grp-${row.category.replace(/\s+/g, '-').toLowerCase()}`
+                  : undefined
+              }
               onChange={e => updateRow(i, 'group', e.target.value)}
             />
           </td>
@@ -1462,7 +1479,7 @@ export default function TransactionsPage({
       </datalist>
       {uniqueRowCategories.map(cat => (
         <datalist key={cat} id={sublistId(cat)}>
-          {groupsFor(cat).map(s => <option key={s} value={s} />)}
+          {subcategoriesFor(cat).map(s => <option key={s} value={s} />)}
         </datalist>
       ))}
       {uniqueRowCategories.map(cat => (
@@ -1470,6 +1487,13 @@ export default function TransactionsPage({
           {groupsFor(cat).map(g => <option key={g} value={g} />)}
         </datalist>
       ))}
+      {categories.flatMap(cat =>
+        cat.subcategories.map(sub => (
+          <datalist key={grpSublistId(cat.name, sub.name)} id={grpSublistId(cat.name, sub.name)}>
+            {sub.groups.map(g => <option key={g.name} value={g.name} />)}
+          </datalist>
+        ))
+      )}
 
       <div className="txnv-body">
         {page.phase === 'idle' && (
@@ -1682,7 +1706,13 @@ export default function TransactionsPage({
               className="ri-cat-input txnv-bulk-cat"
               placeholder={t('common.group')}
               value={bulkGroup}
-              list={bulkCategory ? sublistId(bulkCategory) : 'txnv-sub-all'}
+              list={
+                bulkCategory && bulkSubcategory
+                  ? grpSublistId(bulkCategory, bulkSubcategory)
+                  : bulkCategory
+                  ? `txnv-grp-${bulkCategory.replace(/\s+/g, '-').toLowerCase()}`
+                  : 'txnv-sub-all'
+              }
               onChange={e => setBulkGroup(e.target.value)}
             />
           </div>

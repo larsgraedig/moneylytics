@@ -32,4 +32,24 @@ class CategoryServiceTest {
 
         verify(categoryRepository).saveAllIfAbsent(categories, organizationId)
     }
+
+    @Test
+    fun `should delegate findOrCreate to repository`() {
+        val expected = Category(name = "Lebensmittel", subcategory = "Auswärts", group = "Restaurant", id = 42L)
+        whenever(categoryRepository.findOrCreate("Lebensmittel", "Auswärts", "Restaurant", organizationId)).thenReturn(expected)
+
+        val result = service.findOrCreateCategory("Lebensmittel", "Auswärts", "Restaurant", organizationId)
+
+        assertThat(result).isEqualTo(expected)
+    }
+
+    @Test
+    fun `should pass null subcategory to repository when creating direct group`() {
+        val expected = Category(name = "Transport", subcategory = null, group = "ÖPNV", id = 7L)
+        whenever(categoryRepository.findOrCreate("Transport", null, "ÖPNV", organizationId)).thenReturn(expected)
+
+        val result = service.findOrCreateCategory("Transport", null, "ÖPNV", organizationId)
+
+        assertThat(result).isEqualTo(expected)
+    }
 }

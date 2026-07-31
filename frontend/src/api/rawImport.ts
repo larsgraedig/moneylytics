@@ -51,3 +51,17 @@ export async function fetchCategories(): Promise<CategoriesResponse> {
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
   return res.json() as Promise<CategoriesResponse>
 }
+
+export async function findOrCreateCategory(
+  name: string,
+  subcategory: string | null,
+  group: string,
+): Promise<CategoryLeaf> {
+  const res = await fetchWithUser('/categories', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, subcategory, group }),
+  })
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  return res.json() as Promise<CategoryLeaf>
+}

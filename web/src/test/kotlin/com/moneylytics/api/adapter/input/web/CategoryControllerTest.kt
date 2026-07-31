@@ -1,5 +1,6 @@
 package com.moneylytics.api.adapter.input.web
 
+import com.moneylytics.api.application.port.input.FindOrCreateCategoryUseCase
 import com.moneylytics.api.application.port.input.GetCategoriesUseCase
 import com.moneylytics.api.application.port.input.ResolveOrganizationUseCase
 import com.moneylytics.api.domain.Category
@@ -16,7 +17,8 @@ class CategoryControllerTest {
     private val exchange: ServerWebExchange = mock()
     private val resolveOrganizationUseCase: ResolveOrganizationUseCase = ResolveOrganizationUseCase { _, _ -> organizationId }
     private val getCategoriesUseCase: GetCategoriesUseCase = mock()
-    private val controller = CategoryController(getCategoriesUseCase, resolveOrganizationUseCase)
+    private val findOrCreateCategoryUseCase: FindOrCreateCategoryUseCase = mock()
+    private val controller = CategoryController(getCategoriesUseCase, findOrCreateCategoryUseCase, resolveOrganizationUseCase)
     private val principal =
         User
             .withUsername("user@test.de")
@@ -157,5 +159,33 @@ class CategoryControllerTest {
             val response = controller.getCategories(principal, exchange)
 
             assertThat(response.categories).isEmpty()
+        }
+
+    @Test
+    fun `should return created category leaf when posting new category`() =
+        runTest {
+            val request = CreateCategoryRequest(name = "Lebensmittel", subcategory = "Auswärts", group = "Restaurant")
+            whenever(
+                findOrCreateCategoryUseCase.findOrCreateCategory("Lebensmittel", "Auswärts", "Restaurant", organizationId),
+            ).thenReturn(Category(name = "Lebensmittel", subcategory = "Auswärts", group = "Restaurant", id = 42L))
+
+            val response = controller.createCategory(request, principal, exchange)
+
+            assertThat(response.id).isEqualTo(42L)
+            assertThat(response.name).isEqualTo("Restaurant")
+        }
+
+    @Test
+    fun `should return existing category when posting already existing combination`() =
+        runTest {
+            val request = CreateCategoryRequest(name = "Transport", subcategory = null, group = "ÖPNV")
+            whenever(
+                findOrCreateCategoryUseCase.findOrCreateCategory("Transport", null, "ÖPNV", organizationId),
+            ).thenReturn(Category(name = "Transport", subcategory = null, group = "ÖPNV", id = 7L))
+
+            val response = controller.createCategory(request, principal, exchange)
+
+            assertThat(response.id).isEqualTo(7L)
+            assertThat(response.name).isEqualTo("ÖPNV")
         }
 }

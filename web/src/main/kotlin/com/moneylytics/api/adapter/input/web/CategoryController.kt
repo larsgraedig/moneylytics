@@ -1,5 +1,6 @@
 package com.moneylytics.api.adapter.input.web
 
+import com.moneylytics.api.application.port.input.FindOrCreateCategoryUseCase
 import com.moneylytics.api.application.port.input.GetCategoriesUseCase
 import com.moneylytics.api.application.port.input.ResolveOrganizationUseCase
 import kotlinx.coroutines.Dispatchers
@@ -7,14 +8,23 @@ import kotlinx.coroutines.withContext
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.security.core.userdetails.UserDetails
 import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.server.ServerWebExchange
+
+data class CreateCategoryRequest(
+    val name: String,
+    val subcategory: String?,
+    val group: String,
+)
 
 @RestController
 @RequestMapping("/categories")
 class CategoryController(
     private val getCategoriesUseCase: GetCategoriesUseCase,
+    private val findOrCreateCategoryUseCase: FindOrCreateCategoryUseCase,
     private val resolveOrganizationUseCase: ResolveOrganizationUseCase,
 ) {
     @GetMapping
@@ -62,5 +72,24 @@ class CategoryController(
                     }.sortedBy { it.name }
             }
         return CategoriesResponse(categories = grouped)
+    }
+
+    @PostMapping
+    suspend fun createCategory(
+        @RequestBody request: CreateCategoryRequest,
+        @AuthenticationPrincipal principal: UserDetails,
+        exchange: ServerWebExchange,
+    ): CategoryLeafResponse {
+        val organizationId = resolveOrganizationUseCase.resolveOrganization(principal, exchange)
+        val category =
+            withContext(Dispatchers.IO) {
+                findOrCreateCategoryUseCase.findOrCreateCategory(
+                    name = request.name,
+                    subcategory = request.subcategory,
+                    group = request.group,
+                    organizationId = organizationId,
+                )
+            }
+        return CategoryLeafResponse(id = requireNotNull(category.id), name = category.group)
     }
 }
