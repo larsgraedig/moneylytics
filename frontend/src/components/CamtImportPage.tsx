@@ -6,7 +6,7 @@ import {
   type CamtAccountInfo,
   type RawPreviewRow,
 } from '../api/camtImport'
-import type { CategoryGroup } from '../api/rawImport'
+import type { CategoryNode } from '../api/rawImport'
 
 type PageState =
   | { phase: 'idle' }
@@ -44,7 +44,7 @@ function initDecisions(rows: RawPreviewRow[]): Record<number, RowDecision> {
   return out
 }
 
-export default function CamtImportPage({ categories }: { categories: CategoryGroup[] }) {
+export default function CamtImportPage({ categories }: { categories: CategoryNode[] }) {
   const { t } = useTranslation()
   const [state, setState] = useState<PageState>({ phase: 'idle' })
   const [decisions, setDecisions] = useState<Record<number, RowDecision>>({})
@@ -156,7 +156,7 @@ export default function CamtImportPage({ categories }: { categories: CategoryGro
   }
 
   const allCategoryNames = categories.map(g => g.name)
-  const subcategoriesFor = (cat: string) => categories.find(g => g.name === cat)?.subcategories.map(s => s.name) ?? []
+  const subcategoriesFor = (cat: string) => categories.find(g => g.name === cat)?.children.map(s => s.name) ?? []
 
   const actionableRows = (rows: RawPreviewRow[]) =>
     rows.filter(r => r.status === 'NEW' || r.status === 'PREVIOUSLY_IGNORED')

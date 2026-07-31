@@ -163,12 +163,23 @@ class SubTransactionPersistenceAdapter(
         return jpaRepository.save(entity).toSimpleDomain()
     }
 
-    private fun TransactionEntity.toSimpleDomain() =
-        Transaction(
+    private fun CategoryEntity.pathFromRoot(): List<String> {
+        val path = ArrayDeque<String>()
+        var node: CategoryEntity? = this
+        while (node != null) {
+            path.addFirst(node.name)
+            node = node.parent
+        }
+        return path.toList()
+    }
+
+    private fun TransactionEntity.toSimpleDomain(): Transaction {
+        val categoryPath = category?.pathFromRoot() ?: emptyList()
+        return Transaction(
             categoryId = category?.id,
-            category = category?.name,
-            subcategory = category?.subcategory,
-            group = category?.groupName,
+            category = categoryPath.getOrNull(0),
+            subcategory = categoryPath.getOrNull(1),
+            group = categoryPath.getOrNull(2),
             bookingDate = bookingDate,
             valueDate = valueDate,
             accountingDate = accountingDate,
@@ -184,4 +195,5 @@ class SubTransactionPersistenceAdapter(
             isVirtual = isVirtual,
             excluded = excluded,
         )
+    }
 }

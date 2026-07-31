@@ -26,24 +26,14 @@ export interface RawPreviewRow {
   counterpartyIban: string | null
 }
 
-export interface CategoryLeaf {
+export interface CategoryNode {
   id: number
   name: string
-}
-
-export interface CategorySubGroup {
-  name: string
-  groups: CategoryLeaf[]
-}
-
-export interface CategoryGroup {
-  name: string
-  subcategories: CategorySubGroup[]
-  directGroups: CategoryLeaf[]
+  children: CategoryNode[]
 }
 
 export interface CategoriesResponse {
-  categories: CategoryGroup[]
+  categories: CategoryNode[]
 }
 
 export async function fetchCategories(): Promise<CategoriesResponse> {
@@ -52,16 +42,12 @@ export async function fetchCategories(): Promise<CategoriesResponse> {
   return res.json() as Promise<CategoriesResponse>
 }
 
-export async function findOrCreateCategory(
-  name: string,
-  subcategory: string,
-  group: string | null,
-): Promise<CategoryLeaf> {
+export async function findOrCreateCategory(path: string[]): Promise<CategoryNode> {
   const res = await fetchWithUser('/categories', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name, subcategory, group }),
+    body: JSON.stringify({ path }),
   })
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
-  return res.json() as Promise<CategoryLeaf>
+  return res.json() as Promise<CategoryNode>
 }

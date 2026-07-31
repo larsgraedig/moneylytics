@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { CategoryGroup } from '../api/rawImport'
+import type { CategoryNode } from '../api/rawImport'
 import {
   deleteThreshold,
   fetchThresholds,
@@ -105,7 +105,7 @@ interface BudgetRow {
 
 // ── component ─────────────────────────────────────────────────────────────
 
-export default function ThresholdsPage({ from, to, iban, categories }: { from: string; to: string; iban?: string; categories: CategoryGroup[] }) {
+export default function ThresholdsPage({ from, to, iban, categories }: { from: string; to: string; iban?: string; categories: CategoryNode[] }) {
   const { t } = useTranslation()
   const [thresholds, setThresholds] = useState<Threshold[]>([])
   const [statusMap, setStatusMap] = useState<Map<string, ThresholdStatusItem>>(new Map())
@@ -149,7 +149,7 @@ export default function ThresholdsPage({ from, to, iban, categories }: { from: s
     for (const cg of categories) {
       if (!catSubcats.has(cg.name)) catSubcats.set(cg.name, new Set())
       hasCategoryRow.add(cg.name)
-      for (const s of cg.subcategories) catSubcats.get(cg.name)!.add(s.name)
+      for (const s of cg.children) catSubcats.get(cg.name)!.add(s.name)
     }
 
     for (const t of thresholds) {

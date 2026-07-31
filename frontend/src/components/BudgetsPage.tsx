@@ -10,7 +10,7 @@ import {
   type Budget,
 } from '../api/budgets'
 import BudgetDetail from './BudgetDetail'
-import type { CategoryGroup } from '../api/rawImport'
+import type { CategoryNode } from '../api/rawImport'
 import {
   fetchAllTransactions,
   type Account,
@@ -47,7 +47,7 @@ function budgetToForm(b: Budget): FormState {
   }
 }
 
-export default function BudgetsPage({ from, to, iban, accounts, categories }: { from: string; to: string; iban?: string; accounts: Account[]; categories: CategoryGroup[] }) {
+export default function BudgetsPage({ from, to, iban, accounts, categories }: { from: string; to: string; iban?: string; accounts: Account[]; categories: CategoryNode[] }) {
   const { t } = useTranslation()
   const [budgets, setBudgets] = useState<Budget[]>([])
   const [loading, setLoading] = useState(true)
@@ -388,7 +388,7 @@ function AssignTransactionModal({
   defaultTo: string
   defaultIban?: string
   accounts: Account[]
-  categories: CategoryGroup[]
+  categories: CategoryNode[]
   onClose: () => void
   onAssigned: () => void
 }) {
@@ -409,7 +409,7 @@ function AssignTransactionModal({
   const [assigning, setAssigning] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const subcategoriesFor = (cat: string) => categories.find(c => c.name === cat)?.subcategories.map(s => s.name) ?? []
+  const subcategoriesFor = (cat: string) => categories.find(c => c.name === cat)?.children.map(s => s.name) ?? []
 
   async function loadWith(from: string, to: string) {
     setLoadingTx(true)

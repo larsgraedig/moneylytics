@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { ResponsiveLine } from '@nivo/line'
-import type { CategoryGroup } from '../api/rawImport'
+import type { CategoryNode } from '../api/rawImport'
 import {
   fetchTrends,
   type Granularity,
@@ -218,7 +218,7 @@ type ViewState =
   | { phase: 'error'; message: string }
   | { phase: 'ready'; data: TrendsResponse }
 
-export default function TrendsPage({ from, to, iban, categories }: { from: string; to: string; iban?: string; categories: CategoryGroup[] }) {
+export default function TrendsPage({ from, to, iban, categories }: { from: string; to: string; iban?: string; categories: CategoryNode[] }) {
   const { t } = useTranslation()
   const [granularity, setGranularity] = useState<Granularity>('MONTHLY')
   const [series, setSeries] = useState<SeriesConfig[]>([{ id: newId(), category: '', subcategory: '' }])
@@ -335,7 +335,7 @@ export default function TrendsPage({ from, to, iban, categories }: { from: strin
 
       <div className="tr-series-list">
         {series.map((s, i) => {
-          const subcatOptions = categories.find(c => c.name === s.category)?.subcategories.map(sub => sub.name) ?? []
+          const subcatOptions = categories.find(c => c.name === s.category)?.children.map(sub => sub.name) ?? []
           return (
             <div key={s.id} className="tr-series-row">
               <div className="tr-series-dot" style={{ background: COLORS[i % COLORS.length] }} />

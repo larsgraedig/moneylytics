@@ -3,6 +3,7 @@ package com.moneylytics.api.adapter.input.web
 import com.moneylytics.api.application.port.input.FindOrCreateCategoryUseCase
 import com.moneylytics.api.application.port.input.GetCategoriesUseCase
 import com.moneylytics.api.application.port.input.ResolveOrganizationUseCase
+import com.moneylytics.api.domain.Category
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.springframework.security.core.annotation.AuthenticationPrincipal
@@ -15,9 +16,7 @@ import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.server.ServerWebExchange
 
 data class CreateCategoryRequest(
-    val name: String,
-    val subcategory: String,
-    val group: String?,
+    val path: List<String>,
 )
 
 @RestController
@@ -33,45 +32,12 @@ class CategoryController(
         exchange: ServerWebExchange,
     ): CategoriesResponse {
         val organizationId = resolveOrganizationUseCase.resolveOrganization(principal, exchange)
-        val grouped =
+        val tree =
             withContext(Dispatchers.IO) {
-                getCategoriesUseCase
-                    .getCategories(organizationId)
-                    .groupBy { it.name }
-                    .map { (name, cats) ->
-                        val withGroup = cats.filter { it.group != null }
-                        val withoutGroup = cats.filter { it.group == null }
-                        val subcategories =
-                            withGroup
-                                .groupBy { it.subcategory }
-                                .map { (subName, subCats) ->
-                                    CategorySubGroupResponse(
-                                        name = subName,
-                                        groups =
-                                            subCats
-                                                .map {
-                                                    CategoryLeafResponse(
-                                                        id = requireNotNull(it.id),
-                                                        name = requireNotNull(it.group),
-                                                    )
-                                                }.sortedBy { it.name },
-                                    )
-                                }.sortedBy { it.name }
-                        CategoryGroupResponse(
-                            name = name,
-                            subcategories = subcategories,
-                            directGroups =
-                                withoutGroup
-                                    .map {
-                                        CategoryLeafResponse(
-                                            id = requireNotNull(it.id),
-                                            name = it.subcategory,
-                                        )
-                                    }.sortedBy { it.name },
-                        )
-                    }.sortedBy { it.name }
+                val nodes = getCategoriesUseCase.getCategories(organizationId)
+                buildTree(nodes)
             }
-        return CategoriesResponse(categories = grouped)
+        return CategoriesResponse(categories = tree)
     }
 
     @PostMapping
@@ -79,17 +45,33 @@ class CategoryController(
         @RequestBody request: CreateCategoryRequest,
         @AuthenticationPrincipal principal: UserDetails,
         exchange: ServerWebExchange,
-    ): CategoryLeafResponse {
+    ): CategoryNodeResponse {
         val organizationId = resolveOrganizationUseCase.resolveOrganization(principal, exchange)
         val category =
             withContext(Dispatchers.IO) {
                 findOrCreateCategoryUseCase.findOrCreateCategory(
-                    name = request.name,
-                    subcategory = request.subcategory,
-                    group = request.group,
+                    path = request.path,
                     organizationId = organizationId,
                 )
             }
-        return CategoryLeafResponse(id = requireNotNull(category.id), name = category.group ?: category.subcategory)
+        return CategoryNodeResponse(id = requireNotNull(category.id), name = category.name, children = emptyList())
+    }
+
+    private fun buildTree(nodes: List<Category>): List<CategoryNodeResponse> {
+        val childrenByParentId = nodes.groupBy { it.parentId }
+
+        fun buildNode(node: Category): CategoryNodeResponse =
+            CategoryNodeResponse(
+                id = requireNotNull(node.id),
+                name = node.name,
+                children =
+                    (childrenByParentId[node.id] ?: emptyList())
+                        .sortedBy { it.name }
+                        .map { buildNode(it) },
+            )
+
+        return (childrenByParentId[null] ?: emptyList())
+            .sortedBy { it.name }
+            .map { buildNode(it) }
     }
 }

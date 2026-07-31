@@ -1,12 +1,12 @@
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { CategoryGroup } from '../api/rawImport'
+import type { CategoryNode } from '../api/rawImport'
 import { splitTransaction, type SplitItemRequest, type TransactionItem } from '../api/transactions'
+import { CategoryPathInput } from './CategoryPathInput'
 
 interface SplitEntry {
   amount: string
-  category: string
-  subcategory: string
+  categoryId: number | null
   comment: string
 }
 
@@ -19,14 +19,14 @@ export function SplitTransactionModal({
   onSplit,
 }: {
   transaction: TransactionItem
-  categories: CategoryGroup[]
+  categories: CategoryNode[]
   onClose: () => void
   onSplit: () => void
 }) {
   const { t } = useTranslation()
   const [entries, setEntries] = useState<SplitEntry[]>([
-    { amount: '', category: transaction.category ?? '', subcategory: transaction.subcategory ?? '', comment: '' },
-    { amount: '', category: transaction.category ?? '', subcategory: transaction.subcategory ?? '', comment: '' },
+    { amount: '', categoryId: transaction.categoryId ?? null, comment: '' },
+    { amount: '', categoryId: transaction.categoryId ?? null, comment: '' },
   ])
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -38,24 +38,6 @@ export function SplitTransactionModal({
   }, 0)
   const remaining = totalAmount - enteredSum
 
-  const allCategoryNames = useMemo(() => categories.map(c => c.name), [categories])
-
-  const uniqueEntryCategories = useMemo(() => {
-    const seen = new Set<string>()
-    entries.forEach(e => { if (e.category) seen.add(e.category) })
-    return [...seen]
-  }, [entries])
-
-  function groupsFor(category: string): string[] {
-    const cat = categories.find(c => c.name === category)
-    if (!cat) return []
-    const fromSubs = cat.subcategories.flatMap(s => s.groups.map(g => g.name))
-    return [...cat.directGroups.map(g => g.name), ...fromSubs].sort()
-  }
-
-  const sublistId = (category: string) =>
-    `split-modal-sub-${category.replace(/\s+/g, '-').toLowerCase()}`
-
   function normalizeAmountSign(value: string): string {
     const num = parseFloat(value.replace(',', '.'))
     if (isNaN(num) || num === 0) return value
@@ -65,13 +47,13 @@ export function SplitTransactionModal({
     return value
   }
 
-  function updateEntry(idx: number, field: keyof SplitEntry, value: string) {
-    const normalized = field === 'amount' ? normalizeAmountSign(value) : value
+  function updateEntry(idx: number, field: keyof SplitEntry, value: string | number | null) {
+    const normalized = field === 'amount' ? normalizeAmountSign(value as string) : value
     setEntries(prev => prev.map((e, i) => (i === idx ? { ...e, [field]: normalized } : e)))
   }
 
   function addEntry() {
-    setEntries(prev => [...prev, { amount: '', category: '', subcategory: '', comment: '' }])
+    setEntries(prev => [...prev, { amount: '', categoryId: null, comment: '' }])
   }
 
   function removeEntry(idx: number) {
@@ -86,7 +68,7 @@ export function SplitTransactionModal({
     }
     const splits: SplitItemRequest[] = entries.map(e => ({
       amount: parseFloat(e.amount.replace(',', '.')),
-      categoryId: null,
+      categoryId: e.categoryId,
       comment: e.comment || null,
     }))
     const sum = splits.reduce((a, s) => a + s.amount, 0)
@@ -115,15 +97,6 @@ export function SplitTransactionModal({
       }}
       onClick={e => { if (e.target === e.currentTarget) onClose() }}
     >
-      <datalist id="split-modal-cat-list">
-        {allCategoryNames.map(c => <option key={c} value={c} />)}
-      </datalist>
-      {uniqueEntryCategories.map(cat => (
-        <datalist key={cat} id={sublistId(cat)}>
-          {groupsFor(cat).map(s => <option key={s} value={s} />)}
-        </datalist>
-      ))}
-
       <div style={{ background: '#1e2028', borderRadius: 10, padding: 24, width: 560, maxWidth: '95vw', maxHeight: '90vh', overflowY: 'auto' }}>
         <h3 style={{ margin: '0 0 12px', color: '#e2e8f0' }}>{t('transactions.split.title')}</h3>
         <p style={{ margin: '0 0 16px', color: '#94a3b8', fontSize: 13 }}>
@@ -143,21 +116,12 @@ export function SplitTransactionModal({
                 onChange={e => updateEntry(idx, 'amount', e.target.value)}
                 style={{ width: 110, padding: '6px 8px', borderRadius: 6, border: '1px solid #3a3d4a', background: '#1e2028', color: '#e2e8f0', fontSize: 13 }}
               />
-              <input
-                type="text"
+              <CategoryPathInput
+                value={entry.categoryId}
+                onChange={id => updateEntry(idx, 'categoryId', id)}
+                tree={categories}
                 placeholder={t('transactions.split.category')}
-                value={entry.category}
-                list="split-modal-cat-list"
-                onChange={e => updateEntry(idx, 'category', e.target.value)}
-                style={{ flex: 1, padding: '6px 8px', borderRadius: 6, border: '1px solid #3a3d4a', background: '#1e2028', color: '#e2e8f0', fontSize: 13 }}
-              />
-              <input
-                type="text"
-                placeholder={t('transactions.split.subcategory')}
-                value={entry.subcategory}
-                list={entry.category ? sublistId(entry.category) : undefined}
-                onChange={e => updateEntry(idx, 'subcategory', e.target.value)}
-                style={{ flex: 1, padding: '6px 8px', borderRadius: 6, border: '1px solid #3a3d4a', background: '#1e2028', color: '#e2e8f0', fontSize: 13 }}
+                className="ri-cat-input"
               />
               {entries.length > 2 && (
                 <button

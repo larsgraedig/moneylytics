@@ -32,7 +32,7 @@ import OrgSelectModal from './components/OrgSelectModal'
 import OrgAvatar from './components/OrgAvatar'
 import { fetchSankeyData, type SankeyResponse } from './api/transactions'
 import { fetchAccounts, type Account } from './api/accounts'
-import { fetchCategories, type CategoryGroup } from './api/rawImport'
+import { fetchCategories, type CategoryNode } from './api/rawImport'
 import { fetchUserSettings } from './api/settings'
 import { useAuth } from './context/AuthContext'
 import { useTranslation, Trans } from 'react-i18next'
@@ -121,7 +121,7 @@ export default function App() {
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [accounts, setAccounts] = useState<Account[]>([])
-  const [categories, setCategories] = useState<CategoryGroup[]>([])
+  const [categories, setCategories] = useState<CategoryNode[]>([])
   const [txColumnOrder, setTxColumnOrder] = useState<string[] | null>(null)
   const [view, setView] = useState<ViewState>({ phase: 'idle' })
   const [activeNode, setActiveNode] = useState<string | null>(null)

@@ -11,7 +11,7 @@ import {
   type GenericCsvPreviewRow,
   type GenericRowToImport,
 } from '../api/genericCsvImport'
-import type { CategoryGroup } from '../api/rawImport'
+import type { CategoryNode } from '../api/rawImport'
 
 const COMMON_DATE_FORMATS = [
   'dd.MM.yyyy',
@@ -278,7 +278,7 @@ function MappingView({
 const needsPreview = (m: CsvMapping, rows: GenericCsvPreviewRow[]) =>
   !m.categoryColumn || !m.subcategoryColumn || rows.some(r => r.unknownAccount && r.status !== 'DUPLICATE')
 
-export default function CsvImportPage({ categories }: { categories: CategoryGroup[] }) {
+export default function CsvImportPage({ categories }: { categories: CategoryNode[] }) {
   const { t } = useTranslation()
   const [phase, setPhase] = useState<Phase>({ step: 'upload' })
   const [isDragging, setIsDragging] = useState(false)
@@ -381,7 +381,7 @@ export default function CsvImportPage({ categories }: { categories: CategoryGrou
     const { rows, detection, mapping, file } = phase
     const importing = phase.step === 'importing-rows'
     const allCategoryNames = categories.map(g => g.name)
-    const subcategoriesFor = (cat: string) => categories.find(g => g.name === cat)?.subcategories.map(s => s.name) ?? []
+    const subcategoriesFor = (cat: string) => categories.find(g => g.name === cat)?.children.map(s => s.name) ?? []
 
     const setDecision = (rowIndex: number, d: RowDecision) =>
       setDecisions(prev => ({ ...prev, [rowIndex]: d }))

@@ -2,7 +2,6 @@ package com.moneylytics.api.adapter.output.persistence
 
 import com.moneylytics.api.application.service.CategoryService
 import com.moneylytics.api.application.service.IgnoredTransactionService
-import com.moneylytics.api.domain.Category
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -66,37 +65,31 @@ class CamtImportIT : AbstractServiceIT() {
         assertThat(foundForOtherUser).isEmpty()
     }
 
-    // ── Category deduplication ───────────────────────────────────────────────
+    // ── Category tree ────────────────────────────────────────────────────────
 
     @Test
-    fun `should save categories only once even when saved multiple times`() {
-        val categories =
-            listOf(
-                Category(name = "Lebensmittel", subcategory = "Supermarkt", group = null),
-                Category(name = "Transport", subcategory = "ÖPNV", group = null),
-            )
-        categoryService.saveCategories(categories, organizationId)
-        categoryService.saveCategories(categories, organizationId)
+    fun `should create category path idempotently`() {
+        categoryService.findOrCreateCategory(listOf("Lebensmittel", "Supermarkt"), organizationId)
+        categoryService.findOrCreateCategory(listOf("Lebensmittel", "Supermarkt"), organizationId)
         flushAndClear()
 
+        // root "Lebensmittel" + child "Supermarkt" = 2 nodes
         assertThat(categoryService.getCategories(organizationId)).hasSize(2)
     }
 
     @Test
-    fun `should treat category as distinct when group differs`() {
-        categoryService.saveCategories(listOf(Category(name = "Lebensmittel", subcategory = "Supermarkt", group = null)), organizationId)
-        categoryService.saveCategories(
-            listOf(Category(name = "Lebensmittel", subcategory = "Supermarkt", group = "Konsum")),
-            organizationId,
-        )
+    fun `should create distinct nodes for different paths`() {
+        categoryService.findOrCreateCategory(listOf("Lebensmittel", "Supermarkt"), organizationId)
+        categoryService.findOrCreateCategory(listOf("Lebensmittel", "Supermarkt", "Konsum"), organizationId)
         flushAndClear()
 
-        assertThat(categoryService.getCategories(organizationId)).hasSize(2)
+        // Lebensmittel, Supermarkt, Konsum = 3 nodes
+        assertThat(categoryService.getCategories(organizationId)).hasSize(3)
     }
 
     @Test
     fun `should isolate categories per organization`() {
-        categoryService.saveCategories(listOf(Category(name = "Lebensmittel", subcategory = "Supermarkt", group = null)), organizationId)
+        categoryService.findOrCreateCategory(listOf("Lebensmittel", "Supermarkt"), organizationId)
         flushAndClear()
 
         assertThat(categoryService.getCategories(otherOrganizationId)).isEmpty()

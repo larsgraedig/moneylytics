@@ -55,16 +55,37 @@ class TransactionPersistenceAdapter(
     ): Map<Triple<String, String?, String?>, CategoryEntity> {
         val keys =
             transactions
-                .filter { it.category != null && it.subcategory != null }
+                .filter { it.category != null }
                 .map { Triple(it.category!!, it.subcategory, it.group) }
                 .toSet()
         if (keys.isEmpty()) return emptyMap()
 
         val org = organizationJpaRepository.getReferenceById(organizationId)
-        return keys.associateWith { (name, sub, group) ->
-            categoryJpaRepository.findByNameAndSubcategoryAndGroupNameAndOrganizationId(name, sub!!, group, organizationId)
-                ?: categoryJpaRepository.save(CategoryEntity(name = name, subcategory = sub!!, groupName = group, organization = org))
+        return keys.associateWith { (cat, sub, group) ->
+            findOrCreateCategoryPath(listOfNotNull(cat, sub, group), organizationId, org)
         }
+    }
+
+    private fun findOrCreateCategoryPath(
+        path: List<String>,
+        organizationId: Long,
+        org: OrganizationEntity,
+    ): CategoryEntity {
+        var parentId: Long? = null
+        var current: CategoryEntity? = null
+        for (name in path) {
+            current =
+                categoryJpaRepository.findByNameAndParentIdAndOrganizationId(name, parentId, organizationId)
+                    ?: categoryJpaRepository.save(
+                        CategoryEntity(
+                            name = name,
+                            parent = parentId?.let { categoryJpaRepository.getReferenceById(it) },
+                            organization = org,
+                        ),
+                    )
+            parentId = requireNotNull(current.id)
+        }
+        return requireNotNull(current) { "Path must not be empty" }
     }
 
     private fun assignFingerprints(transactions: List<Transaction>): List<Pair<Transaction, String>> {
@@ -319,7 +340,29 @@ class TransactionPersistenceAdapter(
         )
     }
 
+    private fun CategoryEntity.pathFromRoot(): List<String> {
+        val path = ArrayDeque<String>()
+        var node: CategoryEntity? = this
+        while (node != null) {
+            path.addFirst(node.name)
+            node = node.parent
+        }
+        return path.toList()
+    }
+
     private fun TransactionEntity.toDomain(
+        offsetLinks: List<TransactionOffsetLink> = emptyList(),
+        groups: List<TransactionGroupSummary> = emptyList(),
+        collections: List<CollectionSummary> = emptyList(),
+        budgetLinks: List<BudgetTransactionSummary> = emptyList(),
+        children: List<Transaction> = emptyList(),
+    ): Transaction {
+        val categoryPath = category?.pathFromRoot() ?: emptyList()
+        return toDomainWith(categoryPath, offsetLinks, groups, collections, budgetLinks, children)
+    }
+
+    private fun TransactionEntity.toDomainWith(
+        categoryPath: List<String>,
         offsetLinks: List<TransactionOffsetLink> = emptyList(),
         groups: List<TransactionGroupSummary> = emptyList(),
         collections: List<CollectionSummary> = emptyList(),
@@ -327,9 +370,9 @@ class TransactionPersistenceAdapter(
         children: List<Transaction> = emptyList(),
     ) = Transaction(
         categoryId = category?.id,
-        category = category?.name,
-        subcategory = category?.subcategory,
-        group = category?.groupName,
+        category = categoryPath.getOrNull(0),
+        subcategory = categoryPath.getOrNull(1),
+        group = categoryPath.getOrNull(2),
         bookingDate = bookingDate,
         valueDate = valueDate,
         accountingDate = accountingDate,
@@ -361,8 +404,7 @@ class TransactionPersistenceAdapter(
                 ?: error(
                     "Account not found for IBAN $accountIban and organizationId $organizationId — ensure accounts are created before importing transactions",
                 )
-        val categoryEntity =
-            if (category != null && subcategory != null) categoryMap[Triple(category, subcategory, group)] else null
+        val categoryEntity = if (category != null) categoryMap[Triple(category, subcategory, group)] else null
         return TransactionEntity(
             category = categoryEntity,
             bookingDate = bookingDate,

@@ -9,9 +9,9 @@ class CategoryJpaRepositoryIT : AbstractJpaRepositoryIT() {
 
     @Test
     fun `should find all categories for given organization`() {
-        categoryRepo.save(CategoryEntity(name = "Lebensmittel", subcategory = "Supermarkt", groupName = null, organization = organization))
-        categoryRepo.save(CategoryEntity(name = "Wohnen", subcategory = "Miete", groupName = null, organization = organization))
-        categoryRepo.save(CategoryEntity(name = "Einnahmen", subcategory = "Gehalt", groupName = null, organization = otherOrganization))
+        categoryRepo.save(CategoryEntity(name = "Lebensmittel", parent = null, organization = organization))
+        categoryRepo.save(CategoryEntity(name = "Wohnen", parent = null, organization = organization))
+        categoryRepo.save(CategoryEntity(name = "Einnahmen", parent = null, organization = otherOrganization))
 
         val result = categoryRepo.findAllByOrganizationId(organizationId)
 
@@ -27,14 +27,42 @@ class CategoryJpaRepositoryIT : AbstractJpaRepositoryIT() {
     }
 
     @Test
-    fun `should store and return subcategory and group`() {
-        categoryRepo.save(
-            CategoryEntity(name = "Lebensmittel", subcategory = "Supermarkt", groupName = "Konsum", organization = organization),
-        )
+    fun `should store parent-child relationship`() {
+        val root = categoryRepo.save(CategoryEntity(name = "Lebensmittel", parent = null, organization = organization))
+        val child = categoryRepo.save(CategoryEntity(name = "Supermarkt", parent = root, organization = organization))
 
-        val result = categoryRepo.findAllByOrganizationId(organizationId)
+        val found = categoryRepo.findAllByOrganizationId(organizationId)
 
-        assertThat(result.first().subcategory).isEqualTo("Supermarkt")
-        assertThat(result.first().groupName).isEqualTo("Konsum")
+        assertThat(found).hasSize(2)
+        val childNode = found.first { it.name == "Supermarkt" }
+        assertThat(childNode.parent?.name).isEqualTo("Lebensmittel")
+    }
+
+    @Test
+    fun `should find node by name and parent`() {
+        val root = categoryRepo.save(CategoryEntity(name = "Lebensmittel", parent = null, organization = organization))
+        categoryRepo.save(CategoryEntity(name = "Supermarkt", parent = root, organization = organization))
+
+        val found = categoryRepo.findByNameAndParentIdAndOrganizationId("Supermarkt", root.id, organizationId)
+
+        assertThat(found).isNotNull
+        assertThat(found?.name).isEqualTo("Supermarkt")
+    }
+
+    @Test
+    fun `should return null when node not found`() {
+        val result = categoryRepo.findByNameAndParentIdAndOrganizationId("NonExistent", null, organizationId)
+
+        assertThat(result).isNull()
+    }
+
+    @Test
+    fun `should find root node when parentId is null`() {
+        categoryRepo.save(CategoryEntity(name = "Transport", parent = null, organization = organization))
+
+        val found = categoryRepo.findByNameAndParentIdAndOrganizationId("Transport", null, organizationId)
+
+        assertThat(found).isNotNull
+        assertThat(found?.name).isEqualTo("Transport")
     }
 }

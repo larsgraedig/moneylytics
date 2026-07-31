@@ -75,21 +75,11 @@ data class CamtTransactionImport(
 )
 
 data class CategoriesResponse(
-    val categories: List<CategoryGroupResponse>,
+    val categories: List<CategoryNodeResponse>,
 )
 
-data class CategoryGroupResponse(
-    val name: String,
-    val subcategories: List<CategorySubGroupResponse>,
-    val directGroups: List<CategoryLeafResponse>,
-)
-
-data class CategorySubGroupResponse(
-    val name: String,
-    val groups: List<CategoryLeafResponse>,
-)
-
-data class CategoryLeafResponse(
+data class CategoryNodeResponse(
     val id: Long,
     val name: String,
+    val children: List<CategoryNodeResponse>,
 )

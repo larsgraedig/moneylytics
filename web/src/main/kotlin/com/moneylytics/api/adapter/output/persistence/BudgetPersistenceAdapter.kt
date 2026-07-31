@@ -98,6 +98,16 @@ class BudgetPersistenceAdapter(
             .mapNotNull { it.transaction.id }
             .toHashSet()
 
+    private fun CategoryEntity.pathFromRoot(): List<String> {
+        val path = ArrayDeque<String>()
+        var node: CategoryEntity? = this
+        while (node != null) {
+            path.addFirst(node.name)
+            node = node.parent
+        }
+        return path.toList()
+    }
+
     private fun BudgetEntity.toDomain() =
         Budget(
             id = id,
@@ -114,8 +124,8 @@ class BudgetPersistenceAdapter(
             amount = amount,
             transactionAmount = transaction.amount,
             transactionDate = transaction.accountingDate,
-            transactionCategory = transaction.category?.name,
-            transactionSubcategory = transaction.category?.groupName,
+            transactionCategory = transaction.category?.pathFromRoot()?.getOrNull(0),
+            transactionSubcategory = transaction.category?.pathFromRoot()?.getOrNull(1),
             transactionPurpose = transaction.purpose,
             transactionComment = transaction.comment,
         )
