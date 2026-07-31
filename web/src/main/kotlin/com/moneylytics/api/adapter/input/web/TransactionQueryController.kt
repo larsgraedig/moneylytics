@@ -365,55 +365,38 @@ class TransactionQueryController(
                 .mapValues { (_, txns) -> txns.sumOf { it.effectiveAmount().abs() } }
 
         aggregated.keys.forEach { k -> indexFor("cat:${k.category ?: ""}") }
-        aggregated.keys.filter { it.subcategory != null }.forEach { k -> indexFor("sub:${k.category ?: ""}:${k.subcategory}") }
-        aggregated.keys.forEach { k ->
-            if (k.subcategory != null) {
-                indexFor("grp:${k.category ?: ""}:${k.subcategory}:${k.group ?: ""}")
-            } else {
-                indexFor("grp:${k.category ?: ""}::${k.group ?: ""}")
-            }
+        aggregated.keys.forEach { k -> indexFor("grp:${k.category ?: ""}:${k.group ?: ""}") }
+        aggregated.keys.filter { it.subcategory != null }.forEach { k ->
+            indexFor("leaf:${k.category ?: ""}:${k.group ?: ""}:${k.subcategory}")
         }
 
-        val catSubAmounts = mutableMapOf<Pair<String?, String?>, BigDecimal>()
-        val subGrpAmounts = mutableMapOf<Triple<String?, String?, String?>, BigDecimal>()
         val catGrpAmounts = mutableMapOf<Pair<String?, String?>, BigDecimal>()
+        val grpLeafAmounts = mutableMapOf<Triple<String?, String?, String?>, BigDecimal>()
 
         aggregated.forEach { (key, amount) ->
+            catGrpAmounts.merge(key.category to key.group, amount, BigDecimal::add)
             if (key.subcategory != null) {
-                catSubAmounts.merge(key.category to key.subcategory, amount, BigDecimal::add)
-                subGrpAmounts.merge(Triple(key.category, key.subcategory, key.group), amount, BigDecimal::add)
-            } else {
-                catGrpAmounts.merge(key.category to key.group, amount, BigDecimal::add)
+                grpLeafAmounts.merge(Triple(key.category, key.group, key.subcategory), amount, BigDecimal::add)
             }
         }
 
         val links = mutableListOf<SankeyLink>()
-        catSubAmounts.forEach { (catSub, amt) ->
-            val (cat, sub) = catSub
-            links.add(
-                SankeyLink(
-                    source = nodeIndex.getValue("cat:${cat ?: ""}"),
-                    target = nodeIndex.getValue("sub:${cat ?: ""}:$sub"),
-                    value = amt,
-                ),
-            )
-        }
-        subGrpAmounts.forEach { (triple, amt) ->
-            val (cat, sub, grp) = triple
-            links.add(
-                SankeyLink(
-                    source = nodeIndex.getValue("sub:${cat ?: ""}:$sub"),
-                    target = nodeIndex.getValue("grp:${cat ?: ""}:$sub:${grp ?: ""}"),
-                    value = amt,
-                ),
-            )
-        }
         catGrpAmounts.forEach { (catGrp, amt) ->
             val (cat, grp) = catGrp
             links.add(
                 SankeyLink(
                     source = nodeIndex.getValue("cat:${cat ?: ""}"),
-                    target = nodeIndex.getValue("grp:${cat ?: ""}::${grp ?: ""}"),
+                    target = nodeIndex.getValue("grp:${cat ?: ""}:${grp ?: ""}"),
+                    value = amt,
+                ),
+            )
+        }
+        grpLeafAmounts.forEach { (triple, amt) ->
+            val (cat, grp, sub) = triple
+            links.add(
+                SankeyLink(
+                    source = nodeIndex.getValue("grp:${cat ?: ""}:${grp ?: ""}"),
+                    target = nodeIndex.getValue("leaf:${cat ?: ""}:${grp ?: ""}:$sub"),
                     value = amt,
                 ),
             )

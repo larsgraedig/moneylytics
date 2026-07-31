@@ -64,9 +64,9 @@ class TransactionQueryControllerTest {
                 ),
             ).thenReturn(
                 listOf(
-                    transaction(category = "Food", subcategory = "Groceries", amount = BigDecimal("-50.00")),
-                    transaction(category = "Food", subcategory = "Restaurant", amount = BigDecimal("-30.00")),
-                    transaction(category = "Transport", subcategory = "Fuel", amount = BigDecimal("-40.00")),
+                    transaction(category = "Food", group = "Groceries", amount = BigDecimal("-50.00")),
+                    transaction(category = "Food", group = "Restaurant", amount = BigDecimal("-30.00")),
+                    transaction(category = "Transport", group = "Fuel", amount = BigDecimal("-40.00")),
                 ),
             )
 
@@ -90,9 +90,9 @@ class TransactionQueryControllerTest {
                 ),
             ).thenReturn(
                 listOf(
-                    transaction(category = "Food", subcategory = "Groceries", amount = BigDecimal("-50.00")),
-                    transaction(category = "Food", subcategory = "Restaurant", amount = BigDecimal("-30.00")),
-                    transaction(category = "Transport", subcategory = "Fuel", amount = BigDecimal("-40.00")),
+                    transaction(category = "Food", group = "Groceries", amount = BigDecimal("-50.00")),
+                    transaction(category = "Food", group = "Restaurant", amount = BigDecimal("-30.00")),
+                    transaction(category = "Transport", group = "Fuel", amount = BigDecimal("-40.00")),
                 ),
             )
 
@@ -115,9 +115,9 @@ class TransactionQueryControllerTest {
                 ),
             ).thenReturn(
                 listOf(
-                    transaction(category = "Food", subcategory = "Groceries", amount = BigDecimal("-50.00")),
-                    transaction(category = "Food", subcategory = "Groceries", amount = BigDecimal("-20.00")),
-                    transaction(category = "Food", subcategory = "Restaurant", amount = BigDecimal("-30.00")),
+                    transaction(category = "Food", group = "Groceries", amount = BigDecimal("-50.00")),
+                    transaction(category = "Food", group = "Groceries", amount = BigDecimal("-20.00")),
+                    transaction(category = "Food", group = "Restaurant", amount = BigDecimal("-30.00")),
                 ),
             )
 
@@ -138,8 +138,8 @@ class TransactionQueryControllerTest {
                 ),
             ).thenReturn(
                 listOf(
-                    transaction(category = "Food", subcategory = "Groceries", amount = BigDecimal("-50.00")),
-                    transaction(category = "Transport", subcategory = "Fuel", amount = BigDecimal("-40.00")),
+                    transaction(category = "Food", group = "Groceries", amount = BigDecimal("-50.00")),
+                    transaction(category = "Transport", group = "Fuel", amount = BigDecimal("-40.00")),
                 ),
             )
 
@@ -167,8 +167,8 @@ class TransactionQueryControllerTest {
                 ),
             ).thenReturn(
                 listOf(
-                    transaction(category = "Food", subcategory = "Other", amount = BigDecimal("-20.00")),
-                    transaction(category = "Transport", subcategory = "Other", amount = BigDecimal("-30.00")),
+                    transaction(category = "Food", group = "Other", amount = BigDecimal("-20.00")),
+                    transaction(category = "Transport", group = "Other", amount = BigDecimal("-30.00")),
                 ),
             )
 
@@ -189,9 +189,9 @@ class TransactionQueryControllerTest {
                 ),
             ).thenReturn(
                 listOf(
-                    transaction(category = "Auto", subcategory = "Insurance", amount = BigDecimal("-435.00")),
-                    transaction(category = "Insurance", subcategory = "Liability", amount = BigDecimal("-100.00")),
-                    transaction(category = "Insurance", subcategory = "Home", amount = BigDecimal("-200.00")),
+                    transaction(category = "Auto", group = "Insurance", amount = BigDecimal("-435.00")),
+                    transaction(category = "Insurance", group = "Liability", amount = BigDecimal("-100.00")),
+                    transaction(category = "Insurance", group = "Home", amount = BigDecimal("-200.00")),
                 ),
             )
 
@@ -213,13 +213,60 @@ class TransactionQueryControllerTest {
                 ),
             ).thenReturn(
                 listOf(
-                    transaction(category = "Food", subcategory = "Groceries", amount = BigDecimal("-50.00")),
+                    transaction(category = "Food", group = "Groceries", amount = BigDecimal("-50.00")),
                 ),
             )
 
             val response = controller.getSankeyData(from, to, principal = principal, exchange = exchange)
 
             assertThat(response.nodes.map { it.name }).containsExactly("Food", "Groceries")
+        }
+
+    @Test
+    fun `should add leaf node and group-to-leaf link when subcategory is set`() =
+        runTest {
+            whenever(
+                getTransactionsUseCase.getTransactions(
+                    GetTransactionsQuery(from, to, ORG_ID, type = TransactionType.EXPENSES),
+                ),
+            ).thenReturn(
+                listOf(
+                    transaction(category = "Food", group = "Supermarkt", amount = BigDecimal("-60.00"), subcategory = "Bio"),
+                    transaction(category = "Food", group = "Supermarkt", amount = BigDecimal("-40.00"), subcategory = "Konventionell"),
+                    transaction(category = "Food", group = "Restaurant", amount = BigDecimal("-50.00")),
+                ),
+            )
+
+            val response = controller.getSankeyData(from, to, principal = principal, exchange = exchange)
+
+            assertThat(response.nodes.map { it.name })
+                .containsExactlyInAnyOrder("Food", "Supermarkt", "Restaurant", "Bio", "Konventionell")
+            val nodeNames = response.nodes.map { it.name }
+            val foodIdx = nodeNames.indexOf("Food")
+            val supermarktIdx = nodeNames.indexOf("Supermarkt")
+            val restaurantIdx = nodeNames.indexOf("Restaurant")
+            val bioIdx = nodeNames.indexOf("Bio")
+            val konvIdx = nodeNames.indexOf("Konventionell")
+            assertThat(response.links).anySatisfy { link ->
+                assertThat(link.source).isEqualTo(foodIdx)
+                assertThat(link.target).isEqualTo(supermarktIdx)
+                assertThat(link.value).isEqualByComparingTo(BigDecimal("100.00"))
+            }
+            assertThat(response.links).anySatisfy { link ->
+                assertThat(link.source).isEqualTo(foodIdx)
+                assertThat(link.target).isEqualTo(restaurantIdx)
+                assertThat(link.value).isEqualByComparingTo(BigDecimal("50.00"))
+            }
+            assertThat(response.links).anySatisfy { link ->
+                assertThat(link.source).isEqualTo(supermarktIdx)
+                assertThat(link.target).isEqualTo(bioIdx)
+                assertThat(link.value).isEqualByComparingTo(BigDecimal("60.00"))
+            }
+            assertThat(response.links).anySatisfy { link ->
+                assertThat(link.source).isEqualTo(supermarktIdx)
+                assertThat(link.target).isEqualTo(konvIdx)
+                assertThat(link.value).isEqualByComparingTo(BigDecimal("40.00"))
+            }
         }
 
     @Test
@@ -239,11 +286,13 @@ class TransactionQueryControllerTest {
 
     private fun transaction(
         category: String,
-        subcategory: String,
+        group: String,
         amount: BigDecimal,
+        subcategory: String? = null,
     ) = Transaction(
         category = category,
-        group = subcategory,
+        group = group,
+        subcategory = subcategory,
         bookingDate = from,
         valueDate = from,
         accountingDate = from,

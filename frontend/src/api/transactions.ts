@@ -114,10 +114,12 @@ export async function fetchTransactionList(
   category?: string,
   subcategory?: string,
   iban?: string,
+  group?: string,
 ): Promise<TransactionListResponse> {
   const params = new URLSearchParams({ from, to, type: 'EXPENSES' })
   if (category) params.set('category', category)
   if (subcategory) params.set('subcategory', subcategory)
+  if (group) params.set('group', group)
   if (iban) params.set('iban', iban)
   const res = await fetchWithUser(`/transactions/list?${params}`)
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
