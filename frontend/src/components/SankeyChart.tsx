@@ -4,9 +4,11 @@ import type { SankeyResponse } from '../api/transactions'
 
 const EUR = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' })
 
+import type { SankeyNode as SankeyNodeData } from '../api/transactions'
+
 interface Props {
   data: SankeyResponse
-  onNodeClick?: (nodeKey: string) => void
+  onNodeClick?: (node: SankeyNodeData) => void
 }
 
 const nivoTheme = {
@@ -90,8 +92,8 @@ export default function SankeyChart({ data, onNodeClick }: Props) {
         onClick={item => {
           if (!('id' in item)) return
           const original = data.nodes[Number(item.id)]
-          if (original?.nodeKey && onNodeClick) {
-            onNodeClick(original.nodeKey)
+          if (original && onNodeClick) {
+            onNodeClick(original)
           }
         }}
         nodeTooltip={({ node }) => (

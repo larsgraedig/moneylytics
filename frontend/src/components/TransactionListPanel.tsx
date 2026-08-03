@@ -1,19 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { fetchTransactionList, type TransactionItem } from '../api/transactions'
-
-interface Props {
-  nodeKey: string
-  from: string
-  to: string
-  iban?: string
-  onClose: () => void
-}
-
-type State =
-  | { phase: 'loading' }
-  | { phase: 'error'; message: string }
-  | { phase: 'ready'; transactions: TransactionItem[]; total: number }
+import { fetchTransactionList, type SankeyNode, type TransactionItem } from '../api/transactions'
 
 type NodeInfo =
   | { type: 'cat'; category: string }
@@ -41,11 +28,24 @@ function parseNodeKey(nodeKey: string): NodeInfo {
       subcategory: rest.slice(second + 1),
     }
   }
-  // sub: — PiePage format: sub:{category}:{subcategory}
   const rest = nodeKey.slice(4)
   const colon = rest.indexOf(':')
   return { type: 'sub', category: rest.slice(0, colon), subcategory: rest.slice(colon + 1) }
 }
+
+type BaseProps = {
+  from: string
+  to: string
+  iban?: string
+  onClose: () => void
+}
+
+type Props = BaseProps & ({ node: SankeyNode; nodeKey?: never } | { nodeKey: string; node?: never })
+
+type State =
+  | { phase: 'loading' }
+  | { phase: 'error'; message: string }
+  | { phase: 'ready'; transactions: TransactionItem[]; total: number }
 
 const EUR = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' })
 
@@ -54,28 +54,38 @@ function formatDate(iso: string): string {
   return `${d}.${m}.${y}`
 }
 
-export default function TransactionListPanel({ nodeKey, from, to, iban, onClose }: Props) {
+export default function TransactionListPanel({ from, to, iban, onClose, ...rest }: Props) {
   const { t } = useTranslation()
   const [state, setState] = useState<State>({ phase: 'loading' })
-  const info = parseNodeKey(nodeKey)
+
+  const node = 'node' in rest ? rest.node : null
+  const nodeKey = 'nodeKey' in rest ? rest.nodeKey : null
 
   useEffect(() => {
     setState({ phase: 'loading' })
-    const category = info.category
-    const subcategory =
-      info.type === 'grp' || info.type === 'leaf'
-        ? info.group
-        : info.type === 'sub'
-        ? info.subcategory
-        : undefined
-    const group = info.type === 'leaf' ? info.subcategory : undefined
-    fetchTransactionList(from, to, category, subcategory, iban, group)
+    let req: Promise<{ transactions: TransactionItem[]; total: number }>
+    if (node != null) {
+      req = fetchTransactionList(from, to, undefined, undefined, iban, undefined, node.categoryId)
+    } else {
+      const info = parseNodeKey(nodeKey!)
+      const category = info.category
+      const subcategory =
+        info.type === 'grp' || info.type === 'leaf'
+          ? info.group
+          : info.type === 'sub'
+          ? info.subcategory
+          : undefined
+      const group = info.type === 'leaf' ? info.subcategory : undefined
+      req = fetchTransactionList(from, to, category, subcategory, iban, group)
+    }
+    req
       .then(r => setState({ phase: 'ready', transactions: r.transactions, total: r.total }))
       .catch(e => setState({ phase: 'error', message: e instanceof Error ? e.message : 'Failed to load' }))
-  }, [nodeKey, from, to, iban])
+  }, [node?.categoryId, nodeKey, from, to, iban])
 
-  const showGroupCol = info.type === 'cat'
-  const showSubcategoryCol = info.type === 'grp'
+  const info = nodeKey != null ? parseNodeKey(nodeKey) : null
+  const showGroupCol = info?.type === 'cat'
+  const showSubcategoryCol = info?.type === 'grp'
 
   return (
     <>
@@ -83,32 +93,43 @@ export default function TransactionListPanel({ nodeKey, from, to, iban, onClose 
       <div className="txn-panel">
         <div className="txn-panel-header">
           <div className="txn-panel-title">
-            {info.type === 'cat' && (
-              <span className="txn-panel-name">{info.category}</span>
-            )}
-            {info.type === 'grp' && (
+            {node != null ? (
+              node.namePath.map((segment, idx) => (
+                <span key={idx}>
+                  {idx > 0 && <span className="txn-panel-sep">›</span>}
+                  <span className={idx === node.namePath.length - 1 ? 'txn-panel-name' : 'txn-panel-breadcrumb'}>
+                    {segment}
+                  </span>
+                </span>
+              ))
+            ) : info != null ? (
               <>
-                <span className="txn-panel-breadcrumb">{info.category}</span>
-                <span className="txn-panel-sep">›</span>
-                <span className="txn-panel-name">{info.group}</span>
+                {info.type === 'cat' && <span className="txn-panel-name">{info.category}</span>}
+                {info.type === 'grp' && (
+                  <>
+                    <span className="txn-panel-breadcrumb">{info.category}</span>
+                    <span className="txn-panel-sep">›</span>
+                    <span className="txn-panel-name">{info.group}</span>
+                  </>
+                )}
+                {info.type === 'leaf' && (
+                  <>
+                    <span className="txn-panel-breadcrumb">{info.category}</span>
+                    <span className="txn-panel-sep">›</span>
+                    <span className="txn-panel-breadcrumb">{info.group}</span>
+                    <span className="txn-panel-sep">›</span>
+                    <span className="txn-panel-name">{info.subcategory}</span>
+                  </>
+                )}
+                {info.type === 'sub' && (
+                  <>
+                    <span className="txn-panel-breadcrumb">{info.category}</span>
+                    <span className="txn-panel-sep">›</span>
+                    <span className="txn-panel-name">{info.subcategory}</span>
+                  </>
+                )}
               </>
-            )}
-            {info.type === 'leaf' && (
-              <>
-                <span className="txn-panel-breadcrumb">{info.category}</span>
-                <span className="txn-panel-sep">›</span>
-                <span className="txn-panel-breadcrumb">{info.group}</span>
-                <span className="txn-panel-sep">›</span>
-                <span className="txn-panel-name">{info.subcategory}</span>
-              </>
-            )}
-            {info.type === 'sub' && (
-              <>
-                <span className="txn-panel-breadcrumb">{info.category}</span>
-                <span className="txn-panel-sep">›</span>
-                <span className="txn-panel-name">{info.subcategory}</span>
-              </>
-            )}
+            ) : null}
           </div>
           <button className="txn-panel-close" onClick={onClose} title="Close">✕</button>
         </div>

@@ -4,6 +4,8 @@ export interface SankeyNode {
   name: string
   value: number
   nodeKey: string
+  categoryId: number
+  namePath: string[]
 }
 
 export interface SankeyLink {
@@ -115,8 +117,10 @@ export async function fetchTransactionList(
   subcategory?: string,
   iban?: string,
   group?: string,
+  categoryId?: number,
 ): Promise<TransactionListResponse> {
   const params = new URLSearchParams({ from, to, type: 'EXPENSES' })
+  if (categoryId != null) params.set('categoryId', String(categoryId))
   if (category) params.set('category', category)
   if (subcategory) params.set('subcategory', subcategory)
   if (group) params.set('group', group)

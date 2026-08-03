@@ -43,6 +43,8 @@ data class SankeyNode(
     val name: String,
     val value: BigDecimal,
     val nodeKey: String,
+    val categoryId: Long,
+    val namePath: List<String>,
 )
 
 data class SankeyLink(

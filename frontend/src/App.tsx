@@ -30,7 +30,7 @@ import InvitePage from './components/InvitePage'
 import OnboardingModal from './components/OnboardingModal'
 import OrgSelectModal from './components/OrgSelectModal'
 import OrgAvatar from './components/OrgAvatar'
-import { fetchSankeyData, type SankeyResponse } from './api/transactions'
+import { fetchSankeyData, type SankeyNode, type SankeyResponse } from './api/transactions'
 import { fetchAccounts, type Account } from './api/accounts'
 import { fetchCategories, type CategoryNode } from './api/rawImport'
 import { fetchUserSettings } from './api/settings'
@@ -124,7 +124,7 @@ export default function App() {
   const [categories, setCategories] = useState<CategoryNode[]>([])
   const [txColumnOrder, setTxColumnOrder] = useState<string[] | null>(null)
   const [view, setView] = useState<ViewState>({ phase: 'idle' })
-  const [activeNode, setActiveNode] = useState<string | null>(null)
+  const [activeNode, setActiveNode] = useState<SankeyNode | null>(null)
 
   function updateSearch(updates: Record<string, string>) {
     const p = new URLSearchParams(location.search)
@@ -326,11 +326,11 @@ export default function App() {
                 <div className="chart" key={`${iban}/${from}/${to}`}>
                   <SankeyChart
                     data={view.data}
-                    onNodeClick={nodeKey => setActiveNode(nodeKey)}
+                    onNodeClick={node => setActiveNode(node)}
                   />
                   {activeNode && (
                     <TransactionListPanel
-                      nodeKey={activeNode}
+                      node={activeNode}
                       from={from}
                       to={to}
                       iban={iban}

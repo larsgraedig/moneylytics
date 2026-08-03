@@ -4,6 +4,7 @@ import com.moneylytics.api.application.port.input.BulkCategoryUpdate
 import com.moneylytics.api.application.port.input.BulkUpdateTransactionCategoryUseCase
 import com.moneylytics.api.application.port.input.GetBurnRateUseCase
 import com.moneylytics.api.application.port.input.GetCashflowUseCase
+import com.moneylytics.api.application.port.input.GetCategoriesUseCase
 import com.moneylytics.api.application.port.input.GetCategoryTotalsUseCase
 import com.moneylytics.api.application.port.input.GetTransactionsQuery
 import com.moneylytics.api.application.port.input.GetTransactionsUseCase
@@ -37,11 +38,13 @@ class TransactionQueryControllerListTest {
     private val getCategoryTotalsUseCase: GetCategoryTotalsUseCase = mock()
     private val updateTransactionCategoryUseCase: UpdateTransactionCategoryUseCase = mock()
     private val updateTransactionCommentUseCase: UpdateTransactionCommentUseCase = mock()
+    private val getCategoriesUseCase: GetCategoriesUseCase = mock()
     private val updateTransactionAccountingDateUseCase: UpdateTransactionAccountingDateUseCase = mock()
     private val bulkUpdateTransactionCategoryUseCase: BulkUpdateTransactionCategoryUseCase = mock()
     private val controller =
         TransactionQueryController(
             getTransactionsUseCase,
+            getCategoriesUseCase,
             getCashflowUseCase,
             getBurnRateUseCase,
             getCategoryTotalsUseCase,
