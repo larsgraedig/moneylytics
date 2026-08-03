@@ -42,13 +42,7 @@ const NODE_SPACING = 8
 const MAX_NODE_PX = 120
 const MARGINS = 64 // top + bottom margin
 
-function NodeTooltipContent({
-  node,
-  isDrillable,
-}: {
-  node: SankeyNodeDatum<DefaultNode, DefaultLink>
-  isDrillable: boolean
-}) {
+function NodeTooltipContent({ node }: { node: SankeyNodeDatum<DefaultNode, DefaultLink> }) {
   const { t } = useTranslation()
   return (
     <div style={{
@@ -74,9 +68,6 @@ function NodeTooltipContent({
       <span style={{ fontWeight: 600 }}>{node.label || '—'}</span>
       <span style={{ color: '#6b6b78' }}>{t('common.total')}</span>
       <span>{node.formattedValue}</span>
-      {isDrillable && (
-        <span style={{ color: '#6b6b78', marginLeft: 4 }}>{t('sankey.clickToDrillDown')}</span>
-      )}
     </div>
   )
 }
@@ -117,7 +108,7 @@ export default function SankeyChart({ data, onNodeClick }: Props) {
       const activeStyle = { ...(style as React.CSSProperties), pointerEvents: 'auto' } as typeof style
       // eslint-disable-next-line react-hooks/rules-of-hooks
       const { showTooltipFromEvent, hideTooltip } = useTooltip()
-      const tooltip = <NodeTooltipContent node={node} isDrillable={!!onNodeClick} />
+      const tooltip = <NodeTooltipContent node={node} />
       return (
         <Text
           {...textProps}
@@ -165,7 +156,7 @@ export default function SankeyChart({ data, onNodeClick }: Props) {
             onNodeClick(original)
           }
         }}
-        nodeTooltip={({ node }) => <NodeTooltipContent node={node} isDrillable={!!onNodeClick} />}
+        nodeTooltip={({ node }) => <NodeTooltipContent node={node} />}
         theme={nivoTheme}
       />
     </div>
