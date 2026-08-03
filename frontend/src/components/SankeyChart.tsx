@@ -1,5 +1,9 @@
+import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ResponsiveSankey } from '@nivo/sankey'
+import type { DefaultLink, DefaultNode, SankeyLabelComponent, SankeyNodeDatum } from '@nivo/sankey'
+import { Text } from '@nivo/text'
+import { useTooltip } from '@nivo/tooltip'
 import type { SankeyResponse } from '../api/transactions'
 
 const EUR = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' })
@@ -38,8 +42,46 @@ const NODE_SPACING = 8
 const MAX_NODE_PX = 120
 const MARGINS = 64 // top + bottom margin
 
-export default function SankeyChart({ data, onNodeClick }: Props) {
+function NodeTooltipContent({
+  node,
+  isDrillable,
+}: {
+  node: SankeyNodeDatum<DefaultNode, DefaultLink>
+  isDrillable: boolean
+}) {
   const { t } = useTranslation()
+  return (
+    <div style={{
+      background: '#16161a',
+      border: '1px solid #2a2a32',
+      borderRadius: 3,
+      padding: '7px 11px',
+      boxShadow: '0 4px 16px rgba(0,0,0,0.6)',
+      display: 'flex',
+      alignItems: 'center',
+      gap: 8,
+      color: '#e2e2e8',
+      fontSize: 12,
+      fontFamily: "ui-monospace, 'SF Mono', Consolas, monospace",
+    }}>
+      <span style={{
+        width: 10,
+        height: 10,
+        borderRadius: 2,
+        background: node.color,
+        flexShrink: 0,
+      }} />
+      <span style={{ fontWeight: 600 }}>{node.label || '—'}</span>
+      <span style={{ color: '#6b6b78' }}>{t('common.total')}</span>
+      <span>{node.formattedValue}</span>
+      {isDrillable && (
+        <span style={{ color: '#6b6b78', marginLeft: 4 }}>{t('sankey.clickToDrillDown')}</span>
+      )}
+    </div>
+  )
+}
+
+export default function SankeyChart({ data, onNodeClick }: Props) {
   const sankeyData = {
     nodes: data.nodes.map((_, i) => ({ id: String(i) })),
     links: data.links.map(link => ({
@@ -67,6 +109,32 @@ export default function SankeyChart({ data, onNodeClick }: Props) {
   const gapBudget   = (rightColCount - 1) * NODE_SPACING
   const chartHeight = Math.max(800, bodyBudget + gapBudget + MARGINS)
 
+  const clickableLabel = useCallback<SankeyLabelComponent<DefaultNode, DefaultLink>>(
+    ({ node, children, style, ...textProps }) => {
+      const original = data.nodes[Number(node.id)]
+      // nivo hard-codes pointerEvents:"none" in the style it passes here —
+      // override it so mouse events reach the text element.
+      const activeStyle = { ...(style as React.CSSProperties), pointerEvents: 'auto' } as typeof style
+      // eslint-disable-next-line react-hooks/rules-of-hooks
+      const { showTooltipFromEvent, hideTooltip } = useTooltip()
+      const tooltip = <NodeTooltipContent node={node} isDrillable={!!onNodeClick} />
+      return (
+        <Text
+          {...textProps}
+          style={activeStyle}
+          cursor={onNodeClick ? 'pointer' : 'default'}
+          onClick={onNodeClick && original ? () => onNodeClick(original) : undefined}
+          onMouseEnter={(e) => { showTooltipFromEvent(tooltip, e) }}
+          onMouseMove={(e) => { showTooltipFromEvent(tooltip, e) }}
+          onMouseLeave={() => { hideTooltip() }}
+        >
+          {children}
+        </Text>
+      )
+    },
+    [data.nodes, onNodeClick],
+  )
+
   return (
     <div style={{ width: '100%', height: chartHeight, cursor: onNodeClick ? 'default' : undefined }}>
       <ResponsiveSankey
@@ -88,6 +156,7 @@ export default function SankeyChart({ data, onNodeClick }: Props) {
         labelPosition="outside"
         labelPadding={14}
         labelTextColor={{ from: 'color', modifiers: [['brighter', 0.6]] }}
+        labelComponent={clickableLabel}
         valueFormat={v => EUR.format(Number(v))}
         onClick={item => {
           if (!('id' in item)) return
@@ -96,35 +165,7 @@ export default function SankeyChart({ data, onNodeClick }: Props) {
             onNodeClick(original)
           }
         }}
-        nodeTooltip={({ node }) => (
-          <div style={{
-            background: '#16161a',
-            border: '1px solid #2a2a32',
-            borderRadius: 3,
-            padding: '7px 11px',
-            boxShadow: '0 4px 16px rgba(0,0,0,0.6)',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-            color: '#e2e2e8',
-            fontSize: 12,
-            fontFamily: "ui-monospace, 'SF Mono', Consolas, monospace",
-          }}>
-            <span style={{
-              width: 10,
-              height: 10,
-              borderRadius: 2,
-              background: node.color,
-              flexShrink: 0,
-            }} />
-            <span style={{ fontWeight: 600 }}>{node.label || '—'}</span>
-            <span style={{ color: '#6b6b78' }}>{t('common.total')}</span>
-            <span>{node.formattedValue}</span>
-            {onNodeClick && (
-              <span style={{ color: '#6b6b78', marginLeft: 4 }}>{t('sankey.clickToDrillDown')}</span>
-            )}
-          </div>
-        )}
+        nodeTooltip={({ node }) => <NodeTooltipContent node={node} isDrillable={!!onNodeClick} />}
         theme={nivoTheme}
       />
     </div>
