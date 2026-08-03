@@ -13,6 +13,7 @@ data class GetCategoryTotalsQuery(
     val organizationId: Long,
     val accountIban: String? = null,
     val category: String? = null,
+    val categoryId: Long? = null,
 )
 
 data class CategoryTotalsResponse(
@@ -22,4 +23,5 @@ data class CategoryTotalsResponse(
 data class CategoryTotal(
     val name: String,
     val value: BigDecimal,
+    val categoryId: Long? = null,
 )

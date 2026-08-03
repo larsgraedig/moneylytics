@@ -161,6 +161,37 @@ class TransactionQueryService(
     }
 
     override fun getCategoryTotals(query: GetCategoryTotalsQuery): CategoryTotalsResponse {
+        if (query.categoryId != null) {
+            val allCategories = categoryRepository.findAll(query.organizationId)
+            val transactions =
+                getTransactions(
+                    GetTransactionsQuery(
+                        from = query.from,
+                        to = query.to,
+                        organizationId = query.organizationId,
+                        type = TransactionType.EXPENSES,
+                        accountIban = query.accountIban,
+                        categoryId = query.categoryId,
+                    ),
+                )
+            val directChildren = allCategories.filter { it.parentId == query.categoryId }
+            val items =
+                directChildren.mapNotNull { child ->
+                    val childId = child.id ?: return@mapNotNull null
+                    val childSubtreeIds = collectSubtreeIds(childId, allCategories)
+                    val childTxns = transactions.filter { it.categoryId in childSubtreeIds }
+                    if (childTxns.isEmpty()) return@mapNotNull null
+                    CategoryTotal(
+                        name = child.name,
+                        value = childTxns.sumOf { it.effectiveAmount().abs() },
+                        categoryId = childId,
+                    )
+                }
+            return CategoryTotalsResponse(items = items.sortedByDescending { it.value })
+        }
+
+        val allCategories = categoryRepository.findAll(query.organizationId)
+        val rootCatIds = allCategories.filter { it.parentId == null }.associate { it.name to it.id }
         val transactions =
             getTransactions(
                 GetTransactionsQuery(
@@ -176,7 +207,13 @@ class TransactionQueryService(
             if (query.category == null) {
                 transactions
                     .groupBy { it.category ?: "" }
-                    .map { (name, txns) -> CategoryTotal(name = name, value = txns.sumOf { it.effectiveAmount().abs() }) }
+                    .map { (name, txns) ->
+                        CategoryTotal(
+                            name = name,
+                            value = txns.sumOf { it.effectiveAmount().abs() },
+                            categoryId = rootCatIds[name],
+                        )
+                    }
             } else {
                 transactions
                     .groupBy { it.group ?: "" }

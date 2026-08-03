@@ -377,6 +377,7 @@ class TransactionQueryController(
         @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) to: LocalDate,
         @RequestParam(required = false) iban: String? = null,
         @RequestParam(required = false) category: String? = null,
+        @RequestParam(required = false) categoryId: Long? = null,
         @AuthenticationPrincipal principal: UserDetails,
         exchange: ServerWebExchange,
     ): CategoryTotalsResponse {
@@ -389,6 +390,7 @@ class TransactionQueryController(
                     organizationId = organizationId,
                     accountIban = iban,
                     category = category,
+                    categoryId = categoryId,
                 ),
             )
         }

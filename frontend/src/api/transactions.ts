@@ -349,6 +349,7 @@ export async function fetchBurnRate(
 export interface CategoryTotalItem {
   name: string
   value: number
+  categoryId?: number
 }
 
 export interface CategoryTotalsResponseDto {
@@ -360,10 +361,12 @@ export async function fetchCategoryTotals(
   to: string,
   iban?: string,
   category?: string,
+  categoryId?: number,
 ): Promise<CategoryTotalsResponseDto> {
   const params = new URLSearchParams({ from, to })
   if (iban) params.set('iban', iban)
-  if (category) params.set('category', category)
+  if (categoryId != null) params.set('categoryId', String(categoryId))
+  else if (category) params.set('category', category)
   const res = await fetchWithUser(`/transactions/category-totals?${params}`)
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
   return res.json() as Promise<CategoryTotalsResponseDto>
