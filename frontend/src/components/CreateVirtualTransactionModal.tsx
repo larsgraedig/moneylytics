@@ -21,12 +21,14 @@ export function CreateVirtualTransactionModal({
   defaultDate,
   onClose,
   onCreate,
+  onCategoryCreated,
 }: {
   accounts: Account[]
   categories: CategoryNode[]
   defaultDate: string
   onClose: () => void
   onCreate: () => void
+  onCategoryCreated?: (node: CategoryNode) => void
 }) {
   const { t } = useTranslation()
   const [accountIban, setAccountIban] = useState(accounts[0]?.iban ?? '')
@@ -131,6 +133,7 @@ export function CreateVirtualTransactionModal({
             value={categoryId}
             onChange={id => setCategoryId(id)}
             tree={categories}
+            onCategoryCreated={onCategoryCreated}
             placeholder={t('virtualTransaction.category')}
             className="ri-cat-input"
           />

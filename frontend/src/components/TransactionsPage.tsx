@@ -1554,6 +1554,7 @@ const groupColorMap = useMemo(() => {
           defaultDate={to}
           onClose={() => setCreateVirtualOpen(false)}
           onCreate={() => { setCreateVirtualOpen(false); doLoad() }}
+          onCategoryCreated={onCategoryCreated}
         />
       )}
       {splitModalTx && (
@@ -1562,6 +1563,7 @@ const groupColorMap = useMemo(() => {
           categories={categories}
           onClose={() => setSplitModalTx(null)}
           onSplit={() => { setSplitModalTx(null); doLoad() }}
+          onCategoryCreated={onCategoryCreated}
         />
       )}
       {mergeModalTxs && (

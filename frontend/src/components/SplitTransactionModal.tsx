@@ -17,11 +17,13 @@ export function SplitTransactionModal({
   categories,
   onClose,
   onSplit,
+  onCategoryCreated,
 }: {
   transaction: TransactionItem
   categories: CategoryNode[]
   onClose: () => void
   onSplit: () => void
+  onCategoryCreated?: (node: CategoryNode) => void
 }) {
   const { t } = useTranslation()
   const [entries, setEntries] = useState<SplitEntry[]>([
@@ -120,6 +122,7 @@ export function SplitTransactionModal({
                 value={entry.categoryId}
                 onChange={id => updateEntry(idx, 'categoryId', id)}
                 tree={categories}
+                onCategoryCreated={onCategoryCreated}
                 placeholder={t('transactions.split.category')}
                 className="ri-cat-input"
               />
