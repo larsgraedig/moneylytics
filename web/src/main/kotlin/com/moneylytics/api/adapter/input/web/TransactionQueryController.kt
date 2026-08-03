@@ -108,6 +108,7 @@ class TransactionQueryController(
         @RequestParam(required = false) uncategorized: Boolean = false,
         @RequestParam(required = false) excludeCollectionId: Long? = null,
         @RequestParam(required = false) excludeBudgetId: Long? = null,
+        @RequestParam(required = false) categoryId: Long? = null,
         @AuthenticationPrincipal principal: UserDetails,
         exchange: ServerWebExchange,
     ): TransactionListResponse {
@@ -127,6 +128,7 @@ class TransactionQueryController(
                         uncategorized = uncategorized,
                         excludeCollectionId = excludeCollectionId,
                         excludeBudgetId = excludeBudgetId,
+                        categoryId = categoryId,
                     ),
                 )
             }

@@ -120,9 +120,7 @@ export default function TransactionsPage({
   const [linkError, setLinkError] = useState<string | AllocationError | null>(null)
   const [groupModal, setGroupModal] = useState<{ groupId: number; group: LinkedGroupItem | null } | null>(null)
   const [highlightedId] = useState<number | null>(null)
-  const [filterCategory, setFilterCategory] = useState('')
-  const [filterSubcategory, setFilterSubcategory] = useState('')
-  const [filterGroup, setFilterGroup] = useState('')
+  const [filterCategoryId, setFilterCategoryId] = useState<number | null>(null)
   const [filterUncategorized, setFilterUncategorized] = useState(false)
   const [filterType, setFilterType] = useState<'all' | 'income' | 'expenses'>('all')
   const [bulkCategoryId, setBulkCategoryId] = useState<number | null>(null)
@@ -144,8 +142,6 @@ export default function TransactionsPage({
     () => new Map(accounts.map(a => [a.iban, a.name])),
     [accounts],
   )
-
-  const allCategoryNames = useMemo(() => categories.map(c => c.name), [categories])
 
   const colOrder = useMemo<ColumnKey[]>(() => {
     const order = (columnOrder ?? DEFAULT_COLUMN_ORDER) as ColumnKey[]
@@ -176,27 +172,17 @@ export default function TransactionsPage({
     saveColumnOrder(newOrder)
   }
 
-  function childNamesFor(categoryName: string): string[] {
-    return categories.find(c => c.name === categoryName)?.children.map(c => c.name) ?? []
-  }
-
-  function grandchildNamesFor(categoryName: string): string[] {
-    const cat = categories.find(c => c.name === categoryName)
-    if (!cat) return []
-    return cat.children.flatMap(c => c.children.map(gc => gc.name)).sort()
-  }
-
   function toApiType(t: 'all' | 'income' | 'expenses'): 'ALL' | 'INCOME' | 'EXPENSES' {
     if (t === 'income') return 'INCOME'
     if (t === 'expenses') return 'EXPENSES'
     return 'ALL'
   }
 
-  async function doLoad(category?: string, group?: string, uncategorized?: boolean, subcategory?: string, type?: 'ALL' | 'INCOME' | 'EXPENSES') {
+  async function doLoad(categoryId?: number | null, uncategorized?: boolean, type?: 'ALL' | 'INCOME' | 'EXPENSES') {
     setPage({ phase: 'loading' })
     setLinkingState(null)
     try {
-      const data = await fetchAllTransactions(from, to, iban, category, subcategory, uncategorized, group, type ?? toApiType(filterType))
+      const data = await fetchAllTransactions(from, to, iban, undefined, undefined, uncategorized, undefined, type ?? toApiType(filterType), undefined, undefined, categoryId ?? undefined)
       setRows(
         data.transactions.map(tx => ({
           original: tx,
@@ -254,9 +240,7 @@ export default function TransactionsPage({
   }
 
   function load() {
-    setFilterCategory('')
-    setFilterSubcategory('')
-    setFilterGroup('')
+    setFilterCategoryId(null)
     setFilterUncategorized(false)
     doLoad()
   }
@@ -1308,65 +1292,28 @@ const groupColorMap = useMemo(() => {
         >
           + {t('virtualTransaction.button')}
         </button>
-        {allCategoryNames.length > 0 && (
-          <select
-            className="account-select"
-            value={filterCategory}
-            disabled={filterUncategorized}
-            onChange={e => {
-              const cat = e.target.value
-              setFilterCategory(cat)
-              setFilterSubcategory('')
-              setFilterGroup('')
+        {categories.length > 0 && (
+          <CategoryPathInput
+            value={filterCategoryId}
+            onChange={id => {
+              setFilterCategoryId(id)
               setLinkingState(null)
-              if (page.phase === 'ready') doLoad(cat || undefined)
+              if (page.phase === 'ready') doLoad(id)
             }}
-          >
-            <option value="">{t('transactions.allCategories')}</option>
-            {allCategoryNames.map(c => <option key={c} value={c}>{c}</option>)}
-          </select>
-        )}
-        {filterCategory && childNamesFor(filterCategory).length > 0 && (
-          <select
+            tree={categories}
+            allowCreate={false}
+            placeholder={t('transactions.allCategories')}
             className="account-select"
-            value={filterSubcategory}
-            disabled={filterUncategorized}
-            onChange={e => {
-              const sub = e.target.value
-              setFilterSubcategory(sub)
-              setFilterGroup('')
-              setLinkingState(null)
-              if (page.phase === 'ready') doLoad(filterCategory, undefined, undefined, sub || undefined)
-            }}
-          >
-            <option value="">{t('transactions.allSubcategories')}</option>
-            {childNamesFor(filterCategory).map(s => <option key={s} value={s}>{s}</option>)}
-          </select>
-        )}
-        {filterCategory && grandchildNamesFor(filterCategory).length > 0 && (
-          <select
-            className="account-select"
-            value={filterGroup}
-            onChange={e => {
-              const grp = e.target.value
-              setFilterGroup(grp)
-              setLinkingState(null)
-              if (page.phase === 'ready') doLoad(filterCategory, grp || undefined, undefined, filterSubcategory || undefined)
-            }}
-          >
-            <option value="">{t('common.allGroups')}</option>
-            {grandchildNamesFor(filterCategory).map(g => <option key={g} value={g}>{g}</option>)}
-          </select>
+          />
         )}
         <button
           className={`load-btn${filterUncategorized ? ' load-btn--active' : ''}`}
           onClick={() => {
             const next = !filterUncategorized
             setFilterUncategorized(next)
-            setFilterCategory('')
-            setFilterSubcategory('')
+            setFilterCategoryId(null)
             setLinkingState(null)
-            if (page.phase === 'ready') doLoad(undefined, undefined, next || undefined)
+            if (page.phase === 'ready') doLoad(null, next || undefined)
           }}
         >
           {t('transactions.filterUncategorized')}
@@ -1378,7 +1325,7 @@ const groupColorMap = useMemo(() => {
               className={`txnv-type-btn${filterType === type ? ' txnv-type-btn--active' : ''}`}
               onClick={() => {
                 setFilterType(type)
-                doLoad(filterCategory || undefined, filterGroup || undefined, filterUncategorized || undefined, filterSubcategory || undefined, toApiType(type))
+                doLoad(filterCategoryId, filterUncategorized || undefined, toApiType(type))
               }}
             >
               {t(`transactions.filter${type.charAt(0).toUpperCase() + type.slice(1)}`)}

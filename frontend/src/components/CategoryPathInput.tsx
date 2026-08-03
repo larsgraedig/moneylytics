@@ -45,9 +45,10 @@ interface Props {
   onCategoryCreated?: (node: CategoryNode) => void
   placeholder?: string
   className?: string
+  allowCreate?: boolean
 }
 
-export function CategoryPathInput({ value, onChange, tree, onCategoryCreated, placeholder, className }: Props) {
+export function CategoryPathInput({ value, onChange, tree, onCategoryCreated, placeholder, className, allowCreate = true }: Props) {
   const flatItems = useMemo(() => flattenTree(tree), [tree])
   const committedId = useRef<number | null>(value)
   const [inputValue, setInputValue] = useState(() => pathStringForId(value, tree))
@@ -70,7 +71,7 @@ export function CategoryPathInput({ value, onChange, tree, onCategoryCreated, pl
       .map(item => ({ type: 'existing', id: item.id, displayName: item.pathStr, pathStr: item.pathStr, depth: 0 }))
 
     const exactMatch = flatItems.find(item => item.pathStr.toLowerCase() === ql)
-    if (!exactMatch) {
+    if (!exactMatch && allowCreate) {
       const path = q.split('>').map(s => s.trim()).filter(Boolean)
       if (path.length > 0) {
         return [...matches, { type: 'create', displayStr: path.join(' > '), path }]
@@ -120,15 +121,19 @@ export function CategoryPathInput({ value, onChange, tree, onCategoryCreated, pl
       return
     }
 
-    const path = q.split('>').map(s => s.trim()).filter(Boolean)
-    if (path.length > 0) {
-      try {
-        const created = await findOrCreateCategory(path)
-        committedId.current = created.id
-        setInputValue(path.join(' > '))
-        onCategoryCreated?.(created)
-        onChange(created.id)
-      } catch {
+    if (allowCreate) {
+      const path = q.split('>').map(s => s.trim()).filter(Boolean)
+      if (path.length > 0) {
+        try {
+          const created = await findOrCreateCategory(path)
+          committedId.current = created.id
+          setInputValue(path.join(' > '))
+          onCategoryCreated?.(created)
+          onChange(created.id)
+        } catch {
+          setInputValue(pathStringForId(committedId.current, tree))
+        }
+      } else {
         setInputValue(pathStringForId(committedId.current, tree))
       }
     } else {

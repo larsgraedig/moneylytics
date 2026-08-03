@@ -137,6 +137,7 @@ export async function fetchAllTransactions(
   type?: 'ALL' | 'INCOME' | 'EXPENSES',
   excludeCollectionId?: number,
   excludeBudgetId?: number,
+  categoryId?: number,
 ): Promise<TransactionListResponse> {
   const params = new URLSearchParams({ from, to })
   if (iban) params.set('iban', iban)
@@ -147,6 +148,7 @@ export async function fetchAllTransactions(
   if (type) params.set('type', type)
   if (excludeCollectionId != null) params.set('excludeCollectionId', String(excludeCollectionId))
   if (excludeBudgetId != null) params.set('excludeBudgetId', String(excludeBudgetId))
+  if (categoryId != null) params.set('categoryId', String(categoryId))
   const res = await fetchWithUser(`/transactions/list?${params}`)
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
   return res.json() as Promise<TransactionListResponse>

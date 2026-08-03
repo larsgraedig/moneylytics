@@ -2,6 +2,7 @@ package com.moneylytics.api.application.service
 
 import com.moneylytics.api.application.port.input.GetCategoryTotalsQuery
 import com.moneylytics.api.application.port.output.BudgetRepository
+import com.moneylytics.api.application.port.output.CategoryRepository
 import com.moneylytics.api.application.port.output.TransactionRepository
 import com.moneylytics.api.domain.Transaction
 import org.assertj.core.api.Assertions.assertThat
@@ -14,7 +15,8 @@ import java.time.LocalDate
 class CategoryTotalsServiceTest {
     private val transactionRepository: TransactionRepository = mock()
     private val budgetRepository: BudgetRepository = mock()
-    private val service = TransactionQueryService(transactionRepository, budgetRepository)
+    private val categoryRepository: CategoryRepository = mock()
+    private val service = TransactionQueryService(transactionRepository, budgetRepository, categoryRepository)
 
     private val organizationId = 1L
     private val from = LocalDate.of(2025, 1, 1)

@@ -24,8 +24,10 @@ import com.moneylytics.api.application.port.input.UpdateTransactionCommentUseCas
 import com.moneylytics.api.application.port.input.bucketKey
 import com.moneylytics.api.application.port.input.generateBuckets
 import com.moneylytics.api.application.port.output.BudgetRepository
+import com.moneylytics.api.application.port.output.CategoryRepository
 import com.moneylytics.api.application.port.output.CategoryUpdateEntry
 import com.moneylytics.api.application.port.output.TransactionRepository
+import com.moneylytics.api.domain.Category
 import com.moneylytics.api.domain.Transaction
 import org.springframework.stereotype.Service
 import java.math.BigDecimal
@@ -37,6 +39,7 @@ import java.time.temporal.ChronoUnit
 class TransactionQueryService(
     private val transactionRepository: TransactionRepository,
     private val budgetRepository: BudgetRepository,
+    private val categoryRepository: CategoryRepository,
 ) : GetTransactionsUseCase,
     GetCashflowUseCase,
     GetBurnRateUseCase,
@@ -60,6 +63,12 @@ class TransactionQueryService(
             .let { list -> query.subcategory?.let { sub -> list.filter { it.subcategory == sub } } ?: list }
             .let { list -> query.group?.let { grp -> list.filter { it.group == grp } } ?: list }
             .let { list ->
+                query.categoryId?.let { rootId ->
+                    val all = categoryRepository.findAll(query.organizationId)
+                    val subtree = collectSubtreeIds(rootId, all)
+                    list.filter { it.categoryId in subtree }
+                } ?: list
+            }.let { list ->
                 query.excludeCollectionId?.let { collectionId ->
                     val assigned = transactionRepository.findAssignedTransactionIdsByCollectionId(collectionId)
                     list.filter { it.id !in assigned }
@@ -210,4 +219,20 @@ class TransactionQueryService(
             updates.map { CategoryUpdateEntry(it.id, it.categoryId) },
             organizationId,
         )
+
+    private fun collectSubtreeIds(
+        rootId: Long,
+        all: List<Category>,
+    ): Set<Long> {
+        val childrenByParent = all.groupBy { it.parentId }
+        val result = mutableSetOf<Long>()
+        val queue = ArrayDeque<Long>()
+        queue.add(rootId)
+        while (queue.isNotEmpty()) {
+            val id = queue.removeFirst()
+            result.add(id)
+            childrenByParent[id]?.forEach { queue.add(requireNotNull(it.id)) }
+        }
+        return result
+    }
 }
