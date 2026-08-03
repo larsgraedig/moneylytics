@@ -1555,6 +1555,17 @@ body {
 
 .ri-cat-input::placeholder { color: var(--text-dim); }
 
+.ri-cell-category {
+  min-width: 200px;
+  max-width: 320px;
+  padding: 2px 6px !important;
+}
+
+.ri-category-input {
+  width: 100%;
+  min-width: 180px;
+}
+
 /* ── category path custom dropdown ──────── */
 
 .cat-path-input-wrapper {
