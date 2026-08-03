@@ -32,6 +32,7 @@ data class TrendSeriesEntry(
     val label: String?,
     val data: List<BigDecimal>,
     val role: SeriesRole,
+    val categoryId: Long? = null,
 )
 
 data class SankeyResponse(

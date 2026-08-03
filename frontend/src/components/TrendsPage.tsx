@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { ResponsiveLine } from '@nivo/line'
 import type { CategoryNode } from '../api/rawImport'
+import type { SankeyNode } from '../api/transactions'
 import {
   fetchTrends,
   type Granularity,
@@ -9,6 +10,7 @@ import {
   type SeriesRole,
   type TrendsResponse,
 } from '../api/trends'
+import { CategoryPathInput } from './CategoryPathInput'
 import TransactionListPanel from './TransactionListPanel'
 import { fetchThresholds, type Threshold, type ThresholdPeriod as TThresholdPeriod } from '../api/thresholds'
 
@@ -144,18 +146,6 @@ function makeLineLayer(roles: Map<string, SeriesRole>) {
   }
 }
 
-const SEVERITY_COLORS = { notice: '#fbbf24', warning: '#f97316', critical: '#ef4444' }
-const DAYS_PER_PERIOD: Record<TThresholdPeriod, number> = {
-  WEEKLY: 7, MONTHLY: 365.25 / 12, QUARTERLY: 365.25 / 4, YEARLY: 365.25,
-}
-const DAYS_PER_BUCKET: Record<Granularity, number> = {
-  DAILY: 1, WEEKLY: 7, MONTHLY: 365.25 / 12, QUARTERLY: 365.25 / 4,
-  BI_YEARLY: 365.25 / 2, YEARLY: 365.25,
-}
-
-function normalizeThreshold(amount: number, period: TThresholdPeriod, granularity: Granularity): number {
-  return (amount / DAYS_PER_PERIOD[period]) * DAYS_PER_BUCKET[granularity]
-}
 
 interface ThresholdLine {
   value: number
@@ -212,6 +202,16 @@ function makeThresholdLayer(lines: ThresholdLine[], setTooltip: TooltipSetter) {
   }
 }
 
+function findPathById(id: number, nodes: CategoryNode[], prefix: string[] = []): string[] | null {
+  for (const node of nodes) {
+    const path = [...prefix, node.name]
+    if (node.id === id) return path
+    const found = findPathById(id, node.children, path)
+    if (found) return found
+  }
+  return null
+}
+
 type ViewState =
   | { phase: 'idle' }
   | { phase: 'loading' }
@@ -221,9 +221,9 @@ type ViewState =
 export default function TrendsPage({ from, to, iban, categories }: { from: string; to: string; iban?: string; categories: CategoryNode[] }) {
   const { t } = useTranslation()
   const [granularity, setGranularity] = useState<Granularity>('MONTHLY')
-  const [series, setSeries] = useState<SeriesConfig[]>([{ id: newId(), category: '', subcategory: '' }])
+  const [series, setSeries] = useState<SeriesConfig[]>([{ id: newId(), categoryId: null }])
   const [view, setView] = useState<ViewState>({ phase: 'idle' })
-  const [drilldown, setDrilldown] = useState<{ nodeKey: string; from: string; to: string } | null>(null)
+  const [drilldown, setDrilldown] = useState<{ node: SankeyNode; from: string; to: string } | null>(null)
   const [thresholds, setThresholds] = useState<Threshold[]>([])
   const [hoveredThreshold, setHoveredThreshold] = useState<ThresholdTooltipData | null>(null)
 
@@ -231,16 +231,14 @@ export default function TrendsPage({ from, to, iban, categories }: { from: strin
     fetchThresholds().then(setThresholds).catch(() => {})
   }, [])
 
-  const addSeries = () => setSeries(prev => [...prev, { id: newId(), category: '', subcategory: '' }])
+  const addSeries = () => setSeries(prev => [...prev, { id: newId(), categoryId: null }])
   const removeSeries = (id: string) => setSeries(prev => prev.filter(s => s.id !== id))
-  const updateSeries = (id: string, field: 'category' | 'subcategory', value: string) => {
-    setSeries(prev => prev.map(s =>
-      s.id !== id ? s : { ...s, [field]: value, ...(field === 'category' ? { subcategory: '' } : {}) },
-    ))
+  const setCategoryId = (id: string, categoryId: number | null) => {
+    setSeries(prev => prev.map(s => s.id !== id ? s : { ...s, categoryId }))
   }
 
   const load = async () => {
-    const active = series.filter(s => s.category.trim())
+    const active = series.filter(s => s.categoryId != null)
     if (active.length === 0) return
     setView({ phase: 'loading' })
     try {
@@ -251,43 +249,31 @@ export default function TrendsPage({ from, to, iban, categories }: { from: strin
   }
 
   // Flatten groups → nivo line data, all entries in a group share the same color.
-  const { lineData, seriesRoles } = useMemo(() => {
-    if (view.phase !== 'ready') return { lineData: [], seriesRoles: new Map<string, SeriesRole>() }
+  const { lineData, seriesRoles, seriesCategoryIds } = useMemo(() => {
+    if (view.phase !== 'ready') return {
+      lineData: [],
+      seriesRoles: new Map<string, SeriesRole>(),
+      seriesCategoryIds: new Map<string, number>(),
+    }
     const roles = new Map<string, SeriesRole>()
+    const catIds = new Map<string, number>()
     const data = view.data.groups.flatMap((group, i) => {
       const color = COLORS[i % COLORS.length]
       const entries = [group.main, ...group.subs]
       return entries.map(entry => {
-        const id = seriesId(i, entry.label)
+        const id = seriesId(i, entry.label ?? '')
         roles.set(id, entry.role)
+        if (entry.categoryId != null) catIds.set(id, entry.categoryId)
         return { id, color, role: entry.role, data: view.data.buckets.map((b, j) => ({ x: b, y: entry.data[j] ?? 0 })) }
       })
     })
-    return { lineData: data, seriesRoles: roles }
+    return { lineData: data, seriesRoles: roles, seriesCategoryIds: catIds }
   }, [view])
 
   const CustomLineLayer = useMemo(() => makeLineLayer(seriesRoles), [seriesRoles])
 
-  const thresholdLines = useMemo<ThresholdLine[]>(() => {
-    if (view.phase !== 'ready') return []
-    const gran = view.data.granularity
-    const lines: ThresholdLine[] = []
-    for (const s of series) {
-      if (!s.category.trim()) continue
-      for (const t of thresholds) {
-        if (t.category !== s.category) continue
-        const subcatMatch = t.subcategory == null
-          ? !s.subcategory  // category-level threshold shown when no subcategory is selected
-          : t.subcategory === s.subcategory
-        if (!subcatMatch) continue
-        const scope = t.subcategory ?? t.category
-        if (t.notice != null)   lines.push({ value: normalizeThreshold(t.notice,   t.period, gran), color: SEVERITY_COLORS.notice,   label: `${scope} notice`,   baselineAmount: t.notice,   period: t.period, granularity: gran })
-        if (t.warning != null)  lines.push({ value: normalizeThreshold(t.warning,  t.period, gran), color: SEVERITY_COLORS.warning,  label: `${scope} warning`,  baselineAmount: t.warning,  period: t.period, granularity: gran })
-        if (t.critical != null) lines.push({ value: normalizeThreshold(t.critical, t.period, gran), color: SEVERITY_COLORS.critical, label: `${scope} critical`, baselineAmount: t.critical, period: t.period, granularity: gran })
-      }
-    }
-    return lines
-  }, [view, series, thresholds])
+  // Threshold matching is string-name-based and not yet wired to the ID-based series system.
+  const thresholdLines = useMemo<ThresholdLine[]>(() => [], [thresholds])
 
   // setHoveredThreshold is a stable useState setter — intentionally omitted from deps
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -327,46 +313,30 @@ export default function TrendsPage({ from, to, iban, categories }: { from: strin
         <button
           className="load-btn"
           onClick={load}
-          disabled={view.phase === 'loading' || series.every(s => !s.category.trim())}
+          disabled={view.phase === 'loading' || series.every(s => s.categoryId == null)}
         >
           {view.phase === 'loading' ? '…' : t('common.load')}
         </button>
       </div>
 
       <div className="tr-series-list">
-        {series.map((s, i) => {
-          const subcatOptions = categories.find(c => c.name === s.category)?.children.map(sub => sub.name) ?? []
-          return (
-            <div key={s.id} className="tr-series-row">
-              <div className="tr-series-dot" style={{ background: COLORS[i % COLORS.length] }} />
-              <input
-                className="tr-series-input"
-                list="tr-cat-list"
-                placeholder={t('trends.category')}
-                value={s.category}
-                onChange={e => updateSeries(s.id, 'category', e.target.value)}
-              />
-              <input
-                className="tr-series-input tr-series-subcat"
-                list={`tr-sub-list-${s.id}`}
-                placeholder={t('trends.subcategory')}
-                value={s.subcategory}
-                onChange={e => updateSeries(s.id, 'subcategory', e.target.value)}
-              />
-              <datalist id={`tr-sub-list-${s.id}`}>
-                {subcatOptions.map(sub => <option key={sub} value={sub} />)}
-              </datalist>
-              {series.length > 1 && (
-                <button className="tr-remove-btn" onClick={() => removeSeries(s.id)} title="Remove">×</button>
-              )}
-            </div>
-          )
-        })}
+        {series.map((s, i) => (
+          <div key={s.id} className="tr-series-row">
+            <div className="tr-series-dot" style={{ background: COLORS[i % COLORS.length] }} />
+            <CategoryPathInput
+              value={s.categoryId}
+              onChange={categoryId => setCategoryId(s.id, categoryId)}
+              tree={categories}
+              allowCreate={false}
+              placeholder={t('trends.category')}
+              className="tr-series-input tr-series-cat-path"
+            />
+            {series.length > 1 && (
+              <button className="tr-remove-btn" onClick={() => removeSeries(s.id)} title="Remove">×</button>
+            )}
+          </div>
+        ))}
         <button className="tr-add-btn" onClick={addSeries}>{t('trends.addSeries')}</button>
-
-        <datalist id="tr-cat-list">
-          {categories.map(c => <option key={c.name} value={c.name} />)}
-        </datalist>
       </div>
 
       <div className="tr-chart-area" style={view.phase === 'ready' && lineData.length > 0 ? { cursor: 'pointer' } : undefined}>
@@ -403,17 +373,21 @@ export default function TrendsPage({ from, to, iban, categories }: { from: strin
             layers={['grid', 'axes', CustomLineLayer, 'crosshair', 'mesh', ThresholdLayer]}
             onClick={(point: any) => {
               const id = String(point.seriesId)
-              const nullIdx = id.indexOf('\x00')
-              const groupIdx = Number(id.slice(0, nullIdx))
-              const label = id.slice(nullIdx + 1)
-              const role = seriesRoles.get(id)
-              const seriesConfig = series[groupIdx]
-              if (!seriesConfig) return
-              const category = seriesConfig.category
-              const subcategory = (role === 'SUB_SELECTED' || role === 'SUB_CONTEXT') ? label : undefined
-              const nodeKey = subcategory ? `sub:${category}:${subcategory}` : `cat:${category}`
+              const categoryId = seriesCategoryIds.get(id)
+              if (categoryId == null) return
+              const namePath = findPathById(categoryId, categories) ?? [seriesLabel(id)]
               const { from: bucketFrom, to: bucketTo } = bucketDateRange(String(point.data.x), view.data.granularity)
-              setDrilldown({ nodeKey, from: bucketFrom, to: bucketTo })
+              setDrilldown({
+                node: {
+                  name: namePath[namePath.length - 1] ?? '',
+                  value: 0,
+                  nodeKey: '',
+                  categoryId,
+                  namePath,
+                },
+                from: bucketFrom,
+                to: bucketTo,
+              })
             }}
             tooltip={({ point }) => {
               const label = seriesLabel(String(point.seriesId))
@@ -462,7 +436,7 @@ export default function TrendsPage({ from, to, iban, categories }: { from: strin
 
       {drilldown && (
         <TransactionListPanel
-          nodeKey={drilldown.nodeKey}
+          node={drilldown.node}
           from={drilldown.from}
           to={drilldown.to}
           onClose={() => setDrilldown(null)}
