@@ -43,8 +43,8 @@ class ThresholdControllerTest {
     private val stubThreshold =
         Threshold(
             id = 1L,
-            category = "Test",
-            subcategory = null,
+            categoryId = 10L,
+            categoryPath = listOf("Lebensmittel"),
             period = ThresholdPeriod.MONTHLY,
             notice = null,
             warning = null,
@@ -52,13 +52,12 @@ class ThresholdControllerTest {
         )
 
     @Test
-    fun `should convert blank subcategory to null in toDomain`() =
+    fun `should forward categoryId to saveThreshold use case`() =
         runTest {
             whenever(saveThresholdUseCase.saveThreshold(any(), any())).thenReturn(stubThreshold)
             val request =
                 SaveThresholdRequest(
-                    category = "Lebensmittel",
-                    subcategory = "  ",
+                    categoryId = 42L,
                     period = ThresholdPeriod.MONTHLY,
                     notice = null,
                     warning = null,
@@ -71,65 +70,17 @@ class ThresholdControllerTest {
             org.mockito.kotlin
                 .verify(saveThresholdUseCase)
                 .saveThreshold(captor.capture(), any())
-            assertThat(captor.firstValue.subcategory).isNull()
+            assertThat(captor.firstValue.categoryId).isEqualTo(42L)
         }
 
     @Test
-    fun `should convert blank group to null in toDomain`() =
-        runTest {
-            whenever(saveThresholdUseCase.saveThreshold(any(), any())).thenReturn(stubThreshold)
-            val request =
-                SaveThresholdRequest(
-                    category = "Transport",
-                    subcategory = null,
-                    group = "  ",
-                    period = ThresholdPeriod.MONTHLY,
-                    notice = null,
-                    warning = null,
-                    critical = BigDecimal("50"),
-                )
-
-            controller.saveThreshold(request, principal, exchange)
-
-            val captor = argumentCaptor<Threshold>()
-            org.mockito.kotlin
-                .verify(saveThresholdUseCase)
-                .saveThreshold(captor.capture(), any())
-            assertThat(captor.firstValue.group).isNull()
-        }
-
-    @Test
-    fun `should preserve non-blank subcategory in toDomain`() =
-        runTest {
-            whenever(saveThresholdUseCase.saveThreshold(any(), any())).thenReturn(stubThreshold)
-            val request =
-                SaveThresholdRequest(
-                    category = "Lebensmittel",
-                    subcategory = "Supermarkt",
-                    period = ThresholdPeriod.MONTHLY,
-                    notice = null,
-                    warning = null,
-                    critical = BigDecimal("100"),
-                )
-
-            controller.saveThreshold(request, principal, exchange)
-
-            val captor = argumentCaptor<Threshold>()
-            org.mockito.kotlin
-                .verify(saveThresholdUseCase)
-                .saveThreshold(captor.capture(), any())
-            assertThat(captor.firstValue.subcategory).isEqualTo("Supermarkt")
-        }
-
-    @Test
-    fun `should map threshold entity to DTO including all levels`() =
+    fun `should map threshold entity to DTO including categoryPath`() =
         runTest {
             val threshold =
                 Threshold(
                     id = 5L,
-                    category = "Lebensmittel",
-                    subcategory = "Supermarkt",
-                    group = "Konsum",
+                    categoryId = 99L,
+                    categoryPath = listOf("Lebensmittel", "Supermarkt"),
                     period = ThresholdPeriod.WEEKLY,
                     notice = BigDecimal("80"),
                     warning = BigDecimal("120"),
@@ -142,9 +93,8 @@ class ThresholdControllerTest {
             assertThat(response.thresholds).hasSize(1)
             val dto = response.thresholds[0]
             assertThat(dto.id).isEqualTo(5L)
-            assertThat(dto.category).isEqualTo("Lebensmittel")
-            assertThat(dto.subcategory).isEqualTo("Supermarkt")
-            assertThat(dto.group).isEqualTo("Konsum")
+            assertThat(dto.categoryId).isEqualTo(99L)
+            assertThat(dto.categoryPath).containsExactly("Lebensmittel", "Supermarkt")
             assertThat(dto.period).isEqualTo(ThresholdPeriod.WEEKLY)
             assertThat(dto.notice).isEqualByComparingTo(BigDecimal("80"))
             assertThat(dto.warning).isEqualByComparingTo(BigDecimal("120"))

@@ -2207,6 +2207,36 @@ body {
 }
 .bgt-spent-btn:hover { color: var(--accent); text-decoration-color: var(--accent-dim); }
 
+.bgt-td-path {
+  min-width: 220px;
+  max-width: 400px;
+}
+
+.bgt-row--new .bgt-td-path {
+  padding: 4px 8px;
+}
+
+.bgt-category-input {
+  width: 100%;
+  min-width: 180px;
+}
+
+.bgt-add-btn {
+  margin-top: 12px;
+  background: none;
+  border: 1px dashed var(--border);
+  color: var(--text-muted);
+  font-size: 12px;
+  padding: 6px 14px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+.bgt-add-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
 /* ── drilldown modal ─────────────────────── */
 
 .bgt-dd-backdrop {

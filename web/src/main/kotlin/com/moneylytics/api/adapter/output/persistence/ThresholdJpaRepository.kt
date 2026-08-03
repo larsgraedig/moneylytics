@@ -7,18 +7,11 @@ import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.query.Param
 
 interface ThresholdJpaRepository : JpaRepository<ThresholdEntity, Long> {
-    fun findByOrganizationId(organizationId: Long): List<ThresholdEntity>
+    fun findByOrganizationIdAndCategoryEntityIsNotNull(organizationId: Long): List<ThresholdEntity>
 
-    fun findByOrganizationIdAndCategoryAndSubcategoryIsNullAndPeriod(
+    fun findByOrganizationIdAndCategoryEntityIdAndPeriod(
         organizationId: Long,
-        category: String,
-        period: ThresholdPeriod,
-    ): ThresholdEntity?
-
-    fun findByOrganizationIdAndCategoryAndSubcategoryAndPeriod(
-        organizationId: Long,
-        category: String,
-        subcategory: String,
+        categoryEntityId: Long,
         period: ThresholdPeriod,
     ): ThresholdEntity?
 

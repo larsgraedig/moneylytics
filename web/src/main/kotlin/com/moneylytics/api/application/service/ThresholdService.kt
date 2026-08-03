@@ -7,6 +7,7 @@ import com.moneylytics.api.application.port.input.GetThresholdsUseCase
 import com.moneylytics.api.application.port.input.SaveThresholdUseCase
 import com.moneylytics.api.application.port.input.ThresholdStatusItem
 import com.moneylytics.api.application.port.input.ThresholdStatusResponse
+import com.moneylytics.api.application.port.output.CategoryRepository
 import com.moneylytics.api.application.port.output.ThresholdRepository
 import com.moneylytics.api.application.port.output.TransactionRepository
 import com.moneylytics.api.domain.Threshold
@@ -23,6 +24,7 @@ import kotlin.math.ln
 class ThresholdService(
     private val thresholdRepository: ThresholdRepository,
     private val transactionRepository: TransactionRepository,
+    private val categoryRepository: CategoryRepository,
 ) : GetThresholdsUseCase,
     SaveThresholdUseCase,
     DeleteThresholdUseCase,
@@ -61,21 +63,28 @@ class ThresholdService(
                 query.accountIban,
             )
 
-        val spendingMap = mutableMapOf<Pair<String, String?>, BigDecimal>()
+        // Build parent map for ancestor-walk: categoryId → parentId
+        val allCategories = categoryRepository.findAll(query.organizationId)
+        val parentMap: Map<Long, Long?> = allCategories.associate { it.id!! to it.parentId }
+
+        // Accumulate spending into each category and all its ancestors
+        val spendingByCategory = mutableMapOf<Long, BigDecimal>()
         for (tx in transactions) {
-            val cat = tx.category ?: continue
+            val catId = tx.categoryId ?: continue
             val eff = tx.effectiveAmount().abs()
-            spendingMap.merge(cat to null, eff, BigDecimal::add)
-            val sub = tx.subcategory
-            if (sub != null) spendingMap.merge(cat to sub, eff, BigDecimal::add)
+            var id: Long? = catId
+            while (id != null) {
+                spendingByCategory.merge(id, eff, BigDecimal::add)
+                id = parentMap[id]
+            }
         }
 
         val items =
             thresholds
-                .groupBy { it.category to it.subcategory }
-                .mapNotNull { (key, keyThresholds) ->
-                    val best = pickBest(keyThresholds, query.from, query.to) ?: return@mapNotNull null
-                    val spending = spendingMap[key] ?: BigDecimal.ZERO
+                .groupBy { it.categoryId }
+                .mapNotNull { (categoryId, categoryThresholds) ->
+                    val best = pickBest(categoryThresholds, query.from, query.to) ?: return@mapNotNull null
+                    val spending = spendingByCategory[categoryId] ?: BigDecimal.ZERO
                     buildStatusItem(best, spending, query.from, query.to)
                 }
 
@@ -148,9 +157,8 @@ class ThresholdService(
 
         return ThresholdStatusItem(
             thresholdId = threshold.id,
-            category = threshold.category,
-            subcategory = threshold.subcategory,
-            group = threshold.group,
+            categoryId = threshold.categoryId,
+            categoryPath = threshold.categoryPath,
             period = threshold.period,
             notice = threshold.notice,
             warning = threshold.warning,

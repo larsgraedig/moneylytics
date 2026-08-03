@@ -14,54 +14,67 @@ import java.math.BigDecimal
 class ThresholdPersistenceAdapterTest {
     private val jpaRepository: ThresholdJpaRepository = mock()
     private val organizationJpaRepository: OrganizationJpaRepository = mock()
-    private val adapter = ThresholdPersistenceAdapter(jpaRepository, organizationJpaRepository)
+    private val categoryJpaRepository: CategoryJpaRepository = mock()
+    private val adapter = ThresholdPersistenceAdapter(jpaRepository, organizationJpaRepository, categoryJpaRepository)
 
     private val organizationId = 1L
+    private val categoryId = 10L
     private val organizationEntity = OrganizationEntity(name = "Test Org", id = organizationId)
+    private val parentCategoryEntity =
+        CategoryEntity(name = "Lebensmittel", parent = null, organization = organizationEntity, id = categoryId)
+    private val childCategoryEntity =
+        CategoryEntity(name = "Supermarkt", parent = parentCategoryEntity, organization = organizationEntity, id = 11L)
 
     @Test
-    fun `should map entity to domain threshold`() {
+    fun `should map entity with category to domain threshold including path`() {
         val entity =
             ThresholdEntity(
                 organization = organizationEntity,
-                category = "Lebensmittel",
-                subcategory = "Konsum",
-                groupName = "Supermarkt",
+                categoryEntity = childCategoryEntity,
                 period = ThresholdPeriod.MONTHLY,
                 notice = BigDecimal("80"),
                 warning = BigDecimal("120"),
                 critical = BigDecimal("200"),
                 id = 1L,
             )
-        whenever(jpaRepository.findByOrganizationId(organizationId)).thenReturn(listOf(entity))
+        whenever(jpaRepository.findByOrganizationIdAndCategoryEntityIsNotNull(organizationId)).thenReturn(listOf(entity))
 
         val result = adapter.findAllByOrganizationId(organizationId)
 
         assertThat(result).hasSize(1)
         val t = result[0]
         assertThat(t.id).isEqualTo(1L)
-        assertThat(t.category).isEqualTo("Lebensmittel")
-        assertThat(t.subcategory).isEqualTo("Konsum")
-        assertThat(t.group).isEqualTo("Supermarkt")
+        assertThat(t.categoryId).isEqualTo(11L)
+        assertThat(t.categoryPath).containsExactly("Lebensmittel", "Supermarkt")
         assertThat(t.period).isEqualTo(ThresholdPeriod.MONTHLY)
         assertThat(t.notice).isEqualByComparingTo(BigDecimal("80"))
         assertThat(t.critical).isEqualByComparingTo(BigDecimal("200"))
     }
 
     @Test
-    fun `should create new threshold when none exists for category`() {
+    fun `should exclude entities without category_id from results`() {
+        whenever(jpaRepository.findByOrganizationIdAndCategoryEntityIsNotNull(organizationId)).thenReturn(emptyList())
+
+        val result = adapter.findAllByOrganizationId(organizationId)
+
+        assertThat(result).isEmpty()
+    }
+
+    @Test
+    fun `should create new threshold when none exists for category and period`() {
         whenever(
-            jpaRepository.findByOrganizationIdAndCategoryAndSubcategoryIsNullAndPeriod(
+            jpaRepository.findByOrganizationIdAndCategoryEntityIdAndPeriod(
                 organizationId,
-                "Transport",
+                categoryId,
                 ThresholdPeriod.MONTHLY,
             ),
         ).thenReturn(null)
         whenever(organizationJpaRepository.getReferenceById(organizationId)).thenReturn(organizationEntity)
+        whenever(categoryJpaRepository.getReferenceById(categoryId)).thenReturn(parentCategoryEntity)
         val saved =
             ThresholdEntity(
                 organization = organizationEntity,
-                category = "Transport",
+                categoryEntity = parentCategoryEntity,
                 period = ThresholdPeriod.MONTHLY,
                 critical = BigDecimal("100"),
                 id = 5L,
@@ -71,8 +84,8 @@ class ThresholdPersistenceAdapterTest {
         val threshold =
             Threshold(
                 id = 0L,
-                category = "Transport",
-                subcategory = null,
+                categoryId = categoryId,
+                categoryPath = listOf("Lebensmittel"),
                 period = ThresholdPeriod.MONTHLY,
                 notice = null,
                 warning = null,
@@ -85,19 +98,19 @@ class ThresholdPersistenceAdapterTest {
     }
 
     @Test
-    fun `should update existing threshold when found by category and null subcategory`() {
+    fun `should update existing threshold when found by categoryId and period`() {
         val existing =
             ThresholdEntity(
                 organization = organizationEntity,
-                category = "Transport",
+                categoryEntity = parentCategoryEntity,
                 period = ThresholdPeriod.MONTHLY,
                 notice = BigDecimal("50"),
                 id = 5L,
             )
         whenever(
-            jpaRepository.findByOrganizationIdAndCategoryAndSubcategoryIsNullAndPeriod(
+            jpaRepository.findByOrganizationIdAndCategoryEntityIdAndPeriod(
                 organizationId,
-                "Transport",
+                categoryId,
                 ThresholdPeriod.MONTHLY,
             ),
         ).thenReturn(existing)
@@ -106,8 +119,8 @@ class ThresholdPersistenceAdapterTest {
         val threshold =
             Threshold(
                 id = 5L,
-                category = "Transport",
-                subcategory = null,
+                categoryId = categoryId,
+                categoryPath = listOf("Lebensmittel"),
                 period = ThresholdPeriod.MONTHLY,
                 notice = BigDecimal("80"),
                 warning = null,
@@ -115,45 +128,8 @@ class ThresholdPersistenceAdapterTest {
             )
         adapter.upsert(threshold, organizationId)
 
-        verify(jpaRepository, never()).save(
-            ThresholdEntity(organization = organizationEntity, category = "Transport", period = ThresholdPeriod.MONTHLY),
-        )
+        verify(categoryJpaRepository, never()).getReferenceById(any())
         assertThat(existing.notice).isEqualByComparingTo(BigDecimal("80"))
-    }
-
-    @Test
-    fun `should update existing threshold when found by category and subcategory`() {
-        val existing =
-            ThresholdEntity(
-                organization = organizationEntity,
-                category = "Lebensmittel",
-                subcategory = "Supermarkt",
-                period = ThresholdPeriod.MONTHLY,
-                id = 7L,
-            )
-        whenever(
-            jpaRepository.findByOrganizationIdAndCategoryAndSubcategoryAndPeriod(
-                organizationId,
-                "Lebensmittel",
-                "Supermarkt",
-                ThresholdPeriod.MONTHLY,
-            ),
-        ).thenReturn(existing)
-        whenever(jpaRepository.save(existing)).thenReturn(existing)
-
-        val threshold =
-            Threshold(
-                id = 7L,
-                category = "Lebensmittel",
-                subcategory = "Supermarkt",
-                period = ThresholdPeriod.MONTHLY,
-                notice = null,
-                warning = BigDecimal("90"),
-                critical = null,
-            )
-        adapter.upsert(threshold, organizationId)
-
-        assertThat(existing.warning).isEqualByComparingTo(BigDecimal("90"))
     }
 
     @Test

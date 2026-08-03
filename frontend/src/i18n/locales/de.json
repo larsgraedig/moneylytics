@@ -266,7 +266,10 @@
       "spending": "Ausgaben",
       "progress": "Fortschritt"
     },
-    "addThreshold": "Limit hinzufügen",
+    "statusLoaded": "Ausgaben geladen · {{from}} → {{to}}",
+    "selectCategory": "Kategorie wählen …",
+    "categoryRequired": "Bitte eine Kategorie auswählen.",
+    "addThreshold": "Neues Limit",
     "editThreshold": "Limit bearbeiten",
     "deleteConfirm": "Limit wirklich löschen?",
     "noThresholds": "Noch keine Limits konfiguriert.",

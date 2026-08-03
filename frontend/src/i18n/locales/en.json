@@ -266,7 +266,10 @@
       "spending": "Spending",
       "progress": "Progress"
     },
-    "addThreshold": "Add limit",
+    "statusLoaded": "Spending loaded · {{from}} → {{to}}",
+    "selectCategory": "Select category …",
+    "categoryRequired": "Please select a category.",
+    "addThreshold": "New limit",
     "editThreshold": "Edit limit",
     "deleteConfirm": "Really delete this limit?",
     "noThresholds": "No limits configured yet.",

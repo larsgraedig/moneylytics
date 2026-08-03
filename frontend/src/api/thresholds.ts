@@ -5,9 +5,8 @@ export type ThresholdStatus = 'OK' | 'NOTICE' | 'WARNING' | 'CRITICAL'
 
 export interface ThresholdStatusItem {
   thresholdId: number
-  category: string
-  subcategory: string | null
-  categoryGroup: string | null
+  categoryId: number
+  categoryPath: string[]
   period: ThresholdPeriod
   notice: number | null
   warning: number | null
@@ -22,8 +21,8 @@ export interface ThresholdStatusItem {
 
 export interface Threshold {
   id: number
-  category: string
-  subcategory: string | null
+  categoryId: number
+  categoryPath: string[]
   period: ThresholdPeriod
   notice: number | null
   warning: number | null
@@ -31,8 +30,7 @@ export interface Threshold {
 }
 
 export interface SaveThresholdRequest {
-  category: string
-  subcategory: string | null
+  categoryId: number
   period: ThresholdPeriod
   notice: number | null
   warning: number | null
