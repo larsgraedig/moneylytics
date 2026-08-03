@@ -44,7 +44,7 @@ import { updateUserSettings } from '../api/settings'
 const LINK_COLORS = ['#f59e0b', '#10b981', '#60a5fa', '#f472b6', '#a78bfa', '#fb923c']
 const BUDGET_COLORS = ['#34d399', '#818cf8', '#fb7185', '#fbbf24', '#38bdf8', '#a3e635']
 
-const DEFAULT_COLUMN_ORDER = ['date', 'account', 'amount', 'category', 'group', 'subcategory', 'offsets', 'budget', 'collection', 'counterparty', 'purpose', 'comment'] as const
+const DEFAULT_COLUMN_ORDER = ['date', 'account', 'amount', 'category', 'offsets', 'budget', 'collection', 'counterparty', 'purpose', 'comment'] as const
 type ColumnKey = typeof DEFAULT_COLUMN_ORDER[number]
 
 function formatDate(iso: string): string {
@@ -1140,10 +1140,6 @@ const groupColorMap = useMemo(() => {
         )
       case 'category':
         return <td key={col}><span className="ri-cat-input" style={{ display: 'inline-block' }}>{tx.category ?? ''}</span></td>
-      case 'group':
-        return <td key={col}><span className="ri-cat-input" style={{ display: 'inline-block' }}>{tx.group ?? ''}</span></td>
-      case 'subcategory':
-        return <td key={col}><span className="ri-cat-input" style={{ display: 'inline-block' }}>{tx.subcategory ?? ''}</span></td>
       case 'counterparty':
         return <td key={col} className="txnv-cell-counterparty"><span className="txnv-counterparty-name">{tx.counterpartyName ?? ''}</span></td>
       case 'purpose':
@@ -1170,8 +1166,6 @@ const groupColorMap = useMemo(() => {
       case 'account': label = t('transactions.columns.account'); break
       case 'amount': label = t('transactions.columns.amount'); break
       case 'category': label = t('transactions.columns.category'); break
-      case 'group': label = t('transactions.columns.group'); break
-      case 'subcategory': label = t('transactions.columns.subcategory'); break
       case 'offsets': label = t('transactions.columns.offsets'); break
       case 'budget': label = t('budgets.columns.budget'); break
       case 'collection': label = t('collections.columns.name'); break
@@ -1245,10 +1239,6 @@ const groupColorMap = useMemo(() => {
             />
           </td>
         )
-      case 'group':
-        return <td key={col}><span className="ri-cat-input">{row.group}</span></td>
-      case 'subcategory':
-        return <td key={col}><span className="ri-cat-input">{row.subcategory}</span></td>
       case 'offsets':
         return (
           <td key={col} className="txnv-cell-offsets">

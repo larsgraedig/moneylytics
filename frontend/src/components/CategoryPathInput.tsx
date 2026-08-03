@@ -1,4 +1,4 @@
-import { useEffect, useId, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { findOrCreateCategory, type CategoryNode } from '../api/rawImport'
 
 interface FlatItem {
@@ -6,10 +6,24 @@ interface FlatItem {
   pathStr: string
 }
 
+type BrowseItem = { type: 'existing'; id: number; displayName: string; pathStr: string; depth: number }
+type CreateItem = { type: 'create'; displayStr: string; path: string[] }
+type DropdownItem = BrowseItem | CreateItem
+
 function flattenTree(nodes: CategoryNode[], prefix: string[] = []): FlatItem[] {
   return nodes.flatMap(node => {
     const path = [...prefix, node.name]
     return [{ id: node.id, pathStr: path.join(' > ') }, ...flattenTree(node.children, path)]
+  })
+}
+
+function flattenTreeWithDepth(nodes: CategoryNode[], depth = 0, prefix: string[] = []): BrowseItem[] {
+  return nodes.flatMap(node => {
+    const path = [...prefix, node.name]
+    return [
+      { type: 'existing', id: node.id, displayName: node.name, pathStr: path.join(' > '), depth },
+      ...flattenTreeWithDepth(node.children, depth + 1, path),
+    ]
   })
 }
 
@@ -35,30 +49,70 @@ interface Props {
 
 export function CategoryPathInput({ value, onChange, tree, onCategoryCreated, placeholder, className }: Props) {
   const flatItems = useMemo(() => flattenTree(tree), [tree])
-  const datalistId = useId()
   const committedId = useRef<number | null>(value)
-
   const [inputValue, setInputValue] = useState(() => pathStringForId(value, tree))
+  const [open, setOpen] = useState(false)
+  const [highlighted, setHighlighted] = useState(0)
 
   useEffect(() => {
     setInputValue(pathStringForId(value, tree))
     committedId.current = value
   }, [value, tree])
 
-  function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
-    setInputValue(e.target.value)
+  const visibleItems = useMemo((): DropdownItem[] => {
+    const q = inputValue.trim()
+    if (!q) {
+      return flattenTreeWithDepth(tree)
+    }
+    const ql = q.toLowerCase()
+    const matches: BrowseItem[] = flatItems
+      .filter(item => item.pathStr.toLowerCase().includes(ql))
+      .map(item => ({ type: 'existing', id: item.id, displayName: item.pathStr, pathStr: item.pathStr, depth: 0 }))
+
+    const exactMatch = flatItems.find(item => item.pathStr.toLowerCase() === ql)
+    if (!exactMatch) {
+      const path = q.split('>').map(s => s.trim()).filter(Boolean)
+      if (path.length > 0) {
+        return [...matches, { type: 'create', displayStr: path.join(' > '), path }]
+      }
+    }
+    return matches
+  }, [inputValue, flatItems, tree])
+
+  useEffect(() => {
+    setHighlighted(0)
+  }, [visibleItems])
+
+  async function selectItem(item: DropdownItem) {
+    setOpen(false)
+    if (item.type === 'existing') {
+      committedId.current = item.id
+      setInputValue(item.pathStr)
+      onChange(item.id)
+    } else {
+      try {
+        const created = await findOrCreateCategory(item.path)
+        committedId.current = created.id
+        setInputValue(item.displayStr)
+        onCategoryCreated?.(created)
+        onChange(created.id)
+      } catch {
+        setInputValue(pathStringForId(committedId.current, tree))
+      }
+    }
   }
 
-  async function commit() {
-    const trimmed = inputValue.trim()
+  async function handleBlur() {
+    setOpen(false)
+    const q = inputValue.trim()
 
-    if (!trimmed) {
+    if (!q) {
       committedId.current = null
       onChange(null)
       return
     }
 
-    const match = flatItems.find(item => item.pathStr.toLowerCase() === trimmed.toLowerCase())
+    const match = flatItems.find(item => item.pathStr.toLowerCase() === q.toLowerCase())
     if (match) {
       committedId.current = match.id
       setInputValue(match.pathStr)
@@ -66,50 +120,76 @@ export function CategoryPathInput({ value, onChange, tree, onCategoryCreated, pl
       return
     }
 
-    const path = trimmed.split('>').map(s => s.trim()).filter(Boolean)
-    if (path.length === 0) {
+    const path = q.split('>').map(s => s.trim()).filter(Boolean)
+    if (path.length > 0) {
+      try {
+        const created = await findOrCreateCategory(path)
+        committedId.current = created.id
+        setInputValue(path.join(' > '))
+        onCategoryCreated?.(created)
+        onChange(created.id)
+      } catch {
+        setInputValue(pathStringForId(committedId.current, tree))
+      }
+    } else {
       setInputValue(pathStringForId(committedId.current, tree))
-      return
     }
-
-    try {
-      const created = await findOrCreateCategory(path)
-      committedId.current = created.id
-      setInputValue(trimmed)
-      onCategoryCreated?.(created)
-      onChange(created.id)
-    } catch {
-      setInputValue(pathStringForId(committedId.current, tree))
-    }
-  }
-
-  function handleBlur() {
-    void commit()
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
-    if (e.key === 'Enter') {
-      e.currentTarget.blur()
+    if (!open) {
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        setOpen(true)
+        e.preventDefault()
+      }
+      return
+    }
+    if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      setHighlighted(h => Math.min(h + 1, visibleItems.length - 1))
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault()
+      setHighlighted(h => Math.max(h - 1, 0))
+    } else if (e.key === 'Enter') {
+      e.preventDefault()
+      const item = visibleItems[highlighted]
+      if (item) void selectItem(item)
+    } else if (e.key === 'Escape') {
+      setInputValue(pathStringForId(committedId.current, tree))
+      setOpen(false)
     }
   }
 
   return (
-    <>
+    <div className="cat-path-input-wrapper">
       <input
         type="text"
         value={inputValue}
-        onChange={handleChange}
-        onBlur={handleBlur}
-        onKeyDown={handleKeyDown}
-        list={datalistId}
-        placeholder={placeholder}
         className={className}
+        placeholder={placeholder}
+        onChange={e => { setInputValue(e.target.value); setOpen(true) }}
+        onFocus={() => setOpen(true)}
+        onBlur={() => { void handleBlur() }}
+        onKeyDown={handleKeyDown}
       />
-      <datalist id={datalistId}>
-        {flatItems.map(item => (
-          <option key={item.id} value={item.pathStr} />
-        ))}
-      </datalist>
-    </>
+      {open && visibleItems.length > 0 && (
+        <ul className="cat-path-dropdown">
+          {visibleItems.map((item, idx) => (
+            <li
+              key={item.type === 'existing' ? item.id : `create-${item.displayStr}`}
+              className={[
+                'cat-path-option',
+                item.type === 'create' ? 'cat-path-create' : '',
+                idx === highlighted ? 'cat-path-highlighted' : '',
+              ].filter(Boolean).join(' ')}
+              style={item.type === 'existing' && item.depth > 0 ? { paddingLeft: `${item.depth * 12 + 8}px` } : undefined}
+              onMouseDown={e => { e.preventDefault(); void selectItem(item) }}
+            >
+              {item.type === 'create' ? `+ Erstellen: "${item.displayStr}"` : item.displayName}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   )
 }
