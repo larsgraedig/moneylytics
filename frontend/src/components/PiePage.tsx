@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { ResponsivePie } from '@nivo/pie'
 import { fetchCategoryTotals, type CategoryTotalItem } from '../api/transactions'
@@ -6,6 +6,102 @@ import type { SankeyNode } from '../api/transactions'
 import TransactionListPanel from './TransactionListPanel'
 
 const EUR = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' })
+
+// Labels are placed on a ring outside the pie. Collision avoidance nudges them
+// angularly so they don't overlap. Connectors curve from the arc edge outward
+// and then to the label — they never re-enter the pie.
+const LABEL_RING_OFFSET = 120  // px beyond pie outer radius
+const LABEL_GAP_PX = 60        // min centre-to-centre spacing on the ring
+
+function makeLabelsLayer(handlerRef: React.MutableRefObject<(datum: any) => void>) {
+  return function PieLabelsLayer({ dataWithArc, centerX, centerY, radius }: any) {
+    const labelRadius = radius + LABEL_RING_OFFSET
+
+    // nivo's D3 pie angles start from 12 o'clock and go clockwise.
+    // Convert to standard math angles (0 = 3 o'clock, CCW positive) for
+    // cos/sin so the SVG coordinate system (y-down) is handled correctly.
+    const items: Array<{ datum: any; origAngle: number; angle: number }> =
+      dataWithArc.map((d: any) => {
+        const midAngle = (d.arc.startAngle + d.arc.endAngle) / 2 - Math.PI / 2
+        return { datum: d, origAngle: midAngle, angle: midAngle }
+      })
+    items.sort((a, b) => a.angle - b.angle)
+
+    // Angular collision avoidance — same forward/backward pattern as before,
+    // but operating on angle instead of y.
+    const minGap = LABEL_GAP_PX / labelRadius  // radians
+    for (let i = 1; i < items.length; i++) {
+      if (items[i].angle - items[i - 1].angle < minGap) {
+        items[i].angle = items[i - 1].angle + minGap
+      }
+    }
+    for (let i = items.length - 2; i >= 0; i--) {
+      if (items[i + 1].angle - items[i].angle < minGap) {
+        items[i].angle = items[i + 1].angle - minGap
+      }
+    }
+
+    return (
+      <g transform={`translate(${centerX}, ${centerY})`}>
+        {items.map(({ datum, origAngle, angle }) => {
+          const outerR = datum.arc.outerRadius as number
+
+          // Connector start: on the arc edge at the slice's true angle
+          const p0x = Math.cos(origAngle) * outerR
+          const p0y = Math.sin(origAngle) * outerR
+
+          // Connector elbow: just outside the arc edge, still at original angle
+          const elbowR = outerR + 12
+          const ex = Math.cos(origAngle) * elbowR
+          const ey = Math.sin(origAngle) * elbowR
+
+          // Label position: on the ring at the (possibly nudged) angle
+          const lx = Math.cos(angle) * labelRadius
+          const ly = Math.sin(angle) * labelRadius
+
+          // Bezier control points keep the path curving outward
+          const cp1x = Math.cos(origAngle) * (outerR + 40)
+          const cp1y = Math.sin(origAngle) * (outerR + 40)
+          const cp2x = Math.cos(angle) * (labelRadius * 0.82)
+          const cp2y = Math.sin(angle) * (labelRadius * 0.82)
+
+          const cos = Math.cos(angle)
+          const textAnchor = cos > 0.15 ? 'start' : cos < -0.15 ? 'end' : 'middle'
+          const textOffset = cos > 0.15 ? 4 : cos < -0.15 ? -4 : 0
+
+          return (
+            <g
+              key={String(datum.id)}
+              onClick={() => handlerRef.current(datum)}
+              style={{ cursor: 'pointer' }}
+            >
+              {/* Transparent wider hit area on connector */}
+              <path
+                d={`M ${p0x},${p0y} L ${ex},${ey} C ${cp1x},${cp1y} ${cp2x},${cp2y} ${lx},${ly}`}
+                fill="none" stroke="transparent" strokeWidth={10}
+              />
+              <path
+                d={`M ${p0x},${p0y} L ${ex},${ey} C ${cp1x},${cp1y} ${cp2x},${cp2y} ${lx},${ly}`}
+                fill="none" stroke={datum.color} strokeWidth={1} opacity={0.5}
+              />
+              <text
+                x={lx + textOffset}
+                y={ly}
+                textAnchor={textAnchor}
+                dominantBaseline="central"
+                fill="#6b6b78"
+                fontSize={11}
+                fontFamily="ui-monospace, 'SF Mono', Consolas, monospace"
+              >
+                {String(datum.label)}
+              </text>
+            </g>
+          )
+        })}
+      </g>
+    )
+  }
+}
 
 interface NavEntry {
   categoryId: number
@@ -30,6 +126,9 @@ export default function PiePage({ from, to, iban }: { from: string; to: string; 
   const [pieData, setPieData] = useState<PieDataState>({ phase: 'idle' })
   const [navStack, setNavStack] = useState<NavEntry[]>([])
   const [drilldown, setDrilldown] = useState<{ node: SankeyNode } | null>(null)
+
+  const handleClickRef = useRef<(datum: any) => void>(() => {})
+  const labelsLayer = useMemo(() => makeLabelsLayer(handleClickRef), [])
 
   async function loadLevel(categoryId?: number) {
     setPieData({ phase: 'loading' })
@@ -62,10 +161,11 @@ export default function PiePage({ from, to, iban }: { from: string; to: string; 
     return { name: namePath[namePath.length - 1] ?? '', value: 0, nodeKey: '', categoryId, namePath }
   }
 
+  handleClickRef.current = handleSliceClick
+
   async function handleSliceClick(datum: any) {
     const item = datum.data.item as CategoryTotalItem
     if (item.categoryId == null) {
-      // No categoryId — fallback: open transaction list using old nodeKey
       const nodeKey = navStack.length === 0
         ? `cat:${item.name}`
         : `sub:${navStack[0]?.name}:${item.name}`
@@ -76,13 +176,12 @@ export default function PiePage({ from, to, iban }: { from: string; to: string; 
     const newStack = [...navStack, { categoryId: item.categoryId, name: item.name }]
     const namePath = newStack.map(e => e.name)
 
-    // Try to load children — if empty, treat as leaf and open transaction list.
     setPieData({ phase: 'loading' })
     setDrilldown(null)
     try {
       const data = await fetchCategoryTotals(from, to, iban, undefined, item.categoryId)
       if (data.items.length === 0) {
-        setPieData(pieData)  // restore previous pie (don't navigate away)
+        setPieData(pieData)
         setDrilldown({ node: makeNode(item.categoryId, namePath) })
       } else {
         setNavStack(newStack)
@@ -160,12 +259,10 @@ export default function PiePage({ from, to, iban }: { from: string; to: string; 
             padAngle={0.5}
             cornerRadius={3}
             colors={{ scheme: 'tableau10' }}
-            margin={{ top: 48, right: 48, bottom: 48, left: 48 }}
+            margin={{ top: 130, right: 280, bottom: 130, left: 280 }}
             enableArcLabels={false}
-            arcLinkLabelsSkipAngle={10}
-            arcLinkLabelsTextColor="#6b6b78"
-            arcLinkLabelsColor={{ from: 'color' }}
-            arcLinkLabelsThickness={1}
+            enableArcLinkLabels={false}
+            layers={['arcs', 'arcLabels', labelsLayer, 'legends']}
             onClick={handleSliceClick}
             activeOuterRadiusOffset={6}
             tooltip={({ datum }) => (
