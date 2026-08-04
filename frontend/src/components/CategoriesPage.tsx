@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from 'react'
+import { useState, useEffect, useMemo, useRef, Fragment } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { CategoryNode, CategoryStatItem } from '../api/rawImport'
 import { deleteCategory, fetchCategoryStats, moveCategory } from '../api/rawImport'
@@ -10,6 +10,46 @@ interface Props {
   iban?: string
   onCategoryDeleted: () => void
   onCategoryMoved: () => void
+}
+
+type DragTarget =
+  | { kind: 'row'; id: number }
+  | { kind: 'gap'; parentId: number | null; gapKey: string }
+  | null
+
+interface DropGapProps {
+  parentId: number | null
+  gapKey: string
+  depth: number
+  dragTarget: DragTarget
+  draggedId: React.MutableRefObject<number | null>
+  setDragTarget: (t: DragTarget) => void
+  onDrop: (parentId: number | null) => void
+}
+
+function DropGap({ parentId, gapKey, depth, dragTarget, draggedId, setDragTarget, onDrop }: DropGapProps) {
+  const isOver = dragTarget?.kind === 'gap' && dragTarget.gapKey === gapKey
+  return (
+    <div
+      className={`cat-drop-gap${isOver ? ' cat-drop-gap--active' : ''}`}
+      style={{ marginLeft: `${20 + depth * 20}px` }}
+      onDragOver={e => {
+        e.preventDefault()
+        e.stopPropagation()
+        setDragTarget({ kind: 'gap', parentId, gapKey })
+      }}
+      onDragLeave={e => {
+        e.stopPropagation()
+        setDragTarget(null)
+      }}
+      onDrop={e => {
+        e.preventDefault()
+        e.stopPropagation()
+        setDragTarget(null)
+        if (draggedId.current !== null) onDrop(parentId)
+      }}
+    />
+  )
 }
 
 interface RowProps {
@@ -25,9 +65,9 @@ interface RowProps {
   deletingId: number | null
   onDelete: (id: number) => void
   draggedId: React.MutableRefObject<number | null>
-  overId: number | 'root' | null
-  setOverId: (id: number | 'root' | null) => void
-  onDrop: (targetId: number | null) => void
+  dragTarget: DragTarget
+  setDragTarget: (t: DragTarget) => void
+  onDrop: (targetParentId: number | null) => void
 }
 
 function buildSubtreeCounts(
@@ -84,7 +124,7 @@ function CategoryRow({
   subtreeTotals, subtreePeriod,
   search, visibleIds, isSearchActive,
   deletingId, onDelete,
-  draggedId, overId, setOverId, onDrop,
+  draggedId, dragTarget, setDragTarget, onDrop,
 }: RowProps) {
   const visibleChildren = isSearchActive
     ? node.children.filter(c => visibleIds.has(c.id))
@@ -99,7 +139,7 @@ function CategoryRow({
   const period = subtreePeriod.get(node.id) ?? 0
   const isDeletable = !hasChildren && total === 0
   const isDragging = draggedId.current === node.id
-  const isDragOver = overId === node.id
+  const isDragOver = dragTarget?.kind === 'row' && dragTarget.id === node.id
 
   const classNames = [
     'cat-row',
@@ -107,6 +147,8 @@ function CategoryRow({
     isDragging ? 'cat-row--dragging' : '',
     isDragOver ? 'cat-row--drag-over' : '',
   ].filter(Boolean).join(' ')
+
+  const gapProps = { dragTarget, draggedId, setDragTarget, onDrop }
 
   return (
     <>
@@ -121,21 +163,21 @@ function CategoryRow({
         }}
         onDragEnd={() => {
           draggedId.current = null
-          setOverId(null)
+          setDragTarget(null)
         }}
         onDragOver={e => {
           e.preventDefault()
           e.stopPropagation()
-          if (draggedId.current !== node.id) setOverId(node.id)
+          if (draggedId.current !== node.id) setDragTarget({ kind: 'row', id: node.id })
         }}
         onDragLeave={e => {
           e.stopPropagation()
-          setOverId(null)
+          setDragTarget(null)
         }}
         onDrop={e => {
           e.preventDefault()
           e.stopPropagation()
-          setOverId(null)
+          setDragTarget(null)
           if (draggedId.current !== null && draggedId.current !== node.id) {
             onDrop(node.id)
           }
@@ -163,26 +205,33 @@ function CategoryRow({
           </button>
         )}
       </div>
-      {isExpanded && visibleChildren.map(child => (
-        <CategoryRow
-          key={child.id}
-          node={child}
-          depth={depth + 1}
-          expanded={expanded}
-          onToggle={onToggle}
-          subtreeTotals={subtreeTotals}
-          subtreePeriod={subtreePeriod}
-          search={search}
-          visibleIds={visibleIds}
-          isSearchActive={isSearchActive}
-          deletingId={deletingId}
-          onDelete={onDelete}
-          draggedId={draggedId}
-          overId={overId}
-          setOverId={setOverId}
-          onDrop={onDrop}
-        />
-      ))}
+      {isExpanded && (
+        <>
+          <DropGap parentId={node.id} gapKey={`gap-${node.id}-start`} depth={depth + 1} {...gapProps} />
+          {visibleChildren.map(child => (
+            <Fragment key={child.id}>
+              <CategoryRow
+                node={child}
+                depth={depth + 1}
+                expanded={expanded}
+                onToggle={onToggle}
+                subtreeTotals={subtreeTotals}
+                subtreePeriod={subtreePeriod}
+                search={search}
+                visibleIds={visibleIds}
+                isSearchActive={isSearchActive}
+                deletingId={deletingId}
+                onDelete={onDelete}
+                draggedId={draggedId}
+                dragTarget={dragTarget}
+                setDragTarget={setDragTarget}
+                onDrop={onDrop}
+              />
+              <DropGap parentId={node.id} gapKey={`gap-${node.id}-after-${child.id}`} depth={depth + 1} {...gapProps} />
+            </Fragment>
+          ))}
+        </>
+      )}
     </>
   )
 }
@@ -195,7 +244,7 @@ export default function CategoriesPage({ categories, from, to, iban, onCategoryD
   const [deletingId, setDeletingId] = useState<number | null>(null)
   const [deleteError, setDeleteError] = useState<string | null>(null)
   const [moveError, setMoveError] = useState<string | null>(null)
-  const [overId, setOverId] = useState<number | 'root' | null>(null)
+  const [dragTarget, setDragTarget] = useState<DragTarget>(null)
   const draggedId = useRef<number | null>(null)
 
   useEffect(() => {
@@ -245,12 +294,12 @@ export default function CategoriesPage({ categories, from, to, iban, onCategoryD
     }
   }
 
-  async function handleDrop(targetId: number | null) {
+  async function handleDrop(targetParentId: number | null) {
     const id = draggedId.current
     if (id === null) return
     setMoveError(null)
     try {
-      await moveCategory(id, targetId)
+      await moveCategory(id, targetParentId)
       onCategoryMoved()
     } catch (e) {
       const reason = e instanceof Error ? e.message : 'UNKNOWN'
@@ -263,6 +312,8 @@ export default function CategoriesPage({ categories, from, to, iban, onCategoryD
   const rootNodes = isSearchActive
     ? categories.filter(n => visibleIds.has(n.id))
     : categories
+
+  const gapProps = { dragTarget, draggedId, setDragTarget, onDrop: handleDrop }
 
   return (
     <div className="cat-page">
@@ -279,44 +330,37 @@ export default function CategoriesPage({ categories, from, to, iban, onCategoryD
       </div>
       {deleteError && <p className="cat-error">{deleteError}</p>}
       {moveError && <p className="cat-error">{moveError}</p>}
-      <div
-        className={`cat-tree${overId === 'root' ? ' cat-tree--drag-over' : ''}`}
-        onDragOver={e => {
-          e.preventDefault()
-          setOverId('root')
-        }}
-        onDragLeave={() => setOverId(null)}
-        onDrop={e => {
-          e.preventDefault()
-          setOverId(null)
-          handleDrop(null)
-        }}
-      >
+      <div className="cat-tree">
         {categories.length === 0 ? (
           <p className="cat-empty">{t('kategorien.empty')}</p>
         ) : rootNodes.length === 0 ? (
           <p className="cat-empty">{t('kategorien.noResults')}</p>
         ) : (
-          rootNodes.map(node => (
-            <CategoryRow
-              key={node.id}
-              node={node}
-              depth={0}
-              expanded={expanded}
-              onToggle={toggle}
-              subtreeTotals={subtreeTotals}
-              subtreePeriod={subtreePeriod}
-              search={search.trim()}
-              visibleIds={visibleIds}
-              isSearchActive={isSearchActive}
-              deletingId={deletingId}
-              onDelete={handleDelete}
-              draggedId={draggedId}
-              overId={overId}
-              setOverId={setOverId}
-              onDrop={handleDrop}
-            />
-          ))
+          <>
+            <DropGap parentId={null} gapKey="gap-root-start" depth={0} {...gapProps} />
+            {rootNodes.map(node => (
+              <Fragment key={node.id}>
+                <CategoryRow
+                  node={node}
+                  depth={0}
+                  expanded={expanded}
+                  onToggle={toggle}
+                  subtreeTotals={subtreeTotals}
+                  subtreePeriod={subtreePeriod}
+                  search={search.trim()}
+                  visibleIds={visibleIds}
+                  isSearchActive={isSearchActive}
+                  deletingId={deletingId}
+                  onDelete={handleDelete}
+                  draggedId={draggedId}
+                  dragTarget={dragTarget}
+                  setDragTarget={setDragTarget}
+                  onDrop={handleDrop}
+                />
+                <DropGap parentId={null} gapKey={`gap-root-after-${node.id}`} depth={0} {...gapProps} />
+              </Fragment>
+            ))}
+          </>
         )}
       </div>
     </div>

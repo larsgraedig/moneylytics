@@ -6135,8 +6135,22 @@ body {
   outline-offset: -1px;
 }
 
-.cat-tree--drag-over {
-  background: color-mix(in srgb, var(--accent) 6%, transparent);
+.cat-drop-gap {
+  height: 6px;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.cat-drop-gap--active::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  height: 2px;
+  background: var(--accent);
+  border-radius: 1px;
 }
 
 .cat-drag-handle {
