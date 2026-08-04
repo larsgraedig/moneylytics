@@ -2,6 +2,7 @@ package com.moneylytics.api.application.service
 
 import com.moneylytics.api.application.port.input.GetCategoryStatsQuery
 import com.moneylytics.api.application.port.input.MoveCategoryCommand
+import com.moneylytics.api.application.port.input.RenameCategoryCommand
 import com.moneylytics.api.application.port.output.CategoryRepository
 import com.moneylytics.api.application.port.output.ThresholdRepository
 import com.moneylytics.api.application.port.output.TransactionRepository
@@ -160,6 +161,22 @@ class CategoryServiceTest {
             service.moveCategory(MoveCategoryCommand(id = 1L, newParentId = 1L, organizationId = organizationId))
         }.isInstanceOf(IllegalArgumentException::class.java)
             .hasMessage("CIRCULAR_REFERENCE")
+    }
+
+    @Test
+    fun `should rename category with trimmed name`() {
+        service.renameCategory(RenameCategoryCommand(id = 1L, newName = "  Neuer Name  ", organizationId = organizationId))
+
+        verify(categoryRepository).rename(1L, "Neuer Name", organizationId)
+    }
+
+    @Test
+    fun `should throw when new name is blank`() {
+        assertThatThrownBy {
+            service.renameCategory(RenameCategoryCommand(id = 1L, newName = "  ", organizationId = organizationId))
+        }.isInstanceOf(IllegalArgumentException::class.java)
+            .hasMessage("EMPTY_NAME")
+        verify(categoryRepository, never()).rename(org.mockito.kotlin.any(), org.mockito.kotlin.any(), org.mockito.kotlin.any())
     }
 
     @Test

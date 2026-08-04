@@ -7,6 +7,8 @@ import com.moneylytics.api.application.port.input.GetCategoryStatsQuery
 import com.moneylytics.api.application.port.input.GetCategoryStatsUseCase
 import com.moneylytics.api.application.port.input.MoveCategoryCommand
 import com.moneylytics.api.application.port.input.MoveCategoryUseCase
+import com.moneylytics.api.application.port.input.RenameCategoryCommand
+import com.moneylytics.api.application.port.input.RenameCategoryUseCase
 import com.moneylytics.api.application.port.input.ResolveOrganizationUseCase
 import com.moneylytics.api.domain.Category
 import kotlinx.coroutines.Dispatchers
@@ -35,6 +37,10 @@ data class MoveCategoryRequest(
     val newParentId: Long?,
 )
 
+data class RenameCategoryRequest(
+    val name: String,
+)
+
 @RestController
 @RequestMapping("/categories")
 class CategoryController(
@@ -43,6 +49,7 @@ class CategoryController(
     private val getCategoryStatsUseCase: GetCategoryStatsUseCase,
     private val deleteCategoryUseCase: DeleteCategoryUseCase,
     private val moveCategoryUseCase: MoveCategoryUseCase,
+    private val renameCategoryUseCase: RenameCategoryUseCase,
     private val resolveOrganizationUseCase: ResolveOrganizationUseCase,
 ) {
     @GetMapping
@@ -115,6 +122,34 @@ class CategoryController(
                     MoveCategoryCommand(
                         id = id,
                         newParentId = request.newParentId,
+                        organizationId = organizationId,
+                    ),
+                )
+            }
+            ResponseEntity.noContent().build()
+        } catch (e: NoSuchElementException) {
+            ResponseEntity.notFound().build()
+        } catch (e: IllegalArgumentException) {
+            ResponseEntity.status(409).body(DeleteCategoryErrorResponse(reason = e.message ?: "UNKNOWN"))
+        } catch (e: DataIntegrityViolationException) {
+            ResponseEntity.status(409).body(DeleteCategoryErrorResponse(reason = "CONSTRAINT_VIOLATION"))
+        }
+    }
+
+    @PatchMapping("/{id}/name")
+    suspend fun renameCategory(
+        @PathVariable id: Long,
+        @RequestBody request: RenameCategoryRequest,
+        @AuthenticationPrincipal principal: UserDetails,
+        exchange: ServerWebExchange,
+    ): ResponseEntity<Any> {
+        val organizationId = resolveOrganizationUseCase.resolveOrganization(principal, exchange)
+        return try {
+            withContext(Dispatchers.IO) {
+                renameCategoryUseCase.renameCategory(
+                    RenameCategoryCommand(
+                        id = id,
+                        newName = request.name,
                         organizationId = organizationId,
                     ),
                 )

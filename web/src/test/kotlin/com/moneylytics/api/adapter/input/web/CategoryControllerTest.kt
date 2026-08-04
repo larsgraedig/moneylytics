@@ -6,6 +6,8 @@ import com.moneylytics.api.application.port.input.GetCategoriesUseCase
 import com.moneylytics.api.application.port.input.GetCategoryStatsUseCase
 import com.moneylytics.api.application.port.input.MoveCategoryCommand
 import com.moneylytics.api.application.port.input.MoveCategoryUseCase
+import com.moneylytics.api.application.port.input.RenameCategoryCommand
+import com.moneylytics.api.application.port.input.RenameCategoryUseCase
 import com.moneylytics.api.application.port.input.ResolveOrganizationUseCase
 import com.moneylytics.api.domain.Category
 import kotlinx.coroutines.test.runTest
@@ -27,6 +29,7 @@ class CategoryControllerTest {
     private val getCategoryStatsUseCase: GetCategoryStatsUseCase = mock()
     private val deleteCategoryUseCase: DeleteCategoryUseCase = mock()
     private val moveCategoryUseCase: MoveCategoryUseCase = mock()
+    private val renameCategoryUseCase: RenameCategoryUseCase = mock()
     private val controller =
         CategoryController(
             getCategoriesUseCase,
@@ -34,6 +37,7 @@ class CategoryControllerTest {
             getCategoryStatsUseCase,
             deleteCategoryUseCase,
             moveCategoryUseCase,
+            renameCategoryUseCase,
             resolveOrganizationUseCase,
         )
     private val principal =
@@ -181,6 +185,40 @@ class CategoryControllerTest {
                 .thenThrow(IllegalArgumentException("CIRCULAR_REFERENCE"))
 
             val response = controller.moveCategory(1L, MoveCategoryRequest(newParentId = 3L), principal, exchange)
+
+            assertThat(response.statusCode).isEqualTo(HttpStatus.CONFLICT)
+        }
+
+    @Test
+    fun `should return 204 when renaming category`() =
+        runTest {
+            val response = controller.renameCategory(5L, RenameCategoryRequest(name = "Neuer Name"), principal, exchange)
+
+            assertThat(response.statusCode).isEqualTo(HttpStatus.NO_CONTENT)
+            verify(
+                renameCategoryUseCase,
+            ).renameCategory(RenameCategoryCommand(id = 5L, newName = "Neuer Name", organizationId = organizationId))
+        }
+
+    @Test
+    fun `should return 404 when renaming unknown category`() =
+        runTest {
+            whenever(renameCategoryUseCase.renameCategory(RenameCategoryCommand(id = 99L, newName = "X", organizationId = organizationId)))
+                .thenThrow(NoSuchElementException("not found"))
+
+            val response = controller.renameCategory(99L, RenameCategoryRequest(name = "X"), principal, exchange)
+
+            assertThat(response.statusCode).isEqualTo(HttpStatus.NOT_FOUND)
+        }
+
+    @Test
+    fun `should return 409 when renaming to existing name at same level`() =
+        runTest {
+            whenever(
+                renameCategoryUseCase.renameCategory(RenameCategoryCommand(id = 1L, newName = "Duplikat", organizationId = organizationId)),
+            ).thenThrow(IllegalArgumentException("EMPTY_NAME"))
+
+            val response = controller.renameCategory(1L, RenameCategoryRequest(name = "Duplikat"), principal, exchange)
 
             assertThat(response.statusCode).isEqualTo(HttpStatus.CONFLICT)
         }

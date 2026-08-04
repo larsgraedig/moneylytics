@@ -1,7 +1,11 @@
 import { useState, useEffect, useMemo, useRef, Fragment } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { CategoryNode, CategoryStatItem } from '../api/rawImport'
-import { deleteCategory, fetchCategoryStats, moveCategory } from '../api/rawImport'
+import type { CategoryNode, CategoryStatItem, CategoryMergeItem } from '../api/rawImport'
+import {
+  deleteCategory, fetchCategoryStats, moveCategory, renameCategory,
+  mergeCategories, fetchCategoryMerges, revertMerge, findOrCreateCategory,
+} from '../api/rawImport'
+import { CategoryPathInput } from './CategoryPathInput'
 
 interface Props {
   categories: CategoryNode[]
@@ -10,6 +14,9 @@ interface Props {
   iban?: string
   onCategoryDeleted: () => void
   onCategoryMoved: () => void
+  onCategoryRenamed: () => void
+  onCategoryMerged: () => void
+  onCategoryCreated: () => void
 }
 
 type DragTarget =
@@ -64,6 +71,13 @@ interface RowProps {
   isSearchActive: boolean
   deletingId: number | null
   onDelete: (id: number) => void
+  editingId: number | null
+  onStartEdit: (id: number, currentName: string) => void
+  onStartMerge: (node: CategoryNode) => void
+  creatingParentId: number | null | 'root'
+  onStartCreate: (parentId: number | null, depth: number) => void
+  onCreateConfirm: (name: string) => void
+  onCreateCancel: () => void
   draggedId: React.MutableRefObject<number | null>
   dragTarget: DragTarget
   setDragTarget: (t: DragTarget) => void
@@ -119,11 +133,64 @@ function highlightName(name: string, search: string) {
   )
 }
 
+function buildParentPath(parentId: number | null, nodes: CategoryNode[], path: string[] = []): string[] {
+  if (parentId === null) return []
+  for (const node of nodes) {
+    const current = [...path, node.name]
+    if (node.id === parentId) return current
+    const found = buildParentPath(parentId, node.children, current)
+    if (found.length > 0) return found
+  }
+  return []
+}
+
+interface CreateInputProps {
+  depth: number
+  onConfirm: (name: string) => void
+  onCancel: () => void
+}
+
+function CreateCategoryInput({ depth, onConfirm, onCancel }: CreateInputProps) {
+  const [value, setValue] = useState('')
+  const inputRef = useRef<HTMLInputElement>(null)
+  useEffect(() => { inputRef.current?.focus() }, [])
+  return (
+    <div className="cat-create-row" style={{ paddingLeft: `${20 + depth * 20}px` }}>
+      <span className="cat-chevron" />
+      <input
+        ref={inputRef}
+        className="cat-create-input"
+        value={value}
+        onChange={e => setValue(e.target.value)}
+        onKeyDown={e => {
+          if (e.key === 'Enter' && value.trim()) onConfirm(value.trim())
+          if (e.key === 'Escape') onCancel()
+        }}
+        onBlur={onCancel}
+        placeholder="Name…"
+      />
+    </div>
+  )
+}
+
+function formatRelativeDate(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime()
+  const days = Math.floor(diff / 86400000)
+  if (days === 0) return 'heute'
+  if (days === 1) return 'gestern'
+  if (days < 7) return `vor ${days} Tagen`
+  if (days < 30) return `vor ${Math.floor(days / 7)} Woche${Math.floor(days / 7) > 1 ? 'n' : ''}`
+  if (days < 365) return `vor ${Math.floor(days / 30)} Monat${Math.floor(days / 30) > 1 ? 'en' : ''}`
+  return `vor ${Math.floor(days / 365)} Jahr${Math.floor(days / 365) > 1 ? 'en' : ''}`
+}
+
 function CategoryRow({
   node, depth, expanded, onToggle,
   subtreeTotals, subtreePeriod,
   search, visibleIds, isSearchActive,
   deletingId, onDelete,
+  editingId, onStartEdit, onStartMerge,
+  creatingParentId, onStartCreate, onCreateConfirm, onCreateCancel,
   draggedId, dragTarget, setDragTarget, onDrop,
 }: RowProps) {
   const visibleChildren = isSearchActive
@@ -140,6 +207,7 @@ function CategoryRow({
   const isDeletable = !hasChildren && total === 0
   const isDragging = draggedId.current === node.id
   const isDragOver = dragTarget?.kind === 'row' && dragTarget.id === node.id
+  const isEditing = editingId === node.id
 
   const classNames = [
     'cat-row',
@@ -187,15 +255,42 @@ function CategoryRow({
         <span className="cat-chevron">
           {hasChildren ? (isExpanded ? '▾' : '▸') : ''}
         </span>
-        <span className="cat-name">{highlightName(node.name, search)}</span>
-        {(total > 0 || period > 0) && (
+        <span className="cat-name">{isEditing ? null : highlightName(node.name, search)}</span>
+        {(total > 0 || period > 0) && !isEditing && (
           <span className="cat-counts">
             <span className="cat-count-period" title="Im Zeitraum">{period}</span>
             <span className="cat-count-sep">/</span>
             <span className="cat-count-total" title="Gesamt">{total}</span>
           </span>
         )}
-        {isDeletable && (
+        {!isEditing && (
+          <button
+            className="cat-edit-btn"
+            onClick={e => { e.stopPropagation(); onStartEdit(node.id, node.name) }}
+            title="Umbenennen"
+          >
+            ✎
+          </button>
+        )}
+        {!isEditing && (
+          <button
+            className="cat-merge-btn"
+            onClick={e => { e.stopPropagation(); onStartMerge(node) }}
+            title="Verschmelzen"
+          >
+            ⇌
+          </button>
+        )}
+        {!isEditing && !isSearchActive && (
+          <button
+            className="cat-add-child-btn"
+            onClick={e => { e.stopPropagation(); onStartCreate(node.id, depth + 1); if (!expanded.has(node.id)) onToggle(node.id) }}
+            title="Kindkategorie anlegen"
+          >
+            +
+          </button>
+        )}
+        {isDeletable && !isEditing && (
           <button
             className="cat-delete-btn"
             disabled={deletingId === node.id}
@@ -222,6 +317,13 @@ function CategoryRow({
                 isSearchActive={isSearchActive}
                 deletingId={deletingId}
                 onDelete={onDelete}
+                editingId={editingId}
+                onStartEdit={onStartEdit}
+                onStartMerge={onStartMerge}
+                creatingParentId={creatingParentId}
+                onStartCreate={onStartCreate}
+                onCreateConfirm={onCreateConfirm}
+                onCreateCancel={onCreateCancel}
                 draggedId={draggedId}
                 dragTarget={dragTarget}
                 setDragTarget={setDragTarget}
@@ -230,13 +332,19 @@ function CategoryRow({
               <DropGap parentId={node.id} gapKey={`gap-${node.id}-after-${child.id}`} depth={depth + 1} {...gapProps} />
             </Fragment>
           ))}
+          {creatingParentId === node.id && (
+            <CreateCategoryInput depth={depth + 1} onConfirm={onCreateConfirm} onCancel={onCreateCancel} />
+          )}
         </>
       )}
     </>
   )
 }
 
-export default function CategoriesPage({ categories, from, to, iban, onCategoryDeleted, onCategoryMoved }: Props) {
+export default function CategoriesPage({
+  categories, from, to, iban,
+  onCategoryDeleted, onCategoryMoved, onCategoryRenamed, onCategoryMerged, onCategoryCreated,
+}: Props) {
   const { t } = useTranslation()
   const [expanded, setExpanded] = useState<Set<number>>(new Set())
   const [stats, setStats] = useState<CategoryStatItem[]>([])
@@ -244,12 +352,33 @@ export default function CategoriesPage({ categories, from, to, iban, onCategoryD
   const [deletingId, setDeletingId] = useState<number | null>(null)
   const [deleteError, setDeleteError] = useState<string | null>(null)
   const [moveError, setMoveError] = useState<string | null>(null)
+  const [editingId, setEditingId] = useState<number | null>(null)
+  const [editValue, setEditValue] = useState('')
+  const [renameError, setRenameError] = useState<string | null>(null)
   const [dragTarget, setDragTarget] = useState<DragTarget>(null)
   const draggedId = useRef<number | null>(null)
+  const editInputRef = useRef<HTMLInputElement>(null)
+
+  const [mergingNode, setMergingNode] = useState<CategoryNode | null>(null)
+  const [mergeTargetId, setMergeTargetId] = useState<number | null>(null)
+  const [mergeError, setMergeError] = useState<string | null>(null)
+  const [merging, setMerging] = useState(false)
+
+  const [creatingParentId, setCreatingParentId] = useState<number | null | 'root'>(null)
+  const [createError, setCreateError] = useState<string | null>(null)
+
+  const [merges, setMerges] = useState<CategoryMergeItem[]>([])
+  const [historyOpen, setHistoryOpen] = useState(false)
+  const [revertingId, setRevertingId] = useState<number | null>(null)
+  const [revertError, setRevertError] = useState<string | null>(null)
 
   useEffect(() => {
     fetchCategoryStats(from, to, iban).then(r => setStats(r.items)).catch(() => {})
   }, [from, to, iban])
+
+  useEffect(() => {
+    fetchCategoryMerges().then(setMerges).catch(() => {})
+  }, [])
 
   const { subtreeTotals, subtreePeriod } = useMemo(() => {
     const flat = new Map(stats.map(s => [s.categoryId, s]))
@@ -294,6 +423,40 @@ export default function CategoriesPage({ categories, from, to, iban, onCategoryD
     }
   }
 
+  function handleStartEdit(id: number, currentName: string) {
+    setEditingId(id)
+    setEditValue(currentName)
+    setRenameError(null)
+    setTimeout(() => editInputRef.current?.select(), 0)
+  }
+
+  function handleCancelEdit() {
+    setEditingId(null)
+    setEditValue('')
+    setRenameError(null)
+  }
+
+  async function handleConfirmRename() {
+    if (editingId === null) return
+    const trimmed = editValue.trim()
+    if (!trimmed) {
+      setRenameError(t('kategorien.renameError.EMPTY_NAME'))
+      return
+    }
+    const id = editingId
+    setEditingId(null)
+    setRenameError(null)
+    try {
+      await renameCategory(id, trimmed)
+      onCategoryRenamed()
+    } catch (e) {
+      const reason = e instanceof Error ? e.message : 'UNKNOWN'
+      const key = `kategorien.renameError.${reason}`
+      const msg = t(key, { defaultValue: t('kategorien.renameError.UNKNOWN') })
+      setRenameError(msg)
+    }
+  }
+
   async function handleDrop(targetParentId: number | null) {
     const id = draggedId.current
     if (id === null) return
@@ -309,11 +472,82 @@ export default function CategoriesPage({ categories, from, to, iban, onCategoryD
     }
   }
 
+  function handleStartCreate(parentId: number | null, _depth: number) {
+    setCreatingParentId(parentId === null ? 'root' : parentId)
+  }
+
+  async function handleCreateConfirm(name: string) {
+    setCreateError(null)
+    const parentId = creatingParentId === 'root' ? null : (creatingParentId as number | null)
+    const parentPath = buildParentPath(parentId, categories)
+    const fullPath = [...parentPath, name]
+    setCreatingParentId(null)
+    try {
+      await findOrCreateCategory(fullPath)
+      onCategoryCreated()
+    } catch {
+      setCreateError(`Kategorie "${name}" konnte nicht angelegt werden.`)
+    }
+  }
+
+  function handleCreateCancel() {
+    setCreatingParentId(null)
+    setCreateError(null)
+  }
+
+  async function handleMergeConfirm() {
+    if (!mergingNode || mergeTargetId === null) return
+    setMerging(true)
+    setMergeError(null)
+    try {
+      const result = await mergeCategories(mergingNode.id, mergeTargetId)
+      setMerges(prev => [result, ...prev])
+      setHistoryOpen(true)
+      setMergingNode(null)
+      setMergeTargetId(null)
+      onCategoryMerged()
+    } catch (e) {
+      const reason = e instanceof Error ? e.message : 'UNKNOWN'
+      const key = `kategorien.mergeError.${reason}`
+      const msg = t(key, { defaultValue: t('kategorien.mergeError.UNKNOWN') })
+      setMergeError(msg)
+    } finally {
+      setMerging(false)
+    }
+  }
+
+  async function handleRevert(mergeId: number) {
+    setRevertingId(mergeId)
+    setRevertError(null)
+    try {
+      await revertMerge(mergeId)
+      setMerges(prev => prev.filter(m => m.id !== mergeId))
+      onCategoryMerged()
+    } catch (e) {
+      const reason = e instanceof Error ? e.message : 'UNKNOWN'
+      const key = `kategorien.revertError.${reason}`
+      const msg = t(key, { defaultValue: t('kategorien.revertError.UNKNOWN') })
+      setRevertError(msg)
+    } finally {
+      setRevertingId(null)
+    }
+  }
+
   const rootNodes = isSearchActive
     ? categories.filter(n => visibleIds.has(n.id))
     : categories
 
   const gapProps = { dragTarget, draggedId, setDragTarget, onDrop: handleDrop }
+
+  const mergeTreeWithoutSource = useMemo(() => {
+    if (!mergingNode) return categories
+    function filter(nodes: CategoryNode[]): CategoryNode[] {
+      return nodes
+        .filter(n => n.id !== mergingNode!.id)
+        .map(n => ({ ...n, children: filter(n.children) }))
+    }
+    return filter(categories)
+  }, [categories, mergingNode])
 
   return (
     <div className="cat-page">
@@ -327,9 +561,71 @@ export default function CategoriesPage({ categories, from, to, iban, onCategoryD
           value={search}
           onChange={e => setSearch(e.target.value)}
         />
+        {!isSearchActive && (
+          <button className="cat-header-add-btn" onClick={() => handleStartCreate(null, 0)} title="Neue Root-Kategorie">
+            +
+          </button>
+        )}
       </div>
       {deleteError && <p className="cat-error">{deleteError}</p>}
       {moveError && <p className="cat-error">{moveError}</p>}
+      {renameError && <p className="cat-error">{renameError}</p>}
+      {createError && <p className="cat-error">{createError}</p>}
+      {revertError && <p className="cat-error">{revertError}</p>}
+
+      {editingId !== null && (
+        <div className="cat-edit-overlay" onClick={handleCancelEdit}>
+          <div className="cat-edit-dialog" onClick={e => e.stopPropagation()}>
+            <input
+              ref={editInputRef}
+              className="cat-edit-input"
+              value={editValue}
+              onChange={e => setEditValue(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === 'Enter') handleConfirmRename()
+                if (e.key === 'Escape') handleCancelEdit()
+              }}
+              autoFocus
+            />
+            <div className="cat-edit-actions">
+              <button className="cat-edit-confirm" onClick={handleConfirmRename}>✓</button>
+              <button className="cat-edit-cancel" onClick={handleCancelEdit}>✕</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {mergingNode !== null && (
+        <div className="cat-edit-overlay" onClick={() => { setMergingNode(null); setMergeTargetId(null); setMergeError(null) }}>
+          <div className="cat-edit-dialog cat-merge-dialog" onClick={e => e.stopPropagation()}>
+            <div className="cat-merge-dialog-title">
+              {t('kategorien.mergeTitle', { name: mergingNode.name })}
+            </div>
+            <CategoryPathInput
+              value={mergeTargetId}
+              onChange={setMergeTargetId}
+              tree={mergeTreeWithoutSource}
+              allowCreate={false}
+              placeholder="Zielkategorie wählen…"
+            />
+            <p className="cat-merge-hint">{t('kategorien.mergeHint')}</p>
+            {mergeError && <p className="cat-error" style={{ margin: 0 }}>{mergeError}</p>}
+            <div className="cat-edit-actions">
+              <button
+                className="cat-edit-confirm"
+                disabled={mergeTargetId === null || merging}
+                onClick={handleMergeConfirm}
+              >
+                {merging ? '…' : t('kategorien.mergeConfirm')}
+              </button>
+              <button className="cat-edit-cancel" onClick={() => { setMergingNode(null); setMergeTargetId(null); setMergeError(null) }}>
+                ✕
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="cat-tree">
         {categories.length === 0 ? (
           <p className="cat-empty">{t('kategorien.empty')}</p>
@@ -352,6 +648,13 @@ export default function CategoriesPage({ categories, from, to, iban, onCategoryD
                   isSearchActive={isSearchActive}
                   deletingId={deletingId}
                   onDelete={handleDelete}
+                  editingId={editingId}
+                  onStartEdit={handleStartEdit}
+                  onStartMerge={setMergingNode}
+                  creatingParentId={creatingParentId}
+                  onStartCreate={handleStartCreate}
+                  onCreateConfirm={handleCreateConfirm}
+                  onCreateCancel={handleCreateCancel}
                   draggedId={draggedId}
                   dragTarget={dragTarget}
                   setDragTarget={setDragTarget}
@@ -360,9 +663,46 @@ export default function CategoriesPage({ categories, from, to, iban, onCategoryD
                 <DropGap parentId={null} gapKey={`gap-root-after-${node.id}`} depth={0} {...gapProps} />
               </Fragment>
             ))}
+            {creatingParentId === 'root' && (
+              <CreateCategoryInput depth={0} onConfirm={handleCreateConfirm} onCancel={handleCreateCancel} />
+            )}
           </>
         )}
       </div>
+
+      {merges.length > 0 && (
+        <div className="cat-history">
+          <button className="cat-history-header" onClick={() => setHistoryOpen(o => !o)}>
+            <span>{historyOpen ? '▾' : '▸'}</span>
+            <span>{t('kategorien.mergeHistory')} ({merges.length})</span>
+          </button>
+          {historyOpen && (
+            <div className="cat-history-body">
+              {merges.map(m => (
+                <div key={m.id} className="cat-history-row">
+                  <span className="cat-history-names">
+                    <span className="cat-history-source">{m.sourceName}</span>
+                    <span className="cat-history-arrow"> → </span>
+                    <span className="cat-history-target">{m.targetName}</span>
+                  </span>
+                  <span className="cat-history-meta">
+                    {m.transactionCount > 0 && <span>{m.transactionCount} Tx</span>}
+                    {m.childCount > 0 && <span>{m.childCount} Kinder</span>}
+                    <span>{formatRelativeDate(m.mergedAt)}</span>
+                  </span>
+                  <button
+                    className="cat-history-revert"
+                    disabled={revertingId === m.id}
+                    onClick={() => handleRevert(m.id)}
+                  >
+                    {revertingId === m.id ? '…' : t('kategorien.mergeRevert')}
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }

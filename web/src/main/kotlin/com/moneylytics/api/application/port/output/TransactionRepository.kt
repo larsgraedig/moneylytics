@@ -89,4 +89,21 @@ interface TransactionRepository {
         to: LocalDate,
         iban: String? = null,
     ): Map<Long, Long>
+
+    fun findIdsByCategoryId(
+        categoryId: Long,
+        organizationId: Long,
+    ): List<Long>
+
+    fun moveToCategoryBySource(
+        sourceCategoryId: Long,
+        targetCategoryId: Long,
+        organizationId: Long,
+    )
+
+    fun moveToCategoryBulk(
+        transactionIds: List<Long>,
+        targetCategoryId: Long,
+        organizationId: Long,
+    )
 }

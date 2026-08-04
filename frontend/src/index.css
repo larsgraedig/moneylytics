@@ -6166,3 +6166,275 @@ body {
 .cat-row:hover .cat-drag-handle {
   opacity: 1;
 }
+
+.cat-edit-btn {
+  margin-left: auto;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-muted);
+  font-size: 13px;
+  padding: 0 4px;
+  opacity: 0;
+  transition: opacity 0.1s, color 0.1s;
+  line-height: 1;
+}
+
+.cat-row:hover .cat-edit-btn {
+  opacity: 1;
+}
+
+.cat-edit-btn:hover {
+  color: var(--accent);
+}
+
+.cat-header-add-btn {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  cursor: pointer;
+  color: var(--text-muted);
+  font-size: 16px;
+  line-height: 1;
+  padding: 2px 8px;
+  margin-left: 4px;
+  transition: color 0.1s, border-color 0.1s;
+}
+
+.cat-header-add-btn:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.cat-add-child-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-muted);
+  font-size: 14px;
+  padding: 0 4px;
+  opacity: 0;
+  transition: opacity 0.1s, color 0.1s;
+  line-height: 1;
+}
+
+.cat-row:hover .cat-add-child-btn {
+  opacity: 1;
+}
+
+.cat-add-child-btn:hover {
+  color: var(--accent);
+}
+
+.cat-create-row {
+  display: flex;
+  align-items: center;
+  height: 34px;
+  gap: 4px;
+}
+
+.cat-create-input {
+  font-family: var(--mono);
+  font-size: 13px;
+  padding: 3px 8px;
+  background: var(--bg);
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  color: var(--text);
+  outline: none;
+  width: 200px;
+}
+
+.cat-merge-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-muted);
+  font-size: 13px;
+  padding: 0 4px;
+  opacity: 0;
+  transition: opacity 0.1s, color 0.1s;
+  line-height: 1;
+}
+
+.cat-row:hover .cat-merge-btn {
+  opacity: 1;
+}
+
+.cat-merge-btn:hover {
+  color: var(--accent);
+}
+
+.cat-merge-dialog {
+  min-width: 340px;
+}
+
+.cat-merge-dialog-title {
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+
+.cat-merge-hint {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-muted);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.cat-history {
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.cat-history-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 20px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--text-muted);
+  width: 100%;
+  text-align: left;
+  transition: color 0.1s;
+}
+
+.cat-history-header:hover {
+  color: var(--text);
+}
+
+.cat-history-body {
+  padding: 0 0 8px;
+}
+
+.cat-history-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 20px;
+  font-family: var(--mono);
+  font-size: 12px;
+}
+
+.cat-history-names {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cat-history-source {
+  color: var(--text-muted);
+  text-decoration: line-through;
+}
+
+.cat-history-arrow {
+  color: var(--text-muted);
+}
+
+.cat-history-target {
+  color: var(--text);
+}
+
+.cat-history-meta {
+  display: flex;
+  gap: 8px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.cat-history-revert {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  cursor: pointer;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-family: var(--mono);
+  color: var(--text-muted);
+  transition: all 0.1s;
+  flex-shrink: 0;
+}
+
+.cat-history-revert:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.cat-history-revert:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.cat-edit-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.cat-edit-dialog {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 280px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+}
+
+.cat-edit-input {
+  font-family: var(--mono);
+  font-size: 13px;
+  padding: 6px 10px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  outline: none;
+}
+
+.cat-edit-input:focus {
+  border-color: var(--accent);
+}
+
+.cat-edit-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.cat-edit-confirm,
+.cat-edit-cancel {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  cursor: pointer;
+  padding: 4px 12px;
+  font-size: 13px;
+  color: var(--text);
+  transition: background 0.1s;
+}
+
+.cat-edit-confirm:hover {
+  background: color-mix(in srgb, var(--accent) 15%, transparent);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.cat-edit-cancel:hover {
+  background: color-mix(in srgb, var(--text-muted) 10%, transparent);
+}

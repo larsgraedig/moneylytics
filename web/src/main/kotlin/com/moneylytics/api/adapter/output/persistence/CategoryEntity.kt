@@ -14,7 +14,7 @@ import jakarta.persistence.Table
 @Table(name = "category")
 class CategoryEntity(
     @Column(nullable = false)
-    val name: String,
+    var name: String,
     @ManyToOne(fetch = FetchType.LAZY, optional = true)
     @JoinColumn(name = "parent_id", nullable = true)
     var parent: CategoryEntity?,

@@ -124,4 +124,26 @@ class CategoryPersistenceAdapterTest {
             .isInstanceOf(NoSuchElementException::class.java)
         verify(jpaRepository, never()).save(any())
     }
+
+    @Test
+    fun `should update name when renaming category`() {
+        val entity = CategoryEntity(name = "Alter Name", parent = null, organization = organizationEntity, id = 7L)
+        whenever(jpaRepository.findByIdAndOrganizationId(7L, organizationId)).thenReturn(entity)
+        whenever(jpaRepository.save(any<CategoryEntity>())).thenAnswer { it.arguments[0] }
+
+        adapter.rename(7L, "Neuer Name", organizationId)
+
+        val captor = argumentCaptor<CategoryEntity>()
+        verify(jpaRepository).save(captor.capture())
+        assertThat(captor.firstValue.name).isEqualTo("Neuer Name")
+    }
+
+    @Test
+    fun `should throw when renaming unknown category`() {
+        whenever(jpaRepository.findByIdAndOrganizationId(99L, organizationId)).thenReturn(null)
+
+        assertThatThrownBy { adapter.rename(99L, "X", organizationId) }
+            .isInstanceOf(NoSuchElementException::class.java)
+        verify(jpaRepository, never()).save(any())
+    }
 }

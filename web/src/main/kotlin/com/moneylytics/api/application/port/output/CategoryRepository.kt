@@ -20,4 +20,21 @@ interface CategoryRepository {
         newParentId: Long?,
         organizationId: Long,
     )
+
+    fun rename(
+        id: Long,
+        newName: String,
+        organizationId: Long,
+    )
+
+    fun findChildIds(
+        parentId: Long,
+        organizationId: Long,
+    ): List<Long>
+
+    fun reparentChildren(
+        fromParentId: Long,
+        toParentId: Long,
+        organizationId: Long,
+    )
 }
