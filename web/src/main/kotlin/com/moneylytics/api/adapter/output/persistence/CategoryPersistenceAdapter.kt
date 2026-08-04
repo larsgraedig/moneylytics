@@ -73,5 +73,20 @@ class CategoryPersistenceAdapter(
         jpaRepository.save(entity)
     }
 
+    @Transactional(readOnly = true)
+    override fun findChildIds(
+        parentId: Long,
+        organizationId: Long,
+    ): List<Long> = jpaRepository.findAllByParentIdAndOrganizationId(parentId, organizationId).mapNotNull { it.id }
+
+    @Transactional
+    override fun reparentChildren(
+        fromParentId: Long,
+        toParentId: Long,
+        organizationId: Long,
+    ) {
+        jpaRepository.reparentChildren(fromParentId, toParentId, organizationId)
+    }
+
     private fun CategoryEntity.toDomain() = Category(id = id, name = name, parentId = parent?.id)
 }

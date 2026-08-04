@@ -442,6 +442,31 @@ class TransactionPersistenceAdapter(
             .countByCategoryGroupedInPeriod(organizationId, from, to, iban)
             .associate { row -> (row[0] as Long) to (row[1] as Long) }
 
+    @Transactional(readOnly = true)
+    override fun findIdsByCategoryId(
+        categoryId: Long,
+        organizationId: Long,
+    ): List<Long> = jpaRepository.findIdsByCategoryId(categoryId, organizationId)
+
+    @Transactional
+    override fun moveToCategoryBySource(
+        sourceCategoryId: Long,
+        targetCategoryId: Long,
+        organizationId: Long,
+    ) {
+        jpaRepository.moveByCategoryId(sourceCategoryId, targetCategoryId, organizationId)
+    }
+
+    @Transactional
+    override fun moveToCategoryBulk(
+        transactionIds: List<Long>,
+        targetCategoryId: Long,
+        organizationId: Long,
+    ) {
+        if (transactionIds.isEmpty()) return
+        jpaRepository.moveBulkToCategory(transactionIds, targetCategoryId, organizationId)
+    }
+
     private fun Transaction.fingerprintRaw() =
         "$accountIban|$bookingDate|$valueDate|${amount.stripTrailingZeros().toPlainString()}|$currency"
 

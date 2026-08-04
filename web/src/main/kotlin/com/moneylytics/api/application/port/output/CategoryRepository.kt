@@ -26,4 +26,15 @@ interface CategoryRepository {
         newName: String,
         organizationId: Long,
     )
+
+    fun findChildIds(
+        parentId: Long,
+        organizationId: Long,
+    ): List<Long>
+
+    fun reparentChildren(
+        fromParentId: Long,
+        toParentId: Long,
+        organizationId: Long,
+    )
 }

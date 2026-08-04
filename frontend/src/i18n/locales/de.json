@@ -601,6 +601,24 @@
       "EMPTY_NAME": "Der Name darf nicht leer sein.",
       "CONSTRAINT_VIOLATION": "Eine Kategorie mit diesem Namen existiert bereits auf dieser Ebene.",
       "UNKNOWN": "Umbenennen fehlgeschlagen."
+    },
+    "mergeBtn": "Verschmelzen",
+    "mergeTitle": "\"{{name}}\" verschmelzen mit…",
+    "mergeHint": "Alle Transaktionen wandern in die Zielkategorie · Kinder werden dort eingehängt · Rückgängig machbar",
+    "mergeThresholdHint": "Diese Kategorie bleibt bestehen, da Limits daran hängen.",
+    "mergeConfirm": "Verschmelzen",
+    "mergeError": {
+      "SAME_CATEGORY": "Quelle und Ziel dürfen nicht identisch sein.",
+      "PARENT_NOT_FOUND": "Rückgängig nicht möglich – die ursprüngliche übergeordnete Kategorie existiert nicht mehr.",
+      "CONSTRAINT_VIOLATION": "Aktion nicht möglich aufgrund eines Namenskonflikts.",
+      "UNKNOWN": "Verschmelzen fehlgeschlagen."
+    },
+    "mergeHistory": "Merge-Verlauf",
+    "mergeRevert": "Rückgängig",
+    "revertError": {
+      "ALREADY_REVERTED": "Dieser Merge wurde bereits rückgängig gemacht.",
+      "PARENT_NOT_FOUND": "Rückgängig nicht möglich – die ursprüngliche übergeordnete Kategorie existiert nicht mehr.",
+      "UNKNOWN": "Rückgängig fehlgeschlagen."
     }
   },
   "burnrate": {

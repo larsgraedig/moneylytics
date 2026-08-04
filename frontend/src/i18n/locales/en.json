@@ -601,6 +601,24 @@
       "EMPTY_NAME": "Name must not be empty.",
       "CONSTRAINT_VIOLATION": "A category with this name already exists at this level.",
       "UNKNOWN": "Rename failed."
+    },
+    "mergeBtn": "Merge",
+    "mergeTitle": "Merge \"{{name}}\" into…",
+    "mergeHint": "All transactions move to the target · Children are re-parented there · Reversible at any time",
+    "mergeThresholdHint": "This category will remain because spending limits are attached.",
+    "mergeConfirm": "Merge",
+    "mergeError": {
+      "SAME_CATEGORY": "Source and target must be different.",
+      "PARENT_NOT_FOUND": "Cannot undo – the original parent category no longer exists.",
+      "CONSTRAINT_VIOLATION": "Action not possible due to a name conflict.",
+      "UNKNOWN": "Merge failed."
+    },
+    "mergeHistory": "Merge history",
+    "mergeRevert": "Undo",
+    "revertError": {
+      "ALREADY_REVERTED": "This merge has already been undone.",
+      "PARENT_NOT_FOUND": "Cannot undo – the original parent category no longer exists.",
+      "UNKNOWN": "Undo failed."
     }
   },
   "burnrate": {

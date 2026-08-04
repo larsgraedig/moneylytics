@@ -6188,6 +6188,135 @@ body {
   color: var(--accent);
 }
 
+.cat-merge-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-muted);
+  font-size: 13px;
+  padding: 0 4px;
+  opacity: 0;
+  transition: opacity 0.1s, color 0.1s;
+  line-height: 1;
+}
+
+.cat-row:hover .cat-merge-btn {
+  opacity: 1;
+}
+
+.cat-merge-btn:hover {
+  color: var(--accent);
+}
+
+.cat-merge-dialog {
+  min-width: 340px;
+}
+
+.cat-merge-dialog-title {
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+
+.cat-merge-hint {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-muted);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.cat-history {
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.cat-history-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 20px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--text-muted);
+  width: 100%;
+  text-align: left;
+  transition: color 0.1s;
+}
+
+.cat-history-header:hover {
+  color: var(--text);
+}
+
+.cat-history-body {
+  padding: 0 0 8px;
+}
+
+.cat-history-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 20px;
+  font-family: var(--mono);
+  font-size: 12px;
+}
+
+.cat-history-names {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cat-history-source {
+  color: var(--text-muted);
+  text-decoration: line-through;
+}
+
+.cat-history-arrow {
+  color: var(--text-muted);
+}
+
+.cat-history-target {
+  color: var(--text);
+}
+
+.cat-history-meta {
+  display: flex;
+  gap: 8px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.cat-history-revert {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  cursor: pointer;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-family: var(--mono);
+  color: var(--text-muted);
+  transition: all 0.1s;
+  flex-shrink: 0;
+}
+
+.cat-history-revert:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.cat-history-revert:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
 .cat-edit-overlay {
   position: fixed;
   inset: 0;

@@ -1,6 +1,7 @@
 package com.moneylytics.api.adapter.output.persistence
 
 import org.springframework.data.jpa.repository.JpaRepository
+import org.springframework.data.jpa.repository.Modifying
 import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.query.Param
 import java.math.BigDecimal
@@ -101,4 +102,32 @@ interface TransactionJpaRepository : JpaRepository<TransactionEntity, Long> {
         @Param("to") to: LocalDate,
         @Param("iban") iban: String?,
     ): List<Array<out Any?>>
+
+    @Query(
+        "SELECT t.id FROM TransactionEntity t WHERE t.category.id = :categoryId AND t.organization.id = :organizationId",
+    )
+    fun findIdsByCategoryId(
+        @Param("categoryId") categoryId: Long,
+        @Param("organizationId") organizationId: Long,
+    ): List<Long>
+
+    @Modifying
+    @Query(
+        "UPDATE TransactionEntity t SET t.category.id = :targetId WHERE t.category.id = :sourceId AND t.organization.id = :organizationId",
+    )
+    fun moveByCategoryId(
+        @Param("sourceId") sourceId: Long,
+        @Param("targetId") targetId: Long,
+        @Param("organizationId") organizationId: Long,
+    )
+
+    @Modifying
+    @Query(
+        "UPDATE TransactionEntity t SET t.category.id = :targetId WHERE t.id IN :ids AND t.organization.id = :organizationId",
+    )
+    fun moveBulkToCategory(
+        @Param("ids") ids: Collection<Long>,
+        @Param("targetId") targetId: Long,
+        @Param("organizationId") organizationId: Long,
+    )
 }

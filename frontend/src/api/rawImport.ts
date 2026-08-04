@@ -97,6 +97,46 @@ export async function moveCategory(id: number, newParentId: number | null): Prom
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
 }
 
+export interface CategoryMergeItem {
+  id: number
+  sourceCategoryId: number | null
+  sourceName: string
+  targetCategoryId: number
+  targetName: string
+  mergedAt: string
+  transactionCount: number
+  childCount: number
+}
+
+export async function fetchCategoryMerges(): Promise<CategoryMergeItem[]> {
+  const res = await fetchWithUser('/categories/merges')
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  return res.json() as Promise<CategoryMergeItem[]>
+}
+
+export async function mergeCategories(sourceId: number, targetId: number): Promise<CategoryMergeItem> {
+  const res = await fetchWithUser('/categories/merges', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ sourceId, targetId }),
+  })
+  if (res.status === 409) {
+    const body = await res.json().catch(() => ({})) as { reason?: string }
+    throw new Error(body.reason ?? 'UNKNOWN')
+  }
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  return res.json() as Promise<CategoryMergeItem>
+}
+
+export async function revertMerge(mergeId: number): Promise<void> {
+  const res = await fetchWithUser(`/categories/merges/${mergeId}`, { method: 'DELETE' })
+  if (res.status === 409) {
+    const body = await res.json().catch(() => ({})) as { reason?: string }
+    throw new Error(body.reason ?? 'UNKNOWN')
+  }
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+}
+
 export async function fetchCategoryStats(
   from: string,
   to: string,
