@@ -424,6 +424,24 @@ class TransactionPersistenceAdapter(
         )
     }
 
+    override fun countByCategoryGrouped(
+        organizationId: Long,
+        iban: String?,
+    ): Map<Long, Long> =
+        jpaRepository
+            .countByCategoryGrouped(organizationId, iban)
+            .associate { row -> (row[0] as Long) to (row[1] as Long) }
+
+    override fun countByCategoryGroupedInPeriod(
+        organizationId: Long,
+        from: java.time.LocalDate,
+        to: java.time.LocalDate,
+        iban: String?,
+    ): Map<Long, Long> =
+        jpaRepository
+            .countByCategoryGroupedInPeriod(organizationId, from, to, iban)
+            .associate { row -> (row[0] as Long) to (row[1] as Long) }
+
     private fun Transaction.fingerprintRaw() =
         "$accountIban|$bookingDate|$valueDate|${amount.stripTrailingZeros().toPlainString()}|$currency"
 

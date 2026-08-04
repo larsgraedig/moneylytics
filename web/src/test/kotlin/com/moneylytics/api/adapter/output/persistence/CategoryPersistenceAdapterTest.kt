@@ -2,6 +2,7 @@ package com.moneylytics.api.adapter.output.persistence
 
 import com.moneylytics.api.domain.Category
 import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.any
 import org.mockito.kotlin.argumentCaptor
@@ -84,5 +85,43 @@ class CategoryPersistenceAdapterTest {
         verify(jpaRepository).save(captor.capture())
         assertThat(captor.firstValue.name).isEqualTo("Transport")
         assertThat(captor.firstValue.parent).isNull()
+    }
+
+    @Test
+    fun `should update parent when moving category`() {
+        val rootEntity = CategoryEntity(name = "Lebensmittel", parent = null, organization = organizationEntity, id = 10L)
+        val newParentEntity = CategoryEntity(name = "Freizeit", parent = null, organization = organizationEntity, id = 20L)
+        whenever(jpaRepository.findByIdAndOrganizationId(10L, organizationId)).thenReturn(rootEntity)
+        whenever(jpaRepository.getReferenceById(20L)).thenReturn(newParentEntity)
+        whenever(jpaRepository.save(any<CategoryEntity>())).thenAnswer { it.arguments[0] }
+
+        adapter.move(10L, 20L, organizationId)
+
+        val captor = argumentCaptor<CategoryEntity>()
+        verify(jpaRepository).save(captor.capture())
+        assertThat(captor.firstValue.parent?.id).isEqualTo(20L)
+    }
+
+    @Test
+    fun `should set parent to null when moving category to root`() {
+        val parentEntity = CategoryEntity(name = "Freizeit", parent = null, organization = organizationEntity, id = 20L)
+        val entity = CategoryEntity(name = "Kino", parent = parentEntity, organization = organizationEntity, id = 5L)
+        whenever(jpaRepository.findByIdAndOrganizationId(5L, organizationId)).thenReturn(entity)
+        whenever(jpaRepository.save(any<CategoryEntity>())).thenAnswer { it.arguments[0] }
+
+        adapter.move(5L, null, organizationId)
+
+        val captor = argumentCaptor<CategoryEntity>()
+        verify(jpaRepository).save(captor.capture())
+        assertThat(captor.firstValue.parent).isNull()
+    }
+
+    @Test
+    fun `should throw when moving unknown category`() {
+        whenever(jpaRepository.findByIdAndOrganizationId(99L, organizationId)).thenReturn(null)
+
+        assertThatThrownBy { adapter.move(99L, null, organizationId) }
+            .isInstanceOf(NoSuchElementException::class.java)
+        verify(jpaRepository, never()).save(any())
     }
 }

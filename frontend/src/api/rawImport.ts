@@ -51,3 +51,47 @@ export async function findOrCreateCategory(path: string[]): Promise<CategoryNode
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
   return res.json() as Promise<CategoryNode>
 }
+
+export interface CategoryStatItem {
+  categoryId: number
+  totalCount: number
+  periodCount: number
+}
+
+export interface CategoryStatsResponse {
+  items: CategoryStatItem[]
+}
+
+export async function deleteCategory(id: number): Promise<void> {
+  const res = await fetchWithUser(`/categories/${id}`, { method: 'DELETE' })
+  if (res.status === 409) {
+    const body = await res.json().catch(() => ({})) as { reason?: string }
+    throw new Error(body.reason ?? 'UNKNOWN')
+  }
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+}
+
+export async function moveCategory(id: number, newParentId: number | null): Promise<void> {
+  const res = await fetchWithUser(`/categories/${id}/parent`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ newParentId }),
+  })
+  if (res.status === 409) {
+    const body = await res.json().catch(() => ({})) as { reason?: string }
+    throw new Error(body.reason ?? 'UNKNOWN')
+  }
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+}
+
+export async function fetchCategoryStats(
+  from: string,
+  to: string,
+  iban?: string,
+): Promise<CategoryStatsResponse> {
+  const params = new URLSearchParams({ from, to })
+  if (iban) params.set('iban', iban)
+  const res = await fetchWithUser(`/categories/stats?${params}`)
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  return res.json() as Promise<CategoryStatsResponse>
+}

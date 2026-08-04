@@ -3,6 +3,7 @@ package com.moneylytics.api.adapter.output.persistence
 import com.moneylytics.api.application.port.output.AccountRepository
 import com.moneylytics.api.application.port.output.CategoryRepository
 import com.moneylytics.api.application.port.output.IgnoredTransactionRepository
+import com.moneylytics.api.application.port.output.ThresholdRepository
 import com.moneylytics.api.application.port.output.TransactionRepository
 import com.moneylytics.api.application.service.CategoryService
 import com.moneylytics.api.application.service.IgnoredTransactionService
@@ -69,5 +70,9 @@ class ServiceLayerTestConfig {
         IgnoredTransactionService(repository)
 
     @Bean
-    fun categoryService(categoryRepository: CategoryRepository): CategoryService = CategoryService(categoryRepository)
+    fun categoryService(
+        categoryRepository: CategoryRepository,
+        transactionRepository: TransactionRepository,
+        thresholdRepository: ThresholdRepository,
+    ): CategoryService = CategoryService(categoryRepository, transactionRepository, thresholdRepository)
 }

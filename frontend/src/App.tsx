@@ -4,7 +4,7 @@ import type { LucideIcon } from 'lucide-react'
 import {
   Workflow, TrendingUp, TrendingDown, PieChart, BarChart2,
   List, Landmark, Wallet, Gauge,
-  FileSpreadsheet, FileCode, Link2, FolderOpen, Repeat, Wrench, Building2,
+  FileSpreadsheet, FileCode, Link2, FolderOpen, Repeat, Wrench, Building2, Tags,
 } from 'lucide-react'
 import { getPresetRange, detectPreset, PRESETS, type Preset } from './utils/datePresets'
 import SankeyChart from './components/SankeyChart'
@@ -20,6 +20,7 @@ import CashflowPage from './components/CashflowPage'
 import BurnRatePage from './components/BurnRatePage'
 import AccountsPage from './components/AccountsPage'
 import LinkedTransactionsPage from './components/LinkedTransactionsPage'
+import CategoriesPage from './components/CategoriesPage'
 import CollectionsPage from './components/CollectionsPage'
 import RecurringPage from './components/RecurringPage'
 import AdminPage from './components/AdminPage'
@@ -44,9 +45,9 @@ function isoDate(d: Date) {
 const today = isoDate(new Date())
 const firstOfYear = isoDate(new Date(new Date().getFullYear(), 0, 1))
 
-type Tab = 'sankey' | 'trends' | 'breakdown' | 'cashflow' | 'burnrate' | 'kontoauszug' | 'verknuepfungen' | 'sammlungen' | 'konten' | 'budgets' | 'limits' | 'csv' | 'camt' | 'wiederkehrer' | 'admin' | 'orgs'
+type Tab = 'sankey' | 'trends' | 'breakdown' | 'cashflow' | 'burnrate' | 'kontoauszug' | 'verknuepfungen' | 'sammlungen' | 'konten' | 'budgets' | 'limits' | 'csv' | 'camt' | 'wiederkehrer' | 'kategorien' | 'admin' | 'orgs'
 
-const VALID_TABS = new Set<string>(['sankey', 'trends', 'breakdown', 'cashflow', 'burnrate', 'kontoauszug', 'verknuepfungen', 'sammlungen', 'konten', 'budgets', 'limits', 'csv', 'camt', 'wiederkehrer', 'admin', 'orgs'])
+const VALID_TABS = new Set<string>(['sankey', 'trends', 'breakdown', 'cashflow', 'burnrate', 'kontoauszug', 'verknuepfungen', 'sammlungen', 'konten', 'budgets', 'limits', 'csv', 'camt', 'wiederkehrer', 'kategorien', 'admin', 'orgs'])
 
 type ViewState =
   | { phase: 'idle' }
@@ -77,6 +78,7 @@ const BASE_NAV: NavSection[] = [
       ['budgets', 'nav.budgets', Wallet],
       ['limits', 'nav.limits', Gauge],
       ['wiederkehrer', 'nav.wiederkehrer', Repeat],
+      ['kategorien', 'nav.kategorien', Tags],
     ],
   },
   {
@@ -355,6 +357,7 @@ export default function App() {
           {tab === 'csv' && <CsvImportPage key={`${username}-${activeOrganization?.id}`} categories={categories} />}
           {tab === 'camt' && <CamtImportPage key={`${username}-${activeOrganization?.id}`} categories={categories} />}
           {tab === 'wiederkehrer' && <RecurringPage key={`${username}-${activeOrganization?.id}`} />}
+          {tab === 'kategorien' && <CategoriesPage key={`${username}-${activeOrganization?.id}`} categories={categories} from={from} to={to} iban={iban} onCategoryDeleted={() => { fetchCategories().then(cats => setCategories(cats.categories)).catch(() => {}) }} onCategoryMoved={() => { fetchCategories().then(cats => setCategories(cats.categories)).catch(() => {}) }} />}
           {tab === 'orgs' && isOrgAdminOrOwner && <OrgsPage key={activeOrganization?.id} />}
           {tab === 'admin' && isSystemAdmin && <AdminPage key={`${username}-${activeOrganization?.id}`} />}
         </main>

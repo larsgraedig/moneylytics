@@ -72,4 +72,33 @@ interface TransactionJpaRepository : JpaRepository<TransactionEntity, Long> {
     fun findLatestDatePerIban(
         @Param("organizationId") organizationId: Long,
     ): List<Array<out Any?>>
+
+    @Query(
+        """SELECT t.category.id, COUNT(t) FROM TransactionEntity t
+        WHERE t.organization.id = :organizationId
+        AND t.excluded = false
+        AND t.category IS NOT NULL
+        AND (:iban IS NULL OR t.account.iban = :iban)
+        GROUP BY t.category.id""",
+    )
+    fun countByCategoryGrouped(
+        @Param("organizationId") organizationId: Long,
+        @Param("iban") iban: String?,
+    ): List<Array<out Any?>>
+
+    @Query(
+        """SELECT t.category.id, COUNT(t) FROM TransactionEntity t
+        WHERE t.organization.id = :organizationId
+        AND t.excluded = false
+        AND t.category IS NOT NULL
+        AND (:iban IS NULL OR t.account.iban = :iban)
+        AND t.accountingDate BETWEEN :from AND :to
+        GROUP BY t.category.id""",
+    )
+    fun countByCategoryGroupedInPeriod(
+        @Param("organizationId") organizationId: Long,
+        @Param("from") from: LocalDate,
+        @Param("to") to: LocalDate,
+        @Param("iban") iban: String?,
+    ): List<Array<out Any?>>
 }

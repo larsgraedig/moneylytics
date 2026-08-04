@@ -83,3 +83,17 @@ data class CategoryNodeResponse(
     val name: String,
     val children: List<CategoryNodeResponse>,
 )
+
+data class CategoryStatsResponse(
+    val items: List<CategoryStatItemResponse>,
+)
+
+data class CategoryStatItemResponse(
+    val categoryId: Long,
+    val totalCount: Long,
+    val periodCount: Long,
+)
+
+data class DeleteCategoryErrorResponse(
+    val reason: String,
+)

@@ -9,4 +9,15 @@ interface CategoryRepository {
         path: List<String>,
         organizationId: Long,
     ): Category
+
+    fun delete(
+        id: Long,
+        organizationId: Long,
+    )
+
+    fun move(
+        id: Long,
+        newParentId: Long?,
+        organizationId: Long,
+    )
 }
