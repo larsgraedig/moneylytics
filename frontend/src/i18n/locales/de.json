@@ -20,6 +20,7 @@
     "csv": "CSV",
     "camt": "CAMT",
     "wiederkehrer": "Wiederkehrend",
+    "kategorien": "Kategorien",
     "admin": "Technisches",
     "orgs": "Organisation",
     "collapse": "Menü einklappen",
@@ -579,6 +580,10 @@
         "MANUAL": "Manuell"
       }
     }
+  },
+  "kategorien": {
+    "title": "Kategorien",
+    "empty": "Keine Kategorien vorhanden"
   },
   "burnrate": {
     "windowBtn": "Ø {{days}} Tage",

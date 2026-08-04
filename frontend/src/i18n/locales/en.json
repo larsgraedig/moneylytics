@@ -20,6 +20,7 @@
     "csv": "CSV",
     "camt": "CAMT",
     "wiederkehrer": "Recurring",
+    "kategorien": "Categories",
     "admin": "Technical",
     "orgs": "Organization",
     "collapse": "Collapse menu",
@@ -579,6 +580,10 @@
         "MANUAL": "Manual"
       }
     }
+  },
+  "kategorien": {
+    "title": "Categories",
+    "empty": "No categories found"
   },
   "burnrate": {
     "windowBtn": "Ø {{days}} days",
