@@ -1,6 +1,7 @@
 package com.moneylytics.api.application.service
 
 import com.moneylytics.api.application.port.input.CategoryStatItem
+import com.moneylytics.api.application.port.input.DeleteCategoryUseCase
 import com.moneylytics.api.application.port.input.FindOrCreateCategoryUseCase
 import com.moneylytics.api.application.port.input.GetCategoriesUseCase
 import com.moneylytics.api.application.port.input.GetCategoryStatsQuery
@@ -16,7 +17,8 @@ class CategoryService(
     private val transactionRepository: TransactionRepository,
 ) : GetCategoriesUseCase,
     FindOrCreateCategoryUseCase,
-    GetCategoryStatsUseCase {
+    GetCategoryStatsUseCase,
+    DeleteCategoryUseCase {
     override fun getCategories(organizationId: Long): List<Category> = categoryRepository.findAll(organizationId)
 
     override fun findOrCreateCategory(
@@ -42,4 +44,9 @@ class CategoryService(
             )
         }
     }
+
+    override fun deleteCategory(
+        id: Long,
+        organizationId: Long,
+    ) = categoryRepository.delete(id, organizationId)
 }

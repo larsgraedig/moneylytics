@@ -585,7 +585,9 @@
     "title": "Categories",
     "empty": "No categories found",
     "search": "Search categories…",
-    "noResults": "No results"
+    "noResults": "No results",
+    "delete": "Delete",
+    "deleteError": "Delete failed"
   },
   "burnrate": {
     "windowBtn": "Ø {{days}} days",

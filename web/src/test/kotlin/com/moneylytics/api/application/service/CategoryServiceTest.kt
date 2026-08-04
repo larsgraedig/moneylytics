@@ -72,6 +72,22 @@ class CategoryServiceTest {
     }
 
     @Test
+    fun `should delegate delete to repository`() {
+        service.deleteCategory(42L, organizationId)
+
+        verify(categoryRepository).delete(42L, organizationId)
+    }
+
+    @Test
+    fun `should propagate exception when category not found on delete`() {
+        whenever(categoryRepository.delete(99L, organizationId)).thenThrow(NoSuchElementException("not found"))
+
+        org.assertj.core.api.Assertions
+            .assertThatThrownBy { service.deleteCategory(99L, organizationId) }
+            .isInstanceOf(NoSuchElementException::class.java)
+    }
+
+    @Test
     fun `should include categories that only appear in period counts`() {
         val from = LocalDate.of(2024, 1, 1)
         val to = LocalDate.of(2024, 3, 31)

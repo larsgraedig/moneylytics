@@ -6075,6 +6075,43 @@ body {
   color: var(--text-muted);
 }
 
+.cat-delete-btn {
+  font-family: var(--mono);
+  font-size: 11px;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  border-radius: 3px;
+  padding: 1px 6px;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.1s, color 0.1s, border-color 0.1s;
+  flex-shrink: 0;
+  margin-left: 8px;
+}
+
+.cat-row:hover .cat-delete-btn {
+  opacity: 1;
+}
+
+.cat-delete-btn:hover {
+  color: var(--error);
+  border-color: var(--error);
+}
+
+.cat-delete-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.cat-error {
+  padding: 8px 20px;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--error);
+  border-bottom: 1px solid var(--border);
+}
+
 .cat-highlight {
   background: var(--accent-glow);
   color: var(--accent);

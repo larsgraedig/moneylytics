@@ -10,4 +10,9 @@ interface CategoryJpaRepository : JpaRepository<CategoryEntity, Long> {
         parentId: Long?,
         organizationId: Long,
     ): CategoryEntity?
+
+    fun findByIdAndOrganizationId(
+        id: Long,
+        organizationId: Long,
+    ): CategoryEntity?
 }

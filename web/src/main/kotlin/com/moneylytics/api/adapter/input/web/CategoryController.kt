@@ -1,5 +1,6 @@
 package com.moneylytics.api.adapter.input.web
 
+import com.moneylytics.api.application.port.input.DeleteCategoryUseCase
 import com.moneylytics.api.application.port.input.FindOrCreateCategoryUseCase
 import com.moneylytics.api.application.port.input.GetCategoriesUseCase
 import com.moneylytics.api.application.port.input.GetCategoryStatsQuery
@@ -8,9 +9,13 @@ import com.moneylytics.api.application.port.input.ResolveOrganizationUseCase
 import com.moneylytics.api.domain.Category
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import org.springframework.dao.DataIntegrityViolationException
+import org.springframework.http.ResponseEntity
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.security.core.userdetails.UserDetails
+import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
@@ -29,6 +34,7 @@ class CategoryController(
     private val getCategoriesUseCase: GetCategoriesUseCase,
     private val findOrCreateCategoryUseCase: FindOrCreateCategoryUseCase,
     private val getCategoryStatsUseCase: GetCategoryStatsUseCase,
+    private val deleteCategoryUseCase: DeleteCategoryUseCase,
     private val resolveOrganizationUseCase: ResolveOrganizationUseCase,
 ) {
     @GetMapping
@@ -85,6 +91,23 @@ class CategoryController(
         return CategoryStatsResponse(
             items = items.map { CategoryStatItemResponse(it.categoryId, it.totalCount, it.periodCount) },
         )
+    }
+
+    @DeleteMapping("/{id}")
+    suspend fun deleteCategory(
+        @PathVariable id: Long,
+        @AuthenticationPrincipal principal: UserDetails,
+        exchange: ServerWebExchange,
+    ): ResponseEntity<Unit> {
+        val organizationId = resolveOrganizationUseCase.resolveOrganization(principal, exchange)
+        return try {
+            withContext(Dispatchers.IO) { deleteCategoryUseCase.deleteCategory(id, organizationId) }
+            ResponseEntity.noContent().build()
+        } catch (e: NoSuchElementException) {
+            ResponseEntity.notFound().build()
+        } catch (e: DataIntegrityViolationException) {
+            ResponseEntity.status(409).build()
+        }
     }
 
     private fun buildTree(nodes: List<Category>): List<CategoryNodeResponse> {

@@ -585,7 +585,9 @@
     "title": "Kategorien",
     "empty": "Keine Kategorien vorhanden",
     "search": "Kategorien durchsuchen…",
-    "noResults": "Keine Treffer"
+    "noResults": "Keine Treffer",
+    "delete": "Löschen",
+    "deleteError": "Löschen fehlgeschlagen"
   },
   "burnrate": {
     "windowBtn": "Ø {{days}} Tage",

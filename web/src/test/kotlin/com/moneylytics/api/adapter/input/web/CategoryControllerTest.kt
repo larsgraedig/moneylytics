@@ -1,5 +1,6 @@
 package com.moneylytics.api.adapter.input.web
 
+import com.moneylytics.api.application.port.input.DeleteCategoryUseCase
 import com.moneylytics.api.application.port.input.FindOrCreateCategoryUseCase
 import com.moneylytics.api.application.port.input.GetCategoriesUseCase
 import com.moneylytics.api.application.port.input.GetCategoryStatsUseCase
@@ -20,8 +21,15 @@ class CategoryControllerTest {
     private val getCategoriesUseCase: GetCategoriesUseCase = mock()
     private val findOrCreateCategoryUseCase: FindOrCreateCategoryUseCase = mock()
     private val getCategoryStatsUseCase: GetCategoryStatsUseCase = mock()
+    private val deleteCategoryUseCase: DeleteCategoryUseCase = mock()
     private val controller =
-        CategoryController(getCategoriesUseCase, findOrCreateCategoryUseCase, getCategoryStatsUseCase, resolveOrganizationUseCase)
+        CategoryController(
+            getCategoriesUseCase,
+            findOrCreateCategoryUseCase,
+            getCategoryStatsUseCase,
+            deleteCategoryUseCase,
+            resolveOrganizationUseCase,
+        )
     private val principal =
         User
             .withUsername("user@test.de")

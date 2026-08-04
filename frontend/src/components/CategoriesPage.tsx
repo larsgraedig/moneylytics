@@ -1,13 +1,14 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { CategoryNode, CategoryStatItem } from '../api/rawImport'
-import { fetchCategoryStats } from '../api/rawImport'
+import { deleteCategory, fetchCategoryStats } from '../api/rawImport'
 
 interface Props {
   categories: CategoryNode[]
   from: string
   to: string
   iban?: string
+  onCategoryDeleted: () => void
 }
 
 interface RowProps {
@@ -20,6 +21,8 @@ interface RowProps {
   search: string
   visibleIds: Set<number>
   isSearchActive: boolean
+  deletingId: number | null
+  onDelete: (id: number) => void
 }
 
 function buildSubtreeCounts(
@@ -75,6 +78,7 @@ function CategoryRow({
   node, depth, expanded, onToggle,
   subtreeTotals, subtreePeriod,
   search, visibleIds, isSearchActive,
+  deletingId, onDelete,
 }: RowProps) {
   const visibleChildren = isSearchActive
     ? node.children.filter(c => visibleIds.has(c.id))
@@ -87,6 +91,7 @@ function CategoryRow({
   const hasChildren = node.children.length > 0
   const total = subtreeTotals.get(node.id) ?? 0
   const period = subtreePeriod.get(node.id) ?? 0
+  const isDeletable = !hasChildren && total === 0
 
   return (
     <>
@@ -106,6 +111,15 @@ function CategoryRow({
             <span className="cat-count-total" title="Gesamt">{total}</span>
           </span>
         )}
+        {isDeletable && (
+          <button
+            className="cat-delete-btn"
+            disabled={deletingId === node.id}
+            onClick={e => { e.stopPropagation(); onDelete(node.id) }}
+          >
+            {deletingId === node.id ? '…' : '×'}
+          </button>
+        )}
       </div>
       {isExpanded && visibleChildren.map(child => (
         <CategoryRow
@@ -119,17 +133,21 @@ function CategoryRow({
           search={search}
           visibleIds={visibleIds}
           isSearchActive={isSearchActive}
+          deletingId={deletingId}
+          onDelete={onDelete}
         />
       ))}
     </>
   )
 }
 
-export default function CategoriesPage({ categories, from, to, iban }: Props) {
+export default function CategoriesPage({ categories, from, to, iban, onCategoryDeleted }: Props) {
   const { t } = useTranslation()
   const [expanded, setExpanded] = useState<Set<number>>(new Set())
   const [stats, setStats] = useState<CategoryStatItem[]>([])
   const [search, setSearch] = useState('')
+  const [deletingId, setDeletingId] = useState<number | null>(null)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
 
   useEffect(() => {
     fetchCategoryStats(from, to, iban).then(r => setStats(r.items)).catch(() => {})
@@ -162,6 +180,19 @@ export default function CategoriesPage({ categories, from, to, iban }: Props) {
     })
   }
 
+  async function handleDelete(id: number) {
+    setDeletingId(id)
+    setDeleteError(null)
+    try {
+      await deleteCategory(id)
+      onCategoryDeleted()
+    } catch {
+      setDeleteError(t('kategorien.deleteError'))
+    } finally {
+      setDeletingId(null)
+    }
+  }
+
   const rootNodes = isSearchActive
     ? categories.filter(n => visibleIds.has(n.id))
     : categories
@@ -179,6 +210,7 @@ export default function CategoriesPage({ categories, from, to, iban }: Props) {
           onChange={e => setSearch(e.target.value)}
         />
       </div>
+      {deleteError && <p className="cat-error">{deleteError}</p>}
       <div className="cat-tree">
         {categories.length === 0 ? (
           <p className="cat-empty">{t('kategorien.empty')}</p>
@@ -197,6 +229,8 @@ export default function CategoriesPage({ categories, from, to, iban }: Props) {
               search={search.trim()}
               visibleIds={visibleIds}
               isSearchActive={isSearchActive}
+              deletingId={deletingId}
+              onDelete={handleDelete}
             />
           ))
         )}

@@ -62,6 +62,12 @@ export interface CategoryStatsResponse {
   items: CategoryStatItem[]
 }
 
+export async function deleteCategory(id: number): Promise<void> {
+  const res = await fetchWithUser(`/categories/${id}`, { method: 'DELETE' })
+  if (res.status === 409) throw new Error('conflict')
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+}
+
 export async function fetchCategoryStats(
   from: string,
   to: string,
