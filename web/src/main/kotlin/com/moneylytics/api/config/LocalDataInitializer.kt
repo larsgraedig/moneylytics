@@ -15,6 +15,7 @@ import com.moneylytics.api.application.port.input.ManageCollectionMembersUseCase
 import com.moneylytics.api.application.port.input.ManageTransactionOffsetUseCase
 import com.moneylytics.api.application.port.input.RefreshRecurringSeriesCommand
 import com.moneylytics.api.application.port.input.SaveThresholdUseCase
+import com.moneylytics.api.application.port.output.CategoryRepository
 import com.moneylytics.api.application.port.output.UserRepository
 import com.moneylytics.api.domain.Budget
 import com.moneylytics.api.domain.Collection
@@ -40,6 +41,7 @@ class LocalDataInitializer(
     private val getTransactionsUseCase: GetTransactionsUseCase,
     private val manageTransactionOffsetUseCase: ManageTransactionOffsetUseCase,
     private val saveThresholdUseCase: SaveThresholdUseCase,
+    private val categoryRepository: CategoryRepository,
     private val createBudgetUseCase: CreateBudgetUseCase,
     private val assignTransactionToBudgetUseCase: AssignTransactionToBudgetUseCase,
     private val createCollectionUseCase: CreateCollectionUseCase,
@@ -188,11 +190,15 @@ class LocalDataInitializer(
     }
 
     private fun setupThresholds(orgId: Long) {
+        val lebensmittelId = categoryRepository.findOrCreate(listOf("Lebensmittel"), orgId).id!!
+        val transportId = categoryRepository.findOrCreate(listOf("Transport"), orgId).id!!
+        val freizeitId = categoryRepository.findOrCreate(listOf("Freizeit"), orgId).id!!
+
         saveThresholdUseCase.saveThreshold(
             Threshold(
                 id = 0,
-                category = "Lebensmittel",
-                subcategory = null,
+                categoryId = lebensmittelId,
+                categoryPath = listOf("Lebensmittel"),
                 period = ThresholdPeriod.MONTHLY,
                 notice = BigDecimal("400"),
                 warning = BigDecimal("600"),
@@ -203,8 +209,8 @@ class LocalDataInitializer(
         saveThresholdUseCase.saveThreshold(
             Threshold(
                 id = 0,
-                category = "Transport",
-                subcategory = null,
+                categoryId = transportId,
+                categoryPath = listOf("Transport"),
                 period = ThresholdPeriod.MONTHLY,
                 notice = BigDecimal("150"),
                 warning = BigDecimal("250"),
@@ -215,8 +221,8 @@ class LocalDataInitializer(
         saveThresholdUseCase.saveThreshold(
             Threshold(
                 id = 0,
-                category = "Freizeit",
-                subcategory = null,
+                categoryId = freizeitId,
+                categoryPath = listOf("Freizeit"),
                 period = ThresholdPeriod.MONTHLY,
                 notice = BigDecimal("80"),
                 warning = null,

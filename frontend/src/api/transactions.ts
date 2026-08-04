@@ -4,6 +4,8 @@ export interface SankeyNode {
   name: string
   value: number
   nodeKey: string
+  categoryId: number
+  namePath: string[]
 }
 
 export interface SankeyLink {
@@ -115,8 +117,10 @@ export async function fetchTransactionList(
   subcategory?: string,
   iban?: string,
   group?: string,
+  categoryId?: number,
 ): Promise<TransactionListResponse> {
   const params = new URLSearchParams({ from, to, type: 'EXPENSES' })
+  if (categoryId != null) params.set('categoryId', String(categoryId))
   if (category) params.set('category', category)
   if (subcategory) params.set('subcategory', subcategory)
   if (group) params.set('group', group)
@@ -137,6 +141,7 @@ export async function fetchAllTransactions(
   type?: 'ALL' | 'INCOME' | 'EXPENSES',
   excludeCollectionId?: number,
   excludeBudgetId?: number,
+  categoryId?: number,
 ): Promise<TransactionListResponse> {
   const params = new URLSearchParams({ from, to })
   if (iban) params.set('iban', iban)
@@ -147,6 +152,7 @@ export async function fetchAllTransactions(
   if (type) params.set('type', type)
   if (excludeCollectionId != null) params.set('excludeCollectionId', String(excludeCollectionId))
   if (excludeBudgetId != null) params.set('excludeBudgetId', String(excludeBudgetId))
+  if (categoryId != null) params.set('categoryId', String(categoryId))
   const res = await fetchWithUser(`/transactions/list?${params}`)
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
   return res.json() as Promise<TransactionListResponse>
@@ -343,6 +349,7 @@ export async function fetchBurnRate(
 export interface CategoryTotalItem {
   name: string
   value: number
+  categoryId?: number
 }
 
 export interface CategoryTotalsResponseDto {
@@ -354,10 +361,12 @@ export async function fetchCategoryTotals(
   to: string,
   iban?: string,
   category?: string,
+  categoryId?: number,
 ): Promise<CategoryTotalsResponseDto> {
   const params = new URLSearchParams({ from, to })
   if (iban) params.set('iban', iban)
-  if (category) params.set('category', category)
+  if (categoryId != null) params.set('categoryId', String(categoryId))
+  else if (category) params.set('category', category)
   const res = await fetchWithUser(`/transactions/category-totals?${params}`)
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
   return res.json() as Promise<CategoryTotalsResponseDto>

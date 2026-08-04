@@ -4,6 +4,7 @@ import com.moneylytics.api.application.port.input.BulkCategoryUpdate
 import com.moneylytics.api.application.port.input.BulkUpdateTransactionCategoryUseCase
 import com.moneylytics.api.application.port.input.GetBurnRateUseCase
 import com.moneylytics.api.application.port.input.GetCashflowUseCase
+import com.moneylytics.api.application.port.input.GetCategoriesUseCase
 import com.moneylytics.api.application.port.input.GetCategoryTotalsUseCase
 import com.moneylytics.api.application.port.input.GetTransactionsQuery
 import com.moneylytics.api.application.port.input.GetTransactionsUseCase
@@ -11,6 +12,7 @@ import com.moneylytics.api.application.port.input.ResolveOrganizationUseCase
 import com.moneylytics.api.application.port.input.UpdateTransactionAccountingDateUseCase
 import com.moneylytics.api.application.port.input.UpdateTransactionCategoryUseCase
 import com.moneylytics.api.application.port.input.UpdateTransactionCommentUseCase
+import com.moneylytics.api.domain.Category
 import com.moneylytics.api.domain.Transaction
 import com.moneylytics.api.domain.TransactionOffsetLink
 import kotlinx.coroutines.test.runTest
@@ -37,11 +39,13 @@ class TransactionQueryControllerListTest {
     private val getCategoryTotalsUseCase: GetCategoryTotalsUseCase = mock()
     private val updateTransactionCategoryUseCase: UpdateTransactionCategoryUseCase = mock()
     private val updateTransactionCommentUseCase: UpdateTransactionCommentUseCase = mock()
+    private val getCategoriesUseCase: GetCategoriesUseCase = mock()
     private val updateTransactionAccountingDateUseCase: UpdateTransactionAccountingDateUseCase = mock()
     private val bulkUpdateTransactionCategoryUseCase: BulkUpdateTransactionCategoryUseCase = mock()
     private val controller =
         TransactionQueryController(
             getTransactionsUseCase,
+            getCategoriesUseCase,
             getCashflowUseCase,
             getBurnRateUseCase,
             getCategoryTotalsUseCase,
@@ -233,11 +237,39 @@ class TransactionQueryControllerListTest {
             assertThat(captor.firstValue.subcategory).isNull()
         }
 
+    @Test
+    fun `should use categoryId filter and return sub-series per direct child for id-prefixed spec`() =
+        runTest {
+            val parent = Category(id = 10L, name = "Wohnen", parentId = null)
+            val childA = Category(id = 11L, name = "Miete", parentId = 10L)
+            val childB = Category(id = 12L, name = "Strom", parentId = 10L)
+            whenever(getCategoriesUseCase.getCategories(organizationId)).thenReturn(listOf(parent, childA, childB))
+            val miete = tx(id = 1L, amount = BigDecimal("-100"), categoryId = 11L)
+            val strom = tx(id = 2L, amount = BigDecimal("-50"), categoryId = 12L)
+            whenever(getTransactionsUseCase.getTransactions(any())).thenReturn(listOf(miete, strom))
+
+            val result = controller.getTrends(from, to, series = listOf("id:10"), principal = principal, exchange = exchange)
+
+            val captor = argumentCaptor<GetTransactionsQuery>()
+            verify(getTransactionsUseCase).getTransactions(captor.capture())
+            assertThat(captor.firstValue.categoryId).isEqualTo(10L)
+            assertThat(captor.firstValue.category).isNull()
+
+            assertThat(result.groups).hasSize(1)
+            val group = result.groups[0]
+            assertThat(group.main.label).isEqualTo("Wohnen")
+            assertThat(group.main.categoryId).isEqualTo(10L)
+            assertThat(group.subs).hasSize(2)
+            assertThat(group.subs.map { it.label }).containsExactlyInAnyOrder("Miete", "Strom")
+            assertThat(group.subs.map { it.categoryId }).containsExactlyInAnyOrder(11L, 12L)
+        }
+
     private fun tx(
         id: Long,
         amount: BigDecimal = BigDecimal("-50"),
         accountingDate: LocalDate = from,
         offsetLink: TransactionOffsetLink? = null,
+        categoryId: Long? = null,
     ) = Transaction(
         id = id,
         category = "Test",
@@ -248,6 +280,7 @@ class TransactionQueryControllerListTest {
         amount = amount,
         currency = "EUR",
         accountIban = "DE00TEST",
+        categoryId = categoryId,
         offsetLinks = if (offsetLink != null) listOf(offsetLink) else emptyList(),
     )
 

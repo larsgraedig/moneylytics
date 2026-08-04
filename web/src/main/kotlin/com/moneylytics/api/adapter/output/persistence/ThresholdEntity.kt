@@ -20,8 +20,11 @@ class ThresholdEntity(
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "organization_id", nullable = false)
     val organization: OrganizationEntity,
-    @Column(nullable = false)
-    val category: String,
+    @ManyToOne(fetch = FetchType.LAZY, optional = true)
+    @JoinColumn(name = "category_id", nullable = true)
+    val categoryEntity: CategoryEntity? = null,
+    @Column(nullable = true)
+    val category: String? = null,
     val subcategory: String? = null,
     @Column(nullable = true, name = "group_name")
     val groupName: String? = null,
@@ -38,3 +41,13 @@ class ThresholdEntity(
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     var id: Long? = null,
 )
+
+fun CategoryEntity.buildPath(): List<String> {
+    val path = mutableListOf<String>()
+    var current: CategoryEntity? = this
+    while (current != null) {
+        path.add(0, current.name)
+        current = current.parent
+    }
+    return path
+}

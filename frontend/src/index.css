@@ -1555,6 +1555,64 @@ body {
 
 .ri-cat-input::placeholder { color: var(--text-dim); }
 
+.ri-cell-category {
+  min-width: 200px;
+  max-width: 320px;
+  padding: 2px 6px !important;
+}
+
+.ri-category-input {
+  width: 100%;
+  min-width: 180px;
+}
+
+/* ── category path custom dropdown ──────── */
+
+.cat-path-input-wrapper {
+  position: relative;
+  display: inline-block;
+  width: 100%;
+}
+
+.cat-path-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 200;
+  min-width: 220px;
+  max-width: 400px;
+  max-height: 260px;
+  overflow-y: auto;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  list-style: none;
+  margin: 2px 0 0;
+  padding: 4px 0;
+}
+
+.cat-path-option {
+  padding: 3px 8px;
+  font-size: 11px;
+  font-family: var(--mono);
+  color: var(--text);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.cat-path-option:hover,
+.cat-path-highlighted {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.cat-path-create {
+  color: var(--accent);
+  border-top: 1px solid var(--border);
+  margin-top: 4px;
+  padding-top: 5px;
+}
+
 /* ── action toggle button ────────────────── */
 
 .ri-cell-action { white-space: nowrap; }
@@ -2160,6 +2218,36 @@ body {
 }
 .bgt-spent-btn:hover { color: var(--accent); text-decoration-color: var(--accent-dim); }
 
+.bgt-td-path {
+  min-width: 220px;
+  max-width: 400px;
+}
+
+.bgt-row--new .bgt-td-path {
+  padding: 4px 8px;
+}
+
+.bgt-category-input {
+  width: 100%;
+  min-width: 180px;
+}
+
+.bgt-add-btn {
+  margin-top: 12px;
+  background: none;
+  border: 1px dashed var(--border);
+  color: var(--text-muted);
+  font-size: 12px;
+  padding: 6px 14px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+.bgt-add-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
 /* ── drilldown modal ─────────────────────── */
 
 .bgt-dd-backdrop {
@@ -2381,7 +2469,7 @@ body {
 
 .pi-chart-area {
   flex: 1;
-  min-height: 0;
+  min-height: 800px;
 }
 
 .pi-tooltip {

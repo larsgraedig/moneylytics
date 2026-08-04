@@ -3,8 +3,10 @@ package com.moneylytics.api.adapter.output.persistence
 import com.moneylytics.api.domain.Category
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
+import org.mockito.kotlin.any
 import org.mockito.kotlin.argumentCaptor
 import org.mockito.kotlin.mock
+import org.mockito.kotlin.never
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 
@@ -18,93 +20,69 @@ class CategoryPersistenceAdapterTest {
 
     @Test
     fun `should map entity to domain category`() {
-        val entity =
-            CategoryEntity(
-                name = "Lebensmittel",
-                subcategory = "Supermarkt",
-                groupName = "Konsum",
-                organization = organizationEntity,
-                id = 1L,
-            )
-        whenever(jpaRepository.findAllByOrganizationId(organizationId)).thenReturn(listOf(entity))
+        val rootEntity = CategoryEntity(name = "Lebensmittel", parent = null, organization = organizationEntity, id = 10L)
+        val childEntity = CategoryEntity(name = "Supermarkt", parent = rootEntity, organization = organizationEntity, id = 1L)
+        whenever(jpaRepository.findAllByOrganizationId(organizationId)).thenReturn(listOf(rootEntity, childEntity))
 
         val result = adapter.findAll(organizationId)
 
-        assertThat(result).hasSize(1)
-        assertThat(result[0].name).isEqualTo("Lebensmittel")
-        assertThat(result[0].subcategory).isEqualTo("Supermarkt")
-        assertThat(result[0].group).isEqualTo("Konsum")
+        assertThat(result).hasSize(2)
+        val child = result.first { it.name == "Supermarkt" }
+        assertThat(child.parentId).isEqualTo(10L)
+        val root = result.first { it.name == "Lebensmittel" }
+        assertThat(root.parentId).isNull()
     }
 
     @Test
-    fun `should save only categories not already present`() {
-        val existing =
-            CategoryEntity(name = "Lebensmittel", subcategory = "Supermarkt", groupName = null, organization = organizationEntity, id = 1L)
-        whenever(jpaRepository.findAllByOrganizationId(organizationId)).thenReturn(listOf(existing))
+    fun `should return existing node when path already exists`() {
+        val rootEntity = CategoryEntity(name = "Lebensmittel", parent = null, organization = organizationEntity, id = 10L)
+        val childEntity = CategoryEntity(name = "Supermarkt", parent = rootEntity, organization = organizationEntity, id = 1L)
         whenever(organizationJpaRepository.getReferenceById(organizationId)).thenReturn(organizationEntity)
+        whenever(jpaRepository.findByNameAndParentIdAndOrganizationId("Lebensmittel", null, organizationId)).thenReturn(rootEntity)
+        whenever(jpaRepository.findByNameAndParentIdAndOrganizationId("Supermarkt", 10L, organizationId)).thenReturn(childEntity)
 
-        val toSave =
-            listOf(
-                Category(name = "Lebensmittel", subcategory = "Supermarkt", group = null),
-                Category(name = "Transport", subcategory = "ÖPNV", group = null),
-            )
-        adapter.saveAllIfAbsent(toSave, organizationId)
+        val result = adapter.findOrCreate(listOf("Lebensmittel", "Supermarkt"), organizationId)
 
-        val captor = argumentCaptor<List<CategoryEntity>>()
-        verify(jpaRepository).saveAll(captor.capture())
-        assertThat(captor.firstValue).hasSize(1)
-        assertThat(captor.firstValue[0].name).isEqualTo("Transport")
+        assertThat(result).isEqualTo(Category(id = 1L, name = "Supermarkt", parentId = 10L))
+        verify(jpaRepository, never()).save(any())
     }
 
     @Test
-    fun `should save nothing when all categories already exist`() {
-        val existing =
-            CategoryEntity(name = "Lebensmittel", subcategory = "Supermarkt", groupName = null, organization = organizationEntity, id = 1L)
-        whenever(jpaRepository.findAllByOrganizationId(organizationId)).thenReturn(listOf(existing))
+    fun `should create missing nodes along the path`() {
+        val rootEntity = CategoryEntity(name = "Lebensmittel", parent = null, organization = organizationEntity, id = 10L)
         whenever(organizationJpaRepository.getReferenceById(organizationId)).thenReturn(organizationEntity)
+        whenever(jpaRepository.findByNameAndParentIdAndOrganizationId("Lebensmittel", null, organizationId)).thenReturn(null)
+        whenever(jpaRepository.findByNameAndParentIdAndOrganizationId("Supermarkt", 10L, organizationId)).thenReturn(null)
+        whenever(jpaRepository.save(any<CategoryEntity>())).thenAnswer { invocation ->
+            val entity = invocation.arguments[0] as CategoryEntity
+            if (entity.name == "Lebensmittel") {
+                CategoryEntity(name = "Lebensmittel", parent = null, organization = organizationEntity, id = 10L)
+            } else {
+                CategoryEntity(name = "Supermarkt", parent = rootEntity, organization = organizationEntity, id = 99L)
+            }
+        }
+        whenever(jpaRepository.getReferenceById(10L)).thenReturn(rootEntity)
 
-        adapter.saveAllIfAbsent(listOf(Category(name = "Lebensmittel", subcategory = "Supermarkt", group = null)), organizationId)
+        val result = adapter.findOrCreate(listOf("Lebensmittel", "Supermarkt"), organizationId)
 
-        val captor = argumentCaptor<List<CategoryEntity>>()
-        verify(jpaRepository).saveAll(captor.capture())
-        assertThat(captor.firstValue).isEmpty()
+        assertThat(result.name).isEqualTo("Supermarkt")
+        assertThat(result.id).isEqualTo(99L)
+        assertThat(result.parentId).isEqualTo(10L)
     }
 
     @Test
-    fun `should save all when none exist yet`() {
-        whenever(jpaRepository.findAllByOrganizationId(organizationId)).thenReturn(emptyList())
+    fun `should create root node for single-element path`() {
+        val rootEntity = CategoryEntity(name = "Transport", parent = null, organization = organizationEntity, id = 5L)
         whenever(organizationJpaRepository.getReferenceById(organizationId)).thenReturn(organizationEntity)
-        val categories =
-            listOf(
-                Category(name = "Transport", subcategory = "ÖPNV", group = null),
-                Category(name = "Freizeit", subcategory = "Kino", group = null),
-            )
+        whenever(jpaRepository.findByNameAndParentIdAndOrganizationId("Transport", null, organizationId)).thenReturn(null)
+        whenever(jpaRepository.save(any<CategoryEntity>())).thenReturn(rootEntity)
 
-        adapter.saveAllIfAbsent(categories, organizationId)
+        val result = adapter.findOrCreate(listOf("Transport"), organizationId)
 
-        val captor = argumentCaptor<List<CategoryEntity>>()
-        verify(jpaRepository).saveAll(captor.capture())
-        assertThat(captor.firstValue).hasSize(2)
-    }
-
-    @Test
-    fun `should distinguish categories by group when deduplicating`() {
-        val existingNoGroup =
-            CategoryEntity(
-                name = "Lebensmittel",
-                subcategory = "Supermarkt",
-                groupName = null,
-                organization = organizationEntity,
-                id = 1L,
-            )
-        whenever(jpaRepository.findAllByOrganizationId(organizationId)).thenReturn(listOf(existingNoGroup))
-        whenever(organizationJpaRepository.getReferenceById(organizationId)).thenReturn(organizationEntity)
-
-        val withGroup = listOf(Category(name = "Lebensmittel", subcategory = "Supermarkt", group = "Konsum"))
-        adapter.saveAllIfAbsent(withGroup, organizationId)
-
-        val captor = argumentCaptor<List<CategoryEntity>>()
-        verify(jpaRepository).saveAll(captor.capture())
-        assertThat(captor.firstValue).hasSize(1)
+        assertThat(result).isEqualTo(Category(id = 5L, name = "Transport", parentId = null))
+        val captor = argumentCaptor<CategoryEntity>()
+        verify(jpaRepository).save(captor.capture())
+        assertThat(captor.firstValue.name).isEqualTo("Transport")
+        assertThat(captor.firstValue.parent).isNull()
     }
 }

@@ -7,6 +7,7 @@ export interface TrendSeriesEntry {
   label: string
   data: number[]
   role: SeriesRole
+  categoryId?: number
 }
 
 export interface TrendSeriesGroup {
@@ -22,8 +23,7 @@ export interface TrendsResponse {
 
 export interface SeriesConfig {
   id: string
-  category: string
-  subcategory: string
+  categoryId: number | null
 }
 
 export async function fetchTrends(
@@ -39,9 +39,8 @@ export async function fetchTrends(
   params.set('granularity', granularity)
   if (iban) params.set('iban', iban)
   for (const s of series) {
-    if (!s.category.trim()) continue
-    const spec = s.subcategory.trim() ? `${s.category}:${s.subcategory}` : s.category
-    params.append('series', spec)
+    if (s.categoryId == null) continue
+    params.append('series', `id:${s.categoryId}`)
   }
   const res = await fetchWithUser(`/transactions/trends?${params}`)
   if (!res.ok) throw new Error(`HTTP ${res.status}`)

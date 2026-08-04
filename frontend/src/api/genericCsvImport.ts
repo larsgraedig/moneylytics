@@ -68,8 +68,8 @@ export interface GenericRowToImport {
   accountIban: string
   purpose: string | null
   category: string
-  subcategory: string
-  categoryGroup: string | null
+  subcategory: string | null
+  group: string
   counterpartyName: string | null
   counterpartyIban: string | null
 }

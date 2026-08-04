@@ -21,4 +21,5 @@ data class GetTransactionsQuery(
     val uncategorized: Boolean = false,
     val excludeCollectionId: Long? = null,
     val excludeBudgetId: Long? = null,
+    val categoryId: Long? = null,
 )

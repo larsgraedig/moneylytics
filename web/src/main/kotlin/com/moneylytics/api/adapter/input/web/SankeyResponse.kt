@@ -32,6 +32,7 @@ data class TrendSeriesEntry(
     val label: String?,
     val data: List<BigDecimal>,
     val role: SeriesRole,
+    val categoryId: Long? = null,
 )
 
 data class SankeyResponse(
@@ -43,6 +44,8 @@ data class SankeyNode(
     val name: String,
     val value: BigDecimal,
     val nodeKey: String,
+    val categoryId: Long,
+    val namePath: List<String>,
 )
 
 data class SankeyLink(

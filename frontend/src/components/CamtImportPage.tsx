@@ -3,20 +3,22 @@ import { useTranslation } from 'react-i18next'
 import {
   importCamt,
   previewCamtImport,
+  type CamtAccountBalance,
   type CamtAccountInfo,
   type RawPreviewRow,
 } from '../api/camtImport'
-import type { CategoryGroup } from '../api/rawImport'
+import type { CategoryNode } from '../api/rawImport'
+import { CategoryPathInput } from './CategoryPathInput'
 
 type PageState =
   | { phase: 'idle' }
   | { phase: 'loading' }
   | { phase: 'error'; message: string }
-  | { phase: 'preview'; rows: RawPreviewRow[]; accounts: CamtAccountInfo[] }
+  | { phase: 'preview'; rows: RawPreviewRow[]; accounts: CamtAccountInfo[]; accountBalances: Record<string, CamtAccountBalance> }
   | { phase: 'imported'; importedCount: number; ignoredCount: number; skippedCount: number }
 
 type RowDecision =
-  | { action: 'import'; category: string; group: string; subcategory: string }
+  | { action: 'import'; categoryId: number | null }
   | { action: 'ignore' }
   | { action: 'enrich' }
 
@@ -31,12 +33,21 @@ function formatDate(iso: string | null): string {
   return `${d}.${m}.${y}`
 }
 
+function pathFromCategoryId(id: number, nodes: CategoryNode[], prefix: string[] = []): string[] {
+  for (const n of nodes) {
+    if (n.id === id) return [...prefix, n.name]
+    const found = pathFromCategoryId(id, n.children, [...prefix, n.name])
+    if (found.length > 0) return found
+  }
+  return []
+}
+
 function initDecisions(rows: RawPreviewRow[]): Record<number, RowDecision> {
   const out: Record<number, RowDecision> = {}
   for (const row of rows) {
-    if (row.unknownAccount) continue   // excluded – no decision
+    if (row.unknownAccount) continue
     if (row.status === 'NEW') {
-      out[row.rowNumber] = { action: 'import', category: '', group: '', subcategory: '' }
+      out[row.rowNumber] = { action: 'import', categoryId: null }
     } else if (row.status === 'PREVIOUSLY_IGNORED') {
       out[row.rowNumber] = { action: 'ignore' }
     }
@@ -44,7 +55,7 @@ function initDecisions(rows: RawPreviewRow[]): Record<number, RowDecision> {
   return out
 }
 
-export default function CamtImportPage({ categories }: { categories: CategoryGroup[] }) {
+export default function CamtImportPage({ categories }: { categories: CategoryNode[] }) {
   const { t } = useTranslation()
   const [state, setState] = useState<PageState>({ phase: 'idle' })
   const [decisions, setDecisions] = useState<Record<number, RowDecision>>({})
@@ -58,7 +69,7 @@ export default function CamtImportPage({ categories }: { categories: CategoryGro
     setState({ phase: 'loading' })
     try {
       const result = await previewCamtImport(files)
-      const { rows, accounts } = result
+      const { rows, accounts, accountBalances } = result
       if (rows.length === 0) {
         setState({ phase: 'error', message: t('camtImport.noRows') })
         return
@@ -67,7 +78,7 @@ export default function CamtImportPage({ categories }: { categories: CategoryGro
       for (const acc of accounts) {
         names[acc.iban] = acc.suggestedName
       }
-      setState({ phase: 'preview', rows, accounts })
+      setState({ phase: 'preview', rows, accounts, accountBalances })
       setDecisions(initDecisions(rows))
       setAccountNames(names)
     } catch (e) {
@@ -86,43 +97,29 @@ export default function CamtImportPage({ categories }: { categories: CategoryGro
     setDecisions(prev => ({ ...prev, [rowNumber]: decision }))
   }
 
-  const setCategoryField = (rowNumber: number, field: 'category' | 'group' | 'subcategory', value: string) => {
-    setDecisions(prev => {
-      const cur = prev[rowNumber]
-      if (cur?.action !== 'import') return prev
-      return {
-        ...prev,
-        [rowNumber]: {
-          ...cur,
-          [field]: value,
-          ...(field === 'category' ? { group: '', subcategory: '' } : {}),
-        },
-      }
-    })
-  }
-
   const handleImport = async () => {
     if (state.phase !== 'preview') return
-    const { rows } = state
+    const { rows, accountBalances } = state
 
     const toImport = rows
       .filter(r => r.status === 'NEW' || r.status === 'PREVIOUSLY_IGNORED')
       .flatMap(r => {
         const d = decisions[r.rowNumber]
         if (d?.action !== 'import') return []
+        const path = d.categoryId != null ? pathFromCategoryId(d.categoryId, categories) : []
         return [{
           fingerprint: r.fingerprint!,
           bookingDate: r.bookingDate!,
           valueDate: r.valueDate!,
           amount: r.amount!,
           currency: r.currency,
-          category: d.category,
-          group: d.subcategory,
+          category: path[0] ?? '',
+          subcategory: path[1] ?? null,
+          group: path[2] ?? '',
           accountIban: r.accountIban,
           purpose: r.purpose || null,
           counterpartyName: r.counterparty ?? null,
           counterpartyIban: r.counterpartyIban ?? null,
-          subcategory: d.group || null,
         }]
       })
 
@@ -141,12 +138,15 @@ export default function CamtImportPage({ categories }: { categories: CategoryGro
 
     const skippedCount = rows
       .filter(r => r.status === 'NEW' || r.status === 'PREVIOUSLY_IGNORED')
-      .filter(r => { const d = decisions[r.rowNumber]; return d?.action === 'import' && (!d.category.trim()) })
+      .filter(r => {
+        const d = decisions[r.rowNumber]
+        return d?.action === 'import' && d.categoryId == null
+      })
       .length
 
     setImporting(true)
     try {
-      const result = await importCamt({ accountNames, toImport, toIgnore, toEnrich })
+      const result = await importCamt({ accountNames, toImport, toIgnore, toEnrich, accountBalances })
       setState({ phase: 'imported', importedCount: result.importedCount, ignoredCount: toIgnore.length, skippedCount })
     } catch (e) {
       setState({ phase: 'error', message: e instanceof Error ? e.message : 'Import failed' })
@@ -154,9 +154,6 @@ export default function CamtImportPage({ categories }: { categories: CategoryGro
       setImporting(false)
     }
   }
-
-  const allCategoryNames = categories.map(g => g.name)
-  const subcategoriesFor = (cat: string) => categories.find(g => g.name === cat)?.subcategories.map(s => s.name) ?? []
 
   const actionableRows = (rows: RawPreviewRow[]) =>
     rows.filter(r => r.status === 'NEW' || r.status === 'PREVIOUSLY_IGNORED')
@@ -285,8 +282,6 @@ export default function CamtImportPage({ categories }: { categories: CategoryGro
                 <th>{t('camtImport.columns.purpose')}</th>
                 <th>{t('camtImport.columns.amount')}</th>
                 <th>{t('camtImport.columns.category')}</th>
-                <th>{t('common.group')}</th>
-                <th>{t('camtImport.columns.subcategory')}</th>
                 <th></th>
               </tr>
             </thead>
@@ -294,10 +289,7 @@ export default function CamtImportPage({ categories }: { categories: CategoryGro
               {rows.map(row => {
                 const d = decisions[row.rowNumber]
                 const isImporting = d?.action === 'import'
-                const catVal = isImporting ? d.category : ''
-                const grpVal = isImporting ? d.group : ''
-                const subVal = isImporting ? d.subcategory : ''
-                const subcatOptions = subcategoriesFor(catVal)
+                const categoryId = isImporting && d.action === 'import' ? d.categoryId : null
 
                 const rowClass = (() => {
                   if (row.unknownAccount) return 'ri-row ri-row--duplicate'
@@ -329,16 +321,12 @@ export default function CamtImportPage({ categories }: { categories: CategoryGro
                       {formatAmount(row.amount, row.amountRaw)}
                     </td>
 
-                    <CategoryCells
+                    <CategoryCell
                       row={row}
                       decision={d}
-                      catVal={catVal}
-                      grpVal={grpVal}
-                      subVal={subVal}
-                      subcatOptions={subcatOptions}
-                      onCategoryChange={v => setCategoryField(row.rowNumber, 'category', v)}
-                      onGroupChange={v => setCategoryField(row.rowNumber, 'group', v)}
-                      onSubcategoryChange={v => setCategoryField(row.rowNumber, 'subcategory', v)}
+                      categoryId={categoryId}
+                      categories={categories}
+                      onCategoryChange={id => setDecision(row.rowNumber, { action: 'import', categoryId: id })}
                     />
 
                     <td className="ri-cell-action">
@@ -350,10 +338,6 @@ export default function CamtImportPage({ categories }: { categories: CategoryGro
             </tbody>
           </table>
         </div>
-
-        <datalist id="camt-cat-list">
-          {allCategoryNames.map(n => <option key={n} value={n} />)}
-        </datalist>
       </div>
     </div>
   )
@@ -379,27 +363,22 @@ function StatusBadge({ row, decision }: { row: RawPreviewRow; decision: RowDecis
     : <span className="ri-badge ri-badge--new">{t('camtImport.status.new')}</span>
 }
 
-function CategoryCells({
-  row, decision, catVal, grpVal, subVal, subcatOptions,
-  onCategoryChange, onGroupChange, onSubcategoryChange,
+function CategoryCell({
+  row, decision, categoryId, categories, onCategoryChange,
 }: {
   row: RawPreviewRow
   decision: RowDecision | undefined
-  catVal: string
-  grpVal: string
-  subVal: string
-  subcatOptions: string[]
-  onCategoryChange: (v: string) => void
-  onGroupChange: (v: string) => void
-  onSubcategoryChange: (v: string) => void
+  categoryId: number | null
+  categories: CategoryNode[]
+  onCategoryChange: (id: number | null) => void
 }) {
-  const { t: tCat } = useTranslation()
+  const { t } = useTranslation()
   if (row.unknownAccount) {
-    return <td colSpan={3} className="ri-cell-muted">{tCat('camtImport.status.excluded')}</td>
+    return <td className="ri-cell-muted">{t('camtImport.status.excluded')}</td>
   }
   if (row.status === 'INVALID') {
     return (
-      <td colSpan={3} className="ri-cell-errors">
+      <td className="ri-cell-errors">
         {row.errors.map((err, i) => (
           <span key={i} className="ri-error-tag" title={err.message}>
             {err.column}: <em>{err.value || '∅'}</em>
@@ -408,49 +387,26 @@ function CategoryCells({
       </td>
     )
   }
-
   if (row.status === 'DUPLICATE') {
-    return <td colSpan={3} className="ri-cell-muted">
-      {decision?.action === 'enrich' ? tCat('camtImport.willEnrich') : tCat('camtImport.alreadyImported')}
-    </td>
+    return (
+      <td className="ri-cell-muted">
+        {decision?.action === 'enrich' ? t('camtImport.willEnrich') : t('camtImport.alreadyImported')}
+      </td>
+    )
   }
-
   if (decision?.action === 'ignore') {
-    return <td colSpan={3} className="ri-cell-muted">—</td>
+    return <td className="ri-cell-muted">—</td>
   }
-
   return (
-    <>
-      <td>
-        <input
-          className="ri-cat-input"
-          list="camt-cat-list"
-          placeholder={tCat('camtImport.columns.category')}
-          value={catVal}
-          onChange={e => onCategoryChange(e.target.value)}
-        />
-      </td>
-      <td>
-        <input
-          className="ri-cat-input"
-          placeholder={tCat('common.group')}
-          value={grpVal}
-          onChange={e => onGroupChange(e.target.value)}
-        />
-      </td>
-      <td>
-        <input
-          className="ri-cat-input"
-          list={`camt-sub-list-${row.rowNumber}`}
-          placeholder={tCat('camtImport.columns.subcategory')}
-          value={subVal}
-          onChange={e => onSubcategoryChange(e.target.value)}
-        />
-        <datalist id={`camt-sub-list-${row.rowNumber}`}>
-          {subcatOptions.map(s => <option key={s} value={s} />)}
-        </datalist>
-      </td>
-    </>
+    <td className="ri-cell-category">
+      <CategoryPathInput
+        value={categoryId}
+        onChange={onCategoryChange}
+        tree={categories}
+        placeholder={t('common.category')}
+        className="ri-category-input"
+      />
+    </td>
   )
 }
 
@@ -487,7 +443,7 @@ function ActionToggle({
     ) : (
       <button
         className="ri-action-btn ri-action-btn--import"
-        onClick={() => onDecide({ action: 'import', category: '', group: '', subcategory: '' })}
+        onClick={() => onDecide({ action: 'import', categoryId: null })}
       >
         {t('camtImport.importAnyway')}
       </button>
@@ -497,7 +453,7 @@ function ActionToggle({
   return decision?.action === 'ignore' ? (
     <button
       className="ri-action-btn ri-action-btn--import"
-      onClick={() => onDecide({ action: 'import', category: '', group: '', subcategory: '' })}
+      onClick={() => onDecide({ action: 'import', categoryId: null })}
     >
       {t('camtImport.undo')}
     </button>

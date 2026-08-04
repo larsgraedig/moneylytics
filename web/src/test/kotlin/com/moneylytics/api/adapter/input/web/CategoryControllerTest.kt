@@ -27,128 +27,62 @@ class CategoryControllerTest {
             .build()
 
     @Test
-    fun `should group categories by category name`() =
+    fun `should return root categories sorted alphabetically`() =
         runTest {
             whenever(getCategoriesUseCase.getCategories(organizationId)).thenReturn(
                 listOf(
-                    Category(name = "Transport", subcategory = "ÖPNV", group = null, id = 1L),
-                    Category(name = "Transport", subcategory = "Auto", group = null, id = 2L),
-                    Category(name = "Lebensmittel", subcategory = "Supermarkt", group = null, id = 3L),
+                    Category(id = 1L, name = "Transport", parentId = null),
+                    Category(id = 2L, name = "Lebensmittel", parentId = null),
                 ),
             )
 
             val response = controller.getCategories(principal, exchange)
 
-            assertThat(response.categories).hasSize(2)
             assertThat(response.categories.map { it.name }).containsExactly("Lebensmittel", "Transport")
         }
 
     @Test
-    fun `should sort categories alphabetically`() =
+    fun `should nest children under their parent`() =
         runTest {
             whenever(getCategoriesUseCase.getCategories(organizationId)).thenReturn(
                 listOf(
-                    Category(name = "Wohnen", subcategory = "Miete", group = null, id = 1L),
-                    Category(name = "Auto", subcategory = "Versicherung", group = null, id = 2L),
-                    Category(name = "Lebensmittel", subcategory = "Supermarkt", group = null, id = 3L),
+                    Category(id = 1L, name = "Transport", parentId = null),
+                    Category(id = 2L, name = "ÖPNV", parentId = 1L),
+                    Category(id = 3L, name = "Auto", parentId = 1L),
                 ),
             )
 
             val response = controller.getCategories(principal, exchange)
 
-            assertThat(response.categories.map { it.name }).containsExactly("Auto", "Lebensmittel", "Wohnen")
-        }
-
-    @Test
-    fun `should put groups with group into CategorySubGroupResponse`() =
-        runTest {
-            whenever(getCategoriesUseCase.getCategories(organizationId)).thenReturn(
-                listOf(
-                    Category(name = "Lebensmittel", subcategory = "Auswärts", group = "Restaurant", id = 1L),
-                    Category(name = "Lebensmittel", subcategory = "Auswärts", group = "Lieferdienst", id = 2L),
-                ),
-            )
-
-            val response = controller.getCategories(principal, exchange)
-
-            val lebensmittel = response.categories.single()
-            assertThat(lebensmittel.subcategories).hasSize(1)
-            assertThat(lebensmittel.subcategories[0].name).isEqualTo("Auswärts")
-            assertThat(lebensmittel.subcategories[0].groups.map { it.name }).containsExactly("Lieferdienst", "Restaurant")
-            assertThat(lebensmittel.directGroups).isEmpty()
-        }
-
-    @Test
-    fun `should put groups without group into directGroups list`() =
-        runTest {
-            whenever(getCategoriesUseCase.getCategories(organizationId)).thenReturn(
-                listOf(
-                    Category(name = "Transport", subcategory = "ÖPNV", group = null, id = 1L),
-                    Category(name = "Transport", subcategory = "Auto", group = null, id = 2L),
-                ),
-            )
-
-            val response = controller.getCategories(principal, exchange)
-
+            assertThat(response.categories).hasSize(1)
             val transport = response.categories.single()
-            assertThat(transport.directGroups.map { it.name }).containsExactly("Auto", "ÖPNV")
-            assertThat(transport.subcategories).isEmpty()
+            assertThat(transport.name).isEqualTo("Transport")
+            assertThat(transport.children.map { it.name }).containsExactly("Auto", "ÖPNV")
         }
 
     @Test
-    fun `should separate group-grouped and direct groups within same category`() =
+    fun `should support arbitrary depth nesting`() =
         runTest {
             whenever(getCategoriesUseCase.getCategories(organizationId)).thenReturn(
                 listOf(
-                    Category(name = "Lebensmittel", subcategory = "Supermarkt", group = null, id = 1L),
-                    Category(name = "Lebensmittel", subcategory = "Auswärts", group = "Restaurant", id = 2L),
-                    Category(name = "Lebensmittel", subcategory = "Auswärts", group = "Lieferdienst", id = 3L),
+                    Category(id = 1L, name = "Lebensmittel", parentId = null),
+                    Category(id = 2L, name = "Auswärts", parentId = 1L),
+                    Category(id = 3L, name = "Restaurant", parentId = 2L),
+                    Category(id = 4L, name = "Sushi", parentId = 3L),
                 ),
             )
 
             val response = controller.getCategories(principal, exchange)
 
-            val lebensmittel = response.categories.single()
-            assertThat(lebensmittel.directGroups.map { it.name }).containsExactly("Supermarkt")
-            assertThat(lebensmittel.subcategories).hasSize(1)
-            assertThat(lebensmittel.subcategories[0].groups.map { it.name }).containsExactly("Lieferdienst", "Restaurant")
-        }
-
-    @Test
-    fun `should sort groups within subcategories alphabetically`() =
-        runTest {
-            whenever(getCategoriesUseCase.getCategories(organizationId)).thenReturn(
-                listOf(
-                    Category(name = "Freizeit", subcategory = "Kultur", group = "Zirkus", id = 1L),
-                    Category(name = "Freizeit", subcategory = "Kultur", group = "Ausstellung", id = 2L),
-                    Category(name = "Freizeit", subcategory = "Kultur", group = "Museum", id = 3L),
-                ),
-            )
-
-            val response = controller.getCategories(principal, exchange)
-
-            val sub =
-                response.categories
-                    .single()
-                    .subcategories
-                    .single()
-            assertThat(sub.groups.map { it.name }).containsExactly("Ausstellung", "Museum", "Zirkus")
-        }
-
-    @Test
-    fun `should sort subcategories within a category alphabetically`() =
-        runTest {
-            whenever(getCategoriesUseCase.getCategories(organizationId)).thenReturn(
-                listOf(
-                    Category(name = "Freizeit", subcategory = "Unterhaltung", group = "Kino", id = 1L),
-                    Category(name = "Freizeit", subcategory = "Bildung", group = "Museum", id = 2L),
-                ),
-            )
-
-            val response = controller.getCategories(principal, exchange)
-
-            val subcategories = response.categories.single().subcategories
-            assertThat(subcategories.map { it.name }).containsExactly("Bildung", "Unterhaltung")
+            val root = response.categories.single()
+            assertThat(root.name).isEqualTo("Lebensmittel")
+            val auswaerts = root.children.single()
+            assertThat(auswaerts.name).isEqualTo("Auswärts")
+            val restaurant = auswaerts.children.single()
+            assertThat(restaurant.name).isEqualTo("Restaurant")
+            val sushi = restaurant.children.single()
+            assertThat(sushi.name).isEqualTo("Sushi")
+            assertThat(sushi.children).isEmpty()
         }
 
     @Test
@@ -162,30 +96,35 @@ class CategoryControllerTest {
         }
 
     @Test
-    fun `should return created category leaf when posting new category`() =
+    fun `should return created node when posting new category`() =
         runTest {
-            val request = CreateCategoryRequest(name = "Lebensmittel", subcategory = "Auswärts", group = "Restaurant")
+            val request = CreateCategoryRequest(path = listOf("Lebensmittel", "Supermarkt"))
             whenever(
-                findOrCreateCategoryUseCase.findOrCreateCategory("Lebensmittel", "Auswärts", "Restaurant", organizationId),
-            ).thenReturn(Category(name = "Lebensmittel", subcategory = "Auswärts", group = "Restaurant", id = 42L))
+                findOrCreateCategoryUseCase.findOrCreateCategory(listOf("Lebensmittel", "Supermarkt"), organizationId),
+            ).thenReturn(Category(id = 42L, name = "Supermarkt", parentId = 1L))
 
             val response = controller.createCategory(request, principal, exchange)
 
             assertThat(response.id).isEqualTo(42L)
-            assertThat(response.name).isEqualTo("Restaurant")
+            assertThat(response.name).isEqualTo("Supermarkt")
+            assertThat(response.children).isEmpty()
         }
 
     @Test
-    fun `should return existing category when posting subcategory-only combination`() =
+    fun `should sort children alphabetically within each node`() =
         runTest {
-            val request = CreateCategoryRequest(name = "Transport", subcategory = "ÖPNV", group = null)
-            whenever(
-                findOrCreateCategoryUseCase.findOrCreateCategory("Transport", "ÖPNV", null, organizationId),
-            ).thenReturn(Category(name = "Transport", subcategory = "ÖPNV", group = null, id = 7L))
+            whenever(getCategoriesUseCase.getCategories(organizationId)).thenReturn(
+                listOf(
+                    Category(id = 1L, name = "Freizeit", parentId = null),
+                    Category(id = 2L, name = "Zirkus", parentId = 1L),
+                    Category(id = 3L, name = "Ausstellung", parentId = 1L),
+                    Category(id = 4L, name = "Museum", parentId = 1L),
+                ),
+            )
 
-            val response = controller.createCategory(request, principal, exchange)
+            val response = controller.getCategories(principal, exchange)
 
-            assertThat(response.id).isEqualTo(7L)
-            assertThat(response.name).isEqualTo("ÖPNV")
+            val children = response.categories.single().children
+            assertThat(children.map { it.name }).containsExactly("Ausstellung", "Museum", "Zirkus")
         }
 }

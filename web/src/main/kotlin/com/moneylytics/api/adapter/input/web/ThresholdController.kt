@@ -91,9 +91,8 @@ class ThresholdController(
     private fun Threshold.toDto() =
         ThresholdDto(
             id = id,
-            category = category,
-            subcategory = subcategory,
-            group = group,
+            categoryId = categoryId,
+            categoryPath = categoryPath,
             period = period,
             notice = notice,
             warning = warning,
@@ -103,9 +102,8 @@ class ThresholdController(
     private fun SaveThresholdRequest.toDomain() =
         Threshold(
             id = 0,
-            category = category,
-            subcategory = subcategory?.takeIf { it.isNotBlank() },
-            group = group?.takeIf { it.isNotBlank() },
+            categoryId = categoryId,
+            categoryPath = emptyList(),
             period = period,
             notice = notice,
             warning = warning,
@@ -119,9 +117,8 @@ data class ThresholdsResponse(
 
 data class ThresholdDto(
     val id: Long,
-    val category: String,
-    val subcategory: String?,
-    val group: String? = null,
+    val categoryId: Long,
+    val categoryPath: List<String>,
     val period: ThresholdPeriod,
     val notice: BigDecimal?,
     val warning: BigDecimal?,
@@ -129,9 +126,7 @@ data class ThresholdDto(
 )
 
 data class SaveThresholdRequest(
-    val category: String,
-    val subcategory: String?,
-    val group: String? = null,
+    val categoryId: Long,
     val period: ThresholdPeriod,
     val notice: BigDecimal?,
     val warning: BigDecimal?,

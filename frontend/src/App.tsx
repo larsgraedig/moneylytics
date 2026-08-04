@@ -30,9 +30,9 @@ import InvitePage from './components/InvitePage'
 import OnboardingModal from './components/OnboardingModal'
 import OrgSelectModal from './components/OrgSelectModal'
 import OrgAvatar from './components/OrgAvatar'
-import { fetchSankeyData, type SankeyResponse } from './api/transactions'
+import { fetchSankeyData, type SankeyNode, type SankeyResponse } from './api/transactions'
 import { fetchAccounts, type Account } from './api/accounts'
-import { fetchCategories, type CategoryGroup } from './api/rawImport'
+import { fetchCategories, type CategoryNode } from './api/rawImport'
 import { fetchUserSettings } from './api/settings'
 import { useAuth } from './context/AuthContext'
 import { useTranslation, Trans } from 'react-i18next'
@@ -121,10 +121,10 @@ export default function App() {
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [accounts, setAccounts] = useState<Account[]>([])
-  const [categories, setCategories] = useState<CategoryGroup[]>([])
+  const [categories, setCategories] = useState<CategoryNode[]>([])
   const [txColumnOrder, setTxColumnOrder] = useState<string[] | null>(null)
   const [view, setView] = useState<ViewState>({ phase: 'idle' })
-  const [activeNode, setActiveNode] = useState<string | null>(null)
+  const [activeNode, setActiveNode] = useState<SankeyNode | null>(null)
 
   function updateSearch(updates: Record<string, string>) {
     const p = new URLSearchParams(location.search)
@@ -326,11 +326,11 @@ export default function App() {
                 <div className="chart" key={`${iban}/${from}/${to}`}>
                   <SankeyChart
                     data={view.data}
-                    onNodeClick={nodeKey => setActiveNode(nodeKey)}
+                    onNodeClick={node => setActiveNode(node)}
                   />
                   {activeNode && (
                     <TransactionListPanel
-                      nodeKey={activeNode}
+                      node={activeNode}
                       from={from}
                       to={to}
                       iban={iban}
@@ -346,7 +346,7 @@ export default function App() {
           {tab === 'burnrate' && <BurnRatePage key={`${username}-${activeOrganization?.id}`} from={from} to={to} iban={iban} />}
           {tab === 'trends' && <TrendsPage key={`${username}-${activeOrganization?.id}`} from={from} to={to} iban={iban} categories={categories} />}
           {tab === 'breakdown' && <PiePage key={`${username}-${activeOrganization?.id}`} from={from} to={to} iban={iban} />}
-          {tab === 'kontoauszug' && <TransactionsPage key={`${username}-${activeOrganization?.id}`} from={from} to={to} iban={iban} accounts={accounts} categories={categories} columnOrder={txColumnOrder ?? undefined} onColumnOrderChange={order => setTxColumnOrder(order)} />}
+          {tab === 'kontoauszug' && <TransactionsPage key={`${username}-${activeOrganization?.id}`} from={from} to={to} iban={iban} accounts={accounts} categories={categories} columnOrder={txColumnOrder ?? undefined} onColumnOrderChange={order => setTxColumnOrder(order)} onCategoryCreated={() => { fetchCategories().then(cats => setCategories(cats.categories)).catch(() => {}) }} />}
           {tab === 'verknuepfungen' && <LinkedTransactionsPage key={`${username}-${activeOrganization?.id}`} />}
           {tab === 'sammlungen' && <CollectionsPage key={`${username}-${activeOrganization?.id}`} accounts={accounts} categories={categories} />}
           {tab === 'budgets' && <BudgetsPage key={`${username}-${activeOrganization?.id}`} from={from} to={to} iban={iban} accounts={accounts} categories={categories} />}

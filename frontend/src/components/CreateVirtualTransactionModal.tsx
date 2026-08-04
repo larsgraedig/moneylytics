@@ -1,7 +1,8 @@
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { CategoryGroup } from '../api/rawImport'
+import type { CategoryNode } from '../api/rawImport'
 import { createVirtualTransaction, type Account } from '../api/transactions'
+import { CategoryPathInput } from './CategoryPathInput'
 
 const inputStyle: React.CSSProperties = {
   flex: 1,
@@ -20,36 +21,24 @@ export function CreateVirtualTransactionModal({
   defaultDate,
   onClose,
   onCreate,
+  onCategoryCreated,
 }: {
   accounts: Account[]
-  categories: CategoryGroup[]
+  categories: CategoryNode[]
   defaultDate: string
   onClose: () => void
   onCreate: () => void
+  onCategoryCreated?: (node: CategoryNode) => void
 }) {
   const { t } = useTranslation()
   const [accountIban, setAccountIban] = useState(accounts[0]?.iban ?? '')
   const [accountingDate, setAccountingDate] = useState(defaultDate)
   const [amount, setAmount] = useState('')
-  const [category, setCategory] = useState('')
-  const [subcategory, setSubcategory] = useState('')
+  const [categoryId, setCategoryId] = useState<number | null>(null)
   const [counterpartyName, setCounterpartyName] = useState('')
   const [purpose, setPurpose] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
-
-  const allCategoryNames = useMemo(() => categories.map(c => c.name), [categories])
-
-  function groupsFor(cat: string): string[] {
-    const found = categories.find(c => c.name === cat)
-    if (!found) return []
-    const fromSubs = found.subcategories.flatMap(s => s.groups.map(g => g.name))
-    return [...found.directGroups.map(g => g.name), ...fromSubs].sort()
-  }
-
-  const sublistId = category
-    ? `cvm-sub-${category.replace(/\s+/g, '-').toLowerCase()}`
-    : undefined
 
   async function handleConfirm() {
     setError(null)
@@ -72,7 +61,7 @@ export function CreateVirtualTransactionModal({
         amount: parsedAmount,
         accountIban,
         accountingDate,
-        categoryId: null,
+        categoryId,
         counterpartyName: counterpartyName || null,
         purpose: purpose || null,
       })
@@ -92,15 +81,6 @@ export function CreateVirtualTransactionModal({
       }}
       onClick={e => { if (e.target === e.currentTarget) onClose() }}
     >
-      <datalist id="cvm-cat-list">
-        {allCategoryNames.map(c => <option key={c} value={c} />)}
-      </datalist>
-      {category && sublistId && (
-        <datalist id={sublistId}>
-          {groupsFor(category).map(s => <option key={s} value={s} />)}
-        </datalist>
-      )}
-
       <div style={{ background: '#1e2028', borderRadius: 10, padding: 24, width: 480, maxWidth: '95vw' }}>
         <h3 style={{ margin: '0 0 16px', color: '#e2e8f0' }}>{t('virtualTransaction.title')}</h3>
 
@@ -149,24 +129,14 @@ export function CreateVirtualTransactionModal({
             />
           </div>
 
-          <div style={{ display: 'flex', gap: 8 }}>
-            <input
-              type="text"
-              placeholder={t('virtualTransaction.category')}
-              value={category}
-              list="cvm-cat-list"
-              onChange={e => { setCategory(e.target.value); setSubcategory('') }}
-              style={inputStyle}
-            />
-            <input
-              type="text"
-              placeholder={t('virtualTransaction.subcategory')}
-              value={subcategory}
-              list={sublistId}
-              onChange={e => setSubcategory(e.target.value)}
-              style={inputStyle}
-            />
-          </div>
+          <CategoryPathInput
+            value={categoryId}
+            onChange={id => setCategoryId(id)}
+            tree={categories}
+            onCategoryCreated={onCategoryCreated}
+            placeholder={t('virtualTransaction.category')}
+            className="ri-cat-input"
+          />
         </div>
 
         {error && <p style={{ color: '#f87171', fontSize: 13, margin: '12px 0 0' }}>{error}</p>}

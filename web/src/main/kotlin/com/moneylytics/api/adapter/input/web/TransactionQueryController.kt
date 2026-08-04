@@ -9,6 +9,7 @@ import com.moneylytics.api.application.port.input.GetBurnRateQuery
 import com.moneylytics.api.application.port.input.GetBurnRateUseCase
 import com.moneylytics.api.application.port.input.GetCashflowQuery
 import com.moneylytics.api.application.port.input.GetCashflowUseCase
+import com.moneylytics.api.application.port.input.GetCategoriesUseCase
 import com.moneylytics.api.application.port.input.GetCategoryTotalsQuery
 import com.moneylytics.api.application.port.input.GetCategoryTotalsUseCase
 import com.moneylytics.api.application.port.input.GetTransactionsQuery
@@ -21,6 +22,7 @@ import com.moneylytics.api.application.port.input.UpdateTransactionCategoryUseCa
 import com.moneylytics.api.application.port.input.UpdateTransactionCommentUseCase
 import com.moneylytics.api.application.port.input.bucketKey
 import com.moneylytics.api.application.port.input.generateBuckets
+import com.moneylytics.api.domain.Category
 import com.moneylytics.api.domain.Transaction
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -65,6 +67,7 @@ data class UpdateAccountingDateRequest(
 @RequestMapping("/transactions")
 class TransactionQueryController(
     private val getTransactionsUseCase: GetTransactionsUseCase,
+    private val getCategoriesUseCase: GetCategoriesUseCase,
     private val getCashflowUseCase: GetCashflowUseCase,
     private val getBurnRateUseCase: GetBurnRateUseCase,
     private val getCategoryTotalsUseCase: GetCategoryTotalsUseCase,
@@ -87,13 +90,13 @@ class TransactionQueryController(
         exchange: ServerWebExchange,
     ): SankeyResponse {
         val organizationId = resolveOrganizationUseCase.resolveOrganization(principal, exchange)
-        val transactions =
+        val (transactions, categories) =
             withContext(Dispatchers.IO) {
                 getTransactionsUseCase.getTransactions(
                     GetTransactionsQuery(from, to, organizationId, type = TransactionType.EXPENSES, accountIban = iban),
-                )
+                ) to getCategoriesUseCase.getCategories(organizationId)
             }
-        return transactions.toSankeyResponse()
+        return transactions.toSankeyResponse(categories)
     }
 
     @GetMapping("/list")
@@ -108,6 +111,7 @@ class TransactionQueryController(
         @RequestParam(required = false) uncategorized: Boolean = false,
         @RequestParam(required = false) excludeCollectionId: Long? = null,
         @RequestParam(required = false) excludeBudgetId: Long? = null,
+        @RequestParam(required = false) categoryId: Long? = null,
         @AuthenticationPrincipal principal: UserDetails,
         exchange: ServerWebExchange,
     ): TransactionListResponse {
@@ -127,6 +131,7 @@ class TransactionQueryController(
                         uncategorized = uncategorized,
                         excludeCollectionId = excludeCollectionId,
                         excludeBudgetId = excludeBudgetId,
+                        categoryId = categoryId,
                     ),
                 )
             }
@@ -211,74 +216,136 @@ class TransactionQueryController(
         val organizationId = resolveOrganizationUseCase.resolveOrganization(principal, exchange)
         val buckets = generateBuckets(from, to, granularity)
 
+        fun bucketSums(txns: List<Transaction>): List<BigDecimal> {
+            val byBucket = txns.groupBy { bucketKey(it.accountingDate, granularity) }
+            return buckets.map { bucket -> byBucket[bucket]?.sumOf { it.effectiveAmount().abs() } ?: BigDecimal.ZERO }
+        }
+
         val groups =
             effectiveSeries.map { spec ->
-                val parts = spec.split(":")
-                val category = parts[0]
-                val selectedSub: String?
-                val selectedGroup: String?
-                when (parts.size) {
-                    SERIES_SPEC_PARTS_WITH_SUB -> {
-                        selectedSub = parts[1].ifEmpty { null }
-                        selectedGroup = parts[2].ifEmpty { null }
-                    }
-                    2 -> {
-                        selectedSub = null
-                        selectedGroup = parts[1].ifEmpty { null }
-                    }
-                    else -> {
-                        selectedSub = null
-                        selectedGroup = null
-                    }
-                }
-
-                val allTransactions =
-                    withContext(Dispatchers.IO) {
-                        getTransactionsUseCase.getTransactions(
-                            GetTransactionsQuery(
-                                from = from,
-                                to = to,
-                                organizationId = organizationId,
-                                type = TransactionType.EXPENSES,
-                                accountIban = iban,
-                                category = category,
-                                subcategory = selectedSub,
-                            ),
-                        )
-                    }
-
-                fun bucketSums(txns: List<Transaction>): List<BigDecimal> {
-                    val byBucket = txns.groupBy { bucketKey(it.accountingDate, granularity) }
-                    return buckets.map { bucket -> byBucket[bucket]?.sumOf { it.effectiveAmount().abs() } ?: BigDecimal.ZERO }
-                }
-
-                val mainLabel = if (selectedSub != null) selectedSub else category
-                val hasGroupSelection = selectedGroup != null
-
-                val mainEntry =
-                    TrendSeriesEntry(
-                        label = mainLabel,
-                        data = bucketSums(allTransactions),
-                        role = if (hasGroupSelection) SeriesRole.MAIN_CONTEXT else SeriesRole.MAIN_SELECTED,
-                    )
-
-                val subEntries =
-                    allTransactions
-                        .groupBy { it.group }
-                        .entries
-                        .sortedBy { it.key }
-                        .map { (groupName, txns) ->
-                            TrendSeriesEntry(
-                                label = groupName,
-                                data = bucketSums(txns),
-                                role = if (groupName == selectedGroup) SeriesRole.SUB_SELECTED else SeriesRole.SUB_CONTEXT,
+                if (spec.startsWith("id:")) {
+                    val categoryId = spec.removePrefix("id:").toLong()
+                    val allCategories = withContext(Dispatchers.IO) { getCategoriesUseCase.getCategories(organizationId) }
+                    val allTransactions =
+                        withContext(Dispatchers.IO) {
+                            getTransactionsUseCase.getTransactions(
+                                GetTransactionsQuery(
+                                    from = from,
+                                    to = to,
+                                    organizationId = organizationId,
+                                    type = TransactionType.EXPENSES,
+                                    accountIban = iban,
+                                    categoryId = categoryId,
+                                ),
                             )
                         }
 
-                TrendSeriesGroup(main = mainEntry, subs = subEntries)
+                    val categoryName = allCategories.find { it.id == categoryId }?.name ?: "?"
+                    val directChildren = allCategories.filter { it.parentId == categoryId }
+
+                    val mainEntry =
+                        TrendSeriesEntry(
+                            label = categoryName,
+                            data = bucketSums(allTransactions),
+                            role = SeriesRole.MAIN_SELECTED,
+                            categoryId = categoryId,
+                        )
+
+                    val subEntries =
+                        directChildren.mapNotNull { child ->
+                            val childId = child.id ?: return@mapNotNull null
+                            val childSubtreeIds = collectSubtreeIds(childId, allCategories)
+                            val childTxns = allTransactions.filter { it.categoryId in childSubtreeIds }
+                            val sums = bucketSums(childTxns)
+                            if (sums.all { it == BigDecimal.ZERO }) return@mapNotNull null
+                            TrendSeriesEntry(
+                                label = child.name,
+                                data = sums,
+                                role = SeriesRole.SUB_CONTEXT,
+                                categoryId = childId,
+                            )
+                        }
+
+                    TrendSeriesGroup(main = mainEntry, subs = subEntries)
+                } else {
+                    val parts = spec.split(":")
+                    val category = parts[0]
+                    val selectedSub: String?
+                    val selectedGroup: String?
+                    when (parts.size) {
+                        SERIES_SPEC_PARTS_WITH_SUB -> {
+                            selectedSub = parts[1].ifEmpty { null }
+                            selectedGroup = parts[2].ifEmpty { null }
+                        }
+                        2 -> {
+                            selectedSub = null
+                            selectedGroup = parts[1].ifEmpty { null }
+                        }
+                        else -> {
+                            selectedSub = null
+                            selectedGroup = null
+                        }
+                    }
+
+                    val allTransactions =
+                        withContext(Dispatchers.IO) {
+                            getTransactionsUseCase.getTransactions(
+                                GetTransactionsQuery(
+                                    from = from,
+                                    to = to,
+                                    organizationId = organizationId,
+                                    type = TransactionType.EXPENSES,
+                                    accountIban = iban,
+                                    category = category,
+                                    subcategory = selectedSub,
+                                ),
+                            )
+                        }
+
+                    val mainLabel = if (selectedSub != null) selectedSub else category
+                    val hasGroupSelection = selectedGroup != null
+
+                    val mainEntry =
+                        TrendSeriesEntry(
+                            label = mainLabel,
+                            data = bucketSums(allTransactions),
+                            role = if (hasGroupSelection) SeriesRole.MAIN_CONTEXT else SeriesRole.MAIN_SELECTED,
+                        )
+
+                    val subEntries =
+                        allTransactions
+                            .groupBy { it.group }
+                            .entries
+                            .sortedBy { it.key }
+                            .map { (groupName, txns) ->
+                                TrendSeriesEntry(
+                                    label = groupName,
+                                    data = bucketSums(txns),
+                                    role = if (groupName == selectedGroup) SeriesRole.SUB_SELECTED else SeriesRole.SUB_CONTEXT,
+                                )
+                            }
+
+                    TrendSeriesGroup(main = mainEntry, subs = subEntries)
+                }
             }
 
         return TrendsResponse(granularity = granularity, buckets = buckets, groups = groups)
+    }
+
+    private fun collectSubtreeIds(
+        rootId: Long,
+        all: List<Category>,
+    ): Set<Long> {
+        val childrenByParent = all.groupBy { it.parentId }
+        val result = mutableSetOf<Long>()
+        val queue = ArrayDeque<Long>()
+        queue.add(rootId)
+        while (queue.isNotEmpty()) {
+            val id = queue.removeFirst()
+            result.add(id)
+            childrenByParent[id]?.forEach { queue.add(requireNotNull(it.id)) }
+        }
+        return result
     }
 
     @GetMapping("/cashflow")
@@ -310,6 +377,7 @@ class TransactionQueryController(
         @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) to: LocalDate,
         @RequestParam(required = false) iban: String? = null,
         @RequestParam(required = false) category: String? = null,
+        @RequestParam(required = false) categoryId: Long? = null,
         @AuthenticationPrincipal principal: UserDetails,
         exchange: ServerWebExchange,
     ): CategoryTotalsResponse {
@@ -322,6 +390,7 @@ class TransactionQueryController(
                     organizationId = organizationId,
                     accountIban = iban,
                     category = category,
+                    categoryId = categoryId,
                 ),
             )
         }
@@ -350,57 +419,44 @@ class TransactionQueryController(
         }
     }
 
-    private fun List<Transaction>.toSankeyResponse(): SankeyResponse {
-        val nodeIndex = linkedMapOf<String, Int>()
+    private fun List<Transaction>.toSankeyResponse(categories: List<Category>): SankeyResponse {
+        val categoryById = categories.associateBy { requireNotNull(it.id) }
 
-        fun indexFor(key: String) = nodeIndex.getOrPut(key) { nodeIndex.size }
-
-        data class TxKey(
-            val category: String?,
-            val subcategory: String?,
-            val group: String?,
-        )
-        val aggregated =
-            groupBy { TxKey(it.category, it.subcategory, it.group) }
-                .mapValues { (_, txns) -> txns.sumOf { it.effectiveAmount().abs() } }
-
-        aggregated.keys.forEach { k -> indexFor("cat:${k.category ?: ""}") }
-        aggregated.keys.forEach { k -> indexFor("grp:${k.category ?: ""}:${k.subcategory ?: ""}") }
-        aggregated.keys.filter { it.group != null }.forEach { k ->
-            indexFor("leaf:${k.category ?: ""}:${k.subcategory ?: ""}:${k.group}")
+        fun pathFromRoot(leafId: Long): List<Category> {
+            val path = ArrayDeque<Category>()
+            var current: Category? = categoryById[leafId]
+            while (current != null) {
+                path.addFirst(current)
+                current = current.parentId?.let { categoryById[it] }
+            }
+            return path.toList()
         }
 
-        val catGrpAmounts = mutableMapOf<Pair<String?, String?>, BigDecimal>()
-        val grpLeafAmounts = mutableMapOf<Triple<String?, String?, String?>, BigDecimal>()
+        val nodeIndex = linkedMapOf<Long, Int>()
 
-        aggregated.forEach { (key, amount) ->
-            catGrpAmounts.merge(key.category to key.subcategory, amount, BigDecimal::add)
-            if (key.group != null) {
-                grpLeafAmounts.merge(Triple(key.category, key.subcategory, key.group), amount, BigDecimal::add)
+        fun indexFor(id: Long) = nodeIndex.getOrPut(id) { nodeIndex.size }
+
+        val linkAmounts = mutableMapOf<Pair<Long, Long>, BigDecimal>()
+
+        for (tx in this) {
+            val catId = tx.categoryId ?: continue
+            val path = pathFromRoot(catId)
+            path.forEach { indexFor(requireNotNull(it.id)) }
+            for (i in 0 until path.size - 1) {
+                val parentId = requireNotNull(path[i].id)
+                val childId = requireNotNull(path[i + 1].id)
+                linkAmounts.merge(parentId to childId, tx.effectiveAmount().abs(), BigDecimal::add)
             }
         }
 
-        val links = mutableListOf<SankeyLink>()
-        catGrpAmounts.forEach { (catGrp, amt) ->
-            val (cat, sub) = catGrp
-            links.add(
+        val links =
+            linkAmounts.map { (pair, amount) ->
                 SankeyLink(
-                    source = nodeIndex.getValue("cat:${cat ?: ""}"),
-                    target = nodeIndex.getValue("grp:${cat ?: ""}:${sub ?: ""}"),
-                    value = amt,
-                ),
-            )
-        }
-        grpLeafAmounts.forEach { (triple, amt) ->
-            val (cat, sub, grp) = triple
-            links.add(
-                SankeyLink(
-                    source = nodeIndex.getValue("grp:${cat ?: ""}:${sub ?: ""}"),
-                    target = nodeIndex.getValue("leaf:${cat ?: ""}:${sub ?: ""}:$grp"),
-                    value = amt,
-                ),
-            )
-        }
+                    source = nodeIndex.getValue(pair.first),
+                    target = nodeIndex.getValue(pair.second),
+                    value = amount,
+                )
+            }
 
         val totals = mutableMapOf<Int, BigDecimal>()
         links.forEach { link ->
@@ -409,11 +465,14 @@ class TransactionQueryController(
         }
 
         val nodes =
-            nodeIndex.entries.sortedBy { it.value }.map { (key, idx) ->
+            nodeIndex.entries.sortedBy { it.value }.map { (catId, idx) ->
+                val cat = requireNotNull(categoryById[catId])
                 SankeyNode(
-                    name = key.substringAfterLast(':'),
+                    name = cat.name,
                     value = totals.getOrDefault(idx, BigDecimal.ZERO),
-                    nodeKey = key,
+                    nodeKey = "id:$catId",
+                    categoryId = catId,
+                    namePath = pathFromRoot(catId).map { it.name },
                 )
             }
 

@@ -8,9 +8,15 @@ export interface CamtAccountInfo {
   suggestedName: string
 }
 
+export interface CamtAccountBalance {
+  amount: number
+  date: string
+}
+
 export interface CamtPreviewResponse {
   rows: RawPreviewRow[]
   accounts: CamtAccountInfo[]
+  accountBalances: Record<string, CamtAccountBalance>
 }
 
 export interface CamtTransactionImport {
@@ -40,6 +46,7 @@ export interface CamtImportRequest {
   toImport: CamtTransactionImport[]
   toIgnore: string[]
   toEnrich: TransactionEnrichRequest[]
+  accountBalances: Record<string, CamtAccountBalance>
 }
 
 export interface CamtImportResponse {

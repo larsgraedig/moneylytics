@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { CategoryGroup } from '../api/rawImport'
+import type { CategoryNode } from '../api/rawImport'
 import {
   deleteThreshold,
   fetchThresholds,
@@ -12,6 +12,7 @@ import {
   type ThresholdStatusItem,
 } from '../api/thresholds'
 import { fetchTransactionList, type TransactionItem } from '../api/transactions'
+import { CategoryPathInput } from './CategoryPathInput'
 
 const PERIODS: ThresholdPeriod[] = ['WEEKLY', 'MONTHLY', 'QUARTERLY', 'YEARLY']
 const PERIOD_IDEAL_DAYS: Record<ThresholdPeriod, number> = {
@@ -25,10 +26,6 @@ const EUR = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR',
 const EUR2 = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' })
 
 // ── helpers ──────────────────────────────────────────────────────────────
-
-function rowKey(category: string, subcategory: string | null): string {
-  return `${category}\0${subcategory ?? ''}`
-}
 
 function pickBest(thresholds: Threshold[], from: string, to: string): Threshold | null {
   if (thresholds.length === 0) return null
@@ -86,37 +83,30 @@ function parseAmt(s: string): number | null {
 // ── drilldown ─────────────────────────────────────────────────────────────
 
 interface DrilldownState {
-  key: string
-  category: string
-  subcategory: string | null
+  thresholdId: number
+  categoryPath: string[]
   transactions: TransactionItem[] | null
   loading: boolean
 }
 
-// ── row type ──────────────────────────────────────────────────────────────
-
-interface BudgetRow {
-  category: string
-  subcategory: string | null
-  key: string
-  thresholds: Threshold[]
-  isFirst: boolean
-}
-
 // ── component ─────────────────────────────────────────────────────────────
 
-export default function ThresholdsPage({ from, to, iban, categories }: { from: string; to: string; iban?: string; categories: CategoryGroup[] }) {
+export default function ThresholdsPage({ from, to, iban, categories }: { from: string; to: string; iban?: string; categories: CategoryNode[] }) {
   const { t } = useTranslation()
   const [thresholds, setThresholds] = useState<Threshold[]>([])
-  const [statusMap, setStatusMap] = useState<Map<string, ThresholdStatusItem>>(new Map())
+  const [statusMap, setStatusMap] = useState<Map<number, ThresholdStatusItem>>(new Map())
   const [statusLoaded, setStatusLoaded] = useState(false)
   const [loading, setLoading] = useState(false)
-  const [editingKey, setEditingKey] = useState<string | null>(null)
-  const [editThresholdId, setEditThresholdId] = useState<number | null>(null)
+  const [editingId, setEditingId] = useState<number | null>(null)
   const [form, setForm] = useState<FormState>(EMPTY_FORM)
   const [saving, setSaving] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
   const [drilldown, setDrilldown] = useState<DrilldownState | null>(null)
+  const [isAddingNew, setIsAddingNew] = useState(false)
+  const [newCategoryId, setNewCategoryId] = useState<number | null>(null)
+  const [newForm, setNewForm] = useState<FormState>(EMPTY_FORM)
+  const [newSaving, setNewSaving] = useState(false)
+  const [newFormError, setNewFormError] = useState<string | null>(null)
 
   useEffect(() => {
     fetchThresholds().then(setThresholds).catch(() => {})
@@ -131,7 +121,7 @@ export default function ThresholdsPage({ from, to, iban, categories }: { from: s
     setLoading(true)
     try {
       const items = await fetchThresholdStatus(from, to, iban)
-      setStatusMap(new Map(items.map(item => [rowKey(item.category, item.subcategory), item])))
+      setStatusMap(new Map(items.map(item => [item.thresholdId, item])))
       setStatusLoaded(true)
     } catch {
       // silent — user can retry
@@ -140,80 +130,23 @@ export default function ThresholdsPage({ from, to, iban, categories }: { from: s
     }
   }
 
-  // ── derive rows ───────────────────────────────────────────────────────
-
-  const rows = useMemo((): BudgetRow[] => {
-    const catSubcats = new Map<string, Set<string>>()
-    const hasCategoryRow = new Set<string>()
-
-    for (const cg of categories) {
-      if (!catSubcats.has(cg.name)) catSubcats.set(cg.name, new Set())
-      hasCategoryRow.add(cg.name)
-      for (const s of cg.subcategories) catSubcats.get(cg.name)!.add(s.name)
-    }
-
-    for (const t of thresholds) {
-      if (!catSubcats.has(t.category)) catSubcats.set(t.category, new Set())
-      if (t.subcategory != null) {
-        catSubcats.get(t.category)!.add(t.subcategory)
-      } else {
-        hasCategoryRow.add(t.category)
-      }
-    }
-
-    const result: BudgetRow[] = []
-    for (const cat of [...catSubcats.keys()].sort()) {
-      const subs = [...catSubcats.get(cat)!].sort()
-      let isFirst = true
-
-      if (hasCategoryRow.has(cat)) {
-        const key = rowKey(cat, null)
-        result.push({
-          category: cat,
-          subcategory: null,
-          key,
-          thresholds: thresholds.filter(t => t.category === cat && t.subcategory == null),
-          isFirst,
-        })
-        isFirst = false
-      }
-
-      for (const sub of subs) {
-        const key = rowKey(cat, sub)
-        result.push({
-          category: cat,
-          subcategory: sub,
-          key,
-          thresholds: thresholds.filter(t => t.category === cat && t.subcategory === sub),
-          isFirst,
-        })
-        isFirst = false
-      }
-    }
-    return result
-  }, [categories, thresholds])
-
   // ── edit handlers ─────────────────────────────────────────────────────
 
-  function startEdit(row: BudgetRow) {
-    const best = pickBest(row.thresholds, from, to)
-    setEditingKey(row.key)
-    setEditThresholdId(best?.id ?? null)
-    setForm(best != null ? thresholdToForm(best) : EMPTY_FORM)
+  function startEdit(threshold: Threshold) {
+    setEditingId(threshold.id)
+    setForm(thresholdToForm(threshold))
     setFormError(null)
   }
 
   function cancelEdit() {
-    setEditingKey(null)
-    setEditThresholdId(null)
+    setEditingId(null)
     setForm(EMPTY_FORM)
     setFormError(null)
   }
 
-  async function handleSave(row: BudgetRow) {
+  async function handleSave(threshold: Threshold) {
     const req: SaveThresholdRequest = {
-      category: row.category,
-      subcategory: row.subcategory,
+      categoryId: threshold.categoryId,
       period: form.period,
       notice: parseAmt(form.notice),
       warning: parseAmt(form.warning),
@@ -244,28 +177,86 @@ export default function ThresholdsPage({ from, to, iban, categories }: { from: s
     }
   }
 
-  async function handleDelete() {
-    if (editThresholdId == null) return
+  async function handleDelete(id: number) {
     try {
-      await deleteThreshold(editThresholdId)
-      setThresholds(prev => prev.filter(t => t.id !== editThresholdId))
+      await deleteThreshold(id)
+      setThresholds(prev => prev.filter(t => t.id !== id))
       cancelEdit()
     } catch {
       setFormError(t('limits.deleteFailed'))
     }
   }
 
-  async function openDrilldown(row: BudgetRow) {
-    setDrilldown({ key: row.key, category: row.category, subcategory: row.subcategory, transactions: null, loading: true })
+  // ── add new handlers ──────────────────────────────────────────────────
+
+  function startAddNew() {
+    setIsAddingNew(true)
+    setNewCategoryId(null)
+    setNewForm(EMPTY_FORM)
+    setNewFormError(null)
+    cancelEdit()
+  }
+
+  function cancelAddNew() {
+    setIsAddingNew(false)
+    setNewCategoryId(null)
+    setNewForm(EMPTY_FORM)
+    setNewFormError(null)
+  }
+
+  async function handleSaveNew() {
+    if (newCategoryId == null) {
+      setNewFormError(t('limits.categoryRequired'))
+      return
+    }
+    const req: SaveThresholdRequest = {
+      categoryId: newCategoryId,
+      period: newForm.period,
+      notice: parseAmt(newForm.notice),
+      warning: parseAmt(newForm.warning),
+      critical: parseAmt(newForm.critical),
+    }
+    if (req.notice == null && req.warning == null && req.critical == null) {
+      setNewFormError(t('limits.minAmount'))
+      return
+    }
+    setNewSaving(true)
+    setNewFormError(null)
     try {
-      const resp = await fetchTransactionList(from, to, row.category, row.subcategory ?? undefined, iban)
-      const txs = resp.transactions.filter(tx => tx.effectiveAmount < 0)
-      txs.sort((a, b) => b.bookingDate.localeCompare(a.bookingDate))
-      setDrilldown(prev => prev?.key === row.key ? { ...prev, transactions: txs, loading: false } : prev)
+      const saved = await saveThreshold(req)
+      setThresholds(prev => {
+        const idx = prev.findIndex(t => t.id === saved.id)
+        if (idx >= 0) {
+          const next = [...prev]
+          next[idx] = saved
+          return next
+        }
+        return [...prev, saved]
+      })
+      cancelAddNew()
     } catch {
-      setDrilldown(prev => prev?.key === row.key ? { ...prev, transactions: [], loading: false } : prev)
+      setNewFormError(t('limits.saveFailed'))
+    } finally {
+      setNewSaving(false)
     }
   }
+
+  async function openDrilldown(threshold: Threshold) {
+    const path = threshold.categoryPath
+    setDrilldown({ thresholdId: threshold.id, categoryPath: path, transactions: null, loading: true })
+    try {
+      const resp = await fetchTransactionList(from, to, path[0], path[1], iban)
+      const txs = resp.transactions.filter(tx => tx.effectiveAmount < 0)
+      txs.sort((a, b) => b.bookingDate.localeCompare(a.bookingDate))
+      setDrilldown(prev => prev?.thresholdId === threshold.id ? { ...prev, transactions: txs, loading: false } : prev)
+    } catch {
+      setDrilldown(prev => prev?.thresholdId === threshold.id ? { ...prev, transactions: [], loading: false } : prev)
+    }
+  }
+
+  const sortedThresholds = [...thresholds].sort((a, b) =>
+    a.categoryPath.filter(Boolean).join(' > ').localeCompare(b.categoryPath.filter(Boolean).join(' > ')),
+  )
 
   // ── render ────────────────────────────────────────────────────────────
 
@@ -283,14 +274,13 @@ export default function ThresholdsPage({ from, to, iban, categories }: { from: s
       </div>
 
       <div className="bgt-body">
-        {rows.length === 0 ? (
+        {sortedThresholds.length === 0 && !isAddingNew ? (
           <p className="hint">{t('limits.noCategories')}</p>
         ) : (
           <table className="bgt-table">
             <thead>
               <tr>
-                <th className="bgt-th-cat">{t('limits.columns.category')}</th>
-                <th className="bgt-th-sub">{t('limits.columns.subcategory')}</th>
+                <th className="bgt-th-path">{t('limits.columns.category')}</th>
                 {statusLoaded && <th className="bgt-th-spent">{t('limits.columns.spending')}</th>}
                 <th className="bgt-th-period">{t('limits.columns.period')}</th>
                 <th className="bgt-th-sev bgt-sev--notice">{t('limits.columns.notice')}</th>
@@ -301,27 +291,25 @@ export default function ThresholdsPage({ from, to, iban, categories }: { from: s
               </tr>
             </thead>
             <tbody>
-              {rows.map(row => {
-                const isEditing = editingKey === row.key
-                const item = statusLoaded ? statusMap.get(row.key) : undefined
-                const best = item ?? pickBest(row.thresholds, from, to)
+              {sortedThresholds.map(threshold => {
+                const isEditing = editingId === threshold.id
+                const item = statusLoaded ? statusMap.get(threshold.id) : undefined
                 const spending = item?.spending ?? 0
                 const progress = item != null ? progressFromItem(item) : null
 
                 const rowClass = [
                   'bgt-row',
-                  row.isFirst ? 'bgt-row--group-start' : '',
                   isEditing ? 'bgt-row--editing' : '',
-                  !isEditing && row.thresholds.length === 0 ? 'bgt-row--no-budget' : '',
                 ]
                   .filter(Boolean)
                   .join(' ')
 
                 if (isEditing) {
                   return (
-                    <tr key={row.key} className={rowClass}>
-                      <td className="bgt-td-cat bgt-cell-cat">{row.category}</td>
-                      <td className="bgt-td-sub bgt-cell-muted">{row.subcategory ?? t('limits.totalSubcat')}</td>
+                    <tr key={threshold.id} className={rowClass}>
+                      <td className="bgt-td-path bgt-cell-cat">
+                        {threshold.categoryPath.filter(Boolean).join(' > ')}
+                      </td>
                       {statusLoaded && (
                         <td className="bgt-td-spent">
                           {spending > 0 ? EUR2.format(spending) : '—'}
@@ -379,16 +367,14 @@ export default function ThresholdsPage({ from, to, iban, categories }: { from: s
                       <td className="bgt-td-edit-actions">
                         <button
                           className="bgt-btn bgt-btn--save"
-                          onClick={() => handleSave(row)}
+                          onClick={() => handleSave(threshold)}
                           disabled={saving}
                         >
                           {saving ? '…' : t('common.save')}
                         </button>
-                        {editThresholdId != null && (
-                          <button className="bgt-btn bgt-btn--delete" onClick={handleDelete}>
-                            {t('common.delete')}
-                          </button>
-                        )}
+                        <button className="bgt-btn bgt-btn--delete" onClick={() => handleDelete(threshold.id)}>
+                          {t('common.delete')}
+                        </button>
                         <button className="bgt-btn bgt-btn--cancel" onClick={cancelEdit}>
                           ✕
                         </button>
@@ -400,22 +386,19 @@ export default function ThresholdsPage({ from, to, iban, categories }: { from: s
                   )
                 }
 
+                const best = item ?? pickBest([threshold], from, to)
+
                 return (
-                  <tr key={row.key} className={rowClass} onClick={() => startEdit(row)}>
-                    <td className="bgt-td-cat bgt-cell-cat">
-                      {row.isFirst ? row.category : ''}
-                    </td>
-                    <td
-                      className={`bgt-td-sub ${row.subcategory == null ? 'bgt-cell-all' : 'bgt-cell-sub'}`}
-                    >
-                      {row.subcategory ?? t('limits.totalSubcat')}
+                  <tr key={threshold.id} className={rowClass} onClick={() => startEdit(threshold)}>
+                    <td className="bgt-td-path bgt-cell-cat">
+                      {threshold.categoryPath.filter(Boolean).join(' > ')}
                     </td>
                     {statusLoaded && (
                       <td className={`bgt-td-spent${spending === 0 ? ' bgt-cell-muted' : ''}`}>
                         {spending > 0 ? (
                           <button
                             className="bgt-spent-btn"
-                            onClick={e => { e.stopPropagation(); openDrilldown(row) }}
+                            onClick={e => { e.stopPropagation(); openDrilldown(threshold) }}
                           >
                             {EUR2.format(spending)}
                           </button>
@@ -458,23 +441,109 @@ export default function ThresholdsPage({ from, to, iban, categories }: { from: s
                     )}
                     <td className="bgt-td-actions">
                       <button
-                        className={`bgt-icon-btn${best == null ? ' bgt-icon-btn--add' : ''}`}
+                        className="bgt-icon-btn"
                         onClick={e => {
                           e.stopPropagation()
-                          startEdit(row)
+                          startEdit(threshold)
                         }}
-                        title={best != null ? t('limits.editThreshold') : t('limits.addThreshold')}
+                        title={t('limits.editThreshold')}
                       >
-                        {best != null ? '✎' : '+'}
+                        ✎
                       </button>
                     </td>
                   </tr>
                 )
               })}
+
+              {isAddingNew && (
+                <tr className="bgt-row bgt-row--editing bgt-row--new">
+                  <td className="bgt-td-path">
+                    <CategoryPathInput
+                      value={newCategoryId}
+                      onChange={setNewCategoryId}
+                      tree={categories}
+                      placeholder={t('limits.selectCategory')}
+                      className="bgt-category-input"
+                    />
+                  </td>
+                  {statusLoaded && <td />}
+                  <td className="bgt-td-period">
+                    <select
+                      className="bgt-select"
+                      value={newForm.period}
+                      onChange={e =>
+                        setNewForm(p => ({ ...p, period: e.target.value as ThresholdPeriod }))
+                      }
+                    >
+                      {PERIODS.map(p => (
+                        <option key={p} value={p}>
+                          {t(`budgets.period.${p.toLowerCase()}`)}
+                        </option>
+                      ))}
+                    </select>
+                  </td>
+                  <td className="bgt-td-sev">
+                    <input
+                      className="bgt-sev-input"
+                      type="number"
+                      min="0"
+                      step="1"
+                      placeholder="—"
+                      value={newForm.notice}
+                      onChange={e => setNewForm(p => ({ ...p, notice: e.target.value }))}
+                    />
+                  </td>
+                  <td className="bgt-td-sev">
+                    <input
+                      className="bgt-sev-input"
+                      type="number"
+                      min="0"
+                      step="1"
+                      placeholder="—"
+                      value={newForm.warning}
+                      onChange={e => setNewForm(p => ({ ...p, warning: e.target.value }))}
+                    />
+                  </td>
+                  <td className="bgt-td-sev">
+                    <input
+                      className="bgt-sev-input"
+                      type="number"
+                      min="0"
+                      step="1"
+                      placeholder="—"
+                      value={newForm.critical}
+                      onChange={e => setNewForm(p => ({ ...p, critical: e.target.value }))}
+                    />
+                  </td>
+                  {statusLoaded && <td />}
+                  <td className="bgt-td-edit-actions">
+                    <button
+                      className="bgt-btn bgt-btn--save"
+                      onClick={handleSaveNew}
+                      disabled={newSaving}
+                    >
+                      {newSaving ? '…' : t('common.save')}
+                    </button>
+                    <button className="bgt-btn bgt-btn--cancel" onClick={cancelAddNew}>
+                      ✕
+                    </button>
+                    {newFormError != null && (
+                      <span className="bgt-form-error">{newFormError}</span>
+                    )}
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         )}
+
+        {!isAddingNew && (
+          <button className="bgt-add-btn" onClick={startAddNew}>
+            + {t('limits.addThreshold')}
+          </button>
+        )}
       </div>
+
       {drilldown != null && (
         <DrilldownModal
           state={drilldown}
@@ -531,9 +600,7 @@ function DrilldownModal({
   onClose: () => void
 }) {
   const { t } = useTranslation()
-  const title = state.subcategory != null
-    ? `${state.category} / ${state.subcategory}`
-    : state.category
+  const title = state.categoryPath.filter(Boolean).join(' > ')
 
   const total = state.transactions?.reduce((s, tx) => s + Math.abs(tx.effectiveAmount), 0) ?? 0
 
@@ -570,7 +637,7 @@ function DrilldownModal({
                   {state.transactions.map(tx => (
                     <tr key={tx.id}>
                       <td className="bgt-dd-cell-date">{tx.accountingDate}</td>
-                      <td className="bgt-dd-cell-cat">{tx.category} / {tx.subcategory}</td>
+                      <td className="bgt-dd-cell-cat">{tx.category}{tx.subcategory ? ` / ${tx.subcategory}` : ''}</td>
                       <td className="bgt-dd-cell-purpose" title={tx.purpose ?? undefined}>
                         {tx.purpose ?? <span className="bgt-cell-muted">—</span>}
                       </td>

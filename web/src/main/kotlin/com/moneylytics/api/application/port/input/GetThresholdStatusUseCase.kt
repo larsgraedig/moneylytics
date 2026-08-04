@@ -14,9 +14,8 @@ data class GetThresholdStatusQuery(
 
 data class ThresholdStatusItem(
     val thresholdId: Long,
-    val category: String,
-    val subcategory: String?,
-    val group: String?,
+    val categoryId: Long,
+    val categoryPath: List<String>,
     val period: ThresholdPeriod,
     val notice: BigDecimal?,
     val warning: BigDecimal?,

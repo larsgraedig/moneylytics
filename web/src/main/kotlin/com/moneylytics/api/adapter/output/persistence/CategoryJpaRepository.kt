@@ -5,10 +5,9 @@ import org.springframework.data.jpa.repository.JpaRepository
 interface CategoryJpaRepository : JpaRepository<CategoryEntity, Long> {
     fun findAllByOrganizationId(organizationId: Long): List<CategoryEntity>
 
-    fun findByNameAndSubcategoryAndGroupNameAndOrganizationId(
+    fun findByNameAndParentIdAndOrganizationId(
         name: String,
-        subcategory: String,
-        groupName: String?,
+        parentId: Long?,
         organizationId: Long,
     ): CategoryEntity?
 }

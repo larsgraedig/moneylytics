@@ -12,7 +12,7 @@ import {
   type Account,
   type TransactionItem,
 } from '../api/transactions'
-import type { CategoryGroup } from '../api/rawImport'
+import type { CategoryNode } from '../api/rawImport'
 import { getPresetRange, PRESETS, type Preset } from '../utils/datePresets'
 import { CollectionCard } from './CollectionCard'
 
@@ -23,7 +23,7 @@ function formatDate(iso: string): string {
 
 const EUR = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' })
 
-export default function CollectionsPage({ accounts, categories }: { accounts: Account[]; categories: CategoryGroup[] }) {
+export default function CollectionsPage({ accounts, categories }: { accounts: Account[]; categories: CategoryNode[] }) {
   const { t } = useTranslation()
   const [collections, setCollections] = useState<CollectionDto[]>([])
   const [loading, setLoading] = useState(true)
@@ -171,7 +171,7 @@ function AddToCollectionModal({
 }: {
   collection: CollectionDto
   accounts: Account[]
-  categories: CategoryGroup[]
+  categories: CategoryNode[]
   onClose: () => void
   onAdded: (tx: TransactionItem) => void
 }) {
@@ -190,7 +190,7 @@ function AddToCollectionModal({
   const [adding, setAdding] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  const subcategoriesFor = (cat: string) => categories.find(c => c.name === cat)?.subcategories.map(s => s.name) ?? []
+  const subcategoriesFor = (cat: string) => categories.find(c => c.name === cat)?.children.map(s => s.name) ?? []
 
   async function loadWith(from: string, to: string) {
     setLoadingTx(true)
