@@ -47,5 +47,18 @@ class CategoryPersistenceAdapter(
         jpaRepository.delete(entity)
     }
 
+    @Transactional
+    override fun move(
+        id: Long,
+        newParentId: Long?,
+        organizationId: Long,
+    ) {
+        val entity =
+            jpaRepository.findByIdAndOrganizationId(id, organizationId)
+                ?: throw NoSuchElementException("Category $id not found")
+        entity.parent = newParentId?.let { jpaRepository.getReferenceById(it) }
+        jpaRepository.save(entity)
+    }
+
     private fun CategoryEntity.toDomain() = Category(id = id, name = name, parentId = parent?.id)
 }

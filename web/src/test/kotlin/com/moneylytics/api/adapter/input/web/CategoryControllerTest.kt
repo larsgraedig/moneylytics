@@ -4,13 +4,17 @@ import com.moneylytics.api.application.port.input.DeleteCategoryUseCase
 import com.moneylytics.api.application.port.input.FindOrCreateCategoryUseCase
 import com.moneylytics.api.application.port.input.GetCategoriesUseCase
 import com.moneylytics.api.application.port.input.GetCategoryStatsUseCase
+import com.moneylytics.api.application.port.input.MoveCategoryCommand
+import com.moneylytics.api.application.port.input.MoveCategoryUseCase
 import com.moneylytics.api.application.port.input.ResolveOrganizationUseCase
 import com.moneylytics.api.domain.Category
 import kotlinx.coroutines.test.runTest
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.mock
+import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
+import org.springframework.http.HttpStatus
 import org.springframework.security.core.userdetails.User
 import org.springframework.web.server.ServerWebExchange
 
@@ -22,12 +26,14 @@ class CategoryControllerTest {
     private val findOrCreateCategoryUseCase: FindOrCreateCategoryUseCase = mock()
     private val getCategoryStatsUseCase: GetCategoryStatsUseCase = mock()
     private val deleteCategoryUseCase: DeleteCategoryUseCase = mock()
+    private val moveCategoryUseCase: MoveCategoryUseCase = mock()
     private val controller =
         CategoryController(
             getCategoriesUseCase,
             findOrCreateCategoryUseCase,
             getCategoryStatsUseCase,
             deleteCategoryUseCase,
+            moveCategoryUseCase,
             resolveOrganizationUseCase,
         )
     private val principal =
@@ -137,5 +143,45 @@ class CategoryControllerTest {
 
             val children = response.categories.single().children
             assertThat(children.map { it.name }).containsExactly("Ausstellung", "Museum", "Zirkus")
+        }
+
+    @Test
+    fun `should return 204 when moving category to new parent`() =
+        runTest {
+            val response = controller.moveCategory(42L, MoveCategoryRequest(newParentId = 7L), principal, exchange)
+
+            assertThat(response.statusCode).isEqualTo(HttpStatus.NO_CONTENT)
+            verify(moveCategoryUseCase).moveCategory(MoveCategoryCommand(id = 42L, newParentId = 7L, organizationId = organizationId))
+        }
+
+    @Test
+    fun `should return 204 when moving category to root`() =
+        runTest {
+            val response = controller.moveCategory(42L, MoveCategoryRequest(newParentId = null), principal, exchange)
+
+            assertThat(response.statusCode).isEqualTo(HttpStatus.NO_CONTENT)
+            verify(moveCategoryUseCase).moveCategory(MoveCategoryCommand(id = 42L, newParentId = null, organizationId = organizationId))
+        }
+
+    @Test
+    fun `should return 404 when moving unknown category`() =
+        runTest {
+            whenever(moveCategoryUseCase.moveCategory(MoveCategoryCommand(id = 99L, newParentId = 1L, organizationId = organizationId)))
+                .thenThrow(NoSuchElementException("not found"))
+
+            val response = controller.moveCategory(99L, MoveCategoryRequest(newParentId = 1L), principal, exchange)
+
+            assertThat(response.statusCode).isEqualTo(HttpStatus.NOT_FOUND)
+        }
+
+    @Test
+    fun `should return 409 on circular reference`() =
+        runTest {
+            whenever(moveCategoryUseCase.moveCategory(MoveCategoryCommand(id = 1L, newParentId = 3L, organizationId = organizationId)))
+                .thenThrow(IllegalArgumentException("CIRCULAR_REFERENCE"))
+
+            val response = controller.moveCategory(1L, MoveCategoryRequest(newParentId = 3L), principal, exchange)
+
+            assertThat(response.statusCode).isEqualTo(HttpStatus.CONFLICT)
         }
 }

@@ -17,7 +17,7 @@ class CategoryEntity(
     val name: String,
     @ManyToOne(fetch = FetchType.LAZY, optional = true)
     @JoinColumn(name = "parent_id", nullable = true)
-    val parent: CategoryEntity?,
+    var parent: CategoryEntity?,
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "organization_id", nullable = false)
     val organization: OrganizationEntity,

@@ -14,4 +14,10 @@ interface CategoryRepository {
         id: Long,
         organizationId: Long,
     )
+
+    fun move(
+        id: Long,
+        newParentId: Long?,
+        organizationId: Long,
+    )
 }

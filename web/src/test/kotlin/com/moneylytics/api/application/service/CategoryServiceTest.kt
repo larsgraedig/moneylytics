@@ -1,13 +1,16 @@
 package com.moneylytics.api.application.service
 
 import com.moneylytics.api.application.port.input.GetCategoryStatsQuery
+import com.moneylytics.api.application.port.input.MoveCategoryCommand
 import com.moneylytics.api.application.port.output.CategoryRepository
 import com.moneylytics.api.application.port.output.ThresholdRepository
 import com.moneylytics.api.application.port.output.TransactionRepository
 import com.moneylytics.api.domain.Category
 import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.mock
+import org.mockito.kotlin.never
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import java.time.LocalDate
@@ -98,9 +101,65 @@ class CategoryServiceTest {
         whenever(thresholdRepository.existsByCategoryId(99L, organizationId)).thenReturn(false)
         whenever(categoryRepository.delete(99L, organizationId)).thenThrow(NoSuchElementException("not found"))
 
-        org.assertj.core.api.Assertions
-            .assertThatThrownBy { service.deleteCategory(99L, organizationId) }
+        assertThatThrownBy { service.deleteCategory(99L, organizationId) }
             .isInstanceOf(NoSuchElementException::class.java)
+    }
+
+    @Test
+    fun `should move category to new parent`() {
+        whenever(categoryRepository.findAll(organizationId)).thenReturn(
+            listOf(
+                Category(id = 1L, name = "Root", parentId = null),
+                Category(id = 2L, name = "Child", parentId = 1L),
+            ),
+        )
+
+        service.moveCategory(MoveCategoryCommand(id = 1L, newParentId = null, organizationId = organizationId))
+
+        verify(categoryRepository).move(1L, null, organizationId)
+    }
+
+    @Test
+    fun `should move root category under another category`() {
+        whenever(categoryRepository.findAll(organizationId)).thenReturn(
+            listOf(
+                Category(id = 1L, name = "Freizeit", parentId = null),
+                Category(id = 2L, name = "Essen", parentId = null),
+            ),
+        )
+
+        service.moveCategory(MoveCategoryCommand(id = 1L, newParentId = 2L, organizationId = organizationId))
+
+        verify(categoryRepository).move(1L, 2L, organizationId)
+    }
+
+    @Test
+    fun `should throw when moving category into its own descendant`() {
+        whenever(categoryRepository.findAll(organizationId)).thenReturn(
+            listOf(
+                Category(id = 1L, name = "Root", parentId = null),
+                Category(id = 2L, name = "Child", parentId = 1L),
+                Category(id = 3L, name = "Grandchild", parentId = 2L),
+            ),
+        )
+
+        assertThatThrownBy {
+            service.moveCategory(MoveCategoryCommand(id = 1L, newParentId = 3L, organizationId = organizationId))
+        }.isInstanceOf(IllegalArgumentException::class.java)
+            .hasMessage("CIRCULAR_REFERENCE")
+        verify(categoryRepository, never()).move(org.mockito.kotlin.any(), org.mockito.kotlin.any(), org.mockito.kotlin.any())
+    }
+
+    @Test
+    fun `should throw when moving category onto itself`() {
+        whenever(categoryRepository.findAll(organizationId)).thenReturn(
+            listOf(Category(id = 1L, name = "Root", parentId = null)),
+        )
+
+        assertThatThrownBy {
+            service.moveCategory(MoveCategoryCommand(id = 1L, newParentId = 1L, organizationId = organizationId))
+        }.isInstanceOf(IllegalArgumentException::class.java)
+            .hasMessage("CIRCULAR_REFERENCE")
     }
 
     @Test

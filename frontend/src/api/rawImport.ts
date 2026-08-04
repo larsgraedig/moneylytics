@@ -71,6 +71,19 @@ export async function deleteCategory(id: number): Promise<void> {
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
 }
 
+export async function moveCategory(id: number, newParentId: number | null): Promise<void> {
+  const res = await fetchWithUser(`/categories/${id}/parent`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ newParentId }),
+  })
+  if (res.status === 409) {
+    const body = await res.json().catch(() => ({})) as { reason?: string }
+    throw new Error(body.reason ?? 'UNKNOWN')
+  }
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+}
+
 export async function fetchCategoryStats(
   from: string,
   to: string,

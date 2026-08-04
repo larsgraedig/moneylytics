@@ -591,6 +591,11 @@
       "THRESHOLD_EXISTS": "A spending limit is still set for this category.",
       "CONSTRAINT_VIOLATION": "Category is still in use and cannot be deleted.",
       "UNKNOWN": "Delete failed."
+    },
+    "moveError": {
+      "CIRCULAR_REFERENCE": "A category cannot be moved into its own subtree.",
+      "CONSTRAINT_VIOLATION": "A category with the same name already exists at the target position.",
+      "UNKNOWN": "Move failed."
     }
   },
   "burnrate": {

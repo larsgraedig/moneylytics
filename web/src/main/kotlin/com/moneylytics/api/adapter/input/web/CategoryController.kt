@@ -5,6 +5,8 @@ import com.moneylytics.api.application.port.input.FindOrCreateCategoryUseCase
 import com.moneylytics.api.application.port.input.GetCategoriesUseCase
 import com.moneylytics.api.application.port.input.GetCategoryStatsQuery
 import com.moneylytics.api.application.port.input.GetCategoryStatsUseCase
+import com.moneylytics.api.application.port.input.MoveCategoryCommand
+import com.moneylytics.api.application.port.input.MoveCategoryUseCase
 import com.moneylytics.api.application.port.input.ResolveOrganizationUseCase
 import com.moneylytics.api.domain.Category
 import kotlinx.coroutines.Dispatchers
@@ -15,6 +17,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.security.core.userdetails.UserDetails
 import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PatchMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
@@ -28,6 +31,10 @@ data class CreateCategoryRequest(
     val path: List<String>,
 )
 
+data class MoveCategoryRequest(
+    val newParentId: Long?,
+)
+
 @RestController
 @RequestMapping("/categories")
 class CategoryController(
@@ -35,6 +42,7 @@ class CategoryController(
     private val findOrCreateCategoryUseCase: FindOrCreateCategoryUseCase,
     private val getCategoryStatsUseCase: GetCategoryStatsUseCase,
     private val deleteCategoryUseCase: DeleteCategoryUseCase,
+    private val moveCategoryUseCase: MoveCategoryUseCase,
     private val resolveOrganizationUseCase: ResolveOrganizationUseCase,
 ) {
     @GetMapping
@@ -91,6 +99,34 @@ class CategoryController(
         return CategoryStatsResponse(
             items = items.map { CategoryStatItemResponse(it.categoryId, it.totalCount, it.periodCount) },
         )
+    }
+
+    @PatchMapping("/{id}/parent")
+    suspend fun moveCategory(
+        @PathVariable id: Long,
+        @RequestBody request: MoveCategoryRequest,
+        @AuthenticationPrincipal principal: UserDetails,
+        exchange: ServerWebExchange,
+    ): ResponseEntity<Any> {
+        val organizationId = resolveOrganizationUseCase.resolveOrganization(principal, exchange)
+        return try {
+            withContext(Dispatchers.IO) {
+                moveCategoryUseCase.moveCategory(
+                    MoveCategoryCommand(
+                        id = id,
+                        newParentId = request.newParentId,
+                        organizationId = organizationId,
+                    ),
+                )
+            }
+            ResponseEntity.noContent().build()
+        } catch (e: NoSuchElementException) {
+            ResponseEntity.notFound().build()
+        } catch (e: IllegalArgumentException) {
+            ResponseEntity.status(409).body(DeleteCategoryErrorResponse(reason = e.message ?: "UNKNOWN"))
+        } catch (e: DataIntegrityViolationException) {
+            ResponseEntity.status(409).body(DeleteCategoryErrorResponse(reason = "CONSTRAINT_VIOLATION"))
+        }
     }
 
     @DeleteMapping("/{id}")

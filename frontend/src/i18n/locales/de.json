@@ -591,6 +591,11 @@
       "THRESHOLD_EXISTS": "Für diese Kategorie ist noch ein Limit hinterlegt.",
       "CONSTRAINT_VIOLATION": "Kategorie wird noch verwendet und kann nicht gelöscht werden.",
       "UNKNOWN": "Löschen fehlgeschlagen."
+    },
+    "moveError": {
+      "CIRCULAR_REFERENCE": "Eine Kategorie kann nicht in einen eigenen Unterbaum verschoben werden.",
+      "CONSTRAINT_VIOLATION": "Es existiert bereits eine Kategorie mit diesem Namen an der Zielposition.",
+      "UNKNOWN": "Verschieben fehlgeschlagen."
     }
   },
   "burnrate": {

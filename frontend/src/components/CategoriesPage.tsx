@@ -1,7 +1,7 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { CategoryNode, CategoryStatItem } from '../api/rawImport'
-import { deleteCategory, fetchCategoryStats } from '../api/rawImport'
+import { deleteCategory, fetchCategoryStats, moveCategory } from '../api/rawImport'
 
 interface Props {
   categories: CategoryNode[]
@@ -9,6 +9,7 @@ interface Props {
   to: string
   iban?: string
   onCategoryDeleted: () => void
+  onCategoryMoved: () => void
 }
 
 interface RowProps {
@@ -23,6 +24,10 @@ interface RowProps {
   isSearchActive: boolean
   deletingId: number | null
   onDelete: (id: number) => void
+  draggedId: React.MutableRefObject<number | null>
+  overId: number | 'root' | null
+  setOverId: (id: number | 'root' | null) => void
+  onDrop: (targetId: number | null) => void
 }
 
 function buildSubtreeCounts(
@@ -79,6 +84,7 @@ function CategoryRow({
   subtreeTotals, subtreePeriod,
   search, visibleIds, isSearchActive,
   deletingId, onDelete,
+  draggedId, overId, setOverId, onDrop,
 }: RowProps) {
   const visibleChildren = isSearchActive
     ? node.children.filter(c => visibleIds.has(c.id))
@@ -92,14 +98,50 @@ function CategoryRow({
   const total = subtreeTotals.get(node.id) ?? 0
   const period = subtreePeriod.get(node.id) ?? 0
   const isDeletable = !hasChildren && total === 0
+  const isDragging = draggedId.current === node.id
+  const isDragOver = overId === node.id
+
+  const classNames = [
+    'cat-row',
+    hasChildren && !isSearchActive ? 'cat-row--clickable' : '',
+    isDragging ? 'cat-row--dragging' : '',
+    isDragOver ? 'cat-row--drag-over' : '',
+  ].filter(Boolean).join(' ')
 
   return (
     <>
       <div
-        className={`cat-row${hasChildren && !isSearchActive ? ' cat-row--clickable' : ''}`}
+        className={classNames}
         style={{ paddingLeft: `${20 + depth * 20}px` }}
         onClick={() => !isSearchActive && hasChildren && onToggle(node.id)}
+        draggable={!isSearchActive}
+        onDragStart={e => {
+          draggedId.current = node.id
+          e.dataTransfer.effectAllowed = 'move'
+        }}
+        onDragEnd={() => {
+          draggedId.current = null
+          setOverId(null)
+        }}
+        onDragOver={e => {
+          e.preventDefault()
+          e.stopPropagation()
+          if (draggedId.current !== node.id) setOverId(node.id)
+        }}
+        onDragLeave={e => {
+          e.stopPropagation()
+          setOverId(null)
+        }}
+        onDrop={e => {
+          e.preventDefault()
+          e.stopPropagation()
+          setOverId(null)
+          if (draggedId.current !== null && draggedId.current !== node.id) {
+            onDrop(node.id)
+          }
+        }}
       >
+        <span className="cat-drag-handle" aria-hidden>⠿</span>
         <span className="cat-chevron">
           {hasChildren ? (isExpanded ? '▾' : '▸') : ''}
         </span>
@@ -135,19 +177,26 @@ function CategoryRow({
           isSearchActive={isSearchActive}
           deletingId={deletingId}
           onDelete={onDelete}
+          draggedId={draggedId}
+          overId={overId}
+          setOverId={setOverId}
+          onDrop={onDrop}
         />
       ))}
     </>
   )
 }
 
-export default function CategoriesPage({ categories, from, to, iban, onCategoryDeleted }: Props) {
+export default function CategoriesPage({ categories, from, to, iban, onCategoryDeleted, onCategoryMoved }: Props) {
   const { t } = useTranslation()
   const [expanded, setExpanded] = useState<Set<number>>(new Set())
   const [stats, setStats] = useState<CategoryStatItem[]>([])
   const [search, setSearch] = useState('')
   const [deletingId, setDeletingId] = useState<number | null>(null)
   const [deleteError, setDeleteError] = useState<string | null>(null)
+  const [moveError, setMoveError] = useState<string | null>(null)
+  const [overId, setOverId] = useState<number | 'root' | null>(null)
+  const draggedId = useRef<number | null>(null)
 
   useEffect(() => {
     fetchCategoryStats(from, to, iban).then(r => setStats(r.items)).catch(() => {})
@@ -196,6 +245,21 @@ export default function CategoriesPage({ categories, from, to, iban, onCategoryD
     }
   }
 
+  async function handleDrop(targetId: number | null) {
+    const id = draggedId.current
+    if (id === null) return
+    setMoveError(null)
+    try {
+      await moveCategory(id, targetId)
+      onCategoryMoved()
+    } catch (e) {
+      const reason = e instanceof Error ? e.message : 'UNKNOWN'
+      const key = `kategorien.moveError.${reason}`
+      const msg = t(key, { defaultValue: t('kategorien.moveError.UNKNOWN') })
+      setMoveError(msg)
+    }
+  }
+
   const rootNodes = isSearchActive
     ? categories.filter(n => visibleIds.has(n.id))
     : categories
@@ -214,7 +278,20 @@ export default function CategoriesPage({ categories, from, to, iban, onCategoryD
         />
       </div>
       {deleteError && <p className="cat-error">{deleteError}</p>}
-      <div className="cat-tree">
+      {moveError && <p className="cat-error">{moveError}</p>}
+      <div
+        className={`cat-tree${overId === 'root' ? ' cat-tree--drag-over' : ''}`}
+        onDragOver={e => {
+          e.preventDefault()
+          setOverId('root')
+        }}
+        onDragLeave={() => setOverId(null)}
+        onDrop={e => {
+          e.preventDefault()
+          setOverId(null)
+          handleDrop(null)
+        }}
+      >
         {categories.length === 0 ? (
           <p className="cat-empty">{t('kategorien.empty')}</p>
         ) : rootNodes.length === 0 ? (
@@ -234,6 +311,10 @@ export default function CategoriesPage({ categories, from, to, iban, onCategoryD
               isSearchActive={isSearchActive}
               deletingId={deletingId}
               onDelete={handleDelete}
+              draggedId={draggedId}
+              overId={overId}
+              setOverId={setOverId}
+              onDrop={handleDrop}
             />
           ))
         )}

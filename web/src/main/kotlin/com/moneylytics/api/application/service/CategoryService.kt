@@ -6,6 +6,8 @@ import com.moneylytics.api.application.port.input.FindOrCreateCategoryUseCase
 import com.moneylytics.api.application.port.input.GetCategoriesUseCase
 import com.moneylytics.api.application.port.input.GetCategoryStatsQuery
 import com.moneylytics.api.application.port.input.GetCategoryStatsUseCase
+import com.moneylytics.api.application.port.input.MoveCategoryCommand
+import com.moneylytics.api.application.port.input.MoveCategoryUseCase
 import com.moneylytics.api.application.port.output.CategoryRepository
 import com.moneylytics.api.application.port.output.ThresholdRepository
 import com.moneylytics.api.application.port.output.TransactionRepository
@@ -20,7 +22,8 @@ class CategoryService(
 ) : GetCategoriesUseCase,
     FindOrCreateCategoryUseCase,
     GetCategoryStatsUseCase,
-    DeleteCategoryUseCase {
+    DeleteCategoryUseCase,
+    MoveCategoryUseCase {
     override fun getCategories(organizationId: Long): List<Category> = categoryRepository.findAll(organizationId)
 
     override fun findOrCreateCategory(
@@ -55,5 +58,32 @@ class CategoryService(
             throw IllegalStateException("THRESHOLD_EXISTS")
         }
         categoryRepository.delete(id, organizationId)
+    }
+
+    override fun moveCategory(command: MoveCategoryCommand) {
+        val newParentId = command.newParentId
+        if (newParentId != null) {
+            val allCategories = categoryRepository.findAll(command.organizationId)
+            val descendants = collectDescendants(command.id, allCategories)
+            if (newParentId == command.id || newParentId in descendants) {
+                throw IllegalArgumentException("CIRCULAR_REFERENCE")
+            }
+        }
+        categoryRepository.move(command.id, command.newParentId, command.organizationId)
+    }
+
+    private fun collectDescendants(
+        id: Long,
+        all: List<Category>,
+    ): Set<Long> {
+        val childrenByParentId = all.groupBy { it.parentId }
+        val result = mutableSetOf<Long>()
+        val queue = ArrayDeque(childrenByParentId[id]?.mapNotNull { it.id } ?: emptyList())
+        while (queue.isNotEmpty()) {
+            val childId = queue.removeFirst()
+            result.add(childId)
+            childrenByParentId[childId]?.mapNotNull { it.id }?.let { queue.addAll(it) }
+        }
+        return result
     }
 }
