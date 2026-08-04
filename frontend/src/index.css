@@ -805,6 +805,31 @@ body {
   background: var(--accent-glow);
 }
 
+.tr-subs-btn {
+  height: 30px;
+  padding: 0 12px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  color: var(--text-dim);
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  transition: border-color 0.12s, color 0.12s, background 0.12s;
+}
+
+.tr-subs-btn:hover {
+  border-color: var(--accent-dim);
+  color: var(--text-muted);
+}
+
+.tr-subs-btn.active {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-glow);
+}
+
 /* ── stage ───────────────────────────────── */
 
 .stage {

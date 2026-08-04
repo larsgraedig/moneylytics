@@ -111,7 +111,8 @@
     "noData": "No data for the selected series and date range",
     "categoryTotal": "category total",
     "clickToDrillDown": "· click to drill down",
-    "configured": "configured"
+    "configured": "configured",
+    "subcategories": "Subcategories"
   },
   "breakdown": {
     "categories": "categories",

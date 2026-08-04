@@ -111,7 +111,8 @@
     "noData": "Keine Daten für die ausgewählten Reihen und den Zeitraum",
     "categoryTotal": "Kategorie gesamt",
     "clickToDrillDown": "· klicken zum Aufschlüsseln",
-    "configured": "konfiguriert"
+    "configured": "konfiguriert",
+    "subcategories": "Unterkategorien"
   },
   "breakdown": {
     "categories": "Kategorien",

@@ -246,6 +246,7 @@ export default function TrendsPage({ from, to, iban, categories }: { from: strin
   const [series, setSeries] = useState<SeriesConfig[]>([{ id: newId(), categoryId: null }])
   const [view, setView] = useState<ViewState>({ phase: 'idle' })
   const [drilldown, setDrilldown] = useState<{ node: SankeyNode; from: string; to: string } | null>(null)
+  const [showSubs, setShowSubs] = useState(true)
   const [thresholds, setThresholds] = useState<Threshold[]>([])
   const [hoveredThreshold, setHoveredThreshold] = useState<ThresholdTooltipData | null>(null)
 
@@ -281,7 +282,7 @@ export default function TrendsPage({ from, to, iban, categories }: { from: strin
     const catIds = new Map<string, number>()
     const data = view.data.groups.flatMap((group, i) => {
       const color = COLORS[i % COLORS.length]
-      const entries = [group.main, ...group.subs]
+      const entries = showSubs ? [group.main, ...group.subs] : [group.main]
       return entries.map(entry => {
         const id = seriesId(i, entry.label ?? '')
         roles.set(id, entry.role)
@@ -290,7 +291,7 @@ export default function TrendsPage({ from, to, iban, categories }: { from: strin
       })
     })
     return { lineData: data, seriesRoles: roles, seriesCategoryIds: catIds }
-  }, [view])
+  }, [view, showSubs])
 
   const CustomLineLayer = useMemo(() => makeLineLayer(seriesRoles), [seriesRoles])
 
@@ -346,6 +347,13 @@ export default function TrendsPage({ from, to, iban, categories }: { from: strin
           <option value="WEEKLY">{t('trends.granularity.weekly')}</option>
           <option value="DAILY">{t('trends.granularity.daily')}</option>
         </select>
+
+        <button
+          className={`tr-subs-btn${showSubs ? ' active' : ''}`}
+          onClick={() => setShowSubs(v => !v)}
+        >
+          {t('trends.subcategories')}
+        </button>
 
         <button
           className="load-btn"
