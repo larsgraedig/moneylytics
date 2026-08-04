@@ -24,6 +24,7 @@ export interface RawPreviewRow {
   errors: RawPreviewError[]
   unknownAccount: boolean
   counterpartyIban: string | null
+  suggestedCategoryId: number | null
 }
 
 export interface CategoryNode {

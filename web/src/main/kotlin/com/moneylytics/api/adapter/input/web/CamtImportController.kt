@@ -8,7 +8,9 @@ import com.moneylytics.api.application.port.input.ImportTransactionsCommand
 import com.moneylytics.api.application.port.input.ImportTransactionsUseCase
 import com.moneylytics.api.application.port.input.ResolveOrganizationUseCase
 import com.moneylytics.api.application.port.input.UpdateIgnoredTransactionsUseCase
+import com.moneylytics.api.application.port.output.CategoryClassifier
 import com.moneylytics.api.domain.AccountBalance
+import com.moneylytics.api.domain.CategoryClassifierFeatures
 import com.moneylytics.api.domain.Transaction
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.reactive.awaitSingle
@@ -37,6 +39,7 @@ class CamtImportController(
     private val importTransactionsUseCase: ImportTransactionsUseCase,
     private val enrichTransactionUseCase: EnrichTransactionUseCase,
     private val resolveOrganizationUseCase: ResolveOrganizationUseCase,
+    private val categoryClassifier: CategoryClassifier,
 ) {
     companion object {
         private const val HTTP_UNPROCESSABLE_ENTITY = 422
@@ -103,24 +106,43 @@ class CamtImportController(
                 .distinctBy { it.accountIban }
                 .map { CamtAccountInfo(iban = it.accountIban, suggestedName = it.accountName) }
 
+        val previewRows =
+            allRows.map { row ->
+                val fp = rowFingerprints[row.rowNumber]
+                val status =
+                    when {
+                        !row.isValid -> RowStatus.INVALID
+                        fp in existingFingerprints -> RowStatus.DUPLICATE
+                        fp in ignoredFingerprints -> RowStatus.PREVIOUSLY_IGNORED
+                        else -> RowStatus.NEW
+                    }
+                row.toPreviewRow(
+                    status = status,
+                    fingerprint = fp,
+                    unknownAccount = knownIbans.isNotEmpty() && row.accountIban !in knownIbans,
+                )
+            }
+
+        val features =
+            previewRows.map { row ->
+                CategoryClassifierFeatures(
+                    purpose = row.purpose.ifBlank { null },
+                    counterpartyName = row.counterparty.ifBlank { null },
+                    counterpartyIban = row.counterpartyIban,
+                )
+            }
+        val suggestions =
+            withContext(Dispatchers.IO) {
+                categoryClassifier.suggestAll(organizationId, features)
+            }
+        val rowsWithSuggestions =
+            previewRows.zip(suggestions).map { (row, catId) ->
+                if (row.status == RowStatus.NEW && !row.unknownAccount) row.copy(suggestedCategoryId = catId) else row
+            }
+
         val response =
             CamtPreviewResponse(
-                rows =
-                    allRows.map { row ->
-                        val fp = rowFingerprints[row.rowNumber]
-                        val status =
-                            when {
-                                !row.isValid -> RowStatus.INVALID
-                                fp in existingFingerprints -> RowStatus.DUPLICATE
-                                fp in ignoredFingerprints -> RowStatus.PREVIOUSLY_IGNORED
-                                else -> RowStatus.NEW
-                            }
-                        row.toPreviewRow(
-                            status = status,
-                            fingerprint = fp,
-                            unknownAccount = knownIbans.isNotEmpty() && row.accountIban !in knownIbans,
-                        )
-                    },
+                rows = rowsWithSuggestions,
                 accounts = accounts,
                 accountBalances = mergedBalances,
             )

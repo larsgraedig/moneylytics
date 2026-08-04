@@ -2,6 +2,8 @@ package com.moneylytics.api.application.service
 
 import com.moneylytics.api.application.port.input.ImportTransactionsCommand
 import com.moneylytics.api.application.port.output.AccountRepository
+import com.moneylytics.api.application.port.output.CategoryClassifier
+import com.moneylytics.api.application.port.output.CategoryRepository
 import com.moneylytics.api.application.port.output.TransactionRepository
 import com.moneylytics.api.domain.Account
 import com.moneylytics.api.domain.AccountBalance
@@ -19,7 +21,9 @@ import java.time.LocalDate
 class TransactionImportServiceTest {
     private val transactionRepository: TransactionRepository = mock()
     private val accountRepository: AccountRepository = mock()
-    private val service = TransactionImportService(transactionRepository, accountRepository)
+    private val categoryRepository: CategoryRepository = mock()
+    private val categoryClassifier: CategoryClassifier = mock()
+    private val service = TransactionImportService(transactionRepository, accountRepository, categoryRepository, categoryClassifier)
 
     private val organizationId = 1L
     private val date = LocalDate.of(2025, 1, 15)

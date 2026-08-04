@@ -59,6 +59,7 @@ export interface GenericCsvPreviewRow {
   mappedCategoryGroup: string | null
   counterpartyName: string | null
   counterpartyIban: string | null
+  suggestedCategoryId: number | null
 }
 
 export interface GenericRowToImport {

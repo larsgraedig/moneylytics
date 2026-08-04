@@ -1,6 +1,7 @@
 package com.moneylytics.api.adapter.output.persistence
 
 import com.moneylytics.api.application.port.output.AccountRepository
+import com.moneylytics.api.application.port.output.CategoryClassifier
 import com.moneylytics.api.application.port.output.CategoryRepository
 import com.moneylytics.api.application.port.output.IgnoredTransactionRepository
 import com.moneylytics.api.application.port.output.ThresholdRepository
@@ -8,6 +9,10 @@ import com.moneylytics.api.application.port.output.TransactionRepository
 import com.moneylytics.api.application.service.CategoryService
 import com.moneylytics.api.application.service.IgnoredTransactionService
 import com.moneylytics.api.application.service.TransactionImportService
+import com.moneylytics.api.domain.CategoryClassifierFeatures
+import org.mockito.kotlin.any
+import org.mockito.kotlin.mock
+import org.mockito.kotlin.whenever
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Import
@@ -60,10 +65,19 @@ class ServiceLayerTestConfig {
     ): CategoryPersistenceAdapter = CategoryPersistenceAdapter(jpaRepository, organizationJpaRepository)
 
     @Bean
+    fun categoryClassifier(): CategoryClassifier {
+        val classifier: CategoryClassifier = mock()
+        whenever(classifier.suggestAll(any(), any<List<CategoryClassifierFeatures>>())).thenReturn(emptyList())
+        return classifier
+    }
+
+    @Bean
     fun transactionImportService(
         transactionRepository: TransactionRepository,
         accountRepository: AccountRepository,
-    ): TransactionImportService = TransactionImportService(transactionRepository, accountRepository)
+        categoryRepository: CategoryRepository,
+        categoryClassifier: CategoryClassifier,
+    ): TransactionImportService = TransactionImportService(transactionRepository, accountRepository, categoryRepository, categoryClassifier)
 
     @Bean
     fun ignoredTransactionService(repository: IgnoredTransactionRepository): IgnoredTransactionService =

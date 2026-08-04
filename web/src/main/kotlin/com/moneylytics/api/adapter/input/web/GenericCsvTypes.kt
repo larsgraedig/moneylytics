@@ -64,6 +64,7 @@ data class GenericCsvPreviewRow(
     val mappedSubcategory: String? = null,
     val counterpartyName: String? = null,
     val counterpartyIban: String? = null,
+    val suggestedCategoryId: Long? = null,
 )
 
 data class GenericRowToImport(
