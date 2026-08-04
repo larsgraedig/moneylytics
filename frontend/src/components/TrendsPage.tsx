@@ -202,6 +202,28 @@ function makeThresholdLayer(lines: ThresholdLine[], setTooltip: TooltipSetter) {
   }
 }
 
+const SEVERITY_COLORS = { notice: '#fbbf24', warning: '#f97316', critical: '#ef4444' }
+
+const DAYS_PER_PERIOD: Record<TThresholdPeriod, number> = {
+  WEEKLY: 7,
+  MONTHLY: 365.25 / 12,
+  QUARTERLY: 365.25 / 4,
+  YEARLY: 365.25,
+}
+
+const DAYS_PER_BUCKET: Record<Granularity, number> = {
+  DAILY: 1,
+  WEEKLY: 7,
+  MONTHLY: 365.25 / 12,
+  QUARTERLY: 365.25 / 4,
+  BI_YEARLY: 365.25 / 2,
+  YEARLY: 365.25,
+}
+
+function normalizeThreshold(amount: number, period: TThresholdPeriod, granularity: Granularity): number {
+  return (amount / DAYS_PER_PERIOD[period]) * DAYS_PER_BUCKET[granularity]
+}
+
 function findPathById(id: number, nodes: CategoryNode[], prefix: string[] = []): string[] | null {
   for (const node of nodes) {
     const path = [...prefix, node.name]
@@ -272,8 +294,23 @@ export default function TrendsPage({ from, to, iban, categories }: { from: strin
 
   const CustomLineLayer = useMemo(() => makeLineLayer(seriesRoles), [seriesRoles])
 
-  // Threshold matching is string-name-based and not yet wired to the ID-based series system.
-  const thresholdLines = useMemo<ThresholdLine[]>(() => [], [thresholds])
+  const thresholdLines = useMemo<ThresholdLine[]>(() => {
+    if (view.phase !== 'ready') return []
+    const gran = view.data.granularity
+    const activeCategoryIds = new Set(seriesCategoryIds.values())
+    const lines: ThresholdLine[] = []
+    for (const t of thresholds) {
+      if (!activeCategoryIds.has(t.categoryId)) continue
+      const label = t.categoryPath[t.categoryPath.length - 1] ?? ''
+      if (t.notice != null)
+        lines.push({ value: normalizeThreshold(t.notice, t.period, gran), color: SEVERITY_COLORS.notice, label: `${label} notice`, baselineAmount: t.notice, period: t.period, granularity: gran })
+      if (t.warning != null)
+        lines.push({ value: normalizeThreshold(t.warning, t.period, gran), color: SEVERITY_COLORS.warning, label: `${label} warning`, baselineAmount: t.warning, period: t.period, granularity: gran })
+      if (t.critical != null)
+        lines.push({ value: normalizeThreshold(t.critical, t.period, gran), color: SEVERITY_COLORS.critical, label: `${label} critical`, baselineAmount: t.critical, period: t.period, granularity: gran })
+    }
+    return lines
+  }, [view, seriesCategoryIds, thresholds])
 
   // setHoveredThreshold is a stable useState setter — intentionally omitted from deps
   // eslint-disable-next-line react-hooks/exhaustive-deps
