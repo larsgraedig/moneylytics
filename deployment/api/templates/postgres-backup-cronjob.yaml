@@ -1,0 +1,57 @@
+{{- if .Values.backup.enabled }}
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ include "moneylytics.fullname" . }}-postgres-backup
+  labels:
+    {{- include "moneylytics.labels" . | nindent 4 }}
+    app.kubernetes.io/component: postgres-backup
+spec:
+  schedule: {{ .Values.backup.schedule | quote }}
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: backup
+              image: {{ .Values.postgres.image | quote }}
+              imagePullPolicy: IfNotPresent
+              env:
+                - name: POSTGRES_HOST
+                  value: {{ include "moneylytics.fullname" . }}-postgres
+                - name: POSTGRES_DB
+                  value: {{ .Values.postgres.database | quote }}
+                - name: POSTGRES_USER
+                  valueFrom:
+                    secretKeyRef:
+                      name: {{ include "moneylytics.fullname" . }}-postgres
+                      key: username
+                - name: PGPASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: {{ include "moneylytics.fullname" . }}-postgres
+                      key: password
+                - name: RETENTION
+                  value: {{ .Values.backup.retentionCount | quote }}
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  set -e
+                  TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+                  FILE=/backups/moneylyticsdb_${TIMESTAMP}.sql.gz
+                  pg_dump -h "$POSTGRES_HOST" -U "$POSTGRES_USER" "$POSTGRES_DB" | gzip > "$FILE"
+                  ls -1t /backups/moneylyticsdb_*.sql.gz | tail -n +$((RETENTION + 1)) | xargs -r rm -f
+              volumeMounts:
+                - name: backup-storage
+                  mountPath: /backups
+          volumes:
+            - name: backup-storage
+              hostPath:
+                path: {{ .Values.backup.hostPath | quote }}
+                type: DirectoryOrCreate
+{{- end }}

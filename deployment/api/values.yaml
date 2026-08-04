@@ -176,3 +176,9 @@ postgres:
   username: moneylytics
   password: moneylytics
   storage: 2Gi
+
+backup:
+  enabled: true
+  schedule: "0 2 * * *"
+  hostPath: /var/backups/moneylytics
+  retentionCount: 30
