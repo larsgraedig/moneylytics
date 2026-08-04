@@ -583,7 +583,9 @@
   },
   "kategorien": {
     "title": "Categories",
-    "empty": "No categories found"
+    "empty": "No categories found",
+    "search": "Search categories…",
+    "noResults": "No results"
   },
   "burnrate": {
     "windowBtn": "Ø {{days}} days",

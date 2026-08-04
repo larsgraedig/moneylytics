@@ -51,3 +51,25 @@ export async function findOrCreateCategory(path: string[]): Promise<CategoryNode
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
   return res.json() as Promise<CategoryNode>
 }
+
+export interface CategoryStatItem {
+  categoryId: number
+  totalCount: number
+  periodCount: number
+}
+
+export interface CategoryStatsResponse {
+  items: CategoryStatItem[]
+}
+
+export async function fetchCategoryStats(
+  from: string,
+  to: string,
+  iban?: string,
+): Promise<CategoryStatsResponse> {
+  const params = new URLSearchParams({ from, to })
+  if (iban) params.set('iban', iban)
+  const res = await fetchWithUser(`/categories/stats?${params}`)
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  return res.json() as Promise<CategoryStatsResponse>
+}

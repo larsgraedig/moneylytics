@@ -69,5 +69,8 @@ class ServiceLayerTestConfig {
         IgnoredTransactionService(repository)
 
     @Bean
-    fun categoryService(categoryRepository: CategoryRepository): CategoryService = CategoryService(categoryRepository)
+    fun categoryService(
+        categoryRepository: CategoryRepository,
+        transactionRepository: TransactionRepository,
+    ): CategoryService = CategoryService(categoryRepository, transactionRepository)
 }

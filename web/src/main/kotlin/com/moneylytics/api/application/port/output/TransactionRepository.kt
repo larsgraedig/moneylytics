@@ -77,4 +77,16 @@ interface TransactionRepository {
         updates: List<CategoryUpdateEntry>,
         organizationId: Long,
     ): List<Transaction>
+
+    fun countByCategoryGrouped(
+        organizationId: Long,
+        iban: String? = null,
+    ): Map<Long, Long>
+
+    fun countByCategoryGroupedInPeriod(
+        organizationId: Long,
+        from: LocalDate,
+        to: LocalDate,
+        iban: String? = null,
+    ): Map<Long, Long>
 }

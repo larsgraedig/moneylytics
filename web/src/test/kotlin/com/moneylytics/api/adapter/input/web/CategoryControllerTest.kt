@@ -2,6 +2,7 @@ package com.moneylytics.api.adapter.input.web
 
 import com.moneylytics.api.application.port.input.FindOrCreateCategoryUseCase
 import com.moneylytics.api.application.port.input.GetCategoriesUseCase
+import com.moneylytics.api.application.port.input.GetCategoryStatsUseCase
 import com.moneylytics.api.application.port.input.ResolveOrganizationUseCase
 import com.moneylytics.api.domain.Category
 import kotlinx.coroutines.test.runTest
@@ -18,7 +19,9 @@ class CategoryControllerTest {
     private val resolveOrganizationUseCase: ResolveOrganizationUseCase = ResolveOrganizationUseCase { _, _ -> organizationId }
     private val getCategoriesUseCase: GetCategoriesUseCase = mock()
     private val findOrCreateCategoryUseCase: FindOrCreateCategoryUseCase = mock()
-    private val controller = CategoryController(getCategoriesUseCase, findOrCreateCategoryUseCase, resolveOrganizationUseCase)
+    private val getCategoryStatsUseCase: GetCategoryStatsUseCase = mock()
+    private val controller =
+        CategoryController(getCategoriesUseCase, findOrCreateCategoryUseCase, getCategoryStatsUseCase, resolveOrganizationUseCase)
     private val principal =
         User
             .withUsername("user@test.de")

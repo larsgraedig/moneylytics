@@ -357,7 +357,7 @@ export default function App() {
           {tab === 'csv' && <CsvImportPage key={`${username}-${activeOrganization?.id}`} categories={categories} />}
           {tab === 'camt' && <CamtImportPage key={`${username}-${activeOrganization?.id}`} categories={categories} />}
           {tab === 'wiederkehrer' && <RecurringPage key={`${username}-${activeOrganization?.id}`} />}
-          {tab === 'kategorien' && <CategoriesPage key={`${username}-${activeOrganization?.id}`} categories={categories} />}
+          {tab === 'kategorien' && <CategoriesPage key={`${username}-${activeOrganization?.id}`} categories={categories} from={from} to={to} iban={iban} />}
           {tab === 'orgs' && isOrgAdminOrOwner && <OrgsPage key={activeOrganization?.id} />}
           {tab === 'admin' && isSystemAdmin && <AdminPage key={`${username}-${activeOrganization?.id}`} />}
         </main>
