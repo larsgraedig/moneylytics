@@ -255,7 +255,7 @@ export default function ThresholdsPage({ from, to, iban, categories }: { from: s
   }
 
   const sortedThresholds = [...thresholds].sort((a, b) =>
-    a.categoryPath.join(' > ').localeCompare(b.categoryPath.join(' > ')),
+    a.categoryPath.filter(Boolean).join(' > ').localeCompare(b.categoryPath.filter(Boolean).join(' > ')),
   )
 
   // ── render ────────────────────────────────────────────────────────────
@@ -308,7 +308,7 @@ export default function ThresholdsPage({ from, to, iban, categories }: { from: s
                   return (
                     <tr key={threshold.id} className={rowClass}>
                       <td className="bgt-td-path bgt-cell-cat">
-                        {threshold.categoryPath.join(' > ')}
+                        {threshold.categoryPath.filter(Boolean).join(' > ')}
                       </td>
                       {statusLoaded && (
                         <td className="bgt-td-spent">
@@ -391,7 +391,7 @@ export default function ThresholdsPage({ from, to, iban, categories }: { from: s
                 return (
                   <tr key={threshold.id} className={rowClass} onClick={() => startEdit(threshold)}>
                     <td className="bgt-td-path bgt-cell-cat">
-                      {threshold.categoryPath.join(' > ')}
+                      {threshold.categoryPath.filter(Boolean).join(' > ')}
                     </td>
                     {statusLoaded && (
                       <td className={`bgt-td-spent${spending === 0 ? ' bgt-cell-muted' : ''}`}>
@@ -600,7 +600,7 @@ function DrilldownModal({
   onClose: () => void
 }) {
   const { t } = useTranslation()
-  const title = state.categoryPath.join(' > ')
+  const title = state.categoryPath.filter(Boolean).join(' > ')
 
   const total = state.transactions?.reduce((s, tx) => s + Math.abs(tx.effectiveAmount), 0) ?? 0
 

@@ -13,7 +13,7 @@ type DropdownItem = BrowseItem | CreateItem
 function flattenTree(nodes: CategoryNode[], prefix: string[] = []): FlatItem[] {
   return nodes.flatMap(node => {
     const path = [...prefix, node.name]
-    return [{ id: node.id, pathStr: path.join(' > ') }, ...flattenTree(node.children, path)]
+    return [{ id: node.id, pathStr: path.filter(Boolean).join(' > ') }, ...flattenTree(node.children, path)]
   })
 }
 
@@ -21,7 +21,7 @@ function flattenTreeWithDepth(nodes: CategoryNode[], depth = 0, prefix: string[]
   return nodes.flatMap(node => {
     const path = [...prefix, node.name]
     return [
-      { type: 'existing', id: node.id, displayName: node.name, pathStr: path.join(' > '), depth },
+      { type: 'existing', id: node.id, displayName: node.name, pathStr: path.filter(Boolean).join(' > '), depth },
       ...flattenTreeWithDepth(node.children, depth + 1, path),
     ]
   })
@@ -31,7 +31,7 @@ function pathStringForId(id: number | null, nodes: CategoryNode[], prefix: strin
   if (id === null) return ''
   for (const node of nodes) {
     const path = [...prefix, node.name]
-    if (node.id === id) return path.join(' > ')
+    if (node.id === id) return path.filter(Boolean).join(' > ')
     const found = pathStringForId(id, node.children, path)
     if (found) return found
   }
