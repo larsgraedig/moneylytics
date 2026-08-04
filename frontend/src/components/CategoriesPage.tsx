@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import type { CategoryNode, CategoryStatItem, CategoryMergeItem } from '../api/rawImport'
 import {
   deleteCategory, fetchCategoryStats, moveCategory, renameCategory,
-  mergeCategories, fetchCategoryMerges, revertMerge,
+  mergeCategories, fetchCategoryMerges, revertMerge, findOrCreateCategory,
 } from '../api/rawImport'
 import { CategoryPathInput } from './CategoryPathInput'
 
@@ -16,6 +16,7 @@ interface Props {
   onCategoryMoved: () => void
   onCategoryRenamed: () => void
   onCategoryMerged: () => void
+  onCategoryCreated: () => void
 }
 
 type DragTarget =
@@ -73,6 +74,10 @@ interface RowProps {
   editingId: number | null
   onStartEdit: (id: number, currentName: string) => void
   onStartMerge: (node: CategoryNode) => void
+  creatingParentId: number | null | 'root'
+  onStartCreate: (parentId: number | null, depth: number) => void
+  onCreateConfirm: (name: string) => void
+  onCreateCancel: () => void
   draggedId: React.MutableRefObject<number | null>
   dragTarget: DragTarget
   setDragTarget: (t: DragTarget) => void
@@ -128,6 +133,46 @@ function highlightName(name: string, search: string) {
   )
 }
 
+function buildParentPath(parentId: number | null, nodes: CategoryNode[], path: string[] = []): string[] {
+  if (parentId === null) return []
+  for (const node of nodes) {
+    const current = [...path, node.name]
+    if (node.id === parentId) return current
+    const found = buildParentPath(parentId, node.children, current)
+    if (found.length > 0) return found
+  }
+  return []
+}
+
+interface CreateInputProps {
+  depth: number
+  onConfirm: (name: string) => void
+  onCancel: () => void
+}
+
+function CreateCategoryInput({ depth, onConfirm, onCancel }: CreateInputProps) {
+  const [value, setValue] = useState('')
+  const inputRef = useRef<HTMLInputElement>(null)
+  useEffect(() => { inputRef.current?.focus() }, [])
+  return (
+    <div className="cat-create-row" style={{ paddingLeft: `${20 + depth * 20}px` }}>
+      <span className="cat-chevron" />
+      <input
+        ref={inputRef}
+        className="cat-create-input"
+        value={value}
+        onChange={e => setValue(e.target.value)}
+        onKeyDown={e => {
+          if (e.key === 'Enter' && value.trim()) onConfirm(value.trim())
+          if (e.key === 'Escape') onCancel()
+        }}
+        onBlur={onCancel}
+        placeholder="Name…"
+      />
+    </div>
+  )
+}
+
 function formatRelativeDate(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime()
   const days = Math.floor(diff / 86400000)
@@ -145,6 +190,7 @@ function CategoryRow({
   search, visibleIds, isSearchActive,
   deletingId, onDelete,
   editingId, onStartEdit, onStartMerge,
+  creatingParentId, onStartCreate, onCreateConfirm, onCreateCancel,
   draggedId, dragTarget, setDragTarget, onDrop,
 }: RowProps) {
   const visibleChildren = isSearchActive
@@ -235,6 +281,15 @@ function CategoryRow({
             ⇌
           </button>
         )}
+        {!isEditing && !isSearchActive && (
+          <button
+            className="cat-add-child-btn"
+            onClick={e => { e.stopPropagation(); onStartCreate(node.id, depth + 1); if (!expanded.has(node.id)) onToggle(node.id) }}
+            title="Kindkategorie anlegen"
+          >
+            +
+          </button>
+        )}
         {isDeletable && !isEditing && (
           <button
             className="cat-delete-btn"
@@ -265,6 +320,10 @@ function CategoryRow({
                 editingId={editingId}
                 onStartEdit={onStartEdit}
                 onStartMerge={onStartMerge}
+                creatingParentId={creatingParentId}
+                onStartCreate={onStartCreate}
+                onCreateConfirm={onCreateConfirm}
+                onCreateCancel={onCreateCancel}
                 draggedId={draggedId}
                 dragTarget={dragTarget}
                 setDragTarget={setDragTarget}
@@ -273,6 +332,9 @@ function CategoryRow({
               <DropGap parentId={node.id} gapKey={`gap-${node.id}-after-${child.id}`} depth={depth + 1} {...gapProps} />
             </Fragment>
           ))}
+          {creatingParentId === node.id && (
+            <CreateCategoryInput depth={depth + 1} onConfirm={onCreateConfirm} onCancel={onCreateCancel} />
+          )}
         </>
       )}
     </>
@@ -281,7 +343,7 @@ function CategoryRow({
 
 export default function CategoriesPage({
   categories, from, to, iban,
-  onCategoryDeleted, onCategoryMoved, onCategoryRenamed, onCategoryMerged,
+  onCategoryDeleted, onCategoryMoved, onCategoryRenamed, onCategoryMerged, onCategoryCreated,
 }: Props) {
   const { t } = useTranslation()
   const [expanded, setExpanded] = useState<Set<number>>(new Set())
@@ -301,6 +363,9 @@ export default function CategoriesPage({
   const [mergeTargetId, setMergeTargetId] = useState<number | null>(null)
   const [mergeError, setMergeError] = useState<string | null>(null)
   const [merging, setMerging] = useState(false)
+
+  const [creatingParentId, setCreatingParentId] = useState<number | null | 'root'>(null)
+  const [createError, setCreateError] = useState<string | null>(null)
 
   const [merges, setMerges] = useState<CategoryMergeItem[]>([])
   const [historyOpen, setHistoryOpen] = useState(false)
@@ -407,6 +472,29 @@ export default function CategoriesPage({
     }
   }
 
+  function handleStartCreate(parentId: number | null, _depth: number) {
+    setCreatingParentId(parentId === null ? 'root' : parentId)
+  }
+
+  async function handleCreateConfirm(name: string) {
+    setCreateError(null)
+    const parentId = creatingParentId === 'root' ? null : (creatingParentId as number | null)
+    const parentPath = buildParentPath(parentId, categories)
+    const fullPath = [...parentPath, name]
+    setCreatingParentId(null)
+    try {
+      await findOrCreateCategory(fullPath)
+      onCategoryCreated()
+    } catch {
+      setCreateError(`Kategorie "${name}" konnte nicht angelegt werden.`)
+    }
+  }
+
+  function handleCreateCancel() {
+    setCreatingParentId(null)
+    setCreateError(null)
+  }
+
   async function handleMergeConfirm() {
     if (!mergingNode || mergeTargetId === null) return
     setMerging(true)
@@ -473,10 +561,16 @@ export default function CategoriesPage({
           value={search}
           onChange={e => setSearch(e.target.value)}
         />
+        {!isSearchActive && (
+          <button className="cat-header-add-btn" onClick={() => handleStartCreate(null, 0)} title="Neue Root-Kategorie">
+            +
+          </button>
+        )}
       </div>
       {deleteError && <p className="cat-error">{deleteError}</p>}
       {moveError && <p className="cat-error">{moveError}</p>}
       {renameError && <p className="cat-error">{renameError}</p>}
+      {createError && <p className="cat-error">{createError}</p>}
       {revertError && <p className="cat-error">{revertError}</p>}
 
       {editingId !== null && (
@@ -557,6 +651,10 @@ export default function CategoriesPage({
                   editingId={editingId}
                   onStartEdit={handleStartEdit}
                   onStartMerge={setMergingNode}
+                  creatingParentId={creatingParentId}
+                  onStartCreate={handleStartCreate}
+                  onCreateConfirm={handleCreateConfirm}
+                  onCreateCancel={handleCreateCancel}
                   draggedId={draggedId}
                   dragTarget={dragTarget}
                   setDragTarget={setDragTarget}
@@ -565,6 +663,9 @@ export default function CategoriesPage({
                 <DropGap parentId={null} gapKey={`gap-root-after-${node.id}`} depth={0} {...gapProps} />
               </Fragment>
             ))}
+            {creatingParentId === 'root' && (
+              <CreateCategoryInput depth={0} onConfirm={handleCreateConfirm} onCancel={handleCreateCancel} />
+            )}
           </>
         )}
       </div>

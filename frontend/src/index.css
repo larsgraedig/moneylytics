@@ -6188,6 +6188,63 @@ body {
   color: var(--accent);
 }
 
+.cat-header-add-btn {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  cursor: pointer;
+  color: var(--text-muted);
+  font-size: 16px;
+  line-height: 1;
+  padding: 2px 8px;
+  margin-left: 4px;
+  transition: color 0.1s, border-color 0.1s;
+}
+
+.cat-header-add-btn:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.cat-add-child-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-muted);
+  font-size: 14px;
+  padding: 0 4px;
+  opacity: 0;
+  transition: opacity 0.1s, color 0.1s;
+  line-height: 1;
+}
+
+.cat-row:hover .cat-add-child-btn {
+  opacity: 1;
+}
+
+.cat-add-child-btn:hover {
+  color: var(--accent);
+}
+
+.cat-create-row {
+  display: flex;
+  align-items: center;
+  height: 34px;
+  gap: 4px;
+}
+
+.cat-create-input {
+  font-family: var(--mono);
+  font-size: 13px;
+  padding: 3px 8px;
+  background: var(--bg);
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  color: var(--text);
+  outline: none;
+  width: 200px;
+}
+
 .cat-merge-btn {
   background: none;
   border: none;
