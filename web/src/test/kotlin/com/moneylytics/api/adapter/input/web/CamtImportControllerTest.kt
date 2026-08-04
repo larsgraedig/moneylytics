@@ -7,6 +7,7 @@ import com.moneylytics.api.application.port.input.GetAccountsUseCase
 import com.moneylytics.api.application.port.input.ImportTransactionsUseCase
 import com.moneylytics.api.application.port.input.ResolveOrganizationUseCase
 import com.moneylytics.api.application.port.input.UpdateIgnoredTransactionsUseCase
+import com.moneylytics.api.application.port.output.CategoryClassifier
 import com.moneylytics.api.domain.Account
 import kotlinx.coroutines.test.runTest
 import org.assertj.core.api.Assertions.assertThat
@@ -32,6 +33,7 @@ class CamtImportControllerTest {
     private val updateIgnoredTransactionsUseCase: UpdateIgnoredTransactionsUseCase = mock()
     private val importTransactionsUseCase: ImportTransactionsUseCase = mock()
     private val enrichTransactionUseCase: EnrichTransactionUseCase = mock()
+    private val categoryClassifier: CategoryClassifier = mock()
     private val controller =
         CamtImportController(
             camtParser,
@@ -42,6 +44,7 @@ class CamtImportControllerTest {
             importTransactionsUseCase,
             enrichTransactionUseCase,
             resolveOrganizationUseCase,
+            categoryClassifier,
         )
     private val principal =
         User

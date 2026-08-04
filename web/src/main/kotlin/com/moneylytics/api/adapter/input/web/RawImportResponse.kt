@@ -20,6 +20,7 @@ data class RawPreviewRow(
     val errors: List<RawPreviewError>,
     val unknownAccount: Boolean = false,
     val counterpartyIban: String? = null,
+    val suggestedCategoryId: Long? = null,
 )
 
 data class RawPreviewError(

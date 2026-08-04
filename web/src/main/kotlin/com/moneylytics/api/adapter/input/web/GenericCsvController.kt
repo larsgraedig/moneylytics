@@ -7,6 +7,8 @@ import com.moneylytics.api.application.port.input.GetAccountsUseCase
 import com.moneylytics.api.application.port.input.ImportTransactionsCommand
 import com.moneylytics.api.application.port.input.ImportTransactionsUseCase
 import com.moneylytics.api.application.port.input.ResolveOrganizationUseCase
+import com.moneylytics.api.application.port.output.CategoryClassifier
+import com.moneylytics.api.domain.CategoryClassifierFeatures
 import com.moneylytics.api.domain.Transaction
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.reactive.awaitSingle
@@ -42,6 +44,7 @@ class GenericCsvController(
     private val enrichTransactionUseCase: EnrichTransactionUseCase,
     private val resolveOrganizationUseCase: ResolveOrganizationUseCase,
     private val csvProfileAdapter: CsvProfilePersistenceAdapter,
+    private val categoryClassifier: CategoryClassifier,
 ) {
     @PostMapping("/detect", consumes = [MediaType.MULTIPART_FORM_DATA_VALUE])
     suspend fun detect(
@@ -110,15 +113,27 @@ class GenericCsvController(
 
         val organizationId = resolveOrganizationUseCase.resolveOrganization(principal, exchange)
         val allFingerprints = rows.map { it.fingerprint }.toSet()
-        val (existingFingerprints, knownIbans) =
+        val (existingFingerprints, knownIbans, suggestions) =
             withContext(Dispatchers.IO) {
-                checkDuplicatesUseCase.findExistingFingerprints(allFingerprints, organizationId) to
-                    getAccountsUseCase.getAccounts(organizationId).map { it.iban }.toSet()
+                val fingerprints = checkDuplicatesUseCase.findExistingFingerprints(allFingerprints, organizationId)
+                val ibans = getAccountsUseCase.getAccounts(organizationId).map { it.iban }.toSet()
+                val features =
+                    rows.map { row ->
+                        CategoryClassifierFeatures(
+                            purpose = row.purpose,
+                            counterpartyName = row.counterpartyName,
+                            counterpartyIban = row.counterpartyIban,
+                        )
+                    }
+                val suggested = categoryClassifier.suggestAll(organizationId, features)
+                Triple(fingerprints, ibans, rows.zip(suggested).associate { (row, catId) -> row.fingerprint to catId })
             }
         return rows.map { row ->
+            val isDuplicate = row.fingerprint in existingFingerprints
             row.copy(
-                status = if (row.fingerprint in existingFingerprints) RowStatus.DUPLICATE else row.status,
+                status = if (isDuplicate) RowStatus.DUPLICATE else row.status,
                 unknownAccount = knownIbans.isNotEmpty() && row.accountIban !in knownIbans,
+                suggestedCategoryId = if (!isDuplicate) suggestions[row.fingerprint] else null,
             )
         }
     }

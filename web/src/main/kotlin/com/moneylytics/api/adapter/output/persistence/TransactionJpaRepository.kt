@@ -130,4 +130,16 @@ interface TransactionJpaRepository : JpaRepository<TransactionEntity, Long> {
         @Param("targetId") targetId: Long,
         @Param("organizationId") organizationId: Long,
     )
+
+    @Query(
+        """SELECT t.purpose, t.counterpartyName, t.counterpartyIban, t.category.id
+        FROM TransactionEntity t
+        WHERE t.organization.id = :organizationId
+        AND t.category IS NOT NULL
+        AND t.excluded = false
+        AND t.parentId IS NULL""",
+    )
+    fun findCategorizedForBootstrap(
+        @Param("organizationId") organizationId: Long,
+    ): List<Array<out Any?>>
 }

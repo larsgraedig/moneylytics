@@ -385,7 +385,8 @@
         "category": "Kategorie",
         "group": "Gruppe",
         "subcategory": "Unterkategorie"
-      }
+      },
+      "suggestedBadge": "Vorschlag (KI)"
     },
     "success": {
       "imported_one": "{{count}} Transaktion importiert",

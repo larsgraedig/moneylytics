@@ -325,11 +325,12 @@ export default function CsvImportPage({ categories }: { categories: CategoryNode
           if (r.status === 'DUPLICATE') {
             initialDecisions[r.rowIndex] = { action: 'skip' }
           } else {
-            const preselectedId = findCategoryByPath(categories, [
+            const csvMappedId = findCategoryByPath(categories, [
               r.mappedCategory,
               r.mappedCategoryGroup,
               r.mappedSubcategory,
             ].filter((s): s is string => s != null))
+            const preselectedId = csvMappedId ?? r.suggestedCategoryId ?? null
             initialDecisions[r.rowIndex] = { action: 'import', categoryId: preselectedId }
           }
         })
@@ -473,6 +474,7 @@ export default function CsvImportPage({ categories }: { categories: CategoryNode
                   const d = decisions[row.rowIndex]
                   const isImporting = !isExcluded && d?.action === 'import'
                   const categoryId = isImporting && d.action === 'import' ? d.categoryId : null
+                  const isSuggested = categoryId !== null && categoryId === row.suggestedCategoryId
                   const rowClass = isExcluded
                     ? 'ri-row ri-row--duplicate'
                     : isImporting ? 'ri-row ri-row--new' : 'ri-row ri-row--will-ignore'
@@ -493,6 +495,11 @@ export default function CsvImportPage({ categories }: { categories: CategoryNode
                         </td>
                       ) : isImporting ? (
                         <td className="ri-cell-category">
+                          {isSuggested && (
+                            <span className="ri-suggestion-badge" title={t('csvImport.categorizing.suggestedBadge')}>
+                              {t('csvImport.categorizing.suggestedBadge')}
+                            </span>
+                          )}
                           <CategoryPathInput
                             value={categoryId}
                             onChange={id => setDecision(row.rowIndex, { action: 'import', categoryId: id })}

@@ -47,7 +47,7 @@ function initDecisions(rows: RawPreviewRow[]): Record<number, RowDecision> {
   for (const row of rows) {
     if (row.unknownAccount) continue
     if (row.status === 'NEW') {
-      out[row.rowNumber] = { action: 'import', categoryId: null }
+      out[row.rowNumber] = { action: 'import', categoryId: row.suggestedCategoryId ?? null }
     } else if (row.status === 'PREVIOUSLY_IGNORED') {
       out[row.rowNumber] = { action: 'ignore' }
     }
@@ -290,6 +290,7 @@ export default function CamtImportPage({ categories }: { categories: CategoryNod
                 const d = decisions[row.rowNumber]
                 const isImporting = d?.action === 'import'
                 const categoryId = isImporting && d.action === 'import' ? d.categoryId : null
+                const isSuggested = categoryId !== null && categoryId === row.suggestedCategoryId
 
                 const rowClass = (() => {
                   if (row.unknownAccount) return 'ri-row ri-row--duplicate'
@@ -327,6 +328,7 @@ export default function CamtImportPage({ categories }: { categories: CategoryNod
                       categoryId={categoryId}
                       categories={categories}
                       onCategoryChange={id => setDecision(row.rowNumber, { action: 'import', categoryId: id })}
+                      isSuggested={isSuggested}
                     />
 
                     <td className="ri-cell-action">
@@ -364,13 +366,14 @@ function StatusBadge({ row, decision }: { row: RawPreviewRow; decision: RowDecis
 }
 
 function CategoryCell({
-  row, decision, categoryId, categories, onCategoryChange,
+  row, decision, categoryId, categories, onCategoryChange, isSuggested,
 }: {
   row: RawPreviewRow
   decision: RowDecision | undefined
   categoryId: number | null
   categories: CategoryNode[]
   onCategoryChange: (id: number | null) => void
+  isSuggested?: boolean
 }) {
   const { t } = useTranslation()
   if (row.unknownAccount) {
@@ -399,6 +402,11 @@ function CategoryCell({
   }
   return (
     <td className="ri-cell-category">
+      {isSuggested && (
+        <span className="ri-suggestion-badge" title={t('csvImport.categorizing.suggestedBadge')}>
+          {t('csvImport.categorizing.suggestedBadge')}
+        </span>
+      )}
       <CategoryPathInput
         value={categoryId}
         onChange={onCategoryChange}

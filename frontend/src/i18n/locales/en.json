@@ -385,7 +385,8 @@
         "category": "category",
         "group": "group",
         "subcategory": "subcategory"
-      }
+      },
+      "suggestedBadge": "Suggested (AI)"
     },
     "success": {
       "imported_one": "{{count}} transaction imported",

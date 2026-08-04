@@ -1591,6 +1591,19 @@ body {
   min-width: 180px;
 }
 
+.ri-suggestion-badge {
+  display: inline-block;
+  font-size: 0.65rem;
+  padding: 1px 5px;
+  border-radius: 3px;
+  background: rgba(139, 92, 246, 0.12);
+  color: rgb(139, 92, 246);
+  border: 1px solid rgba(139, 92, 246, 0.25);
+  margin-bottom: 2px;
+  white-space: nowrap;
+  cursor: default;
+}
+
 /* ── category path custom dropdown ──────── */
 
 .cat-path-input-wrapper {

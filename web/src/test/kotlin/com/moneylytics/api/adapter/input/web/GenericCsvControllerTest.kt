@@ -6,6 +6,7 @@ import com.moneylytics.api.application.port.input.EnrichTransactionUseCase
 import com.moneylytics.api.application.port.input.GetAccountsUseCase
 import com.moneylytics.api.application.port.input.ImportTransactionsUseCase
 import com.moneylytics.api.application.port.input.ResolveOrganizationUseCase
+import com.moneylytics.api.application.port.output.CategoryClassifier
 import com.moneylytics.api.domain.Account
 import kotlinx.coroutines.test.runTest
 import org.assertj.core.api.Assertions.assertThat
@@ -30,6 +31,7 @@ class GenericCsvControllerTest {
     private val getAccountsUseCase: GetAccountsUseCase = mock()
     private val enrichTransactionUseCase: EnrichTransactionUseCase = mock()
     private val csvProfileAdapter: CsvProfilePersistenceAdapter = mock()
+    private val categoryClassifier: CategoryClassifier = mock()
     private val controller =
         GenericCsvController(
             detector,
@@ -40,6 +42,7 @@ class GenericCsvControllerTest {
             enrichTransactionUseCase,
             resolveOrganizationUseCase,
             csvProfileAdapter,
+            categoryClassifier,
         )
     private val principal =
         User

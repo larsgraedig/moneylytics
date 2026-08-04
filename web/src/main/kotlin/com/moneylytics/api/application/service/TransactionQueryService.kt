@@ -24,10 +24,12 @@ import com.moneylytics.api.application.port.input.UpdateTransactionCommentUseCas
 import com.moneylytics.api.application.port.input.bucketKey
 import com.moneylytics.api.application.port.input.generateBuckets
 import com.moneylytics.api.application.port.output.BudgetRepository
+import com.moneylytics.api.application.port.output.CategoryClassifier
 import com.moneylytics.api.application.port.output.CategoryRepository
 import com.moneylytics.api.application.port.output.CategoryUpdateEntry
 import com.moneylytics.api.application.port.output.TransactionRepository
 import com.moneylytics.api.domain.Category
+import com.moneylytics.api.domain.CategoryClassifierFeatures
 import com.moneylytics.api.domain.Transaction
 import org.springframework.stereotype.Service
 import java.math.BigDecimal
@@ -40,6 +42,7 @@ class TransactionQueryService(
     private val transactionRepository: TransactionRepository,
     private val budgetRepository: BudgetRepository,
     private val categoryRepository: CategoryRepository,
+    private val categoryClassifier: CategoryClassifier,
 ) : GetTransactionsUseCase,
     GetCashflowUseCase,
     GetBurnRateUseCase,
@@ -226,7 +229,24 @@ class TransactionQueryService(
         id: Long,
         organizationId: Long,
         categoryId: Long?,
-    ): Transaction? = transactionRepository.updateCategory(id, organizationId, categoryId)
+    ): Transaction? {
+        val updated = transactionRepository.updateCategory(id, organizationId, categoryId)
+        if (categoryId != null &&
+            updated != null &&
+            (updated.purpose != null || updated.counterpartyName != null || updated.counterpartyIban != null)
+        ) {
+            categoryClassifier.train(
+                organizationId,
+                categoryId,
+                CategoryClassifierFeatures(
+                    purpose = updated.purpose,
+                    counterpartyName = updated.counterpartyName,
+                    counterpartyIban = updated.counterpartyIban,
+                ),
+            )
+        }
+        return updated
+    }
 
     override fun updateComment(
         id: Long,

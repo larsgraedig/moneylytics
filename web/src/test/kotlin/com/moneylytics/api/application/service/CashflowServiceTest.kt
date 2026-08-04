@@ -3,6 +3,7 @@ package com.moneylytics.api.application.service
 import com.moneylytics.api.application.port.input.GetCashflowQuery
 import com.moneylytics.api.application.port.input.Granularity
 import com.moneylytics.api.application.port.output.BudgetRepository
+import com.moneylytics.api.application.port.output.CategoryClassifier
 import com.moneylytics.api.application.port.output.CategoryRepository
 import com.moneylytics.api.application.port.output.TransactionRepository
 import com.moneylytics.api.domain.Transaction
@@ -18,7 +19,8 @@ class CashflowServiceTest {
     private val transactionRepository: TransactionRepository = mock()
     private val budgetRepository: BudgetRepository = mock()
     private val categoryRepository: CategoryRepository = mock()
-    private val service = TransactionQueryService(transactionRepository, budgetRepository, categoryRepository)
+    private val categoryClassifier: CategoryClassifier = mock()
+    private val service = TransactionQueryService(transactionRepository, budgetRepository, categoryRepository, categoryClassifier)
 
     private val organizationId = 1L
     private val march = LocalDate.of(2025, 3, 1)
