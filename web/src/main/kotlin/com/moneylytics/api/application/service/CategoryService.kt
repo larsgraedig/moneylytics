@@ -8,6 +8,8 @@ import com.moneylytics.api.application.port.input.GetCategoryStatsQuery
 import com.moneylytics.api.application.port.input.GetCategoryStatsUseCase
 import com.moneylytics.api.application.port.input.MoveCategoryCommand
 import com.moneylytics.api.application.port.input.MoveCategoryUseCase
+import com.moneylytics.api.application.port.input.RenameCategoryCommand
+import com.moneylytics.api.application.port.input.RenameCategoryUseCase
 import com.moneylytics.api.application.port.output.CategoryRepository
 import com.moneylytics.api.application.port.output.ThresholdRepository
 import com.moneylytics.api.application.port.output.TransactionRepository
@@ -23,7 +25,8 @@ class CategoryService(
     FindOrCreateCategoryUseCase,
     GetCategoryStatsUseCase,
     DeleteCategoryUseCase,
-    MoveCategoryUseCase {
+    MoveCategoryUseCase,
+    RenameCategoryUseCase {
     override fun getCategories(organizationId: Long): List<Category> = categoryRepository.findAll(organizationId)
 
     override fun findOrCreateCategory(
@@ -70,6 +73,11 @@ class CategoryService(
             }
         }
         categoryRepository.move(command.id, command.newParentId, command.organizationId)
+    }
+
+    override fun renameCategory(command: RenameCategoryCommand) {
+        require(command.newName.isNotBlank()) { "EMPTY_NAME" }
+        categoryRepository.rename(command.id, command.newName.trim(), command.organizationId)
     }
 
     private fun collectDescendants(

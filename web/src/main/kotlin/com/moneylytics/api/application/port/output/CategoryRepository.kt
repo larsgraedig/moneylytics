@@ -20,4 +20,10 @@ interface CategoryRepository {
         newParentId: Long?,
         organizationId: Long,
     )
+
+    fun rename(
+        id: Long,
+        newName: String,
+        organizationId: Long,
+    )
 }

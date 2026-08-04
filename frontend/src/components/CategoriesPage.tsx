@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useRef, Fragment } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { CategoryNode, CategoryStatItem } from '../api/rawImport'
-import { deleteCategory, fetchCategoryStats, moveCategory } from '../api/rawImport'
+import { deleteCategory, fetchCategoryStats, moveCategory, renameCategory } from '../api/rawImport'
 
 interface Props {
   categories: CategoryNode[]
@@ -10,6 +10,7 @@ interface Props {
   iban?: string
   onCategoryDeleted: () => void
   onCategoryMoved: () => void
+  onCategoryRenamed: () => void
 }
 
 type DragTarget =
@@ -64,6 +65,8 @@ interface RowProps {
   isSearchActive: boolean
   deletingId: number | null
   onDelete: (id: number) => void
+  editingId: number | null
+  onStartEdit: (id: number, currentName: string) => void
   draggedId: React.MutableRefObject<number | null>
   dragTarget: DragTarget
   setDragTarget: (t: DragTarget) => void
@@ -124,6 +127,7 @@ function CategoryRow({
   subtreeTotals, subtreePeriod,
   search, visibleIds, isSearchActive,
   deletingId, onDelete,
+  editingId, onStartEdit,
   draggedId, dragTarget, setDragTarget, onDrop,
 }: RowProps) {
   const visibleChildren = isSearchActive
@@ -140,6 +144,7 @@ function CategoryRow({
   const isDeletable = !hasChildren && total === 0
   const isDragging = draggedId.current === node.id
   const isDragOver = dragTarget?.kind === 'row' && dragTarget.id === node.id
+  const isEditing = editingId === node.id
 
   const classNames = [
     'cat-row',
@@ -187,15 +192,24 @@ function CategoryRow({
         <span className="cat-chevron">
           {hasChildren ? (isExpanded ? '▾' : '▸') : ''}
         </span>
-        <span className="cat-name">{highlightName(node.name, search)}</span>
-        {(total > 0 || period > 0) && (
+        <span className="cat-name">{isEditing ? null : highlightName(node.name, search)}</span>
+        {(total > 0 || period > 0) && !isEditing && (
           <span className="cat-counts">
             <span className="cat-count-period" title="Im Zeitraum">{period}</span>
             <span className="cat-count-sep">/</span>
             <span className="cat-count-total" title="Gesamt">{total}</span>
           </span>
         )}
-        {isDeletable && (
+        {!isEditing && (
+          <button
+            className="cat-edit-btn"
+            onClick={e => { e.stopPropagation(); onStartEdit(node.id, node.name) }}
+            title="Umbenennen"
+          >
+            ✎
+          </button>
+        )}
+        {isDeletable && !isEditing && (
           <button
             className="cat-delete-btn"
             disabled={deletingId === node.id}
@@ -222,6 +236,8 @@ function CategoryRow({
                 isSearchActive={isSearchActive}
                 deletingId={deletingId}
                 onDelete={onDelete}
+                editingId={editingId}
+                onStartEdit={onStartEdit}
                 draggedId={draggedId}
                 dragTarget={dragTarget}
                 setDragTarget={setDragTarget}
@@ -236,7 +252,7 @@ function CategoryRow({
   )
 }
 
-export default function CategoriesPage({ categories, from, to, iban, onCategoryDeleted, onCategoryMoved }: Props) {
+export default function CategoriesPage({ categories, from, to, iban, onCategoryDeleted, onCategoryMoved, onCategoryRenamed }: Props) {
   const { t } = useTranslation()
   const [expanded, setExpanded] = useState<Set<number>>(new Set())
   const [stats, setStats] = useState<CategoryStatItem[]>([])
@@ -244,8 +260,12 @@ export default function CategoriesPage({ categories, from, to, iban, onCategoryD
   const [deletingId, setDeletingId] = useState<number | null>(null)
   const [deleteError, setDeleteError] = useState<string | null>(null)
   const [moveError, setMoveError] = useState<string | null>(null)
+  const [editingId, setEditingId] = useState<number | null>(null)
+  const [editValue, setEditValue] = useState('')
+  const [renameError, setRenameError] = useState<string | null>(null)
   const [dragTarget, setDragTarget] = useState<DragTarget>(null)
   const draggedId = useRef<number | null>(null)
+  const editInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     fetchCategoryStats(from, to, iban).then(r => setStats(r.items)).catch(() => {})
@@ -294,6 +314,40 @@ export default function CategoriesPage({ categories, from, to, iban, onCategoryD
     }
   }
 
+  function handleStartEdit(id: number, currentName: string) {
+    setEditingId(id)
+    setEditValue(currentName)
+    setRenameError(null)
+    setTimeout(() => editInputRef.current?.select(), 0)
+  }
+
+  function handleCancelEdit() {
+    setEditingId(null)
+    setEditValue('')
+    setRenameError(null)
+  }
+
+  async function handleConfirmRename() {
+    if (editingId === null) return
+    const trimmed = editValue.trim()
+    if (!trimmed) {
+      setRenameError(t('kategorien.renameError.EMPTY_NAME'))
+      return
+    }
+    const id = editingId
+    setEditingId(null)
+    setRenameError(null)
+    try {
+      await renameCategory(id, trimmed)
+      onCategoryRenamed()
+    } catch (e) {
+      const reason = e instanceof Error ? e.message : 'UNKNOWN'
+      const key = `kategorien.renameError.${reason}`
+      const msg = t(key, { defaultValue: t('kategorien.renameError.UNKNOWN') })
+      setRenameError(msg)
+    }
+  }
+
   async function handleDrop(targetParentId: number | null) {
     const id = draggedId.current
     if (id === null) return
@@ -330,6 +384,28 @@ export default function CategoriesPage({ categories, from, to, iban, onCategoryD
       </div>
       {deleteError && <p className="cat-error">{deleteError}</p>}
       {moveError && <p className="cat-error">{moveError}</p>}
+      {renameError && <p className="cat-error">{renameError}</p>}
+      {editingId !== null && (
+        <div className="cat-edit-overlay" onClick={handleCancelEdit}>
+          <div className="cat-edit-dialog" onClick={e => e.stopPropagation()}>
+            <input
+              ref={editInputRef}
+              className="cat-edit-input"
+              value={editValue}
+              onChange={e => setEditValue(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === 'Enter') handleConfirmRename()
+                if (e.key === 'Escape') handleCancelEdit()
+              }}
+              autoFocus
+            />
+            <div className="cat-edit-actions">
+              <button className="cat-edit-confirm" onClick={handleConfirmRename}>✓</button>
+              <button className="cat-edit-cancel" onClick={handleCancelEdit}>✕</button>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="cat-tree">
         {categories.length === 0 ? (
           <p className="cat-empty">{t('kategorien.empty')}</p>
@@ -352,6 +428,8 @@ export default function CategoriesPage({ categories, from, to, iban, onCategoryD
                   isSearchActive={isSearchActive}
                   deletingId={deletingId}
                   onDelete={handleDelete}
+                  editingId={editingId}
+                  onStartEdit={handleStartEdit}
                   draggedId={draggedId}
                   dragTarget={dragTarget}
                   setDragTarget={setDragTarget}

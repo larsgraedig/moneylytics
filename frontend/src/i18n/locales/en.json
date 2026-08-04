@@ -596,6 +596,11 @@
       "CIRCULAR_REFERENCE": "A category cannot be moved into its own subtree.",
       "CONSTRAINT_VIOLATION": "A category with the same name already exists at the target position.",
       "UNKNOWN": "Move failed."
+    },
+    "renameError": {
+      "EMPTY_NAME": "Name must not be empty.",
+      "CONSTRAINT_VIOLATION": "A category with this name already exists at this level.",
+      "UNKNOWN": "Rename failed."
     }
   },
   "burnrate": {

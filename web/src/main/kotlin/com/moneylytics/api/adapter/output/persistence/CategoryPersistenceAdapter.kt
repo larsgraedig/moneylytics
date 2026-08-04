@@ -60,5 +60,18 @@ class CategoryPersistenceAdapter(
         jpaRepository.save(entity)
     }
 
+    @Transactional
+    override fun rename(
+        id: Long,
+        newName: String,
+        organizationId: Long,
+    ) {
+        val entity =
+            jpaRepository.findByIdAndOrganizationId(id, organizationId)
+                ?: throw NoSuchElementException("Category $id not found")
+        entity.name = newName
+        jpaRepository.save(entity)
+    }
+
     private fun CategoryEntity.toDomain() = Category(id = id, name = name, parentId = parent?.id)
 }

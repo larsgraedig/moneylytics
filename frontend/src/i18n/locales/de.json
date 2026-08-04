@@ -596,6 +596,11 @@
       "CIRCULAR_REFERENCE": "Eine Kategorie kann nicht in einen eigenen Unterbaum verschoben werden.",
       "CONSTRAINT_VIOLATION": "Es existiert bereits eine Kategorie mit diesem Namen an der Zielposition.",
       "UNKNOWN": "Verschieben fehlgeschlagen."
+    },
+    "renameError": {
+      "EMPTY_NAME": "Der Name darf nicht leer sein.",
+      "CONSTRAINT_VIOLATION": "Eine Kategorie mit diesem Namen existiert bereits auf dieser Ebene.",
+      "UNKNOWN": "Umbenennen fehlgeschlagen."
     }
   },
   "burnrate": {
