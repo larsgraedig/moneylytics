@@ -55,14 +55,14 @@ class TransactionPersistenceAdapter(
     ): Map<Triple<String, String?, String?>, CategoryEntity> {
         val keys =
             transactions
-                .filter { it.category != null }
+                .filter { !it.category.isNullOrBlank() }
                 .map { Triple(it.category!!, it.subcategory, it.group) }
                 .toSet()
         if (keys.isEmpty()) return emptyMap()
 
         val org = organizationJpaRepository.getReferenceById(organizationId)
         return keys.associateWith { (cat, sub, group) ->
-            findOrCreateCategoryPath(listOfNotNull(cat, sub, group), organizationId, org)
+            findOrCreateCategoryPath(listOfNotNull(cat, sub, group).filter { it.isNotBlank() }, organizationId, org)
         }
     }
 
@@ -404,7 +404,7 @@ class TransactionPersistenceAdapter(
                 ?: error(
                     "Account not found for IBAN $accountIban and organizationId $organizationId — ensure accounts are created before importing transactions",
                 )
-        val categoryEntity = if (category != null) categoryMap[Triple(category, subcategory, group)] else null
+        val categoryEntity = if (!category.isNullOrBlank()) categoryMap[Triple(category, subcategory, group)] else null
         return TransactionEntity(
             category = categoryEntity,
             bookingDate = bookingDate,
