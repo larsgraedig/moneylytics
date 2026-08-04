@@ -587,7 +587,11 @@
     "search": "Kategorien durchsuchen…",
     "noResults": "Keine Treffer",
     "delete": "Löschen",
-    "deleteError": "Löschen fehlgeschlagen"
+    "deleteError": {
+      "THRESHOLD_EXISTS": "Für diese Kategorie ist noch ein Limit hinterlegt.",
+      "CONSTRAINT_VIOLATION": "Kategorie wird noch verwendet und kann nicht gelöscht werden.",
+      "UNKNOWN": "Löschen fehlgeschlagen."
+    }
   },
   "burnrate": {
     "windowBtn": "Ø {{days}} Tage",

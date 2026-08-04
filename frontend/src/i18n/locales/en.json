@@ -587,7 +587,11 @@
     "search": "Search categories…",
     "noResults": "No results",
     "delete": "Delete",
-    "deleteError": "Delete failed"
+    "deleteError": {
+      "THRESHOLD_EXISTS": "A spending limit is still set for this category.",
+      "CONSTRAINT_VIOLATION": "Category is still in use and cannot be deleted.",
+      "UNKNOWN": "Delete failed."
+    }
   },
   "burnrate": {
     "windowBtn": "Ø {{days}} days",

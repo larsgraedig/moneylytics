@@ -93,3 +93,7 @@ data class CategoryStatItemResponse(
     val totalCount: Long,
     val periodCount: Long,
 )
+
+data class DeleteCategoryErrorResponse(
+    val reason: String,
+)

@@ -7,6 +7,7 @@ import com.moneylytics.api.application.port.input.GetCategoriesUseCase
 import com.moneylytics.api.application.port.input.GetCategoryStatsQuery
 import com.moneylytics.api.application.port.input.GetCategoryStatsUseCase
 import com.moneylytics.api.application.port.output.CategoryRepository
+import com.moneylytics.api.application.port.output.ThresholdRepository
 import com.moneylytics.api.application.port.output.TransactionRepository
 import com.moneylytics.api.domain.Category
 import org.springframework.stereotype.Service
@@ -15,6 +16,7 @@ import org.springframework.stereotype.Service
 class CategoryService(
     private val categoryRepository: CategoryRepository,
     private val transactionRepository: TransactionRepository,
+    private val thresholdRepository: ThresholdRepository,
 ) : GetCategoriesUseCase,
     FindOrCreateCategoryUseCase,
     GetCategoryStatsUseCase,
@@ -48,5 +50,10 @@ class CategoryService(
     override fun deleteCategory(
         id: Long,
         organizationId: Long,
-    ) = categoryRepository.delete(id, organizationId)
+    ) {
+        if (thresholdRepository.existsByCategoryId(id, organizationId)) {
+            throw IllegalStateException("THRESHOLD_EXISTS")
+        }
+        categoryRepository.delete(id, organizationId)
+    }
 }

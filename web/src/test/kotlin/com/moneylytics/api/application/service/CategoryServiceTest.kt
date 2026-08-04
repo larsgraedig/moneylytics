@@ -2,6 +2,7 @@ package com.moneylytics.api.application.service
 
 import com.moneylytics.api.application.port.input.GetCategoryStatsQuery
 import com.moneylytics.api.application.port.output.CategoryRepository
+import com.moneylytics.api.application.port.output.ThresholdRepository
 import com.moneylytics.api.application.port.output.TransactionRepository
 import com.moneylytics.api.domain.Category
 import org.assertj.core.api.Assertions.assertThat
@@ -14,7 +15,8 @@ import java.time.LocalDate
 class CategoryServiceTest {
     private val categoryRepository: CategoryRepository = mock()
     private val transactionRepository: TransactionRepository = mock()
-    private val service = CategoryService(categoryRepository, transactionRepository)
+    private val thresholdRepository: ThresholdRepository = mock()
+    private val service = CategoryService(categoryRepository, transactionRepository, thresholdRepository)
 
     private val organizationId = 1L
 
@@ -72,14 +74,28 @@ class CategoryServiceTest {
     }
 
     @Test
-    fun `should delegate delete to repository`() {
+    fun `should delegate delete to repository when no threshold exists`() {
+        whenever(thresholdRepository.existsByCategoryId(42L, organizationId)).thenReturn(false)
+
         service.deleteCategory(42L, organizationId)
 
         verify(categoryRepository).delete(42L, organizationId)
     }
 
     @Test
+    fun `should throw when threshold exists for category`() {
+        whenever(thresholdRepository.existsByCategoryId(42L, organizationId)).thenReturn(true)
+
+        org.assertj.core.api.Assertions
+            .assertThatThrownBy { service.deleteCategory(42L, organizationId) }
+            .isInstanceOf(IllegalStateException::class.java)
+            .hasMessage("THRESHOLD_EXISTS")
+        verify(categoryRepository, org.mockito.kotlin.never()).delete(org.mockito.kotlin.any(), org.mockito.kotlin.any())
+    }
+
+    @Test
     fun `should propagate exception when category not found on delete`() {
+        whenever(thresholdRepository.existsByCategoryId(99L, organizationId)).thenReturn(false)
         whenever(categoryRepository.delete(99L, organizationId)).thenThrow(NoSuchElementException("not found"))
 
         org.assertj.core.api.Assertions

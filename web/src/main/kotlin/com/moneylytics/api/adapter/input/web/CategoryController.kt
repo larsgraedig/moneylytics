@@ -98,15 +98,17 @@ class CategoryController(
         @PathVariable id: Long,
         @AuthenticationPrincipal principal: UserDetails,
         exchange: ServerWebExchange,
-    ): ResponseEntity<Unit> {
+    ): ResponseEntity<Any> {
         val organizationId = resolveOrganizationUseCase.resolveOrganization(principal, exchange)
         return try {
             withContext(Dispatchers.IO) { deleteCategoryUseCase.deleteCategory(id, organizationId) }
             ResponseEntity.noContent().build()
         } catch (e: NoSuchElementException) {
             ResponseEntity.notFound().build()
+        } catch (e: IllegalStateException) {
+            ResponseEntity.status(409).body(DeleteCategoryErrorResponse(reason = e.message ?: "UNKNOWN"))
         } catch (e: DataIntegrityViolationException) {
-            ResponseEntity.status(409).build()
+            ResponseEntity.status(409).body(DeleteCategoryErrorResponse(reason = "CONSTRAINT_VIOLATION"))
         }
     }
 

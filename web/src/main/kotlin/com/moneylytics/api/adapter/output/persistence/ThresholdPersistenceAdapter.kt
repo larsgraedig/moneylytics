@@ -54,6 +54,11 @@ class ThresholdPersistenceAdapter(
         organizationId: Long,
     ) = jpaRepository.deleteByIdAndOrganizationId(id, organizationId)
 
+    override fun existsByCategoryId(
+        categoryId: Long,
+        organizationId: Long,
+    ): Boolean = jpaRepository.existsByOrganizationIdAndCategoryEntityId(organizationId, categoryId)
+
     private fun ThresholdEntity.toDomain(): Threshold? {
         val cat = categoryEntity ?: return null
         return Threshold(

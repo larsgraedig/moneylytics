@@ -15,6 +15,11 @@ interface ThresholdJpaRepository : JpaRepository<ThresholdEntity, Long> {
         period: ThresholdPeriod,
     ): ThresholdEntity?
 
+    fun existsByOrganizationIdAndCategoryEntityId(
+        organizationId: Long,
+        categoryEntityId: Long,
+    ): Boolean
+
     @Modifying
     @Query("DELETE FROM ThresholdEntity t WHERE t.id = :id AND t.organization.id = :organizationId")
     fun deleteByIdAndOrganizationId(

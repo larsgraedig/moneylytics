@@ -186,8 +186,11 @@ export default function CategoriesPage({ categories, from, to, iban, onCategoryD
     try {
       await deleteCategory(id)
       onCategoryDeleted()
-    } catch {
-      setDeleteError(t('kategorien.deleteError'))
+    } catch (e) {
+      const reason = e instanceof Error ? e.message : 'UNKNOWN'
+      const key = `kategorien.deleteError.${reason}`
+      const msg = t(key, { defaultValue: t('kategorien.deleteError.UNKNOWN') })
+      setDeleteError(msg)
     } finally {
       setDeletingId(null)
     }

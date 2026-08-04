@@ -64,7 +64,10 @@ export interface CategoryStatsResponse {
 
 export async function deleteCategory(id: number): Promise<void> {
   const res = await fetchWithUser(`/categories/${id}`, { method: 'DELETE' })
-  if (res.status === 409) throw new Error('conflict')
+  if (res.status === 409) {
+    const body = await res.json().catch(() => ({})) as { reason?: string }
+    throw new Error(body.reason ?? 'UNKNOWN')
+  }
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
 }
 

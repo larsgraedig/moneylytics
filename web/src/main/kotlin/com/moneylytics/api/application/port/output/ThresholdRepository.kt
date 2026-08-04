@@ -14,4 +14,9 @@ interface ThresholdRepository {
         id: Long,
         organizationId: Long,
     )
+
+    fun existsByCategoryId(
+        categoryId: Long,
+        organizationId: Long,
+    ): Boolean
 }
