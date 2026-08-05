@@ -302,6 +302,10 @@
     "presets": {
       "placeholder": "Select period…",
       "last30": "Last 30 days",
+      "last3Months": "Last 3 months",
+      "last6Months": "Last 6 months",
+      "last12Months": "Last 12 months",
+      "last24Months": "Last 24 months",
       "currentMonth": "Current month",
       "lastMonth": "Last month",
       "currentQuarter": "Current quarter",
