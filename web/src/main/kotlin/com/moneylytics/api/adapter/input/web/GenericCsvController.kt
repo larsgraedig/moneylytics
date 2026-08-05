@@ -123,6 +123,7 @@ class GenericCsvController(
                             purpose = row.purpose,
                             counterpartyName = row.counterpartyName,
                             counterpartyIban = row.counterpartyIban,
+                            amount = java.math.BigDecimal.valueOf(row.amount),
                         )
                     }
                 val suggested = categoryClassifier.suggestAll(organizationId, features)

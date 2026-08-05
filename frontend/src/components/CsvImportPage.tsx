@@ -426,6 +426,7 @@ export default function CsvImportPage({ categories }: { categories: CategoryNode
     const duplicateCount = rows.filter(r => r.status === 'DUPLICATE').length
     const unknownAccountCount = rows.filter(r => r.status !== 'DUPLICATE' && r.unknownAccount).length
     const enrichCount = rows.filter(r => r.status === 'DUPLICATE' && decisions[r.rowIndex]?.action === 'enrich').length
+    const suggestedCount = rows.filter(r => r.suggestedCategoryId != null && r.status !== 'DUPLICATE').length
     const readyCount = rows.filter(r => {
       if (r.status === 'DUPLICATE' || r.unknownAccount) return false
       const d = decisions[r.rowIndex]
@@ -443,6 +444,7 @@ export default function CsvImportPage({ categories }: { categories: CategoryNode
             {duplicateCount > 0 && <span className="ri-chip ri-chip--dup">{t('csvImport.categorizing.duplicate', { count: duplicateCount })}</span>}
             {unknownAccountCount > 0 && <span className="ri-chip ri-chip--inv">{t('csvImport.categorizing.unknownAccount', { count: unknownAccountCount })}</span>}
             {skippedCount > 0 && <span className="ri-chip ri-chip--prev-ignored">{t('csvImport.categorizing.skipped', { count: skippedCount })}</span>}
+            {suggestedCount > 0 && <span className="ri-chip ri-chip--suggested">{t('csvImport.categorizing.suggested', { count: suggestedCount })}</span>}
             <span className="ri-summary-spacer" />
             <button className="load-btn" onClick={() => setPhase({ step: 'mapping', detection, mapping, file })} disabled={importing}>{t('csvImport.categorizing.back')}</button>
             <button

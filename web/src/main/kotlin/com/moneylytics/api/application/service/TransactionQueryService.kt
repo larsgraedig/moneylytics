@@ -242,6 +242,7 @@ class TransactionQueryService(
                     purpose = updated.purpose,
                     counterpartyName = updated.counterpartyName,
                     counterpartyIban = updated.counterpartyIban,
+                    amount = updated.amount,
                 ),
             )
         }
@@ -271,11 +272,33 @@ class TransactionQueryService(
     override fun bulkUpdateCategory(
         updates: List<BulkCategoryUpdate>,
         organizationId: Long,
-    ): List<Transaction> =
-        transactionRepository.bulkUpdateCategory(
-            updates.map { CategoryUpdateEntry(it.id, it.categoryId) },
-            organizationId,
-        )
+    ): List<Transaction> {
+        val result =
+            transactionRepository.bulkUpdateCategory(
+                updates.map { CategoryUpdateEntry(it.id, it.categoryId) },
+                organizationId,
+            )
+        val updateMap = updates.associateBy { it.id }
+        val examples =
+            result.mapNotNull { tx ->
+                val catId = updateMap[tx.id]?.categoryId ?: return@mapNotNull null
+                val features =
+                    CategoryClassifierFeatures(
+                        purpose = tx.purpose,
+                        counterpartyName = tx.counterpartyName,
+                        counterpartyIban = tx.counterpartyIban,
+                        amount = tx.amount,
+                    )
+                if (features.purpose == null && features.counterpartyName == null && features.counterpartyIban == null) {
+                    return@mapNotNull null
+                }
+                catId to features
+            }
+        if (examples.isNotEmpty()) {
+            categoryClassifier.trainAll(organizationId, examples)
+        }
+        return result
+    }
 
     private fun collectSubtreeIds(
         rootId: Long,

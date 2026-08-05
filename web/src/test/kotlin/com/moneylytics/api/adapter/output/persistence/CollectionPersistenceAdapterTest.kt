@@ -14,8 +14,14 @@ class CollectionPersistenceAdapterTest {
     private val collectionJpaRepository: CollectionJpaRepository = mock()
     private val collectionTransactionJpaRepository: CollectionTransactionJpaRepository = mock()
     private val organizationJpaRepository: OrganizationJpaRepository = mock()
+    private val transactionJpaRepository: TransactionJpaRepository = mock()
     private val adapter =
-        CollectionPersistenceAdapter(collectionJpaRepository, collectionTransactionJpaRepository, organizationJpaRepository)
+        CollectionPersistenceAdapter(
+            collectionJpaRepository,
+            collectionTransactionJpaRepository,
+            organizationJpaRepository,
+            transactionJpaRepository,
+        )
 
     private val organizationId = 1L
     private val organizationEntity = OrganizationEntity(name = "Test Org", id = organizationId)
@@ -44,6 +50,7 @@ class CollectionPersistenceAdapterTest {
 
     @Test
     fun `should add transaction when not already member of collection`() {
+        whenever(transactionJpaRepository.findByIdAndOrganizationId(10L, organizationId)).thenReturn(mock())
         whenever(collectionTransactionJpaRepository.existsByCollectionIdAndTransactionId(1L, 10L)).thenReturn(false)
 
         adapter.addTransaction(1L, 10L, organizationId)
@@ -56,6 +63,7 @@ class CollectionPersistenceAdapterTest {
 
     @Test
     fun `should skip saving transaction when already member of collection`() {
+        whenever(transactionJpaRepository.findByIdAndOrganizationId(10L, organizationId)).thenReturn(mock())
         whenever(collectionTransactionJpaRepository.existsByCollectionIdAndTransactionId(1L, 10L)).thenReturn(true)
 
         adapter.addTransaction(1L, 10L, organizationId)

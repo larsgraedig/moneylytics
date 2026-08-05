@@ -4,6 +4,7 @@ import com.moneylytics.api.application.port.output.CategoryClassifier
 import com.moneylytics.api.domain.CategoryClassifierFeatures
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
+import java.math.BigDecimal
 import kotlin.math.exp
 import kotlin.math.ln
 
@@ -139,6 +140,7 @@ class NaiveBayesCategoryClassifierAdapter(
                     purpose = row[0] as? String,
                     counterpartyName = row[1] as? String,
                     counterpartyIban = row[2] as? String,
+                    amount = row[4] as? BigDecimal,
                 )
             classCounts.merge(categoryId, 1, Int::plus)
             val tc = tokenCounts.getOrPut(categoryId) { mutableMapOf() }
@@ -218,7 +220,22 @@ class NaiveBayesCategoryClassifierAdapter(
                 ?.takeIf { it.isNotBlank() }
                 ?.let { listOf("iban_$it") }
                 ?: emptyList()
-        return textTokens + ibanToken
+        return textTokens + ibanToken + amountTokens(features.amount)
+    }
+
+    private fun amountTokens(amount: BigDecimal?): List<String> {
+        if (amount == null) return emptyList()
+        val signToken = if (amount >= BigDecimal.ZERO) "amt_sign_pos" else "amt_sign_neg"
+        val abs = amount.abs()
+        val rangeToken =
+            when {
+                abs < BigDecimal("5") -> "amt_5"
+                abs < BigDecimal("25") -> "amt_25"
+                abs < BigDecimal("100") -> "amt_100"
+                abs < BigDecimal("500") -> "amt_500"
+                else -> "amt_inf"
+            }
+        return listOf(signToken, rangeToken)
     }
 
     companion object {

@@ -5,10 +5,12 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.any
 import org.mockito.kotlin.argumentCaptor
+import org.mockito.kotlin.atLeast
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.never
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
+import java.math.BigDecimal
 
 class NaiveBayesCategoryClassifierAdapterTest {
     private val classCountRepo: CategoryClassifierClassCountJpaRepository = mock()
@@ -179,8 +181,8 @@ class NaiveBayesCategoryClassifierAdapterTest {
         whenever(classCountRepo.existsByOrganizationId(organizationId)).thenReturn(false)
         val bootstrapRows: List<Array<out Any?>> =
             listOf(
-                arrayOf("REWE Supermarkt", null, null, groceriesCategoryId),
-                arrayOf("BVG Ticket", null, null, transportCategoryId),
+                arrayOf("REWE Supermarkt", null, null, groceriesCategoryId, BigDecimal("-35.50")),
+                arrayOf("BVG Ticket", null, null, transportCategoryId, BigDecimal("-2.80")),
             )
         whenever(transactionJpaRepository.findCategorizedForBootstrap(organizationId)).thenReturn(bootstrapRows)
         whenever(classCountRepo.saveAll(any<List<CategoryClassifierClassCountEntity>>())).thenReturn(emptyList())
@@ -208,5 +210,53 @@ class NaiveBayesCategoryClassifierAdapterTest {
         adapter.suggestAll(organizationId, emptyList())
 
         verify(transactionJpaRepository, never()).findCategorizedForBootstrap(any())
+    }
+
+    @Test
+    fun `should include amount sign and range tokens when amount is provided`() {
+        whenever(classCountRepo.findByOrganizationIdAndCategoryId(organizationId, groceriesCategoryId)).thenReturn(null)
+        whenever(tokenCountRepo.findByOrganizationIdAndCategoryIdAndToken(any(), any(), any())).thenReturn(null)
+        whenever(classCountRepo.save(any())).thenAnswer { it.arguments[0] }
+        whenever(tokenCountRepo.save(any())).thenAnswer { it.arguments[0] }
+
+        adapter.train(
+            organizationId,
+            groceriesCategoryId,
+            CategoryClassifierFeatures(
+                purpose = "REWE Markt",
+                counterpartyName = null,
+                counterpartyIban = null,
+                amount = BigDecimal("-42.50"),
+            ),
+        )
+
+        val tokenCaptor = argumentCaptor<CategoryClassifierTokenCountEntity>()
+        verify(tokenCountRepo, atLeast(1)).save(tokenCaptor.capture())
+        val tokens = tokenCaptor.allValues.map { it.token }
+        assertThat(tokens).contains("amt_sign_neg", "amt_100")
+    }
+
+    @Test
+    fun `should include positive sign token when amount is positive`() {
+        whenever(classCountRepo.findByOrganizationIdAndCategoryId(organizationId, transportCategoryId)).thenReturn(null)
+        whenever(tokenCountRepo.findByOrganizationIdAndCategoryIdAndToken(any(), any(), any())).thenReturn(null)
+        whenever(classCountRepo.save(any())).thenAnswer { it.arguments[0] }
+        whenever(tokenCountRepo.save(any())).thenAnswer { it.arguments[0] }
+
+        adapter.train(
+            organizationId,
+            transportCategoryId,
+            CategoryClassifierFeatures(
+                purpose = "Gehalt",
+                counterpartyName = null,
+                counterpartyIban = null,
+                amount = BigDecimal("2500.00"),
+            ),
+        )
+
+        val tokenCaptor = argumentCaptor<CategoryClassifierTokenCountEntity>()
+        verify(tokenCountRepo, atLeast(1)).save(tokenCaptor.capture())
+        val tokens = tokenCaptor.allValues.map { it.token }
+        assertThat(tokens).contains("amt_sign_pos", "amt_inf")
     }
 }

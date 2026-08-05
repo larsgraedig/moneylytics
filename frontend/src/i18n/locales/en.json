@@ -374,6 +374,8 @@
       "duplicate": "{{count}} already imported",
       "unknownAccount": "{{count}} unknown account",
       "skipped": "{{count}} skipped",
+      "suggested": "{{count}} category suggested",
+      "suggested_plural": "{{count}} categories suggested",
       "importCount": "import {{count}}",
       "excluded": "excluded",
       "alreadyImported": "already imported",

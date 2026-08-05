@@ -1,5 +1,6 @@
 package com.moneylytics.api.application.service
 
+import com.moneylytics.api.application.port.input.BulkCategoryUpdate
 import com.moneylytics.api.application.port.input.GetTransactionsQuery
 import com.moneylytics.api.application.port.input.TransactionType
 import com.moneylytics.api.application.port.output.BudgetRepository
@@ -7,10 +8,15 @@ import com.moneylytics.api.application.port.output.CategoryClassifier
 import com.moneylytics.api.application.port.output.CategoryRepository
 import com.moneylytics.api.application.port.output.TransactionRepository
 import com.moneylytics.api.domain.Category
+import com.moneylytics.api.domain.CategoryClassifierFeatures
 import com.moneylytics.api.domain.Transaction
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
+import org.mockito.kotlin.any
+import org.mockito.kotlin.argumentCaptor
 import org.mockito.kotlin.mock
+import org.mockito.kotlin.never
+import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import java.math.BigDecimal
 import java.time.LocalDate
@@ -155,6 +161,50 @@ class TransactionQueryServiceTest {
         val result = service.getTransactions(GetTransactionsQuery(from, to, organizationId, categoryId = childId))
 
         assertThat(result).containsExactlyInAnyOrder(txChild, txGrandchild)
+    }
+
+    @Test
+    fun `should train classifier for each categorized transaction in bulk update`() {
+        val categoryId = 42L
+        val updatedTx =
+            tx(BigDecimal("-15.99"), categoryId = categoryId, id = 1L).copy(
+                purpose = "Netflix",
+                counterpartyName = "Netflix Inc",
+            )
+        val updates = listOf(BulkCategoryUpdate(id = 1L, categoryId = categoryId))
+        whenever(transactionRepository.bulkUpdateCategory(any(), any())).thenReturn(listOf(updatedTx))
+
+        service.bulkUpdateCategory(updates, organizationId)
+
+        val captor = argumentCaptor<List<Pair<Long, CategoryClassifierFeatures>>>()
+        verify(categoryClassifier).trainAll(any(), captor.capture())
+        assertThat(captor.firstValue).hasSize(1)
+        assertThat(captor.firstValue[0].first).isEqualTo(categoryId)
+        assertThat(captor.firstValue[0].second.purpose).isEqualTo("Netflix")
+        assertThat(captor.firstValue[0].second.amount).isEqualByComparingTo(BigDecimal("-15.99"))
+    }
+
+    @Test
+    fun `should not train classifier when bulk update contains no categorized transactions`() {
+        val uncategorizedTx = tx(BigDecimal("-15.99"), categoryId = null, id = 1L)
+        val updates = listOf(BulkCategoryUpdate(id = 1L, categoryId = null))
+        whenever(transactionRepository.bulkUpdateCategory(any(), any())).thenReturn(listOf(uncategorizedTx))
+
+        service.bulkUpdateCategory(updates, organizationId)
+
+        verify(categoryClassifier, never()).trainAll(any(), any())
+    }
+
+    @Test
+    fun `should skip bulk update training for transactions without any text features`() {
+        val categoryId = 42L
+        val noTextTx = tx(BigDecimal("-15.99"), categoryId = categoryId, id = 1L)
+        val updates = listOf(BulkCategoryUpdate(id = 1L, categoryId = categoryId))
+        whenever(transactionRepository.bulkUpdateCategory(any(), any())).thenReturn(listOf(noTextTx))
+
+        service.bulkUpdateCategory(updates, organizationId)
+
+        verify(categoryClassifier, never()).trainAll(any(), any())
     }
 
     private fun tx(

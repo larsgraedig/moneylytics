@@ -46,6 +46,7 @@ class TransactionImportService(
                         purpose = tx.purpose,
                         counterpartyName = tx.counterpartyName,
                         counterpartyIban = tx.counterpartyIban,
+                        amount = tx.amount,
                     )
                 if (features.purpose == null && features.counterpartyName == null && features.counterpartyIban == null) {
                     return@mapNotNull null

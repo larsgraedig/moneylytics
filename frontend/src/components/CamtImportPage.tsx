@@ -232,6 +232,7 @@ export default function CamtImportPage({ categories }: { categories: CategoryNod
   const nInv = rows.filter(r => r.status === 'INVALID').length
   const nIgn = rows.filter(r => r.status === 'PREVIOUSLY_IGNORED').length
   const nUnknown = rows.filter(r => r.unknownAccount && r.status !== 'DUPLICATE').length
+  const nSuggested = rows.filter(r => r.suggestedCategoryId != null && r.status !== 'DUPLICATE').length
 
   return (
     <div className="ri-page">
@@ -242,6 +243,7 @@ export default function CamtImportPage({ categories }: { categories: CategoryNod
           {nDup > 0 && <span className="ri-chip ri-chip--dup">{t('camtImport.chips.duplicate', { count: nDup })}</span>}
           {nInv > 0 && <span className="ri-chip ri-chip--inv">{t('camtImport.chips.invalid', { count: nInv })}</span>}
           {nUnknown > 0 && <span className="ri-chip ri-chip--inv">{t('camtImport.chips.unknownAccount', { count: nUnknown })}</span>}
+          {nSuggested > 0 && <span className="ri-chip ri-chip--suggested">{t('csvImport.categorizing.suggested', { count: nSuggested })}</span>}
           <span className="ri-summary-spacer" />
           <button className="load-btn" onClick={() => setState({ phase: 'idle' })}>{t('camtImport.back')}</button>
           <button

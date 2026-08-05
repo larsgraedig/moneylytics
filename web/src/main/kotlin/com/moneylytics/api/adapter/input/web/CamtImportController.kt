@@ -129,6 +129,7 @@ class CamtImportController(
                     purpose = row.purpose.ifBlank { null },
                     counterpartyName = row.counterparty.ifBlank { null },
                     counterpartyIban = row.counterpartyIban,
+                    amount = row.amount,
                 )
             }
         val suggestions =

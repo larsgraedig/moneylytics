@@ -138,7 +138,7 @@ interface TransactionJpaRepository : JpaRepository<TransactionEntity, Long> {
     )
 
     @Query(
-        """SELECT t.purpose, t.counterpartyName, t.counterpartyIban, t.category.id
+        """SELECT t.purpose, t.counterpartyName, t.counterpartyIban, t.category.id, t.amount
         FROM TransactionEntity t
         WHERE t.organization.id = :organizationId
         AND t.category IS NOT NULL
