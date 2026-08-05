@@ -5414,6 +5414,141 @@ body {
   color: var(--accent);
 }
 
+.rcr-view-toggle {
+  display: flex;
+  gap: 4px;
+}
+
+.rcr-tl-range-selector {
+  display: flex;
+  gap: 4px;
+  padding: 0 0 4px 0;
+}
+
+.rcr-tl-container {
+  display: flex;
+  flex-direction: column;
+  padding: 8px 0 24px 0;
+}
+
+.rcr-tl-day {
+  display: flex;
+  gap: 0;
+  min-height: 48px;
+}
+
+.rcr-tl-axis {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 24px;
+  flex-shrink: 0;
+  margin-right: 16px;
+}
+
+.rcr-tl-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--border);
+  border: 2px solid var(--border);
+  flex-shrink: 0;
+  margin-top: 3px;
+}
+
+.rcr-tl-dot--today {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.rcr-tl-line {
+  width: 2px;
+  flex: 1;
+  background: var(--border);
+  margin-top: 4px;
+  min-height: 12px;
+}
+
+.rcr-tl-content {
+  flex: 1;
+  padding-bottom: 20px;
+}
+
+.rcr-tl-date {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-weight: 500;
+  margin-bottom: 8px;
+  line-height: 1.4;
+}
+
+.rcr-tl-date--today {
+  color: var(--accent);
+}
+
+.rcr-tl-cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.rcr-tl-card {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  font-size: 12px;
+}
+
+.rcr-tl-card-type {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  opacity: 0.85;
+}
+
+.rcr-tl-card-label {
+  color: var(--text);
+  font-weight: 500;
+}
+
+.rcr-tl-card-amount {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.rcr-tl-card-amount--expense { color: #f87171; }
+.rcr-tl-card-amount--income  { color: #4ade80; }
+
+.rcr-tl-month-sep {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 20px 0 8px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+}
+
+.rcr-tl-month-sep::before,
+.rcr-tl-month-sep::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+.rcr-tl-card-variable {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
 .adm-page {
   flex: 1;
   overflow-y: auto;

@@ -1,0 +1,141 @@
+import { useTranslation } from 'react-i18next'
+import { type RecurringSeriesItem } from '../api/recurring'
+
+interface Props {
+  series: RecurringSeriesItem[]
+  days: number
+  typeColors: Record<string, string>
+}
+
+interface ProjectedOccurrence {
+  date: Date
+  item: RecurringSeriesItem
+}
+
+function parseLocalDate(s: string): Date {
+  const [year, month, day] = s.split('-').map(Number)
+  return new Date(year, month - 1, day)
+}
+
+function addDays(d: Date, n: number): Date {
+  const result = new Date(d)
+  result.setDate(result.getDate() + n)
+  return result
+}
+
+function isSameDay(a: Date, b: Date): boolean {
+  return a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate()
+}
+
+function projectOccurrences(
+  series: RecurringSeriesItem[],
+  today: Date,
+  endDate: Date,
+): ProjectedOccurrence[] {
+  const todayMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate())
+  const result: ProjectedOccurrence[] = []
+  for (const s of series) {
+    if (s.isFalsePositive) continue
+    let d = parseLocalDate(s.nextExpectedDate)
+    while (d <= endDate) {
+      if (d >= todayMidnight) {
+        result.push({ date: new Date(d), item: s })
+      }
+      d = addDays(d, s.intervalDays)
+    }
+  }
+  return result.sort((a, b) => a.date.getTime() - b.date.getTime())
+}
+
+function groupByDay(occurrences: ProjectedOccurrence[]): Array<{ date: Date; items: ProjectedOccurrence[] }> {
+  const groups: Array<{ date: Date; items: ProjectedOccurrence[] }> = []
+  for (const occ of occurrences) {
+    const last = groups[groups.length - 1]
+    if (last && isSameDay(last.date, occ.date)) {
+      last.items.push(occ)
+    } else {
+      groups.push({ date: occ.date, items: [occ] })
+    }
+  }
+  return groups
+}
+
+function formatAmount(amount: number, currency: string): string {
+  return new Intl.NumberFormat('de-DE', { style: 'currency', currency }).format(Math.abs(amount))
+}
+
+function formatDate(d: Date): string {
+  return new Intl.DateTimeFormat('de-DE', { weekday: 'short', day: '2-digit', month: 'short' }).format(d)
+}
+
+function formatMonth(d: Date): string {
+  return new Intl.DateTimeFormat('de-DE', { month: 'long', year: 'numeric' }).format(d)
+}
+
+export default function RecurringTimeline({ series, days, typeColors }: Props) {
+  const { t } = useTranslation()
+  const today = new Date()
+  const endDate = addDays(today, days)
+  const occurrences = projectOccurrences(series, today, endDate)
+  const groups = groupByDay(occurrences)
+
+  if (groups.length === 0) {
+    return <p className="hint">{t('recurring.timelineEmpty')}</p>
+  }
+
+  return (
+    <div className="rcr-tl-container">
+      {groups.map((group, gi) => {
+        const isToday = isSameDay(group.date, today)
+        const prevGroup = groups[gi - 1]
+        const isNewMonth = gi === 0 || (
+          group.date.getMonth() !== prevGroup.date.getMonth() ||
+          group.date.getFullYear() !== prevGroup.date.getFullYear()
+        )
+        return (
+          <div key={group.date.toISOString()}>
+            {isNewMonth && (
+              <div className="rcr-tl-month-sep">{formatMonth(group.date)}</div>
+            )}
+          <div className="rcr-tl-day">
+            <div className="rcr-tl-axis">
+              <div className={`rcr-tl-dot${isToday ? ' rcr-tl-dot--today' : ''}`} />
+              {gi < groups.length - 1 && <div className="rcr-tl-line" />}
+            </div>
+            <div className="rcr-tl-content">
+              <div className={`rcr-tl-date${isToday ? ' rcr-tl-date--today' : ''}`}>
+                {isToday ? `${t('recurring.today')} · ${formatDate(group.date)}` : formatDate(group.date)}
+              </div>
+              <div className="rcr-tl-cards">
+                {group.items.map((occ, oi) => (
+                  <div
+                    key={`${occ.item.fingerprint}-${oi}`}
+                    className={`rcr-tl-card rcr-tl-card--${occ.item.direction.toLowerCase()}`}
+                  >
+                    <span
+                      className="rcr-tl-card-type"
+                      style={{ color: typeColors[occ.item.type] ?? '#6b7280' }}
+                    >
+                      {t(`recurring.type.${occ.item.type}` as Parameters<typeof t>[0])}
+                    </span>
+                    <span className="rcr-tl-card-label">{occ.item.label}</span>
+                    <span className={`rcr-tl-card-amount rcr-tl-card-amount--${occ.item.direction.toLowerCase()}`}>
+                      {occ.item.direction === 'EXPENSE' ? '−' : '+'}
+                      {formatAmount(occ.item.expectedAmount, occ.item.currency)}
+                    </span>
+                    {occ.item.amountVariable && (
+                      <span className="rcr-tl-card-variable" title={t('recurring.amountVariable') as string}>~</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+          </div>
+        )
+      })}
+    </div>
+  )
+}

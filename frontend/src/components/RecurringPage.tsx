@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { RefreshCw, X, RotateCcw, Plus, Trash2, ClipboardList, Play } from 'lucide-react'
+import RecurringTimeline from './RecurringTimeline'
 import {
   fetchRecurringSeries,
   refreshRecurringSeries,
@@ -87,6 +88,8 @@ export default function RecurringPage() {
   const isOrgAdminOrOwner = activeOrganization?.role === 'ADMIN' || activeOrganization?.role === 'OWNER'
   const canTriggerSync = isSystemAdmin || isOrgAdminOrOwner
   const [state, setState] = useState<PageState>({ phase: 'idle' })
+  const [view, setView] = useState<'table' | 'timeline'>('table')
+  const [timelineDays, setTimelineDays] = useState<30 | 60 | 90 | 180>(90)
   const [filterDirection, setFilterDirection] = useState<RecurrenceDirection | undefined>()
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const [refreshing, setRefreshing] = useState(false)
@@ -289,6 +292,20 @@ export default function RecurringPage() {
             {t('recurring.filterIncome')}
           </button>
         </div>
+        <div className="rcr-view-toggle">
+          <button
+            className={`rcr-filter-btn${view === 'table' ? ' rcr-filter-btn--active' : ''}`}
+            onClick={() => setView('table')}
+          >
+            {t('recurring.table')}
+          </button>
+          <button
+            className={`rcr-filter-btn${view === 'timeline' ? ' rcr-filter-btn--active' : ''}`}
+            onClick={() => setView('timeline')}
+          >
+            {t('recurring.timeline')}
+          </button>
+        </div>
         <div className="rcr-toolbar-actions">
           {isPending ? (
             <>
@@ -331,11 +348,29 @@ export default function RecurringPage() {
 
       {state.phase === 'loading' && <p className="hint loading">{t('common.fetching')}</p>}
       {state.phase === 'error' && <p className="hint error">{state.message}</p>}
-      {(state.phase === 'ready' || state.phase === 'pending') && displaySeries.length === 0 && (
+      {view === 'table' && (state.phase === 'ready' || state.phase === 'pending') && displaySeries.length === 0 && (
         <p className="hint">{t('recurring.empty')}</p>
       )}
 
-      {(state.phase === 'ready' || state.phase === 'pending') && displaySeries.length > 0 && (
+      {view === 'timeline' && (state.phase === 'ready' || state.phase === 'pending') && (
+        <div className="rcr-tl-range-selector">
+          {([30, 60, 90, 180] as const).map(d => (
+            <button
+              key={d}
+              className={`rcr-filter-btn${timelineDays === d ? ' rcr-filter-btn--active' : ''}`}
+              onClick={() => setTimelineDays(d)}
+            >
+              {t(`recurring.days${d}` as Parameters<typeof t>[0])}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {view === 'timeline' && (state.phase === 'ready' || state.phase === 'pending') && (
+        <RecurringTimeline series={displaySeries} days={timelineDays} typeColors={TYPE_COLORS} />
+      )}
+
+      {view === 'table' && (state.phase === 'ready' || state.phase === 'pending') && displaySeries.length > 0 && (
         <table className="rcr-table">
           <thead>
             <tr>
