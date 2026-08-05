@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { CategoryNode } from '../api/rawImport'
 import {
@@ -91,8 +91,15 @@ interface DrilldownState {
 
 // ── component ─────────────────────────────────────────────────────────────
 
-export default function ThresholdsPage({ from, to, iban, categories }: { from: string; to: string; iban?: string; categories: CategoryNode[] }) {
+export default function ThresholdsPage({ iban, categories }: { iban?: string; categories: CategoryNode[] }) {
   const { t } = useTranslation()
+  const [years, setYears] = useState<1 | 2 | 3>(1)
+  const localTo = useMemo(() => new Date().toISOString().slice(0, 10), [])
+  const localFrom = useMemo(() => {
+    const d = new Date()
+    d.setFullYear(d.getFullYear() - years)
+    return d.toISOString().slice(0, 10)
+  }, [years])
   const [thresholds, setThresholds] = useState<Threshold[]>([])
   const [statusMap, setStatusMap] = useState<Map<number, ThresholdStatusItem>>(new Map())
   const [statusLoaded, setStatusLoaded] = useState(false)
@@ -115,12 +122,12 @@ export default function ThresholdsPage({ from, to, iban, categories }: { from: s
   useEffect(() => {
     setStatusLoaded(false)
     setStatusMap(new Map())
-  }, [from, to, iban])
+  }, [years, iban])
 
   async function loadStatus() {
     setLoading(true)
     try {
-      const items = await fetchThresholdStatus(from, to, iban)
+      const items = await fetchThresholdStatus(localFrom, localTo, iban)
       setStatusMap(new Map(items.map(item => [item.thresholdId, item])))
       setStatusLoaded(true)
     } catch {
@@ -245,7 +252,7 @@ export default function ThresholdsPage({ from, to, iban, categories }: { from: s
     const path = threshold.categoryPath
     setDrilldown({ thresholdId: threshold.id, categoryPath: path, transactions: null, loading: true })
     try {
-      const resp = await fetchTransactionList(from, to, path[0], path[1], iban)
+      const resp = await fetchTransactionList(localFrom, localTo, path[0], path[1], iban)
       const txs = resp.transactions.filter(tx => tx.effectiveAmount < 0)
       txs.sort((a, b) => b.bookingDate.localeCompare(a.bookingDate))
       setDrilldown(prev => prev?.thresholdId === threshold.id ? { ...prev, transactions: txs, loading: false } : prev)
@@ -263,12 +270,21 @@ export default function ThresholdsPage({ from, to, iban, categories }: { from: s
   return (
     <div className="bgt-page">
       <div className="bgt-controls">
+        {([1, 2, 3] as const).map(y => (
+          <button
+            key={y}
+            className={`load-btn${years === y ? ' load-btn--active' : ''}`}
+            onClick={() => setYears(y)}
+          >
+            {y}J
+          </button>
+        ))}
         <button className="load-btn" onClick={loadStatus} disabled={loading}>
           {loading ? '…' : t('limits.load')}
         </button>
         {statusLoaded && (
           <span className="bgt-period-badge">
-            {t('limits.statusLoaded', { from, to })}
+            {t('limits.statusLoaded', { from: localFrom, to: localTo })}
           </span>
         )}
       </div>
@@ -386,7 +402,7 @@ export default function ThresholdsPage({ from, to, iban, categories }: { from: s
                   )
                 }
 
-                const best = item ?? pickBest([threshold], from, to)
+                const best = item ?? pickBest([threshold], localFrom, localTo)
 
                 return (
                   <tr key={threshold.id} className={rowClass} onClick={() => startEdit(threshold)}>
@@ -547,8 +563,8 @@ export default function ThresholdsPage({ from, to, iban, categories }: { from: s
       {drilldown != null && (
         <DrilldownModal
           state={drilldown}
-          from={from}
-          to={to}
+          from={localFrom}
+          to={localTo}
           onClose={() => setDrilldown(null)}
         />
       )}

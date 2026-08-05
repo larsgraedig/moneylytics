@@ -352,7 +352,7 @@ export default function App() {
           {tab === 'verknuepfungen' && <LinkedTransactionsPage key={`${username}-${activeOrganization?.id}`} />}
           {tab === 'sammlungen' && <CollectionsPage key={`${username}-${activeOrganization?.id}`} accounts={accounts} categories={categories} />}
           {tab === 'budgets' && <BudgetsPage key={`${username}-${activeOrganization?.id}`} from={from} to={to} iban={iban} accounts={accounts} categories={categories} />}
-          {tab === 'limits' && <ThresholdsPage key={`${username}-${activeOrganization?.id}`} from={from} to={to} iban={iban} categories={categories} />}
+          {tab === 'limits' && <ThresholdsPage key={`${username}-${activeOrganization?.id}`} iban={iban} categories={categories} />}
           {tab === 'konten' && <AccountsPage key={`${username}-${activeOrganization?.id}`} />}
           {tab === 'csv' && <CsvImportPage key={`${username}-${activeOrganization?.id}`} categories={categories} />}
           {tab === 'camt' && <CamtImportPage key={`${username}-${activeOrganization?.id}`} categories={categories} />}
