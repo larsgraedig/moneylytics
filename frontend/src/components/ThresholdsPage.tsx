@@ -276,6 +276,11 @@ export default function ThresholdsPage({ iban, categories }: { iban?: string; ca
             {y}J
           </button>
         ))}
+        {!isAddingNew && (
+          <button className="load-btn" onClick={startAddNew}>
+            + {t('limits.addThreshold')}
+          </button>
+        )}
         {statusLoaded && (
           <span className="bgt-period-badge">
             {t('limits.statusLoaded', { count: years })}
@@ -547,11 +552,6 @@ export default function ThresholdsPage({ iban, categories }: { iban?: string; ca
           </table>
         )}
 
-        {!isAddingNew && (
-          <button className="bgt-add-btn" onClick={startAddNew}>
-            + {t('limits.addThreshold')}
-          </button>
-        )}
       </div>
 
       {drilldown != null && (
