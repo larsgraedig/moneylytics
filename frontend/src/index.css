@@ -129,6 +129,8 @@ body {
   transition: background 0.1s, color 0.1s;
   white-space: nowrap;
   overflow: hidden;
+  text-decoration: none;
+  color: inherit;
 }
 
 .nav-item-icon {

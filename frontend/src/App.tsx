@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { useNavigate, useLocation } from 'react-router-dom'
+import { Link, useNavigate, useLocation } from 'react-router-dom'
 import type { LucideIcon } from 'lucide-react'
 import {
   Workflow, TrendingUp, TrendingDown, PieChart, BarChart2,
@@ -137,9 +137,6 @@ export default function App() {
     navigate({ search: p.toString() }, { replace: true })
   }
 
-  function navigateToTab(newTab: Tab) {
-    navigate({ pathname: `/${newTab}`, search: location.search })
-  }
 
   useEffect(() => {
     if (!username) return
@@ -180,6 +177,11 @@ export default function App() {
     })
   }, [username, activeOrganization?.id])
 
+  const iban = selectedIban || undefined
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { if (tab === 'sankey') void load() }, [tab, from, to, iban])
+
   if (location.pathname.startsWith('/invite/')) {
     const token = location.pathname.split('/')[2]
     return <InvitePage token={token} />
@@ -190,8 +192,6 @@ export default function App() {
   if (organizations.length === 0) return <OnboardingModal onComplete={refreshAuth} />
   if (organizations.length > 1 && !activeOrganization) return <OrgSelectModal organizations={organizations} onSelect={activateOrganization} />
 
-  const iban = selectedIban || undefined
-
   async function load() {
     setView({ phase: 'loading' })
     try {
@@ -201,9 +201,6 @@ export default function App() {
       setView({ phase: 'error', message: e instanceof Error ? e.message : 'request failed' })
     }
   }
-
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { if (tab === 'sankey') void load() }, [tab, from, to, iban])
 
   return (
     <div className="shell">
@@ -222,15 +219,15 @@ export default function App() {
             <div key={sectionKey} className="nav-section">
               <span className="nav-section-title">{t(`nav.sections.${sectionKey}`)}</span>
               {items.map(([id, labelKey, Icon]) => (
-                <button
+                <Link
                   key={id}
+                  to={{ pathname: `/${id}`, search: location.search }}
                   className={`nav-item${tab === id ? ' active' : ''}`}
-                  onClick={() => navigateToTab(id)}
                   title={t(labelKey)}
                 >
                   <span className="nav-item-icon"><Icon size={15} strokeWidth={1.6} /></span>
                   <span className="nav-item-label">{t(labelKey)}</span>
-                </button>
+                </Link>
               ))}
             </div>
           ))}
