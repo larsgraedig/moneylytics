@@ -5,6 +5,7 @@ import {
   Workflow, TrendingUp, TrendingDown, PieChart, BarChart2,
   List, Landmark, Wallet, Gauge,
   FileSpreadsheet, FileCode, Link2, FolderOpen, Repeat, Wrench, Building2, Tags,
+  Calendar, Radio, CircleDollarSign, GitCommitVertical,
 } from 'lucide-react'
 import { getPresetRange, detectPreset, PRESETS, type Preset } from './utils/datePresets'
 import SankeyChart from './components/SankeyChart'
@@ -23,6 +24,11 @@ import LinkedTransactionsPage from './components/LinkedTransactionsPage'
 import CategoriesPage from './components/CategoriesPage'
 import CollectionsPage from './components/CollectionsPage'
 import RecurringPage from './components/RecurringPage'
+import AboRadarPage from './components/AboRadarPage'
+import BudgetRingePage from './components/BudgetRingePage'
+import RadarPage from './components/RadarPage'
+import WasserfallPage from './components/WasserfallPage'
+import KalenderPage from './components/KalenderPage'
 import AdminPage from './components/AdminPage'
 import OrgsPage from './components/OrgsPage'
 import LoginPage from './components/LoginPage'
@@ -45,9 +51,9 @@ function isoDate(d: Date) {
 const today = isoDate(new Date())
 const firstOfYear = isoDate(new Date(new Date().getFullYear(), 0, 1))
 
-type Tab = 'sankey' | 'trends' | 'breakdown' | 'cashflow' | 'burnrate' | 'kontoauszug' | 'verknuepfungen' | 'sammlungen' | 'konten' | 'budgets' | 'limits' | 'csv' | 'camt' | 'wiederkehrer' | 'kategorien' | 'admin' | 'orgs'
+type Tab = 'sankey' | 'trends' | 'breakdown' | 'cashflow' | 'burnrate' | 'kalender' | 'wasserfall' | 'abos' | 'ringe' | 'radar' | 'kontoauszug' | 'verknuepfungen' | 'sammlungen' | 'konten' | 'budgets' | 'limits' | 'csv' | 'camt' | 'wiederkehrer' | 'kategorien' | 'admin' | 'orgs'
 
-const VALID_TABS = new Set<string>(['sankey', 'trends', 'breakdown', 'cashflow', 'burnrate', 'kontoauszug', 'verknuepfungen', 'sammlungen', 'konten', 'budgets', 'limits', 'csv', 'camt', 'wiederkehrer', 'kategorien', 'admin', 'orgs'])
+const VALID_TABS = new Set<string>(['sankey', 'trends', 'breakdown', 'cashflow', 'burnrate', 'kalender', 'wasserfall', 'abos', 'ringe', 'radar', 'kontoauszug', 'verknuepfungen', 'sammlungen', 'konten', 'budgets', 'limits', 'csv', 'camt', 'wiederkehrer', 'kategorien', 'admin', 'orgs'])
 
 type ViewState =
   | { phase: 'idle' }
@@ -66,6 +72,11 @@ const BASE_NAV: NavSection[] = [
       ['breakdown', 'nav.breakdown', PieChart],
       ['cashflow', 'nav.cashflow', BarChart2],
       ['burnrate', 'nav.burnrate', TrendingDown],
+      ['kalender', 'nav.kalender', Calendar],
+      ['wasserfall', 'nav.wasserfall', GitCommitVertical],
+      ['abos', 'nav.abos', Repeat],
+      ['ringe', 'nav.ringe', CircleDollarSign],
+      ['radar', 'nav.radar', Radio],
     ],
   },
   {
@@ -346,6 +357,11 @@ export default function App() {
 
           {tab === 'cashflow' && <CashflowPage key={`${username}-${activeOrganization?.id}`} from={from} to={to} iban={iban} />}
           {tab === 'burnrate' && <BurnRatePage key={`${username}-${activeOrganization?.id}`} from={from} to={to} iban={iban} />}
+          {tab === 'kalender' && <KalenderPage key={`${username}-${activeOrganization?.id}`} from={from} to={to} iban={iban} />}
+          {tab === 'wasserfall' && <WasserfallPage key={`${username}-${activeOrganization?.id}`} from={from} to={to} iban={iban} />}
+          {tab === 'abos' && <AboRadarPage key={`${username}-${activeOrganization?.id}`} />}
+          {tab === 'ringe' && <BudgetRingePage key={`${username}-${activeOrganization?.id}`} from={from} to={to} iban={iban} />}
+          {tab === 'radar' && <RadarPage key={`${username}-${activeOrganization?.id}`} from={from} to={to} iban={iban} />}
           {tab === 'trends' && <TrendsPage key={`${username}-${activeOrganization?.id}`} from={from} to={to} iban={iban} categories={categories} />}
           {tab === 'breakdown' && <PiePage key={`${username}-${activeOrganization?.id}`} from={from} to={to} iban={iban} />}
           {tab === 'kontoauszug' && <TransactionsPage key={`${username}-${activeOrganization?.id}`} from={from} to={to} iban={iban} accounts={accounts} categories={categories} columnOrder={txColumnOrder ?? undefined} onColumnOrderChange={order => setTxColumnOrder(order)} onCategoryCreated={() => { fetchCategories().then(cats => setCategories(cats.categories)).catch(() => {}) }} />}

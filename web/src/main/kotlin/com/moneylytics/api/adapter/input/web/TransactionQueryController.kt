@@ -3,10 +3,13 @@ package com.moneylytics.api.adapter.input.web
 import com.moneylytics.api.application.port.input.BulkCategoryUpdate
 import com.moneylytics.api.application.port.input.BulkUpdateTransactionCategoryUseCase
 import com.moneylytics.api.application.port.input.BurnRateResponse
+import com.moneylytics.api.application.port.input.CalendarSumsQuery
+import com.moneylytics.api.application.port.input.CalendarSumsResponse
 import com.moneylytics.api.application.port.input.CashflowResponse
 import com.moneylytics.api.application.port.input.CategoryTotalsResponse
 import com.moneylytics.api.application.port.input.GetBurnRateQuery
 import com.moneylytics.api.application.port.input.GetBurnRateUseCase
+import com.moneylytics.api.application.port.input.GetCalendarSumsUseCase
 import com.moneylytics.api.application.port.input.GetCashflowQuery
 import com.moneylytics.api.application.port.input.GetCashflowUseCase
 import com.moneylytics.api.application.port.input.GetCategoriesUseCase
@@ -71,6 +74,7 @@ class TransactionQueryController(
     private val getCashflowUseCase: GetCashflowUseCase,
     private val getBurnRateUseCase: GetBurnRateUseCase,
     private val getCategoryTotalsUseCase: GetCategoryTotalsUseCase,
+    private val getCalendarSumsUseCase: GetCalendarSumsUseCase,
     private val resolveOrganizationUseCase: ResolveOrganizationUseCase,
     private val updateTransactionCategoryUseCase: UpdateTransactionCategoryUseCase,
     private val updateTransactionCommentUseCase: UpdateTransactionCommentUseCase,
@@ -391,6 +395,27 @@ class TransactionQueryController(
                     accountIban = iban,
                     category = category,
                     categoryId = categoryId,
+                ),
+            )
+        }
+    }
+
+    @GetMapping("/calendar")
+    suspend fun getCalendarSums(
+        @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) from: LocalDate,
+        @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) to: LocalDate,
+        @RequestParam(required = false) iban: String? = null,
+        @AuthenticationPrincipal principal: UserDetails,
+        exchange: ServerWebExchange,
+    ): CalendarSumsResponse {
+        val organizationId = resolveOrganizationUseCase.resolveOrganization(principal, exchange)
+        return withContext(Dispatchers.IO) {
+            getCalendarSumsUseCase.getCalendarSums(
+                CalendarSumsQuery(
+                    from = from,
+                    to = to,
+                    organizationId = organizationId,
+                    accountIban = iban,
                 ),
             )
         }

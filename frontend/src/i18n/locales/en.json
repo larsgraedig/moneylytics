@@ -11,6 +11,11 @@
     "breakdown": "Breakdown",
     "cashflow": "Cashflow",
     "burnrate": "Burn Rate",
+    "kalender": "Calendar",
+    "wasserfall": "Waterfall",
+    "abos": "Subscriptions",
+    "ringe": "Budget Rings",
+    "radar": "Radar",
     "kontoauszug": "Transactions",
     "verknuepfungen": "Linked",
     "sammlungen": "Collections",
@@ -773,5 +778,22 @@
     "errorNoDate": "No date provided.",
     "errorNoAmount": "Please enter a valid amount.",
     "errorSave": "Error creating the entry."
+  },
+  "kalender": {
+    "empty": "No expenses in the selected period."
+  },
+  "abos": {
+    "empty": "No recurring expenses found.",
+    "totalPerMonth": "Fixed costs / month",
+    "yearTotal": "{{amount}} / year"
+  },
+  "ringe": {
+    "empty": "No spending limits configured.",
+    "overBudget": "over limit"
+  },
+  "radar": {
+    "current": "This period",
+    "previous": "Previous period",
+    "empty": "No categories available."
   }
 }

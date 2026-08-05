@@ -10,8 +10,10 @@
   },
   "dependencies": {
     "@nivo/bar": "^0.99.0",
+    "@nivo/calendar": "^0.99.0",
     "@nivo/line": "^0.99.0",
     "@nivo/pie": "^0.99.0",
+    "@nivo/radar": "^0.99.0",
     "@nivo/sankey": "^0.99.0",
     "@types/react-datepicker": "^6.2.0",
     "i18next": "^26.3.1",

@@ -142,4 +142,21 @@ interface TransactionJpaRepository : JpaRepository<TransactionEntity, Long> {
     fun findCategorizedForBootstrap(
         @Param("organizationId") organizationId: Long,
     ): List<Array<out Any?>>
+
+    @Query(
+        """SELECT t.accountingDate, SUM(t.amount)
+        FROM TransactionEntity t
+        WHERE t.organization.id = :organizationId
+        AND t.accountingDate BETWEEN :from AND :to
+        AND t.amount < 0
+        AND t.excluded = false
+        AND (:iban IS NULL OR t.account.iban = :iban)
+        GROUP BY t.accountingDate""",
+    )
+    fun sumExpensesByDay(
+        @Param("organizationId") organizationId: Long,
+        @Param("from") from: LocalDate,
+        @Param("to") to: LocalDate,
+        @Param("iban") iban: String?,
+    ): List<Array<out Any?>>
 }

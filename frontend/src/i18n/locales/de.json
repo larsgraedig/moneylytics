@@ -11,6 +11,11 @@
     "breakdown": "Breakdown",
     "cashflow": "Cashflow",
     "burnrate": "Burn Rate",
+    "kalender": "Kalender",
+    "wasserfall": "Wasserfall",
+    "abos": "Abo-Radar",
+    "ringe": "Budget-Ringe",
+    "radar": "Radar",
     "kontoauszug": "Kontoauszug",
     "verknuepfungen": "Verrechnungen",
     "sammlungen": "Sammlungen",
@@ -756,6 +761,23 @@
   "orgSelect": {
     "title": "Organisation auswählen",
     "subtitle": "Sie gehören mehreren Organisationen an. Welche möchten Sie betreten?"
+  },
+  "kalender": {
+    "empty": "Keine Ausgaben im gewählten Zeitraum."
+  },
+  "abos": {
+    "empty": "Keine wiederkehrenden Ausgaben gefunden.",
+    "totalPerMonth": "Fixkosten / Monat",
+    "yearTotal": "{{amount}} / Jahr"
+  },
+  "ringe": {
+    "empty": "Keine Ausgabelimits konfiguriert.",
+    "overBudget": "über Limit"
+  },
+  "radar": {
+    "current": "Dieser Zeitraum",
+    "previous": "Vorheriger Zeitraum",
+    "empty": "Keine Kategorien vorhanden."
   },
   "virtualTransaction": {
     "title": "Manuelle Buchung anlegen",

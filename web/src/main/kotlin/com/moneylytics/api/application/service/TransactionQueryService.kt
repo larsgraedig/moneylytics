@@ -4,6 +4,9 @@ import com.moneylytics.api.application.port.input.BulkCategoryUpdate
 import com.moneylytics.api.application.port.input.BulkUpdateTransactionCategoryUseCase
 import com.moneylytics.api.application.port.input.BurnRatePoint
 import com.moneylytics.api.application.port.input.BurnRateResponse
+import com.moneylytics.api.application.port.input.CalendarDaySum
+import com.moneylytics.api.application.port.input.CalendarSumsQuery
+import com.moneylytics.api.application.port.input.CalendarSumsResponse
 import com.moneylytics.api.application.port.input.CashflowBucket
 import com.moneylytics.api.application.port.input.CashflowResponse
 import com.moneylytics.api.application.port.input.CategoryTotal
@@ -11,6 +14,7 @@ import com.moneylytics.api.application.port.input.CategoryTotalsResponse
 import com.moneylytics.api.application.port.input.EnrichTransactionUseCase
 import com.moneylytics.api.application.port.input.GetBurnRateQuery
 import com.moneylytics.api.application.port.input.GetBurnRateUseCase
+import com.moneylytics.api.application.port.input.GetCalendarSumsUseCase
 import com.moneylytics.api.application.port.input.GetCashflowQuery
 import com.moneylytics.api.application.port.input.GetCashflowUseCase
 import com.moneylytics.api.application.port.input.GetCategoryTotalsQuery
@@ -47,6 +51,7 @@ class TransactionQueryService(
     GetCashflowUseCase,
     GetBurnRateUseCase,
     GetCategoryTotalsUseCase,
+    GetCalendarSumsUseCase,
     UpdateTransactionCategoryUseCase,
     UpdateTransactionCommentUseCase,
     UpdateTransactionAccountingDateUseCase,
@@ -276,6 +281,13 @@ class TransactionQueryService(
             updates.map { CategoryUpdateEntry(it.id, it.categoryId) },
             organizationId,
         )
+
+    override fun getCalendarSums(query: CalendarSumsQuery): CalendarSumsResponse {
+        val byDay = transactionRepository.sumExpensesByDay(query.from, query.to, query.organizationId, query.accountIban)
+        return CalendarSumsResponse(
+            data = byDay.map { (date, amount) -> CalendarDaySum(day = date.toString(), value = amount) },
+        )
+    }
 
     private fun collectSubtreeIds(
         rootId: Long,

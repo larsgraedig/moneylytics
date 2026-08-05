@@ -106,4 +106,11 @@ interface TransactionRepository {
         targetCategoryId: Long,
         organizationId: Long,
     )
+
+    fun sumExpensesByDay(
+        from: LocalDate,
+        to: LocalDate,
+        organizationId: Long,
+        accountIban: String? = null,
+    ): Map<LocalDate, java.math.BigDecimal>
 }

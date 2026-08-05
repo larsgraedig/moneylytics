@@ -3,6 +3,7 @@ package com.moneylytics.api.adapter.input.web
 import com.moneylytics.api.application.port.input.BulkCategoryUpdate
 import com.moneylytics.api.application.port.input.BulkUpdateTransactionCategoryUseCase
 import com.moneylytics.api.application.port.input.GetBurnRateUseCase
+import com.moneylytics.api.application.port.input.GetCalendarSumsUseCase
 import com.moneylytics.api.application.port.input.GetCashflowUseCase
 import com.moneylytics.api.application.port.input.GetCategoriesUseCase
 import com.moneylytics.api.application.port.input.GetCategoryTotalsUseCase
@@ -37,6 +38,7 @@ class TransactionQueryControllerListTest {
     private val getCashflowUseCase: GetCashflowUseCase = mock()
     private val getBurnRateUseCase: GetBurnRateUseCase = mock()
     private val getCategoryTotalsUseCase: GetCategoryTotalsUseCase = mock()
+    private val getCalendarSumsUseCase: GetCalendarSumsUseCase = mock()
     private val updateTransactionCategoryUseCase: UpdateTransactionCategoryUseCase = mock()
     private val updateTransactionCommentUseCase: UpdateTransactionCommentUseCase = mock()
     private val getCategoriesUseCase: GetCategoriesUseCase = mock()
@@ -49,6 +51,7 @@ class TransactionQueryControllerListTest {
             getCashflowUseCase,
             getBurnRateUseCase,
             getCategoryTotalsUseCase,
+            getCalendarSumsUseCase,
             resolveOrganizationUseCase,
             updateTransactionCategoryUseCase,
             updateTransactionCommentUseCase,

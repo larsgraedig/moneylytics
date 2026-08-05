@@ -457,6 +457,17 @@ class TransactionPersistenceAdapter(
         jpaRepository.moveByCategoryId(sourceCategoryId, targetCategoryId, organizationId)
     }
 
+    @Transactional(readOnly = true)
+    override fun sumExpensesByDay(
+        from: LocalDate,
+        to: LocalDate,
+        organizationId: Long,
+        accountIban: String?,
+    ): Map<LocalDate, java.math.BigDecimal> =
+        jpaRepository
+            .sumExpensesByDay(organizationId, from, to, accountIban)
+            .associate { row -> row[0] as LocalDate to (row[1] as java.math.BigDecimal).abs() }
+
     @Transactional
     override fun moveToCategoryBulk(
         transactionIds: List<Long>,
