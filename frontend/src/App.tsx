@@ -52,6 +52,7 @@ const VALID_TABS = new Set<string>(['sankey', 'trends', 'breakdown', 'cashflow',
 type ViewState =
   | { phase: 'idle' }
   | { phase: 'loading' }
+  | { phase: 'empty' }
   | { phase: 'error'; message: string }
   | { phase: 'ready'; data: SankeyResponse }
 
@@ -198,7 +199,7 @@ export default function App() {
     setView({ phase: 'loading' })
     try {
       const data = await fetchSankeyData(from, to, accountId)
-      setView(data.nodes.length === 0 ? { phase: 'idle' } : { phase: 'ready', data })
+      setView(data.nodes.length === 0 ? { phase: 'empty' } : { phase: 'ready', data })
     } catch (e) {
       setView({ phase: 'error', message: e instanceof Error ? e.message : 'request failed' })
     }
@@ -314,6 +315,9 @@ export default function App() {
                 <p className="hint">
                   <Trans i18nKey="sankey.hint"><span /><kbd /></Trans>
                 </p>
+              )}
+              {view.phase === 'empty' && (
+                <p className="hint">{t('sankey.noData')}</p>
               )}
               {view.phase === 'loading' && (
                 <p className="hint loading">{t('common.fetching')}</p>

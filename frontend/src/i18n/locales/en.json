@@ -78,6 +78,7 @@
   },
   "sankey": {
     "hint": "Select a date range and press <1>load</1>",
+    "noData": "No data for the selected filters.",
     "clickToDrillDown": "· click to drill down"
   },
   "trends": {

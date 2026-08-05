@@ -78,6 +78,7 @@
   },
   "sankey": {
     "hint": "Zeitraum wählen und <1>Laden</1> drücken",
+    "noData": "Keine Daten für die angegebenen Filterkriterien.",
     "clickToDrillDown": "· klicken zum Aufschlüsseln"
   },
   "trends": {
