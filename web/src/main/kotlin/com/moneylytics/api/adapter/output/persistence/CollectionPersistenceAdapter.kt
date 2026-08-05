@@ -10,6 +10,7 @@ class CollectionPersistenceAdapter(
     private val collectionJpaRepository: CollectionJpaRepository,
     private val collectionTransactionJpaRepository: CollectionTransactionJpaRepository,
     private val organizationJpaRepository: OrganizationJpaRepository,
+    private val transactionJpaRepository: TransactionJpaRepository,
 ) : CollectionRepository {
     override fun findAllByOrganizationId(organizationId: Long): List<Collection> =
         collectionJpaRepository.findByOrganizationId(organizationId).map { it.toDomain() }
@@ -61,6 +62,8 @@ class CollectionPersistenceAdapter(
         transactionId: Long,
         organizationId: Long,
     ) {
+        transactionJpaRepository.findByIdAndOrganizationId(transactionId, organizationId)
+            ?: throw NoSuchElementException("Transaction $transactionId not found in organization $organizationId")
         if (!collectionTransactionJpaRepository.existsByCollectionIdAndTransactionId(collectionId, transactionId)) {
             collectionTransactionJpaRepository.save(
                 CollectionTransactionEntity(collectionId = collectionId, transactionId = transactionId),

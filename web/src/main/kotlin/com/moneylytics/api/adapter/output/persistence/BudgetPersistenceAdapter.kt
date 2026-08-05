@@ -71,7 +71,9 @@ class BudgetPersistenceAdapter(
         organizationId: Long,
     ): BudgetTransactionLink {
         val budget = budgetJpaRepository.findByOrganizationId(organizationId).first { it.id == budgetId }
-        val transaction = transactionJpaRepository.getReferenceById(transactionId)
+        val transaction =
+            transactionJpaRepository.findByIdAndOrganizationId(transactionId, organizationId)
+                ?: throw NoSuchElementException("Transaction $transactionId not found in organization $organizationId")
         return budgetTransactionJpaRepository
             .save(
                 BudgetTransactionEntity(
