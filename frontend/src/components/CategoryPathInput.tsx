@@ -159,6 +159,12 @@ export function CategoryPathInput({ value, onChange, tree, onCategoryCreated, pl
       e.preventDefault()
       const item = visibleItems[highlighted]
       if (item) void selectItem(item)
+    } else if (e.key === 'Tab') {
+      const item = visibleItems[highlighted]
+      if (item?.type === 'existing') {
+        e.preventDefault()
+        setInputValue(item.pathStr + ' > ')
+      }
     } else if (e.key === 'Escape') {
       setInputValue(pathStringForId(committedId.current, tree))
       setOpen(false)
