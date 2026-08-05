@@ -151,6 +151,7 @@ export default function TransactionListPanel({ from, to, iban, onClose, ...rest 
                     <th>{t('transactions.panel.date')}</th>
                     {showGroupCol && <th>{t('transactions.columns.group')}</th>}
                     {showSubcategoryCol && <th>{t('transactions.columns.subcategory')}</th>}
+                    <th>{t('transactions.panel.details')}</th>
                     <th className="txn-col-amount">{t('transactions.panel.amount')}</th>
                   </tr>
                 </thead>
@@ -160,6 +161,22 @@ export default function TransactionListPanel({ from, to, iban, onClose, ...rest 
                       <td className="txn-cell-date">{formatDate(tx.accountingDate)}</td>
                       {showGroupCol && <td className="txn-cell-sub">{tx.subcategory}</td>}
                       {showSubcategoryCol && <td className="txn-cell-sub">{tx.group}</td>}
+                      <td className="txn-cell-details">
+                        {[tx.category, tx.subcategory, tx.group].filter(Boolean).join(' › ')}
+                        {(tx.offsetLinks.length > 0 || tx.budgetLinks.length > 0 || tx.collections.length > 0) && (
+                          <span className="txn-chips">
+                            {tx.offsetLinks.length > 0 && (
+                              <span className="txn-chip txn-chip--offset">⇌</span>
+                            )}
+                            {tx.budgetLinks.map(bl => (
+                              <span key={bl.linkId} className="txn-chip txn-chip--budget">{bl.budgetName}</span>
+                            ))}
+                            {tx.collections.map(c => (
+                              <span key={c.id} className="txn-chip txn-chip--collection">{c.name}</span>
+                            ))}
+                          </span>
+                        )}
+                      </td>
                       <td className={`txn-cell-amount${tx.amount < 0 ? ' negative' : ''}`}>
                         {EUR.format(tx.amount)}
                       </td>

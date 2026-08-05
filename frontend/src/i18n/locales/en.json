@@ -224,7 +224,8 @@
       "total": "total",
       "date": "date",
       "amount": "amount",
-      "subcategory": "subcategory"
+      "subcategory": "subcategory",
+      "details": "Details"
     }
   },
   "accounts": {
