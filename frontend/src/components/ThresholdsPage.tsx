@@ -103,7 +103,7 @@ export default function ThresholdsPage({ iban, categories }: { iban?: string; ca
   const [thresholds, setThresholds] = useState<Threshold[]>([])
   const [statusMap, setStatusMap] = useState<Map<number, ThresholdStatusItem>>(new Map())
   const [statusLoaded, setStatusLoaded] = useState(false)
-  const [loading, setLoading] = useState(false)
+
   const [editingId, setEditingId] = useState<number | null>(null)
   const [form, setForm] = useState<FormState>(EMPTY_FORM)
   const [saving, setSaving] = useState(false)
@@ -119,21 +119,18 @@ export default function ThresholdsPage({ iban, categories }: { iban?: string; ca
     fetchThresholds().then(setThresholds).catch(() => {})
   }, [])
 
-  useEffect(() => {
-    setStatusLoaded(false)
-    setStatusMap(new Map())
-  }, [years, iban])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { void loadStatus() }, [years, iban])
 
   async function loadStatus() {
-    setLoading(true)
+    setStatusLoaded(false)
+    setStatusMap(new Map())
     try {
       const items = await fetchThresholdStatus(localFrom, localTo, iban)
       setStatusMap(new Map(items.map(item => [item.thresholdId, item])))
       setStatusLoaded(true)
     } catch {
       // silent — user can retry
-    } finally {
-      setLoading(false)
     }
   }
 
@@ -279,9 +276,6 @@ export default function ThresholdsPage({ iban, categories }: { iban?: string; ca
             {y}J
           </button>
         ))}
-        <button className="load-btn" onClick={loadStatus} disabled={loading}>
-          {loading ? '…' : t('limits.load')}
-        </button>
         {statusLoaded && (
           <span className="bgt-period-badge">
             {t('limits.statusLoaded', { from: localFrom, to: localTo })}

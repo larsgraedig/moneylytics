@@ -1,5 +1,5 @@
-import { useMemo, useRef, useState } from 'react'
-import { Trans, useTranslation } from 'react-i18next'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { ResponsivePie } from '@nivo/pie'
 import { fetchCategoryTotals, type CategoryTotalItem } from '../api/transactions'
 import type { SankeyNode } from '../api/transactions'
@@ -146,6 +146,9 @@ export default function PiePage({ from, to, iban }: { from: string; to: string; 
     await loadLevel()
   }
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { void load() }, [from, to, iban])
+
   function navigateTo(stackIndex: number) {
     const newStack = navStack.slice(0, stackIndex + 1)
     setNavStack(newStack)
@@ -201,15 +204,6 @@ export default function PiePage({ from, to, iban }: { from: string; to: string; 
 
   return (
     <div className="pi-page">
-      <div className="tr-controls">
-        <button
-          className="load-btn"
-          onClick={load}
-          disabled={pieData.phase === 'loading'}
-        >
-          {pieData.phase === 'loading' ? '…' : t('common.load')}
-        </button>
-      </div>
 
       {navStack.length > 0 && (
         <div className="pi-breadcrumb">
@@ -240,9 +234,6 @@ export default function PiePage({ from, to, iban }: { from: string; to: string; 
       )}
 
       <div className="pi-chart-area">
-        {pieData.phase === 'idle' && (
-          <p className="hint"><Trans i18nKey="common.selectDateAndLoad"><span /><kbd /></Trans></p>
-        )}
         {pieData.phase === 'loading' && (
           <p className="hint loading">{t('common.fetching')}</p>
         )}

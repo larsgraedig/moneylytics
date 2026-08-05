@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { Trans, useTranslation } from 'react-i18next'
+import { useTranslation } from 'react-i18next'
 import type { CategoryNode } from '../api/rawImport'
 import { CategoryPathInput } from './CategoryPathInput'
 import {
@@ -138,6 +138,9 @@ export default function TransactionsPage({
     fetchCollections().then(cols => setAllCollections(cols.map(c => ({ id: c.id, name: c.name })))).catch(() => {})
   }, [])
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { void doLoad() }, [from, to, iban])
+
   const accountMap = useMemo(
     () => new Map(accounts.map(a => [a.iban, a.name])),
     [accounts],
@@ -239,11 +242,6 @@ export default function TransactionsPage({
     }
   }
 
-  function load() {
-    setFilterCategoryId(null)
-    setFilterUncategorized(false)
-    doLoad()
-  }
 
   function updateRow(index: number, field: 'category' | 'subcategory' | 'group' | 'comment' | 'accountingDate', value: string) {
     setRows(prev => {
@@ -1282,13 +1280,6 @@ const groupColorMap = useMemo(() => {
       <div className="tr-controls">
         <button
           className="load-btn"
-          onClick={load}
-          disabled={page.phase === 'loading'}
-        >
-          {page.phase === 'loading' ? '…' : t('common.load')}
-        </button>
-        <button
-          className="load-btn"
           onClick={() => setCreateVirtualOpen(true)}
         >
           + {t('virtualTransaction.button')}
@@ -1342,9 +1333,6 @@ const groupColorMap = useMemo(() => {
 
 
       <div className="txnv-body">
-        {page.phase === 'idle' && (
-          <p className="hint"><Trans i18nKey="common.selectDateAndLoad"><span /><kbd /></Trans></p>
-        )}
         {page.phase === 'loading' && (
           <p className="hint loading">{t('common.fetching')}</p>
         )}

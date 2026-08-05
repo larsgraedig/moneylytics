@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Trans, useTranslation } from 'react-i18next'
+import { useTranslation } from 'react-i18next'
 import { ResponsiveLine } from '@nivo/line'
 import type { CategoryNode } from '../api/rawImport'
 import type { SankeyNode } from '../api/transactions'
@@ -271,6 +271,9 @@ export default function TrendsPage({ from, to, iban, categories }: { from: strin
     }
   }
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { if (series.some(s => s.categoryId != null)) void load() }, [from, to, iban, series])
+
   // Flatten groups → nivo line data, all entries in a group share the same color.
   const { lineData, seriesRoles, seriesCategoryIds } = useMemo(() => {
     if (view.phase !== 'ready') return {
@@ -355,13 +358,6 @@ export default function TrendsPage({ from, to, iban, categories }: { from: strin
           {t('trends.subcategories')}
         </button>
 
-        <button
-          className="load-btn"
-          onClick={load}
-          disabled={view.phase === 'loading' || series.every(s => s.categoryId == null)}
-        >
-          {view.phase === 'loading' ? '…' : t('common.load')}
-        </button>
       </div>
 
       <div className="tr-series-list">
@@ -385,7 +381,6 @@ export default function TrendsPage({ from, to, iban, categories }: { from: strin
       </div>
 
       <div className="tr-chart-area" style={view.phase === 'ready' && lineData.length > 0 ? { cursor: 'pointer' } : undefined}>
-        {view.phase === 'idle' && <p className="hint"><Trans i18nKey="trends.hint"><span /><kbd /></Trans></p>}
         {view.phase === 'loading' && <p className="hint loading">{t('common.fetching')}</p>}
         {view.phase === 'error' && <p className="hint error">{view.message}</p>}
         {view.phase === 'ready' && lineData.length === 0 && (

@@ -202,6 +202,9 @@ export default function App() {
     }
   }
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { if (tab === 'sankey') void load() }, [tab, from, to, iban])
+
   return (
     <div className="shell">
       {/* ── sidebar ── */}
@@ -303,11 +306,6 @@ export default function App() {
             </label>
           </fieldset>
 
-          {tab === 'sankey' && (
-            <button className="load-btn" onClick={load} disabled={view.phase === 'loading'}>
-              {view.phase === 'loading' ? '…' : t('common.load')}
-            </button>
-          )}
         </div>
 
         <main className="stage">

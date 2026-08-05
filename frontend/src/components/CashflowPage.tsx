@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { Trans, useTranslation } from 'react-i18next'
+import { useTranslation } from 'react-i18next'
 import { ResponsiveBar } from '@nivo/bar'
 import { fetchAllTransactions, fetchCashflow, fetchLinkedGroup, type LinkedGroupItem, type TransactionItem } from '../api/transactions'
 import { fetchCollection, type CollectionDto } from '../api/collections'
@@ -115,6 +115,9 @@ export default function CashflowPage({ from, to, iban }: { from: string; to: str
 
   const data: CashflowBucket[] | null = rawData ? toDisplayBuckets(rawData, incomeMode, expenseMode) : null
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { void load() }, [from, to, iban])
+
   async function load() {
     setLoading(true)
     setError(null)
@@ -197,9 +200,6 @@ export default function CashflowPage({ from, to, iban }: { from: string; to: str
             </button>
           ))}
         </div>
-        <button className="load-btn" onClick={load} disabled={loading}>
-          {loading ? '…' : t('common.load')}
-        </button>
         {totals && (
           <div className="cf-summary">
             <span className="cf-summary-item cf-summary-income">
@@ -222,9 +222,6 @@ export default function CashflowPage({ from, to, iban }: { from: string; to: str
 
       <div className="cf-body">
         {error && <p className="hint error">{error}</p>}
-        {!error && data === null && !loading && (
-          <p className="hint"><Trans i18nKey="common.selectDateAndLoad"><span /><kbd /></Trans></p>
-        )}
         {loading && <p className="hint loading">{t('common.fetching')}</p>}
         {data !== null && data.length === 0 && (
           <p className="hint">{t('cashflow.noTransactions')}</p>

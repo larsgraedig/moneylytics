@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Trans, useTranslation } from 'react-i18next'
+import { useTranslation } from 'react-i18next'
 import { ResponsiveBar } from '@nivo/bar'
 import { ResponsiveLine } from '@nivo/line'
 import DatePicker from 'react-datepicker'
@@ -236,6 +236,9 @@ export default function BurnRatePage({ from, to, iban }: { from: string; to: str
     }
   }
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { void load() }, [from, to, iban])
+
   useEffect(() => {
     if (!burnRateData) return
     const filtered = burnRateData.points
@@ -371,9 +374,6 @@ export default function BurnRatePage({ from, to, iban }: { from: string; to: str
             </button>
           ))}
         </div>
-        <button className="load-btn" onClick={() => load()} disabled={loading}>
-          {loading ? '…' : t('common.load')}
-        </button>
         {burnRateData !== null && (
           <div className={`br-sim-field${simulatedToday ? ' br-sim-field--active' : ''}`}>
             <span className="range-label">{t('burnrate.simDate')}</span>
@@ -418,9 +418,6 @@ export default function BurnRatePage({ from, to, iban }: { from: string; to: str
 
       <div className="cf-body br-body">
         {error && <p className="hint error">{error}</p>}
-        {!error && points === null && !loading && (
-          <p className="hint"><Trans i18nKey="common.selectDateAndLoad"><span /><kbd /></Trans></p>
-        )}
         {loading && <p className="hint loading">{t('common.fetching')}</p>}
         {points !== null && !hasData && (
           <p className="hint">{t('burnrate.noData')}</p>
