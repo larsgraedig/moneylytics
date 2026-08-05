@@ -250,7 +250,6 @@
   "limits": {
     "load": "Laden",
     "noCategories": "Keine Kategorien gefunden — zuerst Transaktionen importieren",
-    "spendingLoaded": "Ausgaben geladen · {{from}} → {{to}}",
     "totalSubcat": "gesamt",
     "minAmount": "Mindestens ein Betrag erforderlich.",
     "period": {
@@ -269,7 +268,8 @@
       "spending": "Ausgaben",
       "progress": "Fortschritt"
     },
-    "statusLoaded": "Ausgaben geladen · {{from}} → {{to}}",
+    "statusLoaded_one": "Ausgaben geladen · {{count}} Jahr",
+    "statusLoaded_other": "Ausgaben geladen · {{count}} Jahre",
     "selectCategory": "Kategorie wählen …",
     "categoryRequired": "Bitte eine Kategorie auswählen.",
     "addThreshold": "Neues Limit",

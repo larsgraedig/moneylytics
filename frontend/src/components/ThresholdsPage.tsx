@@ -278,7 +278,7 @@ export default function ThresholdsPage({ iban, categories }: { iban?: string; ca
         ))}
         {statusLoaded && (
           <span className="bgt-period-badge">
-            {t('limits.statusLoaded', { from: localFrom, to: localTo })}
+            {t('limits.statusLoaded', { count: years })}
           </span>
         )}
       </div>
@@ -335,7 +335,7 @@ export default function ThresholdsPage({ iban, categories }: { iban?: string; ca
                         >
                           {PERIODS.map(p => (
                             <option key={p} value={p}>
-                              {t(`budgets.period.${p.toLowerCase()}`)}
+                              {t(`limits.period.${p.toLowerCase()}`)}
                             </option>
                           ))}
                         </select>
@@ -416,7 +416,7 @@ export default function ThresholdsPage({ iban, categories }: { iban?: string; ca
                       </td>
                     )}
                     <td className="bgt-td-period bgt-cell-muted">
-                      {best ? t(`budgets.period.${best.period.toLowerCase()}`) : '—'}
+                      {best ? t(`limits.period.${best.period.toLowerCase()}`) : '—'}
                     </td>
                     <td className="bgt-td-sev bgt-sev--notice">
                       {best?.notice != null ? (
@@ -487,7 +487,7 @@ export default function ThresholdsPage({ iban, categories }: { iban?: string; ca
                     >
                       {PERIODS.map(p => (
                         <option key={p} value={p}>
-                          {t(`budgets.period.${p.toLowerCase()}`)}
+                          {t(`limits.period.${p.toLowerCase()}`)}
                         </option>
                       ))}
                     </select>
