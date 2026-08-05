@@ -510,6 +510,7 @@ export default function TransactionsPage({
   }
 
   const filteredRows = useMemo(() => rows.map((row, i) => ({ row, i })), [rows])
+  const filteredSum = useMemo(() => filteredRows.reduce((sum, { row }) => sum + row.original.amount, 0), [filteredRows])
 
   type DisplayItem =
     | { type: 'ghost'; parentTx: TransactionItem; parentId: number }
@@ -1333,7 +1334,9 @@ const groupColorMap = useMemo(() => {
           ))}
         </div>
         {page.phase === 'ready' && (
-          <span className="txnv-count">{t('transactions.count', { count: filteredRows.length })}</span>
+          <span className="txnv-count" style={{ marginLeft: 'auto' }}>
+            {t('transactions.count', { count: filteredRows.length })} · {EUR.format(filteredSum)}
+          </span>
         )}
       </div>
 
