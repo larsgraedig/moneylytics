@@ -60,7 +60,7 @@ class ThresholdService(
                 query.from,
                 query.to,
                 query.organizationId,
-                query.accountIban,
+                query.accountId,
             )
 
         // Build parent map for ancestor-walk: categoryId → parentId

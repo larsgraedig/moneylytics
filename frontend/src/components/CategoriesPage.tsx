@@ -11,7 +11,7 @@ interface Props {
   categories: CategoryNode[]
   from: string
   to: string
-  iban?: string
+  accountId?: number
   onCategoryDeleted: () => void
   onCategoryMoved: () => void
   onCategoryRenamed: () => void
@@ -342,7 +342,7 @@ function CategoryRow({
 }
 
 export default function CategoriesPage({
-  categories, from, to, iban,
+  categories, from, to, accountId,
   onCategoryDeleted, onCategoryMoved, onCategoryRenamed, onCategoryMerged, onCategoryCreated,
 }: Props) {
   const { t } = useTranslation()
@@ -373,8 +373,8 @@ export default function CategoriesPage({
   const [revertError, setRevertError] = useState<string | null>(null)
 
   useEffect(() => {
-    fetchCategoryStats(from, to, iban).then(r => setStats(r.items)).catch(() => {})
-  }, [from, to, iban])
+    fetchCategoryStats(from, to, accountId).then(r => setStats(r.items)).catch(() => {})
+  }, [from, to, accountId])
 
   useEffect(() => {
     fetchCategoryMerges().then(setMerges).catch(() => {})

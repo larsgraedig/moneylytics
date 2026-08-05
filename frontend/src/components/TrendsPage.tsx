@@ -240,7 +240,7 @@ type ViewState =
   | { phase: 'error'; message: string }
   | { phase: 'ready'; data: TrendsResponse }
 
-export default function TrendsPage({ from, to, iban, categories }: { from: string; to: string; iban?: string; categories: CategoryNode[] }) {
+export default function TrendsPage({ from, to, accountId, categories }: { from: string; to: string; accountId?: number; categories: CategoryNode[] }) {
   const { t } = useTranslation()
   const [granularity, setGranularity] = useState<Granularity>('MONTHLY')
   const [series, setSeries] = useState<SeriesConfig[]>([{ id: newId(), categoryId: null }])
@@ -265,14 +265,14 @@ export default function TrendsPage({ from, to, iban, categories }: { from: strin
     if (active.length === 0) return
     setView({ phase: 'loading' })
     try {
-      setView({ phase: 'ready', data: await fetchTrends(from, to, active, granularity, iban) })
+      setView({ phase: 'ready', data: await fetchTrends(from, to, active, granularity, accountId) })
     } catch (e) {
       setView({ phase: 'error', message: e instanceof Error ? e.message : t('common.requestFailed') })
     }
   }
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { if (series.some(s => s.categoryId != null)) void load() }, [from, to, iban, series])
+  useEffect(() => { if (series.some(s => s.categoryId != null)) void load() }, [from, to, accountId, series])
 
   // Flatten groups → nivo line data, all entries in a group share the same color.
   const { lineData, seriesRoles, seriesCategoryIds } = useMemo(() => {

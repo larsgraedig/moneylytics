@@ -121,7 +121,7 @@ type PieDataState =
   | { phase: 'error'; message: string }
   | { phase: 'ready'; items: CategoryTotalItem[] }
 
-export default function PiePage({ from, to, iban }: { from: string; to: string; iban?: string }) {
+export default function PiePage({ from, to, accountId }: { from: string; to: string; accountId?: number }) {
   const { t } = useTranslation()
   const [pieData, setPieData] = useState<PieDataState>({ phase: 'idle' })
   const [navStack, setNavStack] = useState<NavEntry[]>([])
@@ -134,7 +134,7 @@ export default function PiePage({ from, to, iban }: { from: string; to: string; 
     setPieData({ phase: 'loading' })
     setDrilldown(null)
     try {
-      const data = await fetchCategoryTotals(from, to, iban, undefined, categoryId)
+      const data = await fetchCategoryTotals(from, to, accountId, undefined, categoryId)
       setPieData(data.items.length === 0 ? { phase: 'idle' } : { phase: 'ready', items: data.items })
     } catch (e) {
       setPieData({ phase: 'error', message: e instanceof Error ? e.message : t('common.requestFailed') })
@@ -147,7 +147,7 @@ export default function PiePage({ from, to, iban }: { from: string; to: string; 
   }
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { void load() }, [from, to, iban])
+  useEffect(() => { void load() }, [from, to, accountId])
 
   function navigateTo(stackIndex: number) {
     const newStack = navStack.slice(0, stackIndex + 1)
@@ -182,7 +182,7 @@ export default function PiePage({ from, to, iban }: { from: string; to: string; 
     setPieData({ phase: 'loading' })
     setDrilldown(null)
     try {
-      const data = await fetchCategoryTotals(from, to, iban, undefined, item.categoryId)
+      const data = await fetchCategoryTotals(from, to, accountId, undefined, item.categoryId)
       if (data.items.length === 0) {
         setPieData(pieData)
         setDrilldown({ node: makeNode(item.categoryId, namePath) })
@@ -275,7 +275,7 @@ export default function PiePage({ from, to, iban }: { from: string; to: string; 
           node={drilldown.node}
           from={from}
           to={to}
-          iban={iban}
+          accountId={accountId}
           onClose={() => setDrilldown(null)}
         />
       )}

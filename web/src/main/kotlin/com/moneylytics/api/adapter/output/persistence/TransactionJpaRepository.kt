@@ -21,19 +21,25 @@ interface TransactionJpaRepository : JpaRepository<TransactionEntity, Long> {
         amount: BigDecimal,
     ): List<TransactionEntity>
 
-    fun findByOrganizationIdAndAccountIbanAndAccountingDateBetweenAndExcludedFalse(
-        organizationId: Long,
-        iban: String,
-        from: LocalDate,
-        to: LocalDate,
+    @Query(
+        "SELECT t FROM TransactionEntity t WHERE t.organization.id = :organizationId AND t.account.id = :accountId AND t.accountingDate BETWEEN :from AND :to AND t.excluded = false",
+    )
+    fun findByOrganizationIdAndAccountIdAndAccountingDateBetweenAndExcludedFalse(
+        @Param("organizationId") organizationId: Long,
+        @Param("accountId") accountId: Long,
+        @Param("from") from: LocalDate,
+        @Param("to") to: LocalDate,
     ): List<TransactionEntity>
 
-    fun findByOrganizationIdAndAccountIbanAndAccountingDateBetweenAndAmountLessThanAndExcludedFalse(
-        organizationId: Long,
-        iban: String,
-        from: LocalDate,
-        to: LocalDate,
-        amount: BigDecimal,
+    @Query(
+        "SELECT t FROM TransactionEntity t WHERE t.organization.id = :organizationId AND t.account.id = :accountId AND t.accountingDate BETWEEN :from AND :to AND t.amount < :amount AND t.excluded = false",
+    )
+    fun findByOrganizationIdAndAccountIdAndAccountingDateBetweenAndAmountLessThanAndExcludedFalse(
+        @Param("organizationId") organizationId: Long,
+        @Param("accountId") accountId: Long,
+        @Param("from") from: LocalDate,
+        @Param("to") to: LocalDate,
+        @Param("amount") amount: BigDecimal,
     ): List<TransactionEntity>
 
     fun findByParentIdAndOrganizationId(
@@ -79,12 +85,12 @@ interface TransactionJpaRepository : JpaRepository<TransactionEntity, Long> {
         WHERE t.organization.id = :organizationId
         AND t.excluded = false
         AND t.category IS NOT NULL
-        AND (:iban IS NULL OR t.account.iban = :iban)
+        AND (:accountId IS NULL OR t.account.id = :accountId)
         GROUP BY t.category.id""",
     )
     fun countByCategoryGrouped(
         @Param("organizationId") organizationId: Long,
-        @Param("iban") iban: String?,
+        @Param("accountId") accountId: Long?,
     ): List<Array<out Any?>>
 
     @Query(
@@ -92,7 +98,7 @@ interface TransactionJpaRepository : JpaRepository<TransactionEntity, Long> {
         WHERE t.organization.id = :organizationId
         AND t.excluded = false
         AND t.category IS NOT NULL
-        AND (:iban IS NULL OR t.account.iban = :iban)
+        AND (:accountId IS NULL OR t.account.id = :accountId)
         AND t.accountingDate BETWEEN :from AND :to
         GROUP BY t.category.id""",
     )
@@ -100,7 +106,7 @@ interface TransactionJpaRepository : JpaRepository<TransactionEntity, Long> {
         @Param("organizationId") organizationId: Long,
         @Param("from") from: LocalDate,
         @Param("to") to: LocalDate,
-        @Param("iban") iban: String?,
+        @Param("accountId") accountId: Long?,
     ): List<Array<out Any?>>
 
     @Query(

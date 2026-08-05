@@ -197,7 +197,7 @@ function AddToCollectionModal({
     setTransactions(null)
     setError(null)
     try {
-      const resp = await fetchAllTransactions(from, to, filterIban || undefined, filterCategory || undefined, filterSubcategory || undefined, undefined, undefined, undefined, collection.id ?? undefined)
+      const resp = await fetchAllTransactions(from, to, accounts.find(a => a.iban === filterIban)?.id, filterCategory || undefined, filterSubcategory || undefined, undefined, undefined, undefined, collection.id ?? undefined)
       setTransactions(resp.transactions)
     } catch {
       setTransactions([])

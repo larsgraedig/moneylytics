@@ -71,9 +71,9 @@ class TransactionJpaRepositoryIT : AbstractJpaRepositoryIT() {
         savedTransaction("fp-2", accountingDate = jan15, forAccount = secondAccount)
 
         val result =
-            transactionRepo.findByOrganizationIdAndAccountIbanAndAccountingDateBetweenAndExcludedFalse(
+            transactionRepo.findByOrganizationIdAndAccountIdAndAccountingDateBetweenAndExcludedFalse(
                 organizationId = organizationId,
-                iban = account.iban,
+                accountId = checkNotNull(account.id),
                 from = jan1,
                 to = jan31,
             )
@@ -90,9 +90,9 @@ class TransactionJpaRepositoryIT : AbstractJpaRepositoryIT() {
         savedTransaction("fp-other", accountingDate = jan15, amount = BigDecimal("-25.00"), forAccount = secondAccount)
 
         val result =
-            transactionRepo.findByOrganizationIdAndAccountIbanAndAccountingDateBetweenAndAmountLessThanAndExcludedFalse(
+            transactionRepo.findByOrganizationIdAndAccountIdAndAccountingDateBetweenAndAmountLessThanAndExcludedFalse(
                 organizationId = organizationId,
-                iban = account.iban,
+                accountId = checkNotNull(account.id),
                 from = jan1,
                 to = jan31,
                 amount = BigDecimal.ZERO,

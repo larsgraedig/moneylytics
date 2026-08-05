@@ -85,7 +85,7 @@ class TransactionQueryController(
     suspend fun getSankeyData(
         @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) from: LocalDate,
         @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) to: LocalDate,
-        @RequestParam(required = false) iban: String? = null,
+        @RequestParam(required = false) accountId: Long? = null,
         @AuthenticationPrincipal principal: UserDetails,
         exchange: ServerWebExchange,
     ): SankeyResponse {
@@ -93,7 +93,7 @@ class TransactionQueryController(
         val (transactions, categories) =
             withContext(Dispatchers.IO) {
                 getTransactionsUseCase.getTransactions(
-                    GetTransactionsQuery(from, to, organizationId, type = TransactionType.EXPENSES, accountIban = iban),
+                    GetTransactionsQuery(from, to, organizationId, type = TransactionType.EXPENSES, accountId = accountId),
                 ) to getCategoriesUseCase.getCategories(organizationId)
             }
         return transactions.toSankeyResponse(categories)
@@ -106,7 +106,7 @@ class TransactionQueryController(
         @RequestParam(required = false) category: String? = null,
         @RequestParam(required = false) subcategory: String? = null,
         @RequestParam(required = false) group: String? = null,
-        @RequestParam(required = false) iban: String? = null,
+        @RequestParam(required = false) accountId: Long? = null,
         @RequestParam(required = false) type: TransactionType = TransactionType.ALL,
         @RequestParam(required = false) uncategorized: Boolean = false,
         @RequestParam(required = false) excludeCollectionId: Long? = null,
@@ -124,7 +124,7 @@ class TransactionQueryController(
                         to = to,
                         organizationId = organizationId,
                         type = type,
-                        accountIban = iban,
+                        accountId = accountId,
                         category = category,
                         subcategory = subcategory,
                         group = group,
@@ -208,7 +208,7 @@ class TransactionQueryController(
         @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) to: LocalDate,
         @RequestParam(required = false) series: List<String>? = null,
         @RequestParam(required = false) granularity: Granularity = Granularity.MONTHLY,
-        @RequestParam(required = false) iban: String? = null,
+        @RequestParam(required = false) accountId: Long? = null,
         @AuthenticationPrincipal principal: UserDetails,
         exchange: ServerWebExchange,
     ): TrendsResponse {
@@ -234,7 +234,7 @@ class TransactionQueryController(
                                     to = to,
                                     organizationId = organizationId,
                                     type = TransactionType.EXPENSES,
-                                    accountIban = iban,
+                                    accountId = accountId,
                                     categoryId = categoryId,
                                 ),
                             )
@@ -295,7 +295,7 @@ class TransactionQueryController(
                                     to = to,
                                     organizationId = organizationId,
                                     type = TransactionType.EXPENSES,
-                                    accountIban = iban,
+                                    accountId = accountId,
                                     category = category,
                                     subcategory = selectedSub,
                                 ),
@@ -353,7 +353,7 @@ class TransactionQueryController(
         @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) from: LocalDate,
         @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) to: LocalDate,
         @RequestParam(required = false) granularity: Granularity = Granularity.MONTHLY,
-        @RequestParam(required = false) iban: String? = null,
+        @RequestParam(required = false) accountId: Long? = null,
         @AuthenticationPrincipal principal: UserDetails,
         exchange: ServerWebExchange,
     ): CashflowResponse {
@@ -365,7 +365,7 @@ class TransactionQueryController(
                     to = to,
                     organizationId = organizationId,
                     granularity = granularity,
-                    accountIban = iban,
+                    accountId = accountId,
                 ),
             )
         }
@@ -375,7 +375,7 @@ class TransactionQueryController(
     suspend fun getCategoryTotals(
         @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) from: LocalDate,
         @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) to: LocalDate,
-        @RequestParam(required = false) iban: String? = null,
+        @RequestParam(required = false) accountId: Long? = null,
         @RequestParam(required = false) category: String? = null,
         @RequestParam(required = false) categoryId: Long? = null,
         @AuthenticationPrincipal principal: UserDetails,
@@ -388,7 +388,7 @@ class TransactionQueryController(
                     from = from,
                     to = to,
                     organizationId = organizationId,
-                    accountIban = iban,
+                    accountId = accountId,
                     category = category,
                     categoryId = categoryId,
                 ),
@@ -400,7 +400,7 @@ class TransactionQueryController(
     suspend fun getBurnRate(
         @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) from: LocalDate,
         @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) to: LocalDate,
-        @RequestParam(required = false) iban: String? = null,
+        @RequestParam(required = false) accountId: Long? = null,
         @RequestParam(required = false) rollingWindow: Int = 7,
         @AuthenticationPrincipal principal: UserDetails,
         exchange: ServerWebExchange,
@@ -412,7 +412,7 @@ class TransactionQueryController(
                     from = from,
                     to = to,
                     organizationId = organizationId,
-                    accountIban = iban,
+                    accountId = accountId,
                     rollingWindow = rollingWindow,
                 ),
             )

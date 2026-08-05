@@ -11,7 +11,7 @@ data class GetBurnRateQuery(
     val from: LocalDate,
     val to: LocalDate,
     val organizationId: Long,
-    val accountIban: String? = null,
+    val accountId: Long? = null,
     val rollingWindow: Int = 7,
 )
 

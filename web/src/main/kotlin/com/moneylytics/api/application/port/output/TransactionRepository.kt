@@ -18,14 +18,14 @@ interface TransactionRepository {
         from: LocalDate,
         to: LocalDate,
         organizationId: Long,
-        accountIban: String? = null,
+        accountId: Long? = null,
     ): List<Transaction>
 
     fun findNegativeByAccountingDateBetween(
         from: LocalDate,
         to: LocalDate,
         organizationId: Long,
-        accountIban: String? = null,
+        accountId: Long? = null,
     ): List<Transaction>
 
     fun updateAccountingDate(
@@ -80,14 +80,14 @@ interface TransactionRepository {
 
     fun countByCategoryGrouped(
         organizationId: Long,
-        iban: String? = null,
+        accountId: Long? = null,
     ): Map<Long, Long>
 
     fun countByCategoryGroupedInPeriod(
         organizationId: Long,
         from: LocalDate,
         to: LocalDate,
-        iban: String? = null,
+        accountId: Long? = null,
     ): Map<Long, Long>
 
     fun findIdsByCategoryId(

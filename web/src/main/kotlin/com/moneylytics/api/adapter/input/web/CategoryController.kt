@@ -89,7 +89,7 @@ class CategoryController(
         exchange: ServerWebExchange,
         @RequestParam from: LocalDate,
         @RequestParam to: LocalDate,
-        @RequestParam(required = false) iban: String?,
+        @RequestParam(required = false) accountId: Long? = null,
     ): CategoryStatsResponse {
         val organizationId = resolveOrganizationUseCase.resolveOrganization(principal, exchange)
         val items =
@@ -99,7 +99,7 @@ class CategoryController(
                         organizationId = organizationId,
                         from = from,
                         to = to,
-                        iban = iban,
+                        accountId = accountId,
                     ),
                 )
             }

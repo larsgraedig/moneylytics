@@ -62,10 +62,10 @@ export async function deleteThreshold(id: number): Promise<void> {
 export async function fetchThresholdStatus(
   from: string,
   to: string,
-  iban?: string,
+  accountId?: number,
 ): Promise<ThresholdStatusItem[]> {
   const params = new URLSearchParams({ from, to })
-  if (iban) params.set('iban', iban)
+  if (accountId != null) params.set('accountId', String(accountId))
   const res = await fetchWithUser(`/thresholds/status?${params}`)
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
   const data = await res.json() as { items: ThresholdStatusItem[] }

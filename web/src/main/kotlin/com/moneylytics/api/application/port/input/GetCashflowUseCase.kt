@@ -12,7 +12,7 @@ data class GetCashflowQuery(
     val to: LocalDate,
     val organizationId: Long,
     val granularity: Granularity = Granularity.MONTHLY,
-    val accountIban: String? = null,
+    val accountId: Long? = null,
 )
 
 data class CashflowResponse(

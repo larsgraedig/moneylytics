@@ -45,7 +45,7 @@ class AccountControllerTest {
     @Test
     fun `should trim IBAN and name before passing to use case`() =
         runTest {
-            val saved = Account(iban = "DE00TEST", name = "Giro")
+            val saved = Account(id = 1L, iban = "DE00TEST", name = "Giro")
             whenever(saveAccountUseCase.saveAccount("DE00TEST", "Giro", organizationId)).thenReturn(saved)
 
             val response = controller.createAccount(SaveAccountRequest(iban = " DE00TEST ", name = " Giro "), principal, exchange)
@@ -60,8 +60,8 @@ class AccountControllerTest {
             val date = LocalDate.of(2025, 6, 15)
             whenever(getAccountsUseCase.getAccounts(organizationId)).thenReturn(
                 listOf(
-                    Account(iban = "DE01", name = "Giro", latestTransactionDate = date),
-                    Account(iban = "DE02", name = "Sparkonto", latestTransactionDate = null),
+                    Account(id = 1L, iban = "DE01", name = "Giro", latestTransactionDate = date),
+                    Account(id = 2L, iban = "DE02", name = "Sparkonto", latestTransactionDate = null),
                 ),
             )
 

@@ -91,7 +91,7 @@ interface DrilldownState {
 
 // ── component ─────────────────────────────────────────────────────────────
 
-export default function ThresholdsPage({ iban, categories }: { iban?: string; categories: CategoryNode[] }) {
+export default function ThresholdsPage({ accountId, categories }: { accountId?: number; categories: CategoryNode[] }) {
   const { t } = useTranslation()
   const [years, setYears] = useState<1 | 2 | 3>(1)
   const localTo = useMemo(() => new Date().toISOString().slice(0, 10), [])
@@ -120,13 +120,13 @@ export default function ThresholdsPage({ iban, categories }: { iban?: string; ca
   }, [])
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { void loadStatus() }, [years, iban])
+  useEffect(() => { void loadStatus() }, [years, accountId])
 
   async function loadStatus() {
     setStatusLoaded(false)
     setStatusMap(new Map())
     try {
-      const items = await fetchThresholdStatus(localFrom, localTo, iban)
+      const items = await fetchThresholdStatus(localFrom, localTo, accountId)
       setStatusMap(new Map(items.map(item => [item.thresholdId, item])))
       setStatusLoaded(true)
     } catch {
@@ -249,7 +249,7 @@ export default function ThresholdsPage({ iban, categories }: { iban?: string; ca
     const path = threshold.categoryPath
     setDrilldown({ thresholdId: threshold.id, categoryPath: path, transactions: null, loading: true })
     try {
-      const resp = await fetchTransactionList(localFrom, localTo, path[0], path[1], iban)
+      const resp = await fetchTransactionList(localFrom, localTo, path[0], path[1], accountId)
       const txs = resp.transactions.filter(tx => tx.effectiveAmount < 0)
       txs.sort((a, b) => b.bookingDate.localeCompare(a.bookingDate))
       setDrilldown(prev => prev?.thresholdId === threshold.id ? { ...prev, transactions: txs, loading: false } : prev)

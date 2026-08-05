@@ -36,7 +36,7 @@ function parseNodeKey(nodeKey: string): NodeInfo {
 type BaseProps = {
   from: string
   to: string
-  iban?: string
+  accountId?: number
   onClose: () => void
 }
 
@@ -54,7 +54,7 @@ function formatDate(iso: string): string {
   return `${d}.${m}.${y}`
 }
 
-export default function TransactionListPanel({ from, to, iban, onClose, ...rest }: Props) {
+export default function TransactionListPanel({ from, to, accountId, onClose, ...rest }: Props) {
   const { t } = useTranslation()
   const [state, setState] = useState<State>({ phase: 'loading' })
 
@@ -65,7 +65,7 @@ export default function TransactionListPanel({ from, to, iban, onClose, ...rest 
     setState({ phase: 'loading' })
     let req: Promise<{ transactions: TransactionItem[]; total: number }>
     if (node != null) {
-      req = fetchTransactionList(from, to, undefined, undefined, iban, undefined, node.categoryId)
+      req = fetchTransactionList(from, to, undefined, undefined, accountId, undefined, node.categoryId)
     } else {
       const info = parseNodeKey(nodeKey!)
       const category = info.category
@@ -76,12 +76,12 @@ export default function TransactionListPanel({ from, to, iban, onClose, ...rest 
           ? info.subcategory
           : undefined
       const group = info.type === 'leaf' ? info.subcategory : undefined
-      req = fetchTransactionList(from, to, category, subcategory, iban, group)
+      req = fetchTransactionList(from, to, category, subcategory, accountId, group)
     }
     req
       .then(r => setState({ phase: 'ready', transactions: r.transactions, total: r.total }))
       .catch(e => setState({ phase: 'error', message: e instanceof Error ? e.message : 'Failed to load' }))
-  }, [node?.categoryId, nodeKey, from, to, iban])
+  }, [node?.categoryId, nodeKey, from, to, accountId])
 
   const info = nodeKey != null ? parseNodeKey(nodeKey) : null
   const showGroupCol = info?.type === 'cat'

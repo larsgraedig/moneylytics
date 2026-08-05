@@ -141,10 +141,10 @@ export async function revertMerge(mergeId: number): Promise<void> {
 export async function fetchCategoryStats(
   from: string,
   to: string,
-  iban?: string,
+  accountId?: number,
 ): Promise<CategoryStatsResponse> {
   const params = new URLSearchParams({ from, to })
-  if (iban) params.set('iban', iban)
+  if (accountId != null) params.set('accountId', String(accountId))
   const res = await fetchWithUser(`/categories/stats?${params}`)
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
   return res.json() as Promise<CategoryStatsResponse>

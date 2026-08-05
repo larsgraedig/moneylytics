@@ -47,7 +47,7 @@ function budgetToForm(b: Budget): FormState {
   }
 }
 
-export default function BudgetsPage({ from, to, iban, accounts, categories }: { from: string; to: string; iban?: string; accounts: Account[]; categories: CategoryNode[] }) {
+export default function BudgetsPage({ from, to, accountId, accounts, categories }: { from: string; to: string; accountId?: number; accounts: Account[]; categories: CategoryNode[] }) {
   const { t } = useTranslation()
   const [budgets, setBudgets] = useState<Budget[]>([])
   const [loading, setLoading] = useState(true)
@@ -289,7 +289,7 @@ export default function BudgetsPage({ from, to, iban, accounts, categories }: { 
           budget={assigningBudget}
           defaultFrom={from}
           defaultTo={to}
-          defaultIban={iban}
+          defaultIban={accounts.find(a => a.id === accountId)?.iban}
           accounts={accounts}
           categories={categories}
           onClose={() => setAssigningBudget(null)}
@@ -420,7 +420,7 @@ function AssignTransactionModal({
       const resp = await fetchAllTransactions(
         from,
         to,
-        filterIban || undefined,
+        accounts.find(a => a.iban === filterIban)?.id,
         filterCategory || undefined,
         filterSubcategory || undefined,
         undefined,

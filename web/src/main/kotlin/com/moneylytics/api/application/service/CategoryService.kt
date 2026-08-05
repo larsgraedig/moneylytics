@@ -35,13 +35,13 @@ class CategoryService(
     ): Category = categoryRepository.findOrCreate(path, organizationId)
 
     override fun getCategoryStats(query: GetCategoryStatsQuery): List<CategoryStatItem> {
-        val total = transactionRepository.countByCategoryGrouped(query.organizationId, query.iban)
+        val total = transactionRepository.countByCategoryGrouped(query.organizationId, query.accountId)
         val period =
             transactionRepository.countByCategoryGroupedInPeriod(
                 query.organizationId,
                 query.from,
                 query.to,
-                query.iban,
+                query.accountId,
             )
         val allIds = total.keys + period.keys
         return allIds.map { id ->

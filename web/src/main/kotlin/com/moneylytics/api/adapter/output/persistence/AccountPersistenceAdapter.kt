@@ -49,6 +49,7 @@ class AccountPersistenceAdapter(
 
     private fun AccountEntity.toDomain() =
         Account(
+            id = id,
             iban = iban,
             name = name,
             balance = balance,

@@ -105,7 +105,7 @@ class TransactionQueryControllerListTest {
                 category = "Lebensmittel",
                 subcategory = "Konsum",
                 group = "Supermarkt",
-                iban = "DE00TEST",
+                accountId = 42L,
                 uncategorized = true,
                 excludeCollectionId = 5L,
                 excludeBudgetId = 7L,
@@ -119,7 +119,7 @@ class TransactionQueryControllerListTest {
             assertThat(query.category).isEqualTo("Lebensmittel")
             assertThat(query.subcategory).isEqualTo("Konsum")
             assertThat(query.group).isEqualTo("Supermarkt")
-            assertThat(query.accountIban).isEqualTo("DE00TEST")
+            assertThat(query.accountId).isEqualTo(42L)
             assertThat(query.uncategorized).isTrue()
             assertThat(query.excludeCollectionId).isEqualTo(5L)
             assertThat(query.excludeBudgetId).isEqualTo(7L)

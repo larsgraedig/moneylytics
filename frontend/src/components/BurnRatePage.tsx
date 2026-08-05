@@ -209,7 +209,7 @@ function makeCumulativeProjectionLayer(
   }
 }
 
-export default function BurnRatePage({ from, to, iban }: { from: string; to: string; iban?: string }) {
+export default function BurnRatePage({ from, to, accountId }: { from: string; to: string; accountId?: number }) {
   const { t } = useTranslation()
 
   const [loading, setLoading] = useState(false)
@@ -227,7 +227,7 @@ export default function BurnRatePage({ from, to, iban }: { from: string; to: str
     setLoading(true)
     setError(null)
     try {
-      const resp = await fetchBurnRate(from, to, overrideWindow ?? rollingWindow, iban)
+      const resp = await fetchBurnRate(from, to, overrideWindow ?? rollingWindow, accountId)
       setBurnRateData(resp)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'request failed')
@@ -237,7 +237,7 @@ export default function BurnRatePage({ from, to, iban }: { from: string; to: str
   }
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { void load() }, [from, to, iban])
+  useEffect(() => { void load() }, [from, to, accountId])
 
   useEffect(() => {
     if (!burnRateData) return

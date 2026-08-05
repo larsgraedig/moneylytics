@@ -9,7 +9,7 @@ data class GetThresholdStatusQuery(
     val from: LocalDate,
     val to: LocalDate,
     val organizationId: Long,
-    val accountIban: String? = null,
+    val accountId: Long? = null,
 )
 
 data class ThresholdStatusItem(

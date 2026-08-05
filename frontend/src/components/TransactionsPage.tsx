@@ -94,7 +94,7 @@ type LinkingState =
 export default function TransactionsPage({
   from,
   to,
-  iban,
+  accountId,
   accounts,
   categories,
   onCategoryCreated,
@@ -103,7 +103,7 @@ export default function TransactionsPage({
 }: {
   from: string
   to: string
-  iban?: string
+  accountId?: number
   accounts: Account[]
   categories: CategoryNode[]
   onCategoryCreated?: (node: CategoryNode) => void
@@ -139,7 +139,7 @@ export default function TransactionsPage({
   }, [])
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { void doLoad() }, [from, to, iban])
+  useEffect(() => { void doLoad() }, [from, to, accountId])
 
   const accountMap = useMemo(
     () => new Map(accounts.map(a => [a.iban, a.name])),
@@ -185,7 +185,7 @@ export default function TransactionsPage({
     setPage({ phase: 'loading' })
     setLinkingState(null)
     try {
-      const data = await fetchAllTransactions(from, to, iban, undefined, undefined, uncategorized, undefined, type ?? toApiType(filterType), undefined, undefined, categoryId ?? undefined)
+      const data = await fetchAllTransactions(from, to, accountId, undefined, undefined, uncategorized, undefined, type ?? toApiType(filterType), undefined, undefined, categoryId ?? undefined)
       setRows(
         data.transactions.map(tx => ({
           original: tx,

@@ -108,13 +108,13 @@ class TransactionPersistenceAdapter(
         from: LocalDate,
         to: LocalDate,
         organizationId: Long,
-        accountIban: String?,
+        accountId: Long?,
     ): List<Transaction> {
         val entities =
-            if (accountIban != null) {
-                jpaRepository.findByOrganizationIdAndAccountIbanAndAccountingDateBetweenAndExcludedFalse(
+            if (accountId != null) {
+                jpaRepository.findByOrganizationIdAndAccountIdAndAccountingDateBetweenAndExcludedFalse(
                     organizationId,
-                    accountIban,
+                    accountId,
                     from,
                     to,
                 )
@@ -129,13 +129,13 @@ class TransactionPersistenceAdapter(
         from: LocalDate,
         to: LocalDate,
         organizationId: Long,
-        accountIban: String?,
+        accountId: Long?,
     ): List<Transaction> {
         val entities =
-            if (accountIban != null) {
-                jpaRepository.findByOrganizationIdAndAccountIbanAndAccountingDateBetweenAndAmountLessThanAndExcludedFalse(
+            if (accountId != null) {
+                jpaRepository.findByOrganizationIdAndAccountIdAndAccountingDateBetweenAndAmountLessThanAndExcludedFalse(
                     organizationId,
-                    accountIban,
+                    accountId,
                     from,
                     to,
                     BigDecimal.ZERO,
@@ -426,20 +426,20 @@ class TransactionPersistenceAdapter(
 
     override fun countByCategoryGrouped(
         organizationId: Long,
-        iban: String?,
+        accountId: Long?,
     ): Map<Long, Long> =
         jpaRepository
-            .countByCategoryGrouped(organizationId, iban)
+            .countByCategoryGrouped(organizationId, accountId)
             .associate { row -> (row[0] as Long) to (row[1] as Long) }
 
     override fun countByCategoryGroupedInPeriod(
         organizationId: Long,
         from: java.time.LocalDate,
         to: java.time.LocalDate,
-        iban: String?,
+        accountId: Long?,
     ): Map<Long, Long> =
         jpaRepository
-            .countByCategoryGroupedInPeriod(organizationId, from, to, iban)
+            .countByCategoryGroupedInPeriod(organizationId, from, to, accountId)
             .associate { row -> (row[0] as Long) to (row[1] as Long) }
 
     @Transactional(readOnly = true)

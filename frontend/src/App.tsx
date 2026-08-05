@@ -117,7 +117,7 @@ export default function App() {
   const tab: Tab = (VALID_TABS.has(rawPath) ? rawPath : 'sankey') as Tab
   const from = searchParams.get('from') ?? firstOfYear
   const to = searchParams.get('to') ?? today
-  const selectedIban = searchParams.get('iban') ?? ''
+  const selectedAccountId = searchParams.get('accountId') ?? ''
   const activePreset = detectPreset(from, to)
 
   const [settingsOpen, setSettingsOpen] = useState(false)
@@ -153,10 +153,11 @@ export default function App() {
         localStorage.setItem('lang', settings.language)
       }
       const defaultIban = settings.defaultAccountIban ?? localStorage.getItem('defaultIban') ?? ''
-      if (defaultIban && accs.some(a => a.iban === defaultIban)) {
+      const defaultAccount = accs.find(a => a.iban === defaultIban)
+      if (defaultAccount) {
         const current = new URLSearchParams(window.location.search)
-        if (!current.get('iban')) {
-          current.set('iban', defaultIban)
+        if (!current.get('accountId')) {
+          current.set('accountId', String(defaultAccount.id))
           navigate({ search: current.toString() }, { replace: true })
         }
       }
@@ -166,10 +167,11 @@ export default function App() {
         setAccounts(accs)
         setCategories(cats.categories)
         const defaultIban = localStorage.getItem('defaultIban') ?? ''
-        if (defaultIban && accs.some(a => a.iban === defaultIban)) {
+        const defaultAccount = accs.find(a => a.iban === defaultIban)
+        if (defaultAccount) {
           const current = new URLSearchParams(window.location.search)
-          if (!current.get('iban')) {
-            current.set('iban', defaultIban)
+          if (!current.get('accountId')) {
+            current.set('accountId', String(defaultAccount.id))
             navigate({ search: current.toString() }, { replace: true })
           }
         }
@@ -177,10 +179,10 @@ export default function App() {
     })
   }, [username, activeOrganization?.id])
 
-  const iban = selectedIban || undefined
+  const accountId = selectedAccountId ? Number(selectedAccountId) : undefined
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { if (tab === 'sankey') void load() }, [tab, from, to, iban])
+  useEffect(() => { if (tab === 'sankey') void load() }, [tab, from, to, accountId])
 
   if (location.pathname.startsWith('/invite/')) {
     const token = location.pathname.split('/')[2]
@@ -195,7 +197,7 @@ export default function App() {
   async function load() {
     setView({ phase: 'loading' })
     try {
-      const data = await fetchSankeyData(from, to, iban)
+      const data = await fetchSankeyData(from, to, accountId)
       setView(data.nodes.length === 0 ? { phase: 'idle' } : { phase: 'ready', data })
     } catch (e) {
       setView({ phase: 'error', message: e instanceof Error ? e.message : 'request failed' })
@@ -265,12 +267,12 @@ export default function App() {
           {accounts.length > 0 && (
             <select
               className="account-select"
-              value={selectedIban}
-              onChange={e => updateSearch({ iban: e.target.value })}
+              value={selectedAccountId}
+              onChange={e => updateSearch({ accountId: e.target.value })}
             >
               <option value="">{t('common.allAccounts')}</option>
               {accounts.map(a => (
-                <option key={a.iban} value={a.iban}>{a.name}</option>
+                <option key={a.iban} value={String(a.id)}>{a.name}</option>
               ))}
             </select>
           )}
@@ -320,7 +322,7 @@ export default function App() {
                 <p className="hint error">{view.message}</p>
               )}
               {view.phase === 'ready' && (
-                <div className="chart" key={`${iban}/${from}/${to}`}>
+                <div className="chart" key={`${accountId}/${from}/${to}`}>
                   <SankeyChart
                     data={view.data}
                     onNodeClick={node => setActiveNode(node)}
@@ -330,7 +332,7 @@ export default function App() {
                       node={activeNode}
                       from={from}
                       to={to}
-                      iban={iban}
+                      accountId={accountId}
                       onClose={() => setActiveNode(null)}
                     />
                   )}
@@ -339,25 +341,25 @@ export default function App() {
             </>
           )}
 
-          {tab === 'cashflow' && <CashflowPage key={`${username}-${activeOrganization?.id}`} from={from} to={to} iban={iban} />}
-          {tab === 'burnrate' && <BurnRatePage key={`${username}-${activeOrganization?.id}`} from={from} to={to} iban={iban} />}
-          {tab === 'trends' && <TrendsPage key={`${username}-${activeOrganization?.id}`} from={from} to={to} iban={iban} categories={categories} />}
-          {tab === 'breakdown' && <PiePage key={`${username}-${activeOrganization?.id}`} from={from} to={to} iban={iban} />}
-          {tab === 'kontoauszug' && <TransactionsPage key={`${username}-${activeOrganization?.id}`} from={from} to={to} iban={iban} accounts={accounts} categories={categories} columnOrder={txColumnOrder ?? undefined} onColumnOrderChange={order => setTxColumnOrder(order)} onCategoryCreated={() => { fetchCategories().then(cats => setCategories(cats.categories)).catch(() => {}) }} />}
+          {tab === 'cashflow' && <CashflowPage key={`${username}-${activeOrganization?.id}`} from={from} to={to} accountId={accountId} />}
+          {tab === 'burnrate' && <BurnRatePage key={`${username}-${activeOrganization?.id}`} from={from} to={to} accountId={accountId} />}
+          {tab === 'trends' && <TrendsPage key={`${username}-${activeOrganization?.id}`} from={from} to={to} accountId={accountId} categories={categories} />}
+          {tab === 'breakdown' && <PiePage key={`${username}-${activeOrganization?.id}`} from={from} to={to} accountId={accountId} />}
+          {tab === 'kontoauszug' && <TransactionsPage key={`${username}-${activeOrganization?.id}`} from={from} to={to} accountId={accountId} accounts={accounts} categories={categories} columnOrder={txColumnOrder ?? undefined} onColumnOrderChange={order => setTxColumnOrder(order)} onCategoryCreated={() => { fetchCategories().then(cats => setCategories(cats.categories)).catch(() => {}) }} />}
           {tab === 'verknuepfungen' && <LinkedTransactionsPage key={`${username}-${activeOrganization?.id}`} />}
           {tab === 'sammlungen' && <CollectionsPage key={`${username}-${activeOrganization?.id}`} accounts={accounts} categories={categories} />}
-          {tab === 'budgets' && <BudgetsPage key={`${username}-${activeOrganization?.id}`} from={from} to={to} iban={iban} accounts={accounts} categories={categories} />}
-          {tab === 'limits' && <ThresholdsPage key={`${username}-${activeOrganization?.id}`} iban={iban} categories={categories} />}
+          {tab === 'budgets' && <BudgetsPage key={`${username}-${activeOrganization?.id}`} from={from} to={to} accountId={accountId} accounts={accounts} categories={categories} />}
+          {tab === 'limits' && <ThresholdsPage key={`${username}-${activeOrganization?.id}`} accountId={accountId} categories={categories} />}
           {tab === 'konten' && <AccountsPage key={`${username}-${activeOrganization?.id}`} />}
           {tab === 'csv' && <CsvImportPage key={`${username}-${activeOrganization?.id}`} categories={categories} />}
           {tab === 'camt' && <CamtImportPage key={`${username}-${activeOrganization?.id}`} categories={categories} />}
           {tab === 'wiederkehrer' && <RecurringPage key={`${username}-${activeOrganization?.id}`} />}
-          {tab === 'kategorien' && <CategoriesPage key={`${username}-${activeOrganization?.id}`} categories={categories} from={from} to={to} iban={iban} onCategoryDeleted={() => { fetchCategories().then(cats => setCategories(cats.categories)).catch(() => {}) }} onCategoryMoved={() => { fetchCategories().then(cats => setCategories(cats.categories)).catch(() => {}) }} onCategoryRenamed={() => { fetchCategories().then(cats => setCategories(cats.categories)).catch(() => {}) }} onCategoryMerged={() => { fetchCategories().then(cats => setCategories(cats.categories)).catch(() => {}) }} onCategoryCreated={() => { fetchCategories().then(cats => setCategories(cats.categories)).catch(() => {}) }} />}
+          {tab === 'kategorien' && <CategoriesPage key={`${username}-${activeOrganization?.id}`} categories={categories} from={from} to={to} accountId={accountId} onCategoryDeleted={() => { fetchCategories().then(cats => setCategories(cats.categories)).catch(() => {}) }} onCategoryMoved={() => { fetchCategories().then(cats => setCategories(cats.categories)).catch(() => {}) }} onCategoryRenamed={() => { fetchCategories().then(cats => setCategories(cats.categories)).catch(() => {}) }} onCategoryMerged={() => { fetchCategories().then(cats => setCategories(cats.categories)).catch(() => {}) }} onCategoryCreated={() => { fetchCategories().then(cats => setCategories(cats.categories)).catch(() => {}) }} />}
           {tab === 'orgs' && isOrgAdminOrOwner && <OrgsPage key={activeOrganization?.id} />}
           {tab === 'admin' && isSystemAdmin && <AdminPage key={`${username}-${activeOrganization?.id}`} />}
         </main>
       </div>
-      {settingsOpen && <SettingsPanel accounts={accounts} defaultAccountIban={selectedIban} onClose={() => setSettingsOpen(false)} />}
+      {settingsOpen && <SettingsPanel accounts={accounts} defaultAccountIban={accounts.find(a => String(a.id) === selectedAccountId)?.iban ?? ''} onClose={() => setSettingsOpen(false)} />}
     </div>
   )
 }

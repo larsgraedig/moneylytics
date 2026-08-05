@@ -63,14 +63,14 @@ class ThresholdController(
     suspend fun getThresholdStatus(
         @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) from: LocalDate,
         @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) to: LocalDate,
-        @RequestParam(required = false) iban: String? = null,
+        @RequestParam(required = false) accountId: Long? = null,
         @AuthenticationPrincipal principal: UserDetails,
         exchange: ServerWebExchange,
     ): ThresholdStatusResponse {
         val organizationId = resolveOrganizationUseCase.resolveOrganization(principal, exchange)
         return withContext(Dispatchers.IO) {
             getThresholdStatusUseCase.getThresholdStatus(
-                GetThresholdStatusQuery(from = from, to = to, organizationId = organizationId, accountIban = iban),
+                GetThresholdStatusQuery(from = from, to = to, organizationId = organizationId, accountId = accountId),
             )
         }
     }

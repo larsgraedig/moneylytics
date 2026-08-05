@@ -1,6 +1,7 @@
 import { fetchWithUser } from './client'
 
 export interface Account {
+  id: number
   iban: string
   name: string
   lastTransactionDate?: string

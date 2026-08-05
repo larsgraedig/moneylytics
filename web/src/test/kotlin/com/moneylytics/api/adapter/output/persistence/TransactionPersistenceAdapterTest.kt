@@ -187,22 +187,22 @@ class TransactionPersistenceAdapterTest {
     }
 
     @Test
-    fun `should use account-specific query when IBAN provided in findByAccountingDateBetween`() {
+    fun `should use account-specific query when account ID provided in findByAccountingDateBetween`() {
         stubEnrichEmpty(emptyList())
         whenever(
-            jpaRepository.findByOrganizationIdAndAccountIbanAndAccountingDateBetweenAndExcludedFalse(
+            jpaRepository.findByOrganizationIdAndAccountIdAndAccountingDateBetweenAndExcludedFalse(
                 organizationId,
-                "DE00TEST",
+                42L,
                 date,
                 date,
             ),
         ).thenReturn(emptyList())
 
-        adapter.findByAccountingDateBetween(date, date, organizationId, accountIban = "DE00TEST")
+        adapter.findByAccountingDateBetween(date, date, organizationId, accountId = 42L)
 
         verify(
             jpaRepository,
-        ).findByOrganizationIdAndAccountIbanAndAccountingDateBetweenAndExcludedFalse(organizationId, "DE00TEST", date, date)
+        ).findByOrganizationIdAndAccountIdAndAccountingDateBetweenAndExcludedFalse(organizationId, 42L, date, date)
         verify(jpaRepository, never()).findByOrganizationIdAndAccountingDateBetweenAndExcludedFalse(any(), any(), any())
     }
 
@@ -213,13 +213,13 @@ class TransactionPersistenceAdapterTest {
             jpaRepository.findByOrganizationIdAndAccountingDateBetweenAndExcludedFalse(organizationId, date, date),
         ).thenReturn(emptyList())
 
-        adapter.findByAccountingDateBetween(date, date, organizationId, accountIban = null)
+        adapter.findByAccountingDateBetween(date, date, organizationId, accountId = null)
 
         verify(jpaRepository).findByOrganizationIdAndAccountingDateBetweenAndExcludedFalse(organizationId, date, date)
         verify(
             jpaRepository,
             never(),
-        ).findByOrganizationIdAndAccountIbanAndAccountingDateBetweenAndExcludedFalse(any(), any(), any(), any())
+        ).findByOrganizationIdAndAccountIdAndAccountingDateBetweenAndExcludedFalse(any(), any(), any(), any())
     }
 
     @Test

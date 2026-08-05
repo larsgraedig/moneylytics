@@ -11,7 +11,7 @@ data class GetCategoryTotalsQuery(
     val from: LocalDate,
     val to: LocalDate,
     val organizationId: Long,
-    val accountIban: String? = null,
+    val accountId: Long? = null,
     val category: String? = null,
     val categoryId: Long? = null,
 )

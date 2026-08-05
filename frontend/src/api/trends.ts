@@ -31,13 +31,13 @@ export async function fetchTrends(
   to: string,
   series: SeriesConfig[],
   granularity: Granularity,
-  iban?: string,
+  accountId?: number,
 ): Promise<TrendsResponse> {
   const params = new URLSearchParams()
   params.set('from', from)
   params.set('to', to)
   params.set('granularity', granularity)
-  if (iban) params.set('iban', iban)
+  if (accountId != null) params.set('accountId', String(accountId))
   for (const s of series) {
     if (s.categoryId == null) continue
     params.append('series', `id:${s.categoryId}`)

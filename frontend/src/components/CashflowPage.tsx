@@ -100,7 +100,7 @@ const NIVO_THEME = {
   tooltip: { container: { display: 'none' } },
 }
 
-export default function CashflowPage({ from, to, iban }: { from: string; to: string; iban?: string }) {
+export default function CashflowPage({ from, to, accountId }: { from: string; to: string; accountId?: number }) {
   const { t } = useTranslation()
   const location = useLocation()
   const [granularity, setGranularity] = useState<Granularity>('monthly')
@@ -116,13 +116,13 @@ export default function CashflowPage({ from, to, iban }: { from: string; to: str
   const data: CashflowBucket[] | null = rawData ? toDisplayBuckets(rawData, incomeMode, expenseMode) : null
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { void load() }, [from, to, iban])
+  useEffect(() => { void load() }, [from, to, accountId])
 
   async function load() {
     setLoading(true)
     setError(null)
     try {
-      const resp = await fetchCashflow(from, to, granularity, iban)
+      const resp = await fetchCashflow(from, to, granularity, accountId)
       const buckets: RawBucket[] = resp.buckets.map(b => ({
         period: bucketLabel(b.key, granularity),
         periodKey: b.key,
@@ -143,7 +143,7 @@ export default function CashflowPage({ from, to, iban }: { from: string; to: str
     const range = periodRange(periodKey, granularity, from, to)
     setDrilldown({ period, type, from: range.from, to: range.to, transactions: null, loading: true, incomeMode, expenseMode })
     try {
-      const resp = await fetchAllTransactions(range.from, range.to, iban, undefined, undefined, undefined, undefined, type === 'income' ? 'INCOME' : 'EXPENSES')
+      const resp = await fetchAllTransactions(range.from, range.to, accountId, undefined, undefined, undefined, undefined, type === 'income' ? 'INCOME' : 'EXPENSES')
       const txs = resp.transactions
         .sort((a, b) => b.accountingDate.localeCompare(a.accountingDate))
       setDrilldown(prev => prev ? { ...prev, transactions: txs, loading: false } : prev)

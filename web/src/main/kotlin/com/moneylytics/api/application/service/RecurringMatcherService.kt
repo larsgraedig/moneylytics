@@ -2,6 +2,7 @@ package com.moneylytics.api.application.service
 
 import com.moneylytics.api.application.port.input.GetRecurringSyncLogUseCase
 import com.moneylytics.api.application.port.input.SyncRecurringSeriesUseCase
+import com.moneylytics.api.application.port.output.AccountRepository
 import com.moneylytics.api.application.port.output.RecurringSeriesRepository
 import com.moneylytics.api.application.port.output.RecurringSyncLogRepository
 import com.moneylytics.api.application.port.output.TransactionRepository
@@ -18,6 +19,7 @@ class RecurringMatcherService(
     private val recurringSeriesRepository: RecurringSeriesRepository,
     private val transactionRepository: TransactionRepository,
     private val syncLogRepository: RecurringSyncLogRepository,
+    private val accountRepository: AccountRepository,
 ) : SyncRecurringSeriesUseCase,
     GetRecurringSyncLogUseCase {
     private data class SeriesMatchResult(
@@ -80,6 +82,7 @@ class RecurringMatcherService(
                 val parts = series.fingerprint.split("|")
                 if (parts.size != 3) return@forEach
                 val accountIban = parts[0]
+                val accountId = accountRepository.findByIban(accountIban, organizationId)?.id
 
                 val existingTransactionIds = recurringSeriesRepository.findMemberTransactionIds(seriesId)
 
@@ -88,7 +91,7 @@ class RecurringMatcherService(
                         from = series.firstSeen,
                         to = today,
                         organizationId = organizationId,
-                        accountIban = accountIban,
+                        accountId = accountId,
                     )
 
                 val newMatches =

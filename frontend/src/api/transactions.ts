@@ -20,6 +20,7 @@ export interface SankeyResponse {
 }
 
 export interface Account {
+  id: number
   iban: string
   name: string
 }
@@ -115,7 +116,7 @@ export async function fetchTransactionList(
   to: string,
   category?: string,
   subcategory?: string,
-  iban?: string,
+  accountId?: number,
   group?: string,
   categoryId?: number,
 ): Promise<TransactionListResponse> {
@@ -124,7 +125,7 @@ export async function fetchTransactionList(
   if (category) params.set('category', category)
   if (subcategory) params.set('subcategory', subcategory)
   if (group) params.set('group', group)
-  if (iban) params.set('iban', iban)
+  if (accountId != null) params.set('accountId', String(accountId))
   const res = await fetchWithUser(`/transactions/list?${params}`)
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
   return res.json() as Promise<TransactionListResponse>
@@ -133,7 +134,7 @@ export async function fetchTransactionList(
 export async function fetchAllTransactions(
   from: string,
   to: string,
-  iban?: string,
+  accountId?: number,
   category?: string,
   subcategory?: string,
   uncategorized?: boolean,
@@ -144,7 +145,7 @@ export async function fetchAllTransactions(
   categoryId?: number,
 ): Promise<TransactionListResponse> {
   const params = new URLSearchParams({ from, to })
-  if (iban) params.set('iban', iban)
+  if (accountId != null) params.set('accountId', String(accountId))
   if (category) params.set('category', category)
   if (subcategory) params.set('subcategory', subcategory)
   if (group) params.set('group', group)
@@ -309,10 +310,10 @@ export async function fetchCashflow(
   from: string,
   to: string,
   granularity: 'monthly' | 'yearly',
-  iban?: string,
+  accountId?: number,
 ): Promise<CashflowResponseDto> {
   const params = new URLSearchParams({ from, to, granularity: granularity.toUpperCase() })
-  if (iban) params.set('iban', iban)
+  if (accountId != null) params.set('accountId', String(accountId))
   const res = await fetchWithUser(`/transactions/cashflow?${params}`)
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
   return res.json() as Promise<CashflowResponseDto>
@@ -337,10 +338,10 @@ export async function fetchBurnRate(
   from: string,
   to: string,
   rollingWindow: number,
-  iban?: string,
+  accountId?: number,
 ): Promise<BurnRateResponseDto> {
   const params = new URLSearchParams({ from, to, rollingWindow: String(rollingWindow) })
-  if (iban) params.set('iban', iban)
+  if (accountId != null) params.set('accountId', String(accountId))
   const res = await fetchWithUser(`/transactions/burnrate?${params}`)
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
   return res.json() as Promise<BurnRateResponseDto>
@@ -359,12 +360,12 @@ export interface CategoryTotalsResponseDto {
 export async function fetchCategoryTotals(
   from: string,
   to: string,
-  iban?: string,
+  accountId?: number,
   category?: string,
   categoryId?: number,
 ): Promise<CategoryTotalsResponseDto> {
   const params = new URLSearchParams({ from, to })
-  if (iban) params.set('iban', iban)
+  if (accountId != null) params.set('accountId', String(accountId))
   if (categoryId != null) params.set('categoryId', String(categoryId))
   else if (category) params.set('category', category)
   const res = await fetchWithUser(`/transactions/category-totals?${params}`)
@@ -372,9 +373,9 @@ export async function fetchCategoryTotals(
   return res.json() as Promise<CategoryTotalsResponseDto>
 }
 
-export async function fetchSankeyData(from: string, to: string, iban?: string): Promise<SankeyResponse> {
+export async function fetchSankeyData(from: string, to: string, accountId?: number): Promise<SankeyResponse> {
   const params = new URLSearchParams({ from, to })
-  if (iban) params.set('iban', iban)
+  if (accountId != null) params.set('accountId', String(accountId))
   const res = await fetchWithUser(`/transactions/sankey?${params}`)
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
   return res.json() as Promise<SankeyResponse>

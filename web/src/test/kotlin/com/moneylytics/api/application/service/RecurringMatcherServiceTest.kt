@@ -26,7 +26,8 @@ class RecurringMatcherServiceTest {
     private val recurringSeriesRepository: RecurringSeriesRepository = mock()
     private val transactionRepository: TransactionRepository = mock()
     private val syncLogRepository: RecurringSyncLogRepository = mock()
-    private val service = RecurringMatcherService(recurringSeriesRepository, transactionRepository, syncLogRepository)
+    private val accountRepository: com.moneylytics.api.application.port.output.AccountRepository = mock()
+    private val service = RecurringMatcherService(recurringSeriesRepository, transactionRepository, syncLogRepository, accountRepository)
 
     private val organizationId = 1L
     private val baseDate = LocalDate.of(2024, 1, 1)

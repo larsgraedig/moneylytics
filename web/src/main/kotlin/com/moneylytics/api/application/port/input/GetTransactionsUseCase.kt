@@ -14,7 +14,7 @@ data class GetTransactionsQuery(
     val to: LocalDate,
     val organizationId: Long,
     val type: TransactionType = TransactionType.ALL,
-    val accountIban: String? = null,
+    val accountId: Long? = null,
     val category: String? = null,
     val subcategory: String? = null,
     val group: String? = null,
