@@ -72,7 +72,7 @@ function BudgetPanel({ budget, onClose, onRemoveLink, onAssign }: {
 
   return (
     <Sheet open onOpenChange={open => { if (!open) onClose() }}>
-      <SheetContent side="right" className="flex flex-col w-[440px] max-w-full p-0 gap-0">
+      <SheetContent side="right" className="flex flex-col w-full sm:w-[440px] p-0 gap-0">
         <SheetHeader className="border-b px-5 py-4 shrink-0">
           <SheetTitle>{budget.name}</SheetTitle>
         </SheetHeader>

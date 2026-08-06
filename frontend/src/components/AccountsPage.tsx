@@ -87,17 +87,17 @@ export default function AccountsPage() {
   }
 
   return (
-    <div className="flex flex-col gap-4 p-6">
+    <div className="flex flex-col gap-4 p-4 sm:p-6">
       <div className="flex flex-wrap items-end gap-2">
         <Input
-          className="w-56"
+          className="flex-1 min-w-0 sm:w-56 sm:flex-none"
           placeholder={t('accounts.ibanPlaceholder')}
           value={newIban}
           onChange={e => setNewIban(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && handleAdd()}
         />
         <Input
-          className="w-48"
+          className="flex-1 min-w-0 sm:w-48 sm:flex-none"
           placeholder={t('accounts.namePlaceholder')}
           value={newName}
           onChange={e => setNewName(e.target.value)}
@@ -116,6 +116,7 @@ export default function AccountsPage() {
       )}
 
       {accounts.length > 0 && (
+        <div className="overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>
@@ -184,6 +185,7 @@ export default function AccountsPage() {
             })}
           </TableBody>
         </Table>
+        </div>
       )}
     </div>
   )

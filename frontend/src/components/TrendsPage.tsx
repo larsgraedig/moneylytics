@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useIsMobile } from '@/hooks/use-mobile'
 import { ResponsiveLine } from '@nivo/line'
 import type { CategoryNode } from '../api/rawImport'
 import type { SankeyNode } from '../api/transactions'
@@ -242,6 +243,11 @@ type ViewState =
 
 export default function TrendsPage({ from, to, accountId, categories }: { from: string; to: string; accountId?: number; categories: CategoryNode[] }) {
   const { t } = useTranslation()
+  const isMobile = useIsMobile()
+  const chartMargin = useMemo(
+    () => ({ top: 20, right: 24, bottom: 60, left: isMobile ? 56 : 72 }),
+    [isMobile],
+  )
   const [granularity, setGranularity] = useState<Granularity>('MONTHLY')
   const [series, setSeries] = useState<SeriesConfig[]>([{ id: newId(), categoryId: null }])
   const [view, setView] = useState<ViewState>({ phase: 'idle' })
@@ -391,7 +397,7 @@ export default function TrendsPage({ from, to, accountId, categories }: { from: 
           <ResponsiveLine
             data={lineData}
             colors={d => (d as { color: string }).color}
-            margin={{ top: 20, right: 24, bottom: 60, left: 72 }}
+            margin={chartMargin}
             xScale={{ type: 'point' }}
             yScale={{ type: 'linear', min: 0, max: 'auto', stacked: false }}
             axisBottom={{

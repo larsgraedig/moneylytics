@@ -117,6 +117,7 @@ export function CollectionCard({ collection, onUpdate, onDelete, onRemoveTransac
       <div className="px-4 py-2 border-b text-sm">
         <InlineEdit value={collection.note} placeholder={t('collections.commentPlaceholder')} multiline onSave={note => save(collection.name, note)} />
       </div>
+      <div className="overflow-x-auto">
       <Table>
         <TableHeader>
           <TableRow>
@@ -147,6 +148,7 @@ export function CollectionCard({ collection, onUpdate, onDelete, onRemoveTransac
           ))}
         </TableBody>
       </Table>
+      </div>
       <div className="flex px-4 py-3 border-t">
         <Button variant="outline" size="sm" onClick={() => onAddTransaction(collection)}>
           + {t('collections.addTransaction')}

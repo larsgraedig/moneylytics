@@ -131,6 +131,7 @@ export function GroupCard({ group, onMetaChange, onOffsetCommentChange, onRemove
       <div className="px-4 py-2 border-b text-sm">
         <InlineEdit value={group.comment} placeholder={t('linked.commentPlaceholder')} multiline onSave={comment => save(group.name, comment)} />
       </div>
+      <div className="overflow-x-auto">
       <Table>
         <TableHeader>
           <TableRow>
@@ -195,6 +196,7 @@ export function GroupCard({ group, onMetaChange, onOffsetCommentChange, onRemove
           })}
         </TableBody>
       </Table>
+      </div>
     </Card>
   )
 }

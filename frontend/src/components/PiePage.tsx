@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ResponsivePie } from '@nivo/pie'
+import { useIsMobile } from '@/hooks/use-mobile'
 import { fetchCategoryTotals, type CategoryTotalItem } from '../api/transactions'
 import type { SankeyNode } from '../api/transactions'
 import TransactionListPanel from './TransactionListPanel'
@@ -70,6 +71,7 @@ type PieDataState =
 
 export default function PiePage({ from, to, accountId }: { from: string; to: string; accountId?: number }) {
   const { t } = useTranslation()
+  const isMobile = useIsMobile()
   const [pieData, setPieData] = useState<PieDataState>({ phase: 'idle' })
   const [navStack, setNavStack] = useState<NavEntry[]>([])
   const [drilldown, setDrilldown] = useState<{ node: SankeyNode } | null>(null)
@@ -178,7 +180,10 @@ export default function PiePage({ from, to, accountId }: { from: string; to: str
             padAngle={0.5}
             cornerRadius={3}
             colors={{ scheme: 'tableau10' }}
-            margin={{ top: 130, right: 280, bottom: 130, left: 280 }}
+            margin={isMobile
+              ? { top: 80, right: 130, bottom: 80, left: 130 }
+              : { top: 130, right: 280, bottom: 130, left: 280 }
+            }
             enableArcLabels={false}
             enableArcLinkLabels={false}
             layers={['arcs', 'arcLabels', labelsLayer, 'legends']}

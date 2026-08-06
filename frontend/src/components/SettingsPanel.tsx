@@ -34,7 +34,7 @@ export default function SettingsPanel({ accounts, defaultAccountIban: initialIba
 
   return (
     <Sheet open onOpenChange={open => { if (!open) onClose() }}>
-      <SheetContent side="right" className="w-72 p-0">
+      <SheetContent side="right" className="w-full sm:w-72 p-0">
         <SheetHeader className="border-b px-5 py-4">
           <SheetTitle>{t('settings.title')}</SheetTitle>
         </SheetHeader>

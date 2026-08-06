@@ -5,6 +5,7 @@ import {
   Workflow, TrendingUp, TrendingDown, PieChart, BarChart2,
   List, Landmark, Wallet, Gauge,
   FileSpreadsheet, FileCode, Link2, FolderOpen, Repeat, Wrench, Building2, Tags,
+  LogOut, Settings,
 } from 'lucide-react'
 import { getPresetRange, detectPreset, PRESETS, type Preset } from './utils/datePresets'
 import SankeyChart from './components/SankeyChart'
@@ -272,18 +273,22 @@ export default function App() {
               activeOrganization={activeOrganization}
               onSwitch={activateOrganization}
             />
-            <Button variant="ghost" size="sm" onClick={() => setSettingsOpen(true)} className="text-sm">
-              {username}
+            <Button variant="ghost" size="sm" onClick={() => setSettingsOpen(true)} className="text-sm gap-1.5">
+              <Settings className="h-4 w-4 sm:hidden" />
+              <span className="hidden sm:inline">{username}</span>
             </Button>
-            <Button variant="ghost" size="sm" onClick={logout}>{t('common.signOut')}</Button>
+            <Button variant="ghost" size="sm" onClick={logout} className="gap-1.5">
+              <LogOut className="h-4 w-4 sm:hidden" />
+              <span className="hidden sm:inline">{t('common.signOut')}</span>
+            </Button>
           </div>
         </header>
 
         {/* Filter subbar */}
-        <div className="flex shrink-0 flex-wrap items-center gap-2 border-b px-4 py-2">
+        <div className="flex shrink-0 flex-wrap items-center gap-2 border-b px-3 py-2 sm:px-4">
           {accounts.length > 0 && (
             <select
-              className="rounded-lg border border-input bg-input/30 px-3 py-1.5 text-sm outline-none focus:border-ring"
+              className="flex-1 min-w-0 sm:flex-none rounded-lg border border-input bg-input/30 px-3 py-1.5 text-sm outline-none focus:border-ring"
               value={selectedAccountId}
               onChange={e => updateSearch({ accountId: e.target.value })}
             >
@@ -295,7 +300,7 @@ export default function App() {
           )}
 
           <select
-            className="rounded-lg border border-input bg-input/30 px-3 py-1.5 text-sm outline-none focus:border-ring"
+            className="flex-1 min-w-0 sm:flex-none rounded-lg border border-input bg-input/30 px-3 py-1.5 text-sm outline-none focus:border-ring"
             value={activePreset}
             onChange={e => {
               const p = e.target.value as Preset
@@ -310,12 +315,12 @@ export default function App() {
             ))}
           </select>
 
-          <div className="flex items-center gap-1.5 rounded-lg border border-input bg-input/30 px-3 py-1.5">
+          <div className="flex w-full sm:w-auto items-center gap-1.5 rounded-lg border border-input bg-input/30 px-3 py-1.5">
             <span className="text-xs text-muted-foreground">{t('common.from')}</span>
-            <input type="date" value={from} max={to} onChange={e => updateSearch({ from: e.target.value })} className="bg-transparent text-sm outline-none" />
+            <input type="date" value={from} max={to} onChange={e => updateSearch({ from: e.target.value })} className="flex-1 sm:flex-none bg-transparent text-sm outline-none min-w-0" />
             <span className="text-muted-foreground mx-1">–</span>
             <span className="text-xs text-muted-foreground">{t('common.to')}</span>
-            <input type="date" value={to} min={from} max={today} onChange={e => updateSearch({ to: e.target.value })} className="bg-transparent text-sm outline-none" />
+            <input type="date" value={to} min={from} max={today} onChange={e => updateSearch({ to: e.target.value })} className="flex-1 sm:flex-none bg-transparent text-sm outline-none min-w-0" />
           </div>
         </div>
 

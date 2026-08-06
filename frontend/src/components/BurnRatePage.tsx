@@ -4,6 +4,7 @@ import { ResponsiveBar } from '@nivo/bar'
 import { ResponsiveLine } from '@nivo/line'
 import { DatePicker } from '@/components/ui/date-picker'
 import { fetchBurnRate, type BurnRateResponseDto } from '../api/transactions'
+import { useIsMobile } from '@/hooks/use-mobile'
 
 type RollingWindow = 7 | 14 | 30
 
@@ -209,6 +210,8 @@ function makeCumulativeProjectionLayer(
 
 export default function BurnRatePage({ from, to, accountId }: { from: string; to: string; accountId?: number }) {
   const { t } = useTranslation()
+  const isMobile = useIsMobile()
+  const chartMarginLeft = isMobile ? 56 : 84
 
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -492,7 +495,7 @@ export default function BurnRatePage({ from, to, accountId }: { from: string; to
                   colors={['rgba(248,113,113,0.65)']}
                   borderRadius={2}
                   padding={0.2}
-                  margin={{ top: 12, right: 24, bottom: bottomMargin, left: 84 }}
+                  margin={{ top: 12, right: 24, bottom: bottomMargin, left: chartMarginLeft }}
                   axisBottom={{ tickSize: 0, tickPadding: 8, tickRotation, tickValues: ticks }}
                   axisLeft={{ tickSize: 0, tickPadding: 8, tickValues: 4, format: v => EUR0.format(v as number) }}
                   enableLabel={false}
@@ -557,7 +560,7 @@ export default function BurnRatePage({ from, to, accountId }: { from: string; to
               <div className="br-chart">
                 <ResponsiveLine
                   data={lineData}
-                  margin={{ top: 12, right: 24, bottom: bottomMargin, left: 84 }}
+                  margin={{ top: 12, right: 24, bottom: bottomMargin, left: chartMarginLeft }}
                   xScale={{ type: 'point' }}
                   yScale={{ type: 'linear', min: lineYMin < 0 ? lineYMin * 1.05 : 0, max: lineYMax > 0 ? lineYMax * 1.05 : 'auto' }}
                   curve="monotoneX"

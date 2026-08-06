@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { ResponsiveBar } from '@nivo/bar'
+import { useIsMobile } from '@/hooks/use-mobile'
 import { fetchAllTransactions, fetchCashflow, fetchLinkedGroup, type LinkedGroupItem, type TransactionItem } from '../api/transactions'
 import { fetchCollection, type CollectionDto } from '../api/collections'
 import { GroupCard } from './GroupCard'
@@ -103,6 +104,7 @@ const NIVO_THEME = {
 
 export default function CashflowPage({ from, to, accountId }: { from: string; to: string; accountId?: number }) {
   const { t } = useTranslation()
+  const isMobile = useIsMobile()
   const location = useLocation()
   const [granularity, setGranularity] = useState<Granularity>('monthly')
   const [incomeMode, setIncomeMode] = useState<IncomeMode>('all')
@@ -241,7 +243,7 @@ export default function CashflowPage({ from, to, accountId }: { from: string; to
             padding={0.25}
             innerPadding={3}
             valueScale={{ type: 'linear', min: yMin, max: yMax }}
-            margin={{ top: 24, right: 24, bottom: data.length > 20 ? 72 : 48, left: 88 }}
+            margin={{ top: 24, right: 24, bottom: data.length > 20 ? 72 : 48, left: isMobile ? 60 : 88 }}
             axisBottom={{
               tickSize: 0,
               tickPadding: 10,
