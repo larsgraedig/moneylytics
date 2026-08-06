@@ -2,9 +2,7 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ResponsiveBar } from '@nivo/bar'
 import { ResponsiveLine } from '@nivo/line'
-import DatePicker from 'react-datepicker'
-import { de } from 'date-fns/locale'
-import 'react-datepicker/dist/react-datepicker.css'
+import { DatePicker } from '@/components/ui/date-picker'
 import { fetchBurnRate, type BurnRateResponseDto } from '../api/transactions'
 
 type RollingWindow = 7 | 14 | 30
@@ -360,14 +358,17 @@ export default function BurnRatePage({ from, to, accountId }: { from: string; to
   const calcDaysRemaining = calcRunwayDays !== null ? Math.ceil(calcRunwayDays - elapsedDays) : null
   const isCalcExhausted = calcDaysRemaining !== null && calcDaysRemaining < 0
 
+  const toggleBtn = (active: boolean) =>
+    `rounded-md border px-3 py-1.5 text-sm transition-colors ${active ? 'bg-primary text-primary-foreground border-transparent' : 'border-input bg-input/30 hover:bg-input/50'}`
+
   return (
-    <div className="cf-page">
-      <div className="cf-controls">
-        <div className="cf-gran-toggle">
+    <div className="flex flex-col h-full">
+      <div className="flex flex-wrap items-center gap-3 border-b px-4 py-2 shrink-0">
+        <div className="flex gap-1">
           {([7, 14, 30] as RollingWindow[]).map(w => (
             <button
               key={w}
-              className={`cf-gran-btn${rollingWindow === w ? ' active' : ''}`}
+              className={toggleBtn(rollingWindow === w)}
               onClick={() => { setRollingWindow(w); if (burnRateData !== null) load(w) }}
             >
               {t('burnrate.windowBtn', { days: w })}
@@ -375,52 +376,46 @@ export default function BurnRatePage({ from, to, accountId }: { from: string; to
           ))}
         </div>
         {burnRateData !== null && (
-          <div className={`br-sim-field${simulatedToday ? ' br-sim-field--active' : ''}`}>
-            <span className="range-label">{t('burnrate.simDate')}</span>
+          <div className={`flex items-center gap-2 ${simulatedToday ? 'text-orange-500' : ''}`}>
+            <span className="text-xs text-muted-foreground">{t('burnrate.simDate')}</span>
             <DatePicker
-              selected={simulatedToday ? new Date(simulatedToday + 'T12:00:00') : null}
+              value={simulatedToday ? new Date(simulatedToday + 'T12:00:00') : null}
               onChange={(date: Date | null) => setSimulatedToday(date ? date.toISOString().slice(0, 10) : '')}
-              minDate={new Date(from + 'T12:00:00')}
-              maxDate={new Date((to < realTodayIso ? to : realTodayIso) + 'T12:00:00')}
-              dateFormat="dd.MM.yyyy"
-              locale={de}
-              placeholderText="TT.MM.JJJJ"
-              className={`br-sim-input${simulatedToday ? ' br-sim-input--active' : ''}`}
-              showMonthDropdown
-              showYearDropdown
-              dropdownMode="select"
-              isClearable={false}
+              min={new Date(from + 'T12:00:00')}
+              max={new Date((to < realTodayIso ? to : realTodayIso) + 'T12:00:00')}
+              placeholder="TT.MM.JJJJ"
+              className={simulatedToday ? 'border-orange-500/50 text-orange-500' : ''}
             />
             {simulatedToday && (
-              <button className="br-sim-clear" onClick={() => setSimulatedToday('')} title={t('burnrate.simClear')}>✕</button>
+              <button className="flex h-6 w-6 items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted" onClick={() => setSimulatedToday('')} title={t('burnrate.simClear')}>✕</button>
             )}
           </div>
         )}
         {points && (
-          <div className="cf-summary">
-            <span className="cf-summary-item cf-summary-expenses">
-              <span className="cf-summary-label">{t('burnrate.totalLabel')}</span>
-              <span className="cf-summary-val">{EUR0.format(totalExpenses)}</span>
+          <div className="flex flex-wrap items-center gap-3 text-sm ml-auto">
+            <span className="flex flex-col gap-0.5">
+              <span className="text-xs text-muted-foreground">{t('burnrate.totalLabel')}</span>
+              <span className="font-medium tabular-nums text-destructive">{EUR0.format(totalExpenses)}</span>
             </span>
-            <span className="cf-summary-sep">·</span>
-            <span className="cf-summary-item">
-              <span className="cf-summary-label">{t('burnrate.perDay')}</span>
-              <span className="cf-summary-val">{EUR.format(avgPerDay)}</span>
+            <span className="text-muted-foreground">·</span>
+            <span className="flex flex-col gap-0.5">
+              <span className="text-xs text-muted-foreground">{t('burnrate.perDay')}</span>
+              <span className="font-medium tabular-nums">{EUR.format(avgPerDay)}</span>
             </span>
-            <span className="cf-summary-sep">·</span>
-            <span className="cf-summary-item">
-              <span className="cf-summary-label">{t('burnrate.perMonth')}</span>
-              <span className="cf-summary-val">{EUR0.format(avgPerDay * 30)}</span>
+            <span className="text-muted-foreground">·</span>
+            <span className="flex flex-col gap-0.5">
+              <span className="text-xs text-muted-foreground">{t('burnrate.perMonth')}</span>
+              <span className="font-medium tabular-nums">{EUR0.format(avgPerDay * 30)}</span>
             </span>
           </div>
         )}
       </div>
 
-      <div className="cf-body br-body">
-        {error && <p className="hint error">{error}</p>}
-        {loading && <p className="hint loading">{t('common.fetching')}</p>}
+      <div className="flex-1 overflow-auto p-4">
+        {error && <p className="text-sm text-destructive">{error}</p>}
+        {loading && <p className="text-sm text-muted-foreground">{t('common.fetching')}</p>}
         {points !== null && !hasData && (
-          <p className="hint">{t('burnrate.noData')}</p>
+          <p className="text-sm text-muted-foreground">{t('burnrate.noData')}</p>
         )}
 
         {points !== null && (

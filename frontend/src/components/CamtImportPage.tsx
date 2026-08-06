@@ -178,9 +178,9 @@ export default function CamtImportPage({ categories }: { categories: CategoryNod
     if (state.ignoredCount > 0) parts.push(t('camtImport.success.ignored', { count: state.ignoredCount }))
     if (state.skippedCount > 0) parts.push(t('camtImport.success.skipped', { count: state.skippedCount }))
     return (
-      <div className="ri-center">
-        <p className="ri-success">{parts.join(' · ')}</p>
-        <button className="load-btn" onClick={() => setState({ phase: 'idle' })}>{t('camtImport.success.importMore')}</button>
+      <div className="flex flex-col h-full items-center justify-center gap-4 text-center p-8">
+        <p className="text-green-500 font-medium text-lg">{parts.join(' · ')}</p>
+        <button className="rounded-lg border border-input bg-input/30 px-4 py-2 text-sm hover:bg-input/50" onClick={() => setState({ phase: 'idle' })}>{t('camtImport.success.importMore')}</button>
       </div>
     )
   }
@@ -189,9 +189,9 @@ export default function CamtImportPage({ categories }: { categories: CategoryNod
 
   if (state.phase === 'idle' || state.phase === 'error') {
     return (
-      <div className="ri-page">
+      <div className="flex flex-col h-full items-center justify-center p-8">
         <div
-          className={`ri-dropzone${isDragging ? ' dragging' : ''}`}
+          className={`flex flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed p-16 text-center cursor-pointer transition-colors w-full max-w-lg ${isDragging ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50'}`}
           onDragOver={e => { e.preventDefault(); setIsDragging(true) }}
           onDragLeave={() => setIsDragging(false)}
           onDrop={handleDrop}
@@ -209,11 +209,11 @@ export default function CamtImportPage({ categories }: { categories: CategoryNod
               e.target.value = ''
             }}
           />
-          <span className="ri-dropzone-icon">↑</span>
-          <span className="ri-dropzone-label">{t('camtImport.dropzone.label')}</span>
-          <span className="ri-dropzone-hint">{t('camtImport.dropzone.hint')}</span>
+          <span className="text-4xl">↑</span>
+          <span className="text-base font-medium">{t('camtImport.dropzone.label')}</span>
+          <span className="text-sm text-muted-foreground">{t('camtImport.dropzone.hint')}</span>
           {state.phase === 'error' && (
-            <span className="ri-dropzone-error">{state.message}</span>
+            <span className="text-sm text-destructive">{state.message}</span>
           )}
         </div>
       </div>

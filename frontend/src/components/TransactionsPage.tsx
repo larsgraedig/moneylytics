@@ -26,6 +26,7 @@ import { CreateVirtualTransactionModal } from './CreateVirtualTransactionModal'
 import { GroupCard } from './GroupCard'
 import { SplitTransactionModal } from './SplitTransactionModal'
 import { MergeTransactionModal } from './MergeTransactionModal'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import {
   assignTransaction as assignToBudget,
   fetchBudgets,
@@ -680,40 +681,29 @@ const groupColorMap = useMemo(() => {
     deepLinkSearch.set('group', String(groupModal.groupId))
 
     return (
-      <div className="txnv-lm-backdrop" onClick={close}>
-        <div className="txnv-lm-modal txnv-lm-modal--group" onClick={e => e.stopPropagation()}>
-          <div className="txnv-lm-header">
-            <Link
-              className="txnv-lm-title"
-              to={{ pathname: '/verknuepfungen', search: deepLinkSearch.toString() }}
-              onClick={close}
-            >
-              {t('linked.group')} #{groupModal.groupId} ↗
-            </Link>
-            <button className="txnv-lm-close" onClick={close}>×</button>
-          </div>
-          <div className="txnv-lm-group-body">
-            {!group
-              ? <span className="txnv-lm-loading">{t('common.loading')}</span>
-              : (
-                <GroupCard
-                  group={group}
-                  onMetaChange={handleMetaChange}
-                  onOffsetCommentChange={handleOffsetCommentChange}
-                  onRemoveTransaction={txId => {
-                    const remaining = group.transactions.filter(tx => tx.id !== txId)
-                    if (remaining.length >= 2) {
-                      setGroupModal(prev => prev ? { ...prev, group: { ...group, transactions: remaining } } : null)
-                    } else {
-                      setGroupModal(null)
-                    }
-                  }}
-                />
-              )
-            }
-          </div>
-        </div>
-      </div>
+      <Dialog open onOpenChange={open => { if (!open) close() }}>
+        <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              <Link to={{ pathname: '/verknuepfungen', search: deepLinkSearch.toString() }} onClick={close} className="hover:underline">
+                {t('linked.group')} #{groupModal.groupId} ↗
+              </Link>
+            </DialogTitle>
+          </DialogHeader>
+          {!group ? <p className="text-sm text-muted-foreground">{t('common.loading')}</p> : (
+            <GroupCard
+              group={group}
+              onMetaChange={handleMetaChange}
+              onOffsetCommentChange={handleOffsetCommentChange}
+              onRemoveTransaction={txId => {
+                const remaining = group.transactions.filter(tx => tx.id !== txId)
+                if (remaining.length >= 2) setGroupModal(prev => prev ? { ...prev, group: { ...group, transactions: remaining } } : null)
+                else setGroupModal(null)
+              }}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     )
   }
 
@@ -738,14 +728,13 @@ const groupColorMap = useMemo(() => {
     const cancel = () => { setLinkingState(null); setLinkError(null) }
 
     return (
-      <div className="txnv-lm-backdrop" onClick={cancel}>
-        <div className="txnv-lm-modal" onClick={e => e.stopPropagation()}>
-          <div className="txnv-lm-header">
-            <span className="txnv-lm-title">{t('transactions.linkModal.title')}</span>
-            <button className="txnv-lm-close" onClick={cancel}>×</button>
-          </div>
+      <Dialog open onOpenChange={open => { if (!open) cancel() }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t('transactions.linkModal.title')}</DialogTitle>
+          </DialogHeader>
 
-          <div className="txnv-lm-body">
+          <div className="flex flex-col gap-4">
             {txCard(sourceRow.original)}
             <div className="txnv-lm-divider">⇅</div>
             {txCard(targetRow.original)}
@@ -858,8 +847,8 @@ const groupColorMap = useMemo(() => {
               </>
             )}
           </div>
-        </div>
-      </div>
+        </DialogContent>
+      </Dialog>
     )
   }
 
@@ -1275,11 +1264,14 @@ const groupColorMap = useMemo(() => {
     }
   }
 
+  const filterBtn = (active: boolean) =>
+    `rounded-md border px-3 py-1.5 text-sm transition-colors ${active ? 'bg-primary text-primary-foreground border-transparent' : 'border-input bg-input/30 hover:bg-input/50'}`
+
   return (
-    <div className="txnv-page">
-      <div className="tr-controls">
+    <div className="flex flex-col h-full">
+      <div className="flex flex-wrap items-center gap-2 border-b px-4 py-2 shrink-0">
         <button
-          className="load-btn"
+          className="rounded-lg border border-input bg-input/30 px-3 py-1.5 text-sm hover:bg-input/50 transition-colors"
           onClick={() => setCreateVirtualOpen(true)}
         >
           + {t('virtualTransaction.button')}
@@ -1295,11 +1287,11 @@ const groupColorMap = useMemo(() => {
             tree={categories}
             allowCreate={false}
             placeholder={t('transactions.allCategories')}
-            className="account-select"
+            className="w-48"
           />
         )}
         <button
-          className={`load-btn${filterUncategorized ? ' load-btn--active' : ''}`}
+          className={filterBtn(filterUncategorized)}
           onClick={() => {
             const next = !filterUncategorized
             setFilterUncategorized(next)
@@ -1310,11 +1302,11 @@ const groupColorMap = useMemo(() => {
         >
           {t('transactions.filterUncategorized')}
         </button>
-        <div className="txnv-type-filter">
+        <div className="flex gap-1">
           {(['all', 'income', 'expenses'] as const).map(type => (
             <button
               key={type}
-              className={`txnv-type-btn${filterType === type ? ' txnv-type-btn--active' : ''}`}
+              className={filterBtn(filterType === type)}
               onClick={() => {
                 setFilterType(type)
                 doLoad(filterCategoryId, filterUncategorized || undefined, toApiType(type))
@@ -1325,14 +1317,13 @@ const groupColorMap = useMemo(() => {
           ))}
         </div>
         {page.phase === 'ready' && (
-          <span className="txnv-count" style={{ marginLeft: 'auto' }}>
+          <span className="ml-auto text-sm text-muted-foreground">
             {t('transactions.count', { count: filteredRows.length })} · {EUR.format(filteredSum)}
           </span>
         )}
       </div>
 
-
-      <div className="txnv-body">
+      <div className="flex-1 overflow-auto">
         {page.phase === 'loading' && (
           <p className="hint loading">{t('common.fetching')}</p>
         )}
@@ -1513,20 +1504,18 @@ const groupColorMap = useMemo(() => {
       )}
 
       {selectedCount > 0 && (
-        <div className="txnv-bulk-bar">
-          <span className="txnv-bulk-count">{t('transactions.bulkSelected', { count: selectedCount })}</span>
-          <div className="txnv-bulk-inputs">
-            <CategoryPathInput
-              className="ri-cat-input txnv-bulk-cat"
-              value={bulkCategoryId}
-              onChange={id => setBulkCategoryId(id)}
-              tree={categories}
-              onCategoryCreated={onCategoryCreated}
-              placeholder={t('common.category')}
-            />
-          </div>
+        <div className="fixed bottom-0 left-0 right-0 flex items-center gap-2 border-t bg-popover px-4 py-3 shadow-lg z-40">
+          <span className="text-sm font-medium">{t('transactions.bulkSelected', { count: selectedCount })}</span>
+          <CategoryPathInput
+            className="ri-cat-input"
+            value={bulkCategoryId}
+            onChange={id => setBulkCategoryId(id)}
+            tree={categories}
+            onCategoryCreated={onCategoryCreated}
+            placeholder={t('common.category')}
+          />
           <button
-            className="txnv-bulk-apply-btn"
+            className="rounded-lg border border-input bg-primary text-primary-foreground px-3 py-1.5 text-sm disabled:opacity-50"
             onClick={applyBulk}
             disabled={bulkApplying}
           >
@@ -1534,20 +1523,14 @@ const groupColorMap = useMemo(() => {
           </button>
           {selectedCount >= 2 && (
             <button
-              className="txnv-bulk-apply-btn"
-              style={{ background: '#10b981' }}
-              onClick={() => {
-                const selected = rows.filter(r => r.selected).map(r => r.original)
-                setMergeModalTxs(selected)
-              }}
+              className="rounded-lg bg-green-600 text-white px-3 py-1.5 text-sm disabled:opacity-50"
+              onClick={() => { const selected = rows.filter(r => r.selected).map(r => r.original); setMergeModalTxs(selected) }}
               disabled={bulkApplying}
             >
               {t('transactions.merge.button')}
             </button>
           )}
-          <button className="txnv-bulk-cancel-btn" onClick={clearSelection} disabled={bulkApplying}>
-            ✕
-          </button>
+          <button className="ml-auto rounded-lg border px-3 py-1.5 text-sm" onClick={clearSelection} disabled={bulkApplying}>✕</button>
         </div>
       )}
     </div>

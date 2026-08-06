@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { RefreshCw, X, RotateCcw, Plus, Trash2, ClipboardList, Play } from 'lucide-react'
 import RecurringTimeline from './RecurringTimeline'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
 import {
   fetchRecurringSeries,
   refreshRecurringSeries,
@@ -269,79 +271,48 @@ export default function RecurringPage() {
   const allSeries = (state.phase === 'ready' || state.phase === 'pending') ? state.series : []
   const displaySeries = filterDirection ? allSeries.filter(s => s.direction === filterDirection) : allSeries
 
+  const filterBtn = (active: boolean) =>
+    `rounded-md border px-3 py-1.5 text-sm transition-colors ${active ? 'bg-primary text-primary-foreground border-transparent' : 'border-input bg-input/30 hover:bg-input/50'}`
+
   return (
-    <div className="rcr-page">
-      <div className="rcr-toolbar">
-        <div className="rcr-direction-filter">
-          <button
-            className={`rcr-filter-btn${!filterDirection ? ' rcr-filter-btn--active' : ''}`}
-            onClick={() => setFilterDirection(undefined)}
-          >
-            {t('recurring.filterAll')}
-          </button>
-          <button
-            className={`rcr-filter-btn${filterDirection === 'EXPENSE' ? ' rcr-filter-btn--active' : ''}`}
-            onClick={() => setFilterDirection('EXPENSE')}
-          >
-            {t('recurring.filterExpenses')}
-          </button>
-          <button
-            className={`rcr-filter-btn${filterDirection === 'INCOME' ? ' rcr-filter-btn--active' : ''}`}
-            onClick={() => setFilterDirection('INCOME')}
-          >
-            {t('recurring.filterIncome')}
-          </button>
+    <div className="flex flex-col h-full">
+      <div className="flex flex-wrap items-center gap-2 border-b px-4 py-2 shrink-0">
+        <div className="flex gap-1">
+          <button className={filterBtn(!filterDirection)} onClick={() => setFilterDirection(undefined)}>{t('recurring.filterAll')}</button>
+          <button className={filterBtn(filterDirection === 'EXPENSE')} onClick={() => setFilterDirection('EXPENSE')}>{t('recurring.filterExpenses')}</button>
+          <button className={filterBtn(filterDirection === 'INCOME')} onClick={() => setFilterDirection('INCOME')}>{t('recurring.filterIncome')}</button>
         </div>
-        <div className="rcr-view-toggle">
-          <button
-            className={`rcr-filter-btn${view === 'table' ? ' rcr-filter-btn--active' : ''}`}
-            onClick={() => setView('table')}
-          >
-            {t('recurring.table')}
-          </button>
-          <button
-            className={`rcr-filter-btn${view === 'timeline' ? ' rcr-filter-btn--active' : ''}`}
-            onClick={() => setView('timeline')}
-          >
-            {t('recurring.timeline')}
-          </button>
+        <div className="flex gap-1">
+          <button className={filterBtn(view === 'table')} onClick={() => setView('table')}>{t('recurring.table')}</button>
+          <button className={filterBtn(view === 'timeline')} onClick={() => setView('timeline')}>{t('recurring.timeline')}</button>
         </div>
-        <div className="rcr-toolbar-actions">
+        <div className="flex items-center gap-1.5 ml-auto">
           {isPending ? (
             <>
-              <button className="rcr-cancel-btn" onClick={cancelPending} disabled={saving}>
-                {t('recurring.cancelPending')}
-              </button>
-              <button className="rcr-save-btn" onClick={save} disabled={saving}>
-                {saving ? t('recurring.saving') : t('recurring.save')}
-              </button>
+              <Button variant="ghost" size="sm" onClick={cancelPending} disabled={saving}>{t('recurring.cancelPending')}</Button>
+              <Button size="sm" onClick={save} disabled={saving}>{saving ? t('recurring.saving') : t('recurring.save')}</Button>
             </>
           ) : (
             <>
-              <button className="rcr-log-btn" onClick={openSyncLog} title={t('recurring.syncLog.button')}>
-                <ClipboardList size={14} />
-              </button>
-              <button className="rcr-add-btn" onClick={openAddModal}>
-                <Plus size={14} />
-                {t('recurring.addManual')}
-              </button>
+              <Button variant="ghost" size="icon-sm" onClick={openSyncLog} title={t('recurring.syncLog.button')}><ClipboardList size={14} /></Button>
+              <Button variant="outline" size="sm" onClick={openAddModal}><Plus size={14} className="mr-1" />{t('recurring.addManual')}</Button>
               {canTriggerSync && (
-                <button className="rcr-sync-btn" onClick={handleSync} disabled={syncing} title={syncing ? t('recurring.syncing') : t('recurring.sync')}>
-                  <Play size={14} />
+                <Button variant="outline" size="sm" onClick={handleSync} disabled={syncing}>
+                  <Play size={14} className="mr-1" />
                   {syncing ? t('recurring.syncing') : syncSuccess ? t('recurring.syncSuccess') : t('recurring.sync')}
-                </button>
+                </Button>
               )}
-              <button className="rcr-refresh-btn" onClick={refresh} disabled={refreshing}>
-                <RefreshCw size={14} className={refreshing ? 'rcr-spin' : ''} />
+              <Button variant="ghost" size="sm" onClick={refresh} disabled={refreshing}>
+                <RefreshCw size={14} className={`mr-1 ${refreshing ? 'animate-spin' : ''}`} />
                 {refreshing ? t('recurring.refreshing') : t('recurring.refresh')}
-              </button>
+              </Button>
             </>
           )}
         </div>
       </div>
 
       {isPending && (
-        <div className="rcr-pending-banner">
+        <div className="flex items-center gap-2 border-b bg-orange-500/10 px-4 py-2 text-sm text-orange-600 shrink-0">
           {t('recurring.pendingBanner', { count: allSeries.length })}
         </div>
       )}
@@ -353,11 +324,11 @@ export default function RecurringPage() {
       )}
 
       {view === 'timeline' && (state.phase === 'ready' || state.phase === 'pending') && (
-        <div className="rcr-tl-range-selector">
+        <div className="flex gap-1 border-b px-4 py-2 shrink-0">
           {([30, 60, 90, 180] as const).map(d => (
             <button
               key={d}
-              className={`rcr-filter-btn${timelineDays === d ? ' rcr-filter-btn--active' : ''}`}
+              className={filterBtn(timelineDays === d)}
               onClick={() => setTimelineDays(d)}
             >
               {t(`recurring.days${d}` as Parameters<typeof t>[0])}
@@ -532,15 +503,12 @@ export default function RecurringPage() {
       )}
 
       {showAddModal && (
-        <div className="rcr-modal-overlay" onClick={() => setShowAddModal(false)}>
-          <div className="rcr-modal" onClick={e => e.stopPropagation()}>
-            <div className="rcr-modal-header">
-              <span className="rcr-modal-title">{t('recurring.modal.title')}</span>
-              <button className="rcr-modal-close" onClick={() => setShowAddModal(false)}>
-                <X size={16} />
-              </button>
-            </div>
-            <form className="rcr-modal-body" onSubmit={handleAddSubmit}>
+        <Dialog open onOpenChange={open => { if (!open) setShowAddModal(false) }}>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle>{t('recurring.modal.title')}</DialogTitle>
+            </DialogHeader>
+            <form onSubmit={handleAddSubmit}>
               <div className="rcr-form-row">
                 <label className="rcr-form-label">{t('recurring.modal.label')}</label>
                 <input
@@ -639,29 +607,22 @@ export default function RecurringPage() {
                   </select>
                 </div>
               </div>
-              <div className="rcr-modal-footer">
-                <button type="button" className="rcr-cancel-btn" onClick={() => setShowAddModal(false)}>
-                  {t('recurring.modal.cancel')}
-                </button>
-                <button type="submit" className="rcr-save-btn" disabled={addSubmitting}>
-                  {t('recurring.modal.submit')}
-                </button>
+              <div className="flex justify-end gap-2 pt-2">
+                <Button type="button" variant="ghost" onClick={() => setShowAddModal(false)}>{t('recurring.modal.cancel')}</Button>
+                <Button type="submit" disabled={addSubmitting}>{t('recurring.modal.submit')}</Button>
               </div>
             </form>
-          </div>
-        </div>
+          </DialogContent>
+        </Dialog>
       )}
 
       {showSyncLog && (
-        <div className="rcr-modal-overlay" onClick={() => setShowSyncLog(false)}>
-          <div className="rcr-modal rcr-modal--wide" onClick={e => e.stopPropagation()}>
-            <div className="rcr-modal-header">
-              <span className="rcr-modal-title">{t('recurring.syncLog.title')}</span>
-              <button className="rcr-modal-close" onClick={() => setShowSyncLog(false)}>
-                <X size={16} />
-              </button>
-            </div>
-            <div className="rcr-modal-body rcr-synclog-body">
+        <Dialog open onOpenChange={open => { if (!open) setShowSyncLog(false) }}>
+          <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col p-0 gap-0">
+            <DialogHeader className="px-5 py-4 border-b shrink-0">
+              <DialogTitle>{t('recurring.syncLog.title')}</DialogTitle>
+            </DialogHeader>
+            <div className="flex-1 overflow-auto px-5 py-4 rcr-synclog-body">
               {syncLogLoading && <p className="hint loading">{t('common.fetching')}</p>}
               {!syncLogLoading && syncLogs.length === 0 && (
                 <p className="hint">{t('recurring.syncLog.empty')}</p>
@@ -719,8 +680,8 @@ export default function RecurringPage() {
                 )
               })}
             </div>
-          </div>
-        </div>
+          </DialogContent>
+        </Dialog>
       )}
     </div>
   )

@@ -5,12 +5,15 @@ import './index.css'
 import './i18n'
 import App from './App'
 import { AuthProvider } from './context/AuthContext'
+import { TooltipProvider } from '@/components/ui/tooltip'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <BrowserRouter>
       <AuthProvider>
-        <App />
+        <TooltipProvider>
+          <App />
+        </TooltipProvider>
       </AuthProvider>
     </BrowserRouter>
   </StrictMode>,

@@ -3,6 +3,10 @@ import { useTranslation } from 'react-i18next'
 import type { CategoryNode } from '../api/rawImport'
 import { splitTransaction, type SplitItemRequest, type TransactionItem } from '../api/transactions'
 import { CategoryPathInput } from './CategoryPathInput'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 
 interface SplitEntry {
   amount: string
@@ -89,87 +93,71 @@ export function SplitTransactionModal({
     }
   }
 
-  const remainingColor = remaining < -0.001 ? '#f87171' : '#34d399'
-
   return (
-    <div
-      style={{
-        position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000,
-      }}
-      onClick={e => { if (e.target === e.currentTarget) onClose() }}
-    >
-      <div style={{ background: '#1e2028', borderRadius: 10, padding: 24, width: 560, maxWidth: '95vw', maxHeight: '90vh', overflowY: 'auto' }}>
-        <h3 style={{ margin: '0 0 12px', color: '#e2e8f0' }}>{t('transactions.split.title')}</h3>
-        <p style={{ margin: '0 0 16px', color: '#94a3b8', fontSize: 13 }}>
-          {t('common.total')}: <strong style={{ color: '#e2e8f0' }}>{EUR.format(totalAmount)}</strong>
+    <Dialog open onOpenChange={open => { if (!open) onClose() }}>
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>{t('transactions.split.title')}</DialogTitle>
+        </DialogHeader>
+
+        <p className="text-sm text-muted-foreground">
+          {t('common.total')}: <strong className="text-foreground">{EUR.format(totalAmount)}</strong>
           {' · '}
-          {t('transactions.split.remaining')}: <strong style={{ color: remainingColor }}>{EUR.format(remaining)}</strong>
+          {t('transactions.split.remaining')}:{' '}
+          <strong className={cn(remaining < -0.001 ? 'text-destructive' : 'text-green-500')}>
+            {EUR.format(remaining)}
+          </strong>
         </p>
 
-        {entries.map((entry, idx) => (
-          <div key={idx} style={{ background: '#2a2d3a', borderRadius: 8, padding: 12, marginBottom: 10 }}>
-            <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
-              <input
-                type="number"
-                step="0.01"
-                placeholder={t('transactions.split.amount')}
-                value={entry.amount}
-                onChange={e => updateEntry(idx, 'amount', e.target.value)}
-                style={{ width: 110, padding: '6px 8px', borderRadius: 6, border: '1px solid #3a3d4a', background: '#1e2028', color: '#e2e8f0', fontSize: 13 }}
+        <div className="flex flex-col gap-2">
+          {entries.map((entry, idx) => (
+            <div key={idx} className="flex flex-col gap-2 rounded-lg border p-3">
+              <div className="flex gap-2">
+                <Input
+                  type="number"
+                  step="0.01"
+                  placeholder={t('transactions.split.amount')}
+                  value={entry.amount}
+                  onChange={e => updateEntry(idx, 'amount', e.target.value)}
+                  className="w-28"
+                />
+                <CategoryPathInput
+                  value={entry.categoryId}
+                  onChange={id => updateEntry(idx, 'categoryId', id)}
+                  tree={categories}
+                  onCategoryCreated={onCategoryCreated}
+                  placeholder={t('transactions.split.category')}
+                  className="ri-cat-input flex-1"
+                />
+                {entries.length > 2 && (
+                  <Button variant="ghost" size="sm" onClick={() => removeEntry(idx)}>
+                    {t('transactions.split.removeSplit')}
+                  </Button>
+                )}
+              </div>
+              <Input
+                type="text"
+                placeholder={t('transactions.split.comment')}
+                value={entry.comment}
+                onChange={e => updateEntry(idx, 'comment', e.target.value)}
               />
-              <CategoryPathInput
-                value={entry.categoryId}
-                onChange={id => updateEntry(idx, 'categoryId', id)}
-                tree={categories}
-                onCategoryCreated={onCategoryCreated}
-                placeholder={t('transactions.split.category')}
-                className="ri-cat-input"
-              />
-              {entries.length > 2 && (
-                <button
-                  onClick={() => removeEntry(idx)}
-                  style={{ padding: '4px 8px', borderRadius: 6, border: '1px solid #4a4d5a', background: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: 12 }}
-                >
-                  {t('transactions.split.removeSplit')}
-                </button>
-              )}
             </div>
-            <input
-              type="text"
-              placeholder={t('transactions.split.comment')}
-              value={entry.comment}
-              onChange={e => updateEntry(idx, 'comment', e.target.value)}
-              style={{ width: '100%', padding: '6px 8px', borderRadius: 6, border: '1px solid #3a3d4a', background: '#1e2028', color: '#e2e8f0', fontSize: 13, boxSizing: 'border-box' }}
-            />
-          </div>
-        ))}
-
-        <button
-          onClick={addEntry}
-          style={{ padding: '6px 12px', borderRadius: 6, border: '1px dashed #4a4d5a', background: 'none', color: '#60a5fa', cursor: 'pointer', fontSize: 13, marginBottom: 16 }}
-        >
-          + {t('transactions.split.addSplit')}
-        </button>
-
-        {error && <p style={{ color: '#f87171', fontSize: 13, margin: '0 0 12px' }}>{error}</p>}
-
-        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-          <button
-            onClick={onClose}
-            style={{ padding: '8px 16px', borderRadius: 6, border: '1px solid #3a3d4a', background: 'none', color: '#94a3b8', cursor: 'pointer' }}
-          >
-            {t('transactions.split.cancel')}
-          </button>
-          <button
-            onClick={handleConfirm}
-            disabled={saving}
-            style={{ padding: '8px 16px', borderRadius: 6, border: 'none', background: '#3b82f6', color: '#fff', cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1 }}
-          >
-            {saving ? '…' : t('transactions.split.confirm')}
-          </button>
+          ))}
         </div>
-      </div>
-    </div>
+
+        <Button variant="outline" onClick={addEntry} className="w-full border-dashed">
+          + {t('transactions.split.addSplit')}
+        </Button>
+
+        {error && <p className="text-sm text-destructive">{error}</p>}
+
+        <div className="flex justify-end gap-2">
+          <Button variant="outline" onClick={onClose}>{t('transactions.split.cancel')}</Button>
+          <Button onClick={handleConfirm} disabled={saving}>
+            {saving ? '…' : t('transactions.split.confirm')}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
   )
 }

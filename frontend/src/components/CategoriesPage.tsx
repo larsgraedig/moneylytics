@@ -6,6 +6,9 @@ import {
   mergeCategories, fetchCategoryMerges, revertMerge, findOrCreateCategory,
 } from '../api/rawImport'
 import { CategoryPathInput } from './CategoryPathInput'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
 
 interface Props {
   categories: CategoryNode[]
@@ -550,57 +553,56 @@ export default function CategoriesPage({
   }, [categories, mergingNode])
 
   return (
-    <div className="cat-page">
-      <div className="cat-header">
-        <span className="cat-title">{t('kategorien.title')}</span>
-        <span className="cat-badge">{categories.length}</span>
+    <div className="flex flex-col gap-3 p-6">
+      <div className="flex items-center gap-2">
+        <span className="text-base font-medium">{t('kategorien.title')}</span>
+        <span className="inline-flex items-center justify-center rounded-full bg-muted px-2 py-0.5 text-xs">{categories.length}</span>
         <input
-          className="cat-search"
+          className="ml-2 rounded-lg border border-input bg-input/30 px-3 py-1.5 text-sm outline-none focus:border-ring w-56"
           type="search"
           placeholder={t('kategorien.search')}
           value={search}
           onChange={e => setSearch(e.target.value)}
         />
         {!isSearchActive && (
-          <button className="cat-header-add-btn" onClick={() => handleStartCreate(null, 0)} title="Neue Root-Kategorie">
+          <button className="ml-1 flex h-7 w-7 items-center justify-center rounded-lg border border-dashed border-input hover:border-foreground text-muted-foreground hover:text-foreground transition-colors" onClick={() => handleStartCreate(null, 0)} title="Neue Root-Kategorie">
             +
           </button>
         )}
       </div>
-      {deleteError && <p className="cat-error">{deleteError}</p>}
-      {moveError && <p className="cat-error">{moveError}</p>}
-      {renameError && <p className="cat-error">{renameError}</p>}
-      {createError && <p className="cat-error">{createError}</p>}
-      {revertError && <p className="cat-error">{revertError}</p>}
-
-      {editingId !== null && (
-        <div className="cat-edit-overlay" onClick={handleCancelEdit}>
-          <div className="cat-edit-dialog" onClick={e => e.stopPropagation()}>
-            <input
-              ref={editInputRef}
-              className="cat-edit-input"
-              value={editValue}
-              onChange={e => setEditValue(e.target.value)}
-              onKeyDown={e => {
-                if (e.key === 'Enter') handleConfirmRename()
-                if (e.key === 'Escape') handleCancelEdit()
-              }}
-              autoFocus
-            />
-            <div className="cat-edit-actions">
-              <button className="cat-edit-confirm" onClick={handleConfirmRename}>✓</button>
-              <button className="cat-edit-cancel" onClick={handleCancelEdit}>✕</button>
-            </div>
-          </div>
+      {(deleteError || moveError || renameError || createError || revertError) && (
+        <div className="flex flex-col gap-1">
+          {deleteError && <p className="text-sm text-destructive">{deleteError}</p>}
+          {moveError && <p className="text-sm text-destructive">{moveError}</p>}
+          {renameError && <p className="text-sm text-destructive">{renameError}</p>}
+          {createError && <p className="text-sm text-destructive">{createError}</p>}
+          {revertError && <p className="text-sm text-destructive">{revertError}</p>}
         </div>
       )}
 
-      {mergingNode !== null && (
-        <div className="cat-edit-overlay" onClick={() => { setMergingNode(null); setMergeTargetId(null); setMergeError(null) }}>
-          <div className="cat-edit-dialog cat-merge-dialog" onClick={e => e.stopPropagation()}>
-            <div className="cat-merge-dialog-title">
-              {t('kategorien.mergeTitle', { name: mergingNode.name })}
+      {editingId !== null && (
+        <Dialog open onOpenChange={open => { if (!open) handleCancelEdit() }}>
+          <DialogContent className="max-w-sm">
+            <DialogHeader><DialogTitle>{t('kategorien.rename')}</DialogTitle></DialogHeader>
+            <div className="flex items-center gap-2">
+              <Input
+                ref={editInputRef}
+                value={editValue}
+                onChange={e => setEditValue(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') handleConfirmRename(); if (e.key === 'Escape') handleCancelEdit() }}
+                autoFocus
+              />
+              <Button size="sm" onClick={handleConfirmRename}>✓</Button>
+              <Button size="sm" variant="ghost" onClick={handleCancelEdit}>✕</Button>
             </div>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {mergingNode !== null && (
+        <Dialog open onOpenChange={open => { if (!open) { setMergingNode(null); setMergeTargetId(null); setMergeError(null) } }}>
+          <DialogContent className="max-w-sm">
+            <DialogHeader><DialogTitle>{t('kategorien.mergeTitle', { name: mergingNode.name })}</DialogTitle></DialogHeader>
             <CategoryPathInput
               value={mergeTargetId}
               onChange={setMergeTargetId}
@@ -608,29 +610,23 @@ export default function CategoriesPage({
               allowCreate={false}
               placeholder="Zielkategorie wählen…"
             />
-            <p className="cat-merge-hint">{t('kategorien.mergeHint')}</p>
-            {mergeError && <p className="cat-error" style={{ margin: 0 }}>{mergeError}</p>}
-            <div className="cat-edit-actions">
-              <button
-                className="cat-edit-confirm"
-                disabled={mergeTargetId === null || merging}
-                onClick={handleMergeConfirm}
-              >
+            <p className="text-sm text-muted-foreground">{t('kategorien.mergeHint')}</p>
+            {mergeError && <p className="text-sm text-destructive">{mergeError}</p>}
+            <div className="flex justify-end gap-2">
+              <Button variant="ghost" onClick={() => { setMergingNode(null); setMergeTargetId(null); setMergeError(null) }}>✕</Button>
+              <Button disabled={mergeTargetId === null || merging} onClick={handleMergeConfirm}>
                 {merging ? '…' : t('kategorien.mergeConfirm')}
-              </button>
-              <button className="cat-edit-cancel" onClick={() => { setMergingNode(null); setMergeTargetId(null); setMergeError(null) }}>
-                ✕
-              </button>
+              </Button>
             </div>
-          </div>
-        </div>
+          </DialogContent>
+        </Dialog>
       )}
 
-      <div className="cat-tree">
+      <div className="flex flex-col">
         {categories.length === 0 ? (
-          <p className="cat-empty">{t('kategorien.empty')}</p>
+          <p className="text-sm text-muted-foreground">{t('kategorien.empty')}</p>
         ) : rootNodes.length === 0 ? (
-          <p className="cat-empty">{t('kategorien.noResults')}</p>
+          <p className="text-sm text-muted-foreground">{t('kategorien.noResults')}</p>
         ) : (
           <>
             <DropGap parentId={null} gapKey="gap-root-start" depth={0} {...gapProps} />
@@ -671,27 +667,27 @@ export default function CategoriesPage({
       </div>
 
       {merges.length > 0 && (
-        <div className="cat-history">
-          <button className="cat-history-header" onClick={() => setHistoryOpen(o => !o)}>
+        <div className="mt-4 border-t pt-4">
+          <button className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors" onClick={() => setHistoryOpen(o => !o)}>
             <span>{historyOpen ? '▾' : '▸'}</span>
             <span>{t('kategorien.mergeHistory')} ({merges.length})</span>
           </button>
           {historyOpen && (
-            <div className="cat-history-body">
+            <div className="mt-2 flex flex-col gap-1.5">
               {merges.map(m => (
-                <div key={m.id} className="cat-history-row">
-                  <span className="cat-history-names">
-                    <span className="cat-history-source">{m.sourceName}</span>
-                    <span className="cat-history-arrow"> → </span>
-                    <span className="cat-history-target">{m.targetName}</span>
+                <div key={m.id} className="flex items-center gap-3 text-sm">
+                  <span className="flex items-center gap-1 text-muted-foreground">
+                    <span>{m.sourceName}</span>
+                    <span> → </span>
+                    <span className="font-medium text-foreground">{m.targetName}</span>
                   </span>
-                  <span className="cat-history-meta">
+                  <span className="flex items-center gap-2 text-xs text-muted-foreground">
                     {m.transactionCount > 0 && <span>{m.transactionCount} Tx</span>}
                     {m.childCount > 0 && <span>{m.childCount} Kinder</span>}
                     <span>{formatRelativeDate(m.mergedAt)}</span>
                   </span>
                   <button
-                    className="cat-history-revert"
+                    className="ml-auto text-xs text-muted-foreground hover:text-foreground underline underline-offset-2 disabled:opacity-50"
                     disabled={revertingId === m.id}
                     onClick={() => handleRevert(m.id)}
                   >

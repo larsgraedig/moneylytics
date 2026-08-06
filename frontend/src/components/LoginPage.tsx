@@ -1,6 +1,11 @@
 import { type FormEvent, useState } from 'react'
 import { useTranslation, Trans } from 'react-i18next'
 import { useAuth } from '../context/AuthContext'
+import { Card, CardContent, CardHeader } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Button } from '@/components/ui/button'
+import { Separator } from '@/components/ui/separator'
 
 function GoogleIcon() {
   return (
@@ -62,76 +67,85 @@ export default function LoginPage() {
   const isSubmitDisabled = loading || !username || !password || (mode === 'register' && !confirmPassword)
 
   return (
-    <div className="login-shell">
-      <form className="login-card" onSubmit={handleSubmit}>
-        <span className="wordmark login-wordmark">moneylytics</span>
+    <div className="flex min-h-svh items-center justify-center bg-background p-4">
+      <Card className="w-full max-w-sm">
+        <CardHeader className="pb-2">
+          <p className="text-center text-xl font-semibold tracking-tight">moneylytics</p>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+            <div className="flex flex-col gap-3">
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="username">{t('auth.username')}</Label>
+                <Input
+                  id="username"
+                  type="text"
+                  autoComplete="username"
+                  autoFocus
+                  value={username}
+                  onChange={e => setUsername(e.target.value)}
+                />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="password">{t('auth.password')}</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                />
+              </div>
+              {mode === 'register' && (
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="confirmPassword">{t('auth.confirmPassword')}</Label>
+                  <Input
+                    id="confirmPassword"
+                    type="password"
+                    autoComplete="new-password"
+                    value={confirmPassword}
+                    onChange={e => setConfirmPassword(e.target.value)}
+                  />
+                </div>
+              )}
+            </div>
 
-        <div className="login-fields">
-          <label className="login-field">
-            <span className="login-label">{t('auth.username')}</span>
-            <input
-              className="login-input"
-              type="text"
-              autoComplete="username"
-              autoFocus
-              value={username}
-              onChange={e => setUsername(e.target.value)}
-            />
-          </label>
-          <label className="login-field">
-            <span className="login-label">{t('auth.password')}</span>
-            <input
-              className="login-input"
-              type="password"
-              autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
-              value={password}
-              onChange={e => setPassword(e.target.value)}
-            />
-          </label>
-          {mode === 'register' && (
-            <label className="login-field">
-              <span className="login-label">{t('auth.confirmPassword')}</span>
-              <input
-                className="login-input"
-                type="password"
-                autoComplete="new-password"
-                value={confirmPassword}
-                onChange={e => setConfirmPassword(e.target.value)}
-              />
-            </label>
-          )}
-        </div>
+            {error && <p className="text-sm text-destructive">{error}</p>}
 
-        {error && <p className="login-error">{error}</p>}
+            <Button type="submit" disabled={isSubmitDisabled} className="w-full">
+              {loading ? '…' : mode === 'login' ? t('auth.signIn') : t('auth.createAccount')}
+            </Button>
 
-        <button className="login-btn" type="submit" disabled={isSubmitDisabled}>
-          {loading ? '…' : mode === 'login' ? t('auth.signIn') : t('auth.createAccount')}
-        </button>
+            {mode === 'login' && (
+              <>
+                <div className="flex items-center gap-2">
+                  <Separator className="flex-1" />
+                  <span className="text-xs text-muted-foreground">or</span>
+                  <Separator className="flex-1" />
+                </div>
+                <Button variant="outline" className="w-full gap-2" type="button" render={<a href="/oauth2/authorization/google" />}>
+                  <GoogleIcon />
+                  {t('auth.signInWithGoogle')}
+                </Button>
+              </>
+            )}
 
-        {mode === 'login' && (
-          <>
-            <div className="login-divider"><span>or</span></div>
-            <a className="login-google-btn" href="/oauth2/authorization/google">
-              <GoogleIcon />
-              {t('auth.signInWithGoogle')}
-            </a>
-          </>
-        )}
-
-        <p className="login-switch">
-          {mode === 'login' ? (
-            <Trans i18nKey="auth.noAccount">
-              <span />
-              <button type="button" className="login-switch-btn" onClick={() => switchMode('register')} />
-            </Trans>
-          ) : (
-            <Trans i18nKey="auth.alreadyHaveAccount">
-              <span />
-              <button type="button" className="login-switch-btn" onClick={() => switchMode('login')} />
-            </Trans>
-          )}
-        </p>
-      </form>
+            <p className="text-center text-sm text-muted-foreground">
+              {mode === 'login' ? (
+                <Trans i18nKey="auth.noAccount">
+                  <span />
+                  <button type="button" className="underline underline-offset-2 hover:text-foreground" onClick={() => switchMode('register')} />
+                </Trans>
+              ) : (
+                <Trans i18nKey="auth.alreadyHaveAccount">
+                  <span />
+                  <button type="button" className="underline underline-offset-2 hover:text-foreground" onClick={() => switchMode('login')} />
+                </Trans>
+              )}
+            </p>
+          </form>
+        </CardContent>
+      </Card>
     </div>
   )
 }

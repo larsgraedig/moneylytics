@@ -2,6 +2,11 @@ import { type FormEvent, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getInvitation, acceptInvitation, type InvitationPreview } from '../api/invitations'
 import { useAuth } from '../context/AuthContext'
+import { Card, CardContent, CardHeader } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Button } from '@/components/ui/button'
+import { Separator } from '@/components/ui/separator'
 
 function GoogleIcon() {
   return (
@@ -23,6 +28,19 @@ type PageState =
   | { phase: 'invalid' }
   | { phase: 'ready'; invitation: InvitationPreview }
   | { phase: 'accepted' }
+
+function LoginShell({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="flex min-h-svh items-center justify-center bg-background p-4">
+      <Card className="w-full max-w-sm">
+        <CardHeader className="pb-2">
+          <p className="text-center text-xl font-semibold tracking-tight">moneylytics</p>
+        </CardHeader>
+        <CardContent>{children}</CardContent>
+      </Card>
+    </div>
+  )
+}
 
 export default function InvitePage({ token }: Props) {
   const { t } = useTranslation()
@@ -100,35 +118,28 @@ export default function InvitePage({ token }: Props) {
 
   if (state.phase === 'loading') {
     return (
-      <div className="login-shell">
-        <div className="login-card">
-          <span className="wordmark login-wordmark">moneylytics</span>
-          <p className="login-error">{t('invite.loading')}</p>
-        </div>
-      </div>
+      <LoginShell>
+        <p className="text-sm text-muted-foreground">{t('invite.loading')}</p>
+      </LoginShell>
     )
   }
 
   if (state.phase === 'invalid') {
     return (
-      <div className="login-shell">
-        <div className="login-card">
-          <span className="wordmark login-wordmark">moneylytics</span>
-          <p className="login-error">{t('invite.invalid')}</p>
-        </div>
-      </div>
+      <LoginShell>
+        <p className="text-sm text-destructive">{t('invite.invalid')}</p>
+      </LoginShell>
     )
   }
 
   if (state.phase === 'accepted') {
     return (
-      <div className="login-shell">
-        <div className="login-card">
-          <span className="wordmark login-wordmark">moneylytics</span>
-          <p style={{ color: 'var(--text)', textAlign: 'center', fontSize: 14 }}>{t('invite.accepted')}</p>
-          <a className="login-btn" style={{ textDecoration: 'none', textAlign: 'center' }} href="/">{t('invite.goToApp')}</a>
+      <LoginShell>
+        <div className="flex flex-col gap-3 text-center">
+          <p className="text-sm">{t('invite.accepted')}</p>
+          <Button render={<a href="/" />}>{t('invite.goToApp')}</Button>
         </div>
-      </div>
+      </LoginShell>
     )
   }
 
@@ -136,81 +147,87 @@ export default function InvitePage({ token }: Props) {
 
   if (username) {
     return (
-      <div className="login-shell">
-        <div className="login-card">
-          <span className="wordmark login-wordmark">moneylytics</span>
-          <h2 className="invite-org-title">{t('invite.title', { org: invitation.organizationName })}</h2>
-          <p className="invite-role-label">{t('invite.roleLabel', { role: invitation.role.toLowerCase() })}</p>
-          {formError && <p className="login-error">{formError}</p>}
-          <button className="login-btn" onClick={handleAcceptAsLoggedIn} disabled={formLoading}>
+      <LoginShell>
+        <div className="flex flex-col gap-4">
+          <div>
+            <h2 className="font-medium">{t('invite.title', { org: invitation.organizationName })}</h2>
+            <p className="text-sm text-muted-foreground">{t('invite.roleLabel', { role: invitation.role.toLowerCase() })}</p>
+          </div>
+          {formError && <p className="text-sm text-destructive">{formError}</p>}
+          <Button onClick={handleAcceptAsLoggedIn} disabled={formLoading}>
             {formLoading ? '…' : t('invite.join')}
-          </button>
+          </Button>
         </div>
-      </div>
+      </LoginShell>
     )
   }
 
   return (
-    <div className="login-shell">
-      <form className="login-card" onSubmit={handleSubmit}>
-        <span className="wordmark login-wordmark">moneylytics</span>
-        <h2 className="invite-org-title">{t('invite.title', { org: invitation.organizationName })}</h2>
-        <p className="invite-role-label">{t('invite.roleLabel', { role: invitation.role.toLowerCase() })}</p>
+    <LoginShell>
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        <div>
+          <h2 className="font-medium">{t('invite.title', { org: invitation.organizationName })}</h2>
+          <p className="text-sm text-muted-foreground">{t('invite.roleLabel', { role: invitation.role.toLowerCase() })}</p>
+        </div>
 
-        <div className="login-fields">
-          <label className="login-field">
-            <span className="login-label">{t('auth.username')}</span>
-            <input className="login-input" type="text" value={invitation.email} readOnly />
-          </label>
-          <label className="login-field">
-            <span className="login-label">{t('auth.password')}</span>
-            <input
-              className="login-input"
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-1.5">
+            <Label>{t('auth.username')}</Label>
+            <Input type="text" value={invitation.email} readOnly />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="inv-password">{t('auth.password')}</Label>
+            <Input
+              id="inv-password"
               type="password"
               autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
               value={password}
               onChange={e => setPassword(e.target.value)}
               autoFocus
             />
-          </label>
+          </div>
           {mode === 'register' && (
-            <label className="login-field">
-              <span className="login-label">{t('auth.confirmPassword')}</span>
-              <input
-                className="login-input"
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="inv-confirm">{t('auth.confirmPassword')}</Label>
+              <Input
+                id="inv-confirm"
                 type="password"
                 autoComplete="new-password"
                 value={confirmPassword}
                 onChange={e => setConfirmPassword(e.target.value)}
               />
-            </label>
+            </div>
           )}
         </div>
 
-        {formError && <p className="login-error">{formError}</p>}
+        {formError && <p className="text-sm text-destructive">{formError}</p>}
 
-        <button className="login-btn" type="submit" disabled={formLoading || !password}>
+        <Button type="submit" disabled={formLoading || !password} className="w-full">
           {formLoading ? '…' : mode === 'login' ? t('auth.signIn') : t('auth.createAccount')}
-        </button>
+        </Button>
 
-        <div className="login-divider"><span>or</span></div>
-        <button type="button" className="login-google-btn" onClick={handleGoogleClick}>
+        <div className="flex items-center gap-2">
+          <Separator className="flex-1" />
+          <span className="text-xs text-muted-foreground">or</span>
+          <Separator className="flex-1" />
+        </div>
+        <Button variant="outline" type="button" className="w-full gap-2" onClick={handleGoogleClick}>
           <GoogleIcon />
           {t('auth.signInWithGoogle')}
-        </button>
+        </Button>
 
-        <p className="login-switch">
+        <p className="text-center text-sm text-muted-foreground">
           {mode === 'register' ? (
-            <button type="button" className="login-switch-btn" onClick={() => { setMode('login'); setFormError(null) }}>
+            <button type="button" className="underline underline-offset-2 hover:text-foreground" onClick={() => { setMode('login'); setFormError(null) }}>
               {t('invite.alreadyHaveAccount')}
             </button>
           ) : (
-            <button type="button" className="login-switch-btn" onClick={() => { setMode('register'); setFormError(null) }}>
+            <button type="button" className="underline underline-offset-2 hover:text-foreground" onClick={() => { setMode('register'); setFormError(null) }}>
               {t('invite.createAccount')}
             </button>
           )}
         </p>
       </form>
-    </div>
+    </LoginShell>
   )
 }

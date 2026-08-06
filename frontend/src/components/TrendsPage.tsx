@@ -335,11 +335,13 @@ export default function TrendsPage({ from, to, accountId, categories }: { from: 
     ? view.data.buckets.filter((_, i) => i % tickSkip === 0)
     : []
 
+  const selectCls = 'rounded-lg border border-input bg-input/30 px-3 py-1.5 text-sm outline-none focus:border-ring'
+
   return (
-    <div className="tr-page">
-      <div className="tr-controls">
+    <div className="flex flex-col h-full">
+      <div className="flex flex-wrap items-center gap-2 border-b px-4 py-2 shrink-0">
         <select
-          className="tr-gran-select"
+          className={selectCls}
           value={granularity}
           onChange={e => setGranularity(e.target.value as Granularity)}
         >
@@ -352,18 +354,17 @@ export default function TrendsPage({ from, to, accountId, categories }: { from: 
         </select>
 
         <button
-          className={`tr-subs-btn${showSubs ? ' active' : ''}`}
+          className={`rounded-lg border px-3 py-1.5 text-sm transition-colors ${showSubs ? 'bg-primary text-primary-foreground border-transparent' : 'border-input bg-input/30 hover:bg-input/50'}`}
           onClick={() => setShowSubs(v => !v)}
         >
           {t('trends.subcategories')}
         </button>
-
       </div>
 
-      <div className="tr-series-list">
+      <div className="flex flex-col gap-2 border-b px-4 py-3 shrink-0">
         {series.map((s, i) => (
-          <div key={s.id} className="tr-series-row">
-            <div className="tr-series-dot" style={{ background: COLORS[i % COLORS.length] }} />
+          <div key={s.id} className="flex items-center gap-2">
+            <div className="w-3 h-3 rounded-full shrink-0" style={{ background: COLORS[i % COLORS.length] }} />
             <CategoryPathInput
               value={s.categoryId}
               onChange={categoryId => setCategoryId(s.id, categoryId)}
@@ -373,14 +374,14 @@ export default function TrendsPage({ from, to, accountId, categories }: { from: 
               className="tr-series-input tr-series-cat-path"
             />
             {series.length > 1 && (
-              <button className="tr-remove-btn" onClick={() => removeSeries(s.id)} title="Remove">×</button>
+              <button className="flex h-6 w-6 items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted" onClick={() => removeSeries(s.id)} title="Remove">×</button>
             )}
           </div>
         ))}
-        <button className="tr-add-btn" onClick={addSeries}>{t('trends.addSeries')}</button>
+        <button className="self-start rounded-lg border border-dashed border-input px-3 py-1.5 text-sm text-muted-foreground hover:border-foreground hover:text-foreground transition-colors" onClick={addSeries}>{t('trends.addSeries')}</button>
       </div>
 
-      <div className="tr-chart-area" style={view.phase === 'ready' && lineData.length > 0 ? { cursor: 'pointer' } : undefined}>
+      <div className="flex-1 relative" style={view.phase === 'ready' && lineData.length > 0 ? { cursor: 'pointer' } : undefined}>
         {view.phase === 'loading' && <p className="hint loading">{t('common.fetching')}</p>}
         {view.phase === 'error' && <p className="hint error">{view.message}</p>}
         {view.phase === 'ready' && lineData.length === 0 && (
@@ -455,19 +456,19 @@ export default function TrendsPage({ from, to, accountId, categories }: { from: 
 
       {hoveredThreshold && (
         <div
-          className="tr-threshold-tooltip"
-          style={{ left: hoveredThreshold.x + 14, top: hoveredThreshold.y - 10 }}
+          className="cf-tooltip"
+          style={{ position: 'fixed', left: hoveredThreshold.x + 14, top: hoveredThreshold.y - 10, pointerEvents: 'none', zIndex: 9999 }}
         >
-          <span className="tr-threshold-tooltip-label" style={{ color: hoveredThreshold.line.color }}>
+          <span className="cf-tooltip-period" style={{ color: hoveredThreshold.line.color }}>
             {hoveredThreshold.line.label}
           </span>
-          <div className="tr-threshold-tooltip-row">
-            <span className="tr-threshold-tooltip-key">{t('trends.granularityUnit.' + hoveredThreshold.line.granularity)}</span>
-            <span className="tr-threshold-tooltip-val">{EUR.format(hoveredThreshold.line.value)}</span>
+          <div className="cf-tooltip-row">
+            <span>{t('trends.granularityUnit.' + hoveredThreshold.line.granularity)}</span>
+            <span className="cf-tooltip-amt">{EUR.format(hoveredThreshold.line.value)}</span>
           </div>
-          <div className="tr-threshold-tooltip-row">
-            <span className="tr-threshold-tooltip-key">{t('trends.configured')}</span>
-            <span className="tr-threshold-tooltip-val">
+          <div className="cf-tooltip-row">
+            <span>{t('trends.configured')}</span>
+            <span className="cf-tooltip-amt">
               {EUR.format(hoveredThreshold.line.baselineAmount)} / {t('trends.periodUnit.' + hoveredThreshold.line.period)}
             </span>
           </div>

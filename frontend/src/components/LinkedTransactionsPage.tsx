@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { fetchLinkedGroups, type LinkedGroupItem } from '../api/transactions'
 import { GroupCard } from './GroupCard'
+import { Badge } from '@/components/ui/badge'
 
 export default function LinkedTransactionsPage() {
   const { t } = useTranslation()
@@ -59,26 +60,23 @@ export default function LinkedTransactionsPage() {
         ...g,
         transactions: g.transactions.map(tx => {
           if (tx.id !== txId) return tx
-          return {
-            ...tx,
-            offsetLinks: tx.offsetLinks.map(link => link.id === linkId ? { ...link, comment } : link),
-          }
+          return { ...tx, offsetLinks: tx.offsetLinks.map(link => link.id === linkId ? { ...link, comment } : link) }
         }),
       }
     }))
   }
 
-  if (loading) return <div className="ltx-page"><span className="ltx-status">{t('common.loading')}</span></div>
-  if (error) return <div className="ltx-page"><span className="ltx-status ltx-status--error">{error}</span></div>
+  if (loading) return <div className="flex flex-col gap-4 p-6"><p className="text-sm text-muted-foreground">{t('common.loading')}</p></div>
+  if (error) return <div className="flex flex-col gap-4 p-6"><p className="text-sm text-destructive">{error}</p></div>
 
   return (
-    <div className="ltx-page">
-      <div className="ltx-header">
-        <h2 className="ltx-title">{t('linked.title')}</h2>
-        <span className="ltx-count">{t('linked.count', { count: groups.length })}</span>
+    <div className="flex flex-col gap-4 p-6">
+      <div className="flex items-center gap-2">
+        <h2 className="text-base font-medium">{t('linked.title')}</h2>
+        <Badge variant="secondary">{t('linked.count', { count: groups.length })}</Badge>
       </div>
       {groups.length === 0
-        ? <p className="ltx-status">{t('linked.empty')}</p>
+        ? <p className="text-sm text-muted-foreground">{t('linked.empty')}</p>
         : groups.map(g => (
           <div key={g.groupId} id={`ltx-group-${g.groupId}`}>
             <GroupCard

@@ -6,6 +6,7 @@ import { fetchAllTransactions, fetchCashflow, fetchLinkedGroup, type LinkedGroup
 import { fetchCollection, type CollectionDto } from '../api/collections'
 import { GroupCard } from './GroupCard'
 import { CollectionCard } from './CollectionCard'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 
 type Granularity = 'monthly' | 'yearly'
 type IncomeMode = 'all' | 'unnetted'
@@ -164,36 +165,39 @@ export default function CashflowPage({ from, to, accountId }: { from: string; to
     : 0
   const yMin = data ? Math.min(0, ...data.map(d => d.net)) : 0
 
+  const toggleBtn = (active: boolean) =>
+    `rounded-md border px-3 py-1.5 text-sm transition-colors ${active ? 'bg-primary text-primary-foreground border-transparent' : 'border-input bg-input/30 hover:bg-input/50'}`
+
   return (
-    <div className="cf-page">
-      <div className="cf-controls">
-        <div className="cf-gran-toggle">
+    <div className="flex flex-col h-full">
+      <div className="flex flex-wrap items-center gap-3 border-b px-4 py-2 shrink-0">
+        <div className="flex gap-1">
           {(['monthly', 'yearly'] as const).map(g => (
             <button
               key={g}
-              className={`cf-gran-btn${granularity === g ? ' active' : ''}`}
+              className={toggleBtn(granularity === g)}
               onClick={() => setGranularity(g)}
             >
               {g === 'monthly' ? t('cashflow.monthly') : t('cashflow.yearly')}
             </button>
           ))}
         </div>
-        <div className="cf-gran-toggle">
+        <div className="flex gap-1">
           {(['all', 'unnetted'] as const).map(mode => (
             <button
               key={mode}
-              className={`cf-gran-btn${incomeMode === mode ? ' active' : ''}`}
+              className={toggleBtn(incomeMode === mode)}
               onClick={() => setIncomeMode(mode)}
             >
               {mode === 'all' ? t('cashflow.incomeModeAll') : t('cashflow.incomeModeUnnetted')}
             </button>
           ))}
         </div>
-        <div className="cf-gran-toggle">
+        <div className="flex gap-1">
           {(['all', 'unnetted'] as const).map(mode => (
             <button
               key={mode}
-              className={`cf-gran-btn${expenseMode === mode ? ' active' : ''}`}
+              className={toggleBtn(expenseMode === mode)}
               onClick={() => setExpenseMode(mode)}
             >
               {mode === 'all' ? t('cashflow.expenseModeAll') : t('cashflow.expenseModeUnnetted')}
@@ -201,26 +205,26 @@ export default function CashflowPage({ from, to, accountId }: { from: string; to
           ))}
         </div>
         {totals && (
-          <div className="cf-summary">
-            <span className="cf-summary-item cf-summary-income">
-              <span className="cf-summary-label">{t('cashflow.income')}</span>
-              <span className="cf-summary-val">{EUR.format(totals.income)}</span>
+          <div className="flex flex-wrap items-center gap-3 text-sm ml-auto">
+            <span className="flex flex-col gap-0.5">
+              <span className="text-xs text-muted-foreground">{t('cashflow.income')}</span>
+              <span className="font-medium tabular-nums text-green-500">{EUR.format(totals.income)}</span>
             </span>
-            <span className="cf-summary-sep">·</span>
-            <span className="cf-summary-item cf-summary-expenses">
-              <span className="cf-summary-label">{t('cashflow.expenses')}</span>
-              <span className="cf-summary-val">{EUR.format(totals.expenses)}</span>
+            <span className="text-muted-foreground">·</span>
+            <span className="flex flex-col gap-0.5">
+              <span className="text-xs text-muted-foreground">{t('cashflow.expenses')}</span>
+              <span className="font-medium tabular-nums text-destructive">{EUR.format(totals.expenses)}</span>
             </span>
-            <span className="cf-summary-sep">·</span>
-            <span className={`cf-summary-item cf-summary-net${totals.income - totals.expenses >= 0 ? ' positive' : ' negative'}`}>
-              <span className="cf-summary-label">{t('cashflow.net')}</span>
-              <span className="cf-summary-val">{EUR.format(totals.income - totals.expenses)}</span>
+            <span className="text-muted-foreground">·</span>
+            <span className="flex flex-col gap-0.5">
+              <span className="text-xs text-muted-foreground">{t('cashflow.net')}</span>
+              <span className={`font-medium tabular-nums ${totals.income - totals.expenses >= 0 ? 'text-green-500' : 'text-destructive'}`}>{EUR.format(totals.income - totals.expenses)}</span>
             </span>
           </div>
         )}
       </div>
 
-      <div className="cf-body">
+      <div className="flex-1 relative">
         {error && <p className="hint error">{error}</p>}
         {loading && <p className="hint loading">{t('common.fetching')}</p>}
         {data !== null && data.length === 0 && (
@@ -317,56 +321,33 @@ export default function CashflowPage({ from, to, accountId }: { from: string; to
         const close = () => setGroupModal(null)
         const deepLinkSearch = new URLSearchParams(location.search)
         deepLinkSearch.set('group', String(groupId))
-
         return (
-          <div className="txnv-lm-backdrop" onClick={close}>
-            <div className="txnv-lm-modal txnv-lm-modal--group" onClick={e => e.stopPropagation()}>
-              <div className="txnv-lm-header">
-                <Link
-                  className="txnv-lm-title"
-                  to={{ pathname: '/verknuepfungen', search: deepLinkSearch.toString() }}
-                  onClick={close}
-                >
-                  {t('linked.group')} #{groupId} ↗
-                </Link>
-                <button className="txnv-lm-close" onClick={close}>×</button>
-              </div>
-              <div className="txnv-lm-group-body">
-                {!group
-                  ? <span className="txnv-lm-loading">{t('common.loading')}</span>
-                  : (
-                    <GroupCard
-                      group={group}
-                      onMetaChange={(_id, name, comment) => setGroupModal(prev => prev?.group ? { ...prev, group: { ...prev.group, name, comment } } : prev)}
-                      onOffsetCommentChange={(_gid, txId, linkId, comment) => setGroupModal(prev => {
-                        if (!prev?.group) return prev
-                        return {
-                          ...prev,
-                          group: {
-                            ...prev.group,
-                            transactions: prev.group.transactions.map(tx =>
-                              tx.id !== txId ? tx : {
-                                ...tx,
-                                offsetLinks: tx.offsetLinks.map(l => l.id === linkId ? { ...l, comment } : l),
-                              },
-                            ),
-                          },
-                        }
-                      })}
-                      onRemoveTransaction={txId => {
-                        const remaining = group.transactions.filter(tx => tx.id !== txId)
-                        if (remaining.length >= 2) {
-                          setGroupModal(prev => prev ? { ...prev, group: { ...group, transactions: remaining } } : null)
-                        } else {
-                          setGroupModal(null)
-                        }
-                      }}
-                    />
-                  )
-                }
-              </div>
-            </div>
-          </div>
+          <Dialog open onOpenChange={open => { if (!open) close() }}>
+            <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>
+                  <Link to={{ pathname: '/verknuepfungen', search: deepLinkSearch.toString() }} onClick={close} className="hover:underline">
+                    {t('linked.group')} #{groupId} ↗
+                  </Link>
+                </DialogTitle>
+              </DialogHeader>
+              {!group ? <p className="text-sm text-muted-foreground">{t('common.loading')}</p> : (
+                <GroupCard
+                  group={group}
+                  onMetaChange={(_id, name, comment) => setGroupModal(prev => prev?.group ? { ...prev, group: { ...prev.group, name, comment } } : prev)}
+                  onOffsetCommentChange={(_gid, txId, linkId, comment) => setGroupModal(prev => {
+                    if (!prev?.group) return prev
+                    return { ...prev, group: { ...prev.group, transactions: prev.group.transactions.map(tx => tx.id !== txId ? tx : { ...tx, offsetLinks: tx.offsetLinks.map(l => l.id === linkId ? { ...l, comment } : l) }) } }
+                  })}
+                  onRemoveTransaction={txId => {
+                    const remaining = group.transactions.filter(tx => tx.id !== txId)
+                    if (remaining.length >= 2) setGroupModal(prev => prev ? { ...prev, group: { ...group, transactions: remaining } } : null)
+                    else setGroupModal(null)
+                  }}
+                />
+              )}
+            </DialogContent>
+          </Dialog>
         )
       })()}
 
@@ -375,40 +356,27 @@ export default function CashflowPage({ from, to, accountId }: { from: string; to
         const close = () => setCollectionModal(null)
         const deepLinkSearch = new URLSearchParams(location.search)
         deepLinkSearch.set('collection', String(collectionId))
-
         return (
-          <div className="txnv-lm-backdrop" onClick={close}>
-            <div className="txnv-lm-modal txnv-lm-modal--group" onClick={e => e.stopPropagation()}>
-              <div className="txnv-lm-header">
-                <Link
-                  className="txnv-lm-title"
-                  to={{ pathname: '/sammlungen', search: deepLinkSearch.toString() }}
-                  onClick={close}
-                >
-                  {t('collections.collection')} #{collectionId} ↗
-                </Link>
-                <button className="txnv-lm-close" onClick={close}>×</button>
-              </div>
-              <div className="txnv-lm-group-body">
-                {!collection
-                  ? <span className="txnv-lm-loading">{t('common.loading')}</span>
-                  : (
-                    <CollectionCard
-                      collection={collection}
-                      onUpdate={(_id, name, note) => setCollectionModal(prev => prev?.collection ? { ...prev, collection: { ...prev.collection, name, note } } : prev)}
-                      onDelete={() => setCollectionModal(null)}
-                      onRemoveTransaction={(_, txId) => setCollectionModal(prev =>
-                        prev?.collection
-                          ? { ...prev, collection: { ...prev.collection, transactions: prev.collection.transactions.filter(tx => tx.id !== txId) } }
-                          : prev,
-                      )}
-                      onAddTransaction={() => {}}
-                    />
-                  )
-                }
-              </div>
-            </div>
-          </div>
+          <Dialog open onOpenChange={open => { if (!open) close() }}>
+            <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>
+                  <Link to={{ pathname: '/sammlungen', search: deepLinkSearch.toString() }} onClick={close} className="hover:underline">
+                    {t('collections.collection')} #{collectionId} ↗
+                  </Link>
+                </DialogTitle>
+              </DialogHeader>
+              {!collection ? <p className="text-sm text-muted-foreground">{t('common.loading')}</p> : (
+                <CollectionCard
+                  collection={collection}
+                  onUpdate={(_id, name, note) => setCollectionModal(prev => prev?.collection ? { ...prev, collection: { ...prev.collection, name, note } } : prev)}
+                  onDelete={() => setCollectionModal(null)}
+                  onRemoveTransaction={(_, txId) => setCollectionModal(prev => prev?.collection ? { ...prev, collection: { ...prev.collection, transactions: prev.collection.transactions.filter(tx => tx.id !== txId) } } : prev)}
+                  onAddTransaction={() => {}}
+                />
+              )}
+            </DialogContent>
+          </Dialog>
         )
       })()}
     </div>
@@ -549,50 +517,37 @@ function DrilldownModal({
   }, 0)
 
   return (
-    <div className="bgt-dd-backdrop" onClick={onClose}>
-      <div className="bgt-dd-panel" onClick={e => e.stopPropagation()}>
-        <div className="bgt-dd-header">
-          <div className="bgt-dd-title">
-            <span
-              className="bgt-dd-name"
-              style={{ color: state.type === 'income' ? '#4ade80' : '#f87171' }}
-            >
-              {title}
-            </span>
-            <span className="bgt-dd-range">{state.period} · {state.from} → {state.to}</span>
-          </div>
-          <button className="bgt-dd-close" onClick={onClose}>✕</button>
-        </div>
+    <Dialog open onOpenChange={open => { if (!open) onClose() }}>
+      <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col p-0 gap-0">
+        <DialogHeader className="px-5 py-4 border-b shrink-0">
+          <DialogTitle>
+            <span style={{ color: state.type === 'income' ? '#4ade80' : '#f87171' }}>{title}</span>
+            <span className="text-sm font-normal text-muted-foreground ml-2">{state.period} · {state.from} → {state.to}</span>
+          </DialogTitle>
+        </DialogHeader>
 
-        {state.loading && <p className="bgt-dd-hint">{t('common.loading')}</p>}
-
+        {state.loading && <p className="px-5 py-6 text-sm text-muted-foreground">{t('common.loading')}</p>}
         {!state.loading && state.transactions != null && state.transactions.length === 0 && (
-          <p className="bgt-dd-hint">{t('cashflow.noTransactions')}</p>
+          <p className="px-5 py-6 text-sm text-muted-foreground">{t('cashflow.noTransactions')}</p>
         )}
 
         {!state.loading && state.transactions != null && state.transactions.length > 0 && (
           <>
-            <div className="bgt-dd-scroll">
-              <table className="bgt-dd-table">
-                <thead>
+            <div className="flex-1 overflow-auto">
+              <table className="w-full text-sm">
+                <thead className="border-b">
                   <tr>
-                    <th>{t('common.date')}</th>
-                    <th>{t('common.category')}</th>
-                    <th>{t('common.purpose')}</th>
-                    <th style={{ textAlign: 'right' }}>{t('common.amount')}</th>
+                    <th className="px-3 py-2 text-left font-medium whitespace-nowrap">{t('common.date')}</th>
+                    <th className="px-3 py-2 text-left font-medium">{t('common.category')}</th>
+                    <th className="px-3 py-2 text-left font-medium">{t('common.purpose')}</th>
+                    <th className="px-3 py-2 text-right font-medium whitespace-nowrap">{t('common.amount')}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {transactions.map(tx => {
                     const isIncome = state.type === 'income'
-                    const showNetted = isIncome
-                      ? state.incomeMode === 'unnetted'
-                      : state.expenseMode === 'unnetted'
-
-                    let displayAmount: number
-                    let nettedAmount: number
-                    let fullyNetted: boolean
-
+                    const showNetted = isIncome ? state.incomeMode === 'unnetted' : state.expenseMode === 'unnetted'
+                    let displayAmount: number, nettedAmount: number, fullyNetted: boolean
                     if (isIncome) {
                       fullyNetted = showNetted && tx.effectiveAmount <= 0
                       displayAmount = showNetted ? Math.max(0, tx.effectiveAmount) : tx.amount
@@ -602,53 +557,26 @@ function DrilldownModal({
                       displayAmount = showNetted ? Math.abs(Math.min(0, tx.effectiveAmount)) : Math.abs(tx.amount)
                       nettedAmount = showNetted ? Math.abs(tx.amount) - Math.abs(Math.min(0, tx.effectiveAmount)) : 0
                     }
-
                     return (
-                      <tr key={tx.id} style={fullyNetted ? { color: '#6b6b78' } : undefined}>
-                        <td className="bgt-dd-cell-date">{tx.accountingDate}</td>
-                        <td className="bgt-dd-cell-cat">
-                          {tx.category}{tx.subcategory ? ` / ${tx.subcategory}` : ''}
-                        </td>
-                        <td className="bgt-dd-cell-purpose" title={tx.purpose ?? undefined}>
-                          {tx.purpose ?? <span className="bgt-cell-muted">—</span>}
-                        </td>
-                        <td className="bgt-dd-cell-amount">
-                          {!fullyNetted && displayAmount > 0 && (
-                            <span>{EUR2.format(displayAmount)}</span>
-                          )}
-                          {nettedAmount > 0 && (
-                            <span style={{ color: '#6b6b78', marginLeft: fullyNetted ? 0 : '0.4em' }}>
-                              {fullyNetted
-                                ? EUR2.format(Math.abs(tx.amount))
-                                : `(${EUR2.format(nettedAmount)} ${t('cashflow.netted')})`}
-                            </span>
-                          )}
-                          {tx.groups.length > 0 && (
-                            <div className="cf-group-chips">
-                              {tx.groups.map(g => (
-                                <button
-                                  key={g.id}
-                                  className="cf-group-chip"
-                                  onClick={() => onOpenGroup(g.id)}
-                                >
-                                  {g.name ?? `#${g.id}`}
-                                </button>
-                              ))}
-                            </div>
-                          )}
-                          {tx.collections.length > 0 && (
-                            <div className="cf-group-chips">
-                              {tx.collections.map(c => (
-                                <button
-                                  key={c.id}
-                                  className="cf-group-chip cf-group-chip--collection"
-                                  onClick={() => onOpenCollection(c.id)}
-                                >
-                                  {c.name}
-                                </button>
-                              ))}
-                            </div>
-                          )}
+                      <tr key={tx.id} className="border-b hover:bg-muted/30" style={fullyNetted ? { color: '#6b6b78' } : undefined}>
+                        <td className="px-3 py-2 text-xs tabular-nums whitespace-nowrap text-muted-foreground">{tx.accountingDate}</td>
+                        <td className="px-3 py-2 text-xs">{tx.category}{tx.subcategory ? ` / ${tx.subcategory}` : ''}</td>
+                        <td className="px-3 py-2 text-xs max-w-48 truncate text-muted-foreground" title={tx.purpose ?? undefined}>{tx.purpose ?? '—'}</td>
+                        <td className="px-3 py-2 text-right tabular-nums">
+                          <div className="flex flex-col items-end gap-0.5">
+                            {!fullyNetted && displayAmount > 0 && <span>{EUR2.format(displayAmount)}</span>}
+                            {nettedAmount > 0 && <span className="text-muted-foreground text-xs">{fullyNetted ? EUR2.format(Math.abs(tx.amount)) : `(${EUR2.format(nettedAmount)} ${t('cashflow.netted')})`}</span>}
+                            {tx.groups.length > 0 && (
+                              <div className="flex flex-wrap gap-1 justify-end">
+                                {tx.groups.map(g => <button key={g.id} className="rounded-full border border-border px-2 py-0.5 text-xs text-muted-foreground hover:text-foreground" onClick={() => onOpenGroup(g.id)}>{g.name ?? `#${g.id}`}</button>)}
+                              </div>
+                            )}
+                            {tx.collections.length > 0 && (
+                              <div className="flex flex-wrap gap-1 justify-end">
+                                {tx.collections.map(c => <button key={c.id} className="rounded-full border border-blue-500/30 bg-blue-500/10 px-2 py-0.5 text-xs text-blue-400 hover:text-blue-300" onClick={() => onOpenCollection(c.id)}>{c.name}</button>)}
+                              </div>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     )
@@ -656,13 +584,13 @@ function DrilldownModal({
                 </tbody>
               </table>
             </div>
-            <div className="bgt-dd-footer">
-              <span className="bgt-dd-total-label">{t('common.total')}</span>
-              <span className="bgt-dd-total">{EUR2.format(total)}</span>
+            <div className="flex items-center justify-between border-t px-5 py-3 shrink-0">
+              <span className="text-sm text-muted-foreground">{t('common.total')}</span>
+              <span className="font-medium tabular-nums">{EUR2.format(total)}</span>
             </div>
           </>
         )}
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   )
 }

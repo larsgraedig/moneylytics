@@ -1,8 +1,10 @@
 import { useState } from 'react'
-import { X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import type { Account } from '../api/accounts'
 import { updateUserSettings } from '../api/settings'
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
+import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 
 interface Props {
   accounts: Account[]
@@ -31,37 +33,39 @@ export default function SettingsPanel({ accounts, defaultAccountIban: initialIba
   }
 
   return (
-    <>
-      <div className="settings-backdrop" onClick={onClose} />
-      <div className="settings-panel">
-        <div className="settings-header">
-          <span className="settings-title">{t('settings.title')}</span>
-          <button className="settings-close" onClick={onClose} title={t('common.close')}>
-            <X size={15} strokeWidth={1.8} />
-          </button>
-        </div>
+    <Sheet open onOpenChange={open => { if (!open) onClose() }}>
+      <SheetContent side="right" className="w-72 p-0">
+        <SheetHeader className="border-b px-5 py-4">
+          <SheetTitle>{t('settings.title')}</SheetTitle>
+        </SheetHeader>
 
-        <div className="settings-body">
-          <section className="settings-section">
-            <h3 className="settings-section-label">{t('settings.language')}</h3>
-            <div className="settings-lang-group">
+        <div className="flex flex-col gap-6 px-5 py-6">
+          <section className="flex flex-col gap-2">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+              {t('settings.language')}
+            </p>
+            <div className="flex gap-2">
               {(['de', 'en'] as const).map(lang => (
-                <button
+                <Button
                   key={lang}
-                  className={`settings-lang-btn${i18n.language === lang ? ' active' : ''}`}
+                  variant={i18n.language === lang ? 'default' : 'outline'}
+                  size="sm"
                   onClick={() => setLang(lang)}
+                  className={cn(i18n.language === lang && 'pointer-events-none')}
                 >
                   {lang.toUpperCase()}
-                </button>
+                </Button>
               ))}
             </div>
           </section>
 
           {accounts.length > 0 && (
-            <section className="settings-section">
-              <h3 className="settings-section-label">{t('settings.defaultAccount')}</h3>
+            <section className="flex flex-col gap-2">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                {t('settings.defaultAccount')}
+              </p>
               <select
-                className="account-select"
+                className="w-full rounded-lg border border-input bg-input/30 px-3 py-2 text-sm outline-none focus:border-ring focus:ring-2 focus:ring-ring/50"
                 value={defaultIban}
                 onChange={e => updateDefaultAccount(e.target.value)}
               >
@@ -73,7 +77,7 @@ export default function SettingsPanel({ accounts, defaultAccountIban: initialIba
             </section>
           )}
         </div>
-      </div>
-    </>
+      </SheetContent>
+    </Sheet>
   )
 }
