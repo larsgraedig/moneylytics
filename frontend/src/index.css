@@ -1045,7 +1045,7 @@ body {
 .txnv-row--dirty { background: color-mix(in srgb, var(--accent-glow) 40%, transparent) !important; }
 
 .txnv-cell-account {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--text-muted);
   white-space: nowrap;
   max-width: 160px;
@@ -1472,9 +1472,8 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 11px;
+  font-size: 12px;
   color: var(--text-muted);
-  font-family: var(--mono);
 }
 
 .txnv-cell-comment {

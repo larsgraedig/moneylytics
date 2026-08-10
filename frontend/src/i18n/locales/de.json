@@ -169,6 +169,7 @@
     "selectGroup": "Zur welcher Gruppe hinzufügen?",
     "newGroup": "Neue Gruppe erstellen",
     "linkToTransaction": "Mit Transaktion verknüpfen",
+    "removeFromGroup": "Aus Verrechnung entfernen",
     "removeLink": "Verknüpfung aufheben",
     "jumpToLinked": "Zur verknüpften Transaktion",
     "bulkCategory": "Kategorie (Auswahl)",

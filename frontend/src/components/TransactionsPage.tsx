@@ -12,6 +12,7 @@ import {
   fetchLinkedGroup,
   fetchSubTransactionGroup,
   linkTransactions,
+  removeTransactionFromGroup,
   unsplitTransaction,
   unmergeTransactions,
   updateTransactionAccountingDate,
@@ -604,6 +605,26 @@ const groupColorMap = useMemo(() => {
     return classes.join(' ')
   }
 
+  async function removeFromGroup(rowIndex: number, groupId: number) {
+    const row = rows[rowIndex]
+    try {
+      await removeTransactionFromGroup(row.original.id, groupId)
+      setRows(prev => {
+        const next = [...prev]
+        next[rowIndex] = {
+          ...next[rowIndex],
+          original: {
+            ...next[rowIndex].original,
+            groups: next[rowIndex].original.groups.filter(g => g.id !== groupId),
+          },
+        }
+        return next
+      })
+    } catch {
+      // silent — user can retry
+    }
+  }
+
   function renderOffsetCell(row: RowState, i: number) {
     const src = linkingState?.sourceIndex
     const isSource = src === i
@@ -613,14 +634,13 @@ const groupColorMap = useMemo(() => {
       return (
         <div className="txnv-linking-from">
           <span className="txnv-linking-badge">{t('transactions.linkingSelectingTarget')}</span>
-          <Button
-            variant="ghost"
-            size="xs"
-            className="rounded-sm font-mono text-[10px]"
+          <button
+            className="txnv-link-chip-remove"
             onClick={() => { setLinkingState(null); setLinkError(null) }}
+            title={t('common.cancel')}
           >
-            {t('common.cancel')}
-          </Button>
+            ×
+          </button>
         </div>
       )
     }
@@ -652,13 +672,23 @@ const groupColorMap = useMemo(() => {
               key={group.id}
               className="txnv-link-chip txnv-group-chip"
               style={chipColor ? { borderColor: chipColor } : undefined}
-              onClick={() => {
-                setGroupModal({ groupId: group.id, group: null })
-                fetchLinkedGroup(group.id).then(g => setGroupModal({ groupId: group.id, group: g }))
-              }}
               title={`#${group.id}`}
             >
-              {chipLabel}
+              <span
+                onClick={() => {
+                  setGroupModal({ groupId: group.id, group: null })
+                  fetchLinkedGroup(group.id).then(g => setGroupModal({ groupId: group.id, group: g }))
+                }}
+              >
+                {chipLabel}
+              </span>
+              <button
+                className="txnv-link-chip-remove"
+                onClick={e => { e.stopPropagation(); void removeFromGroup(i, group.id) }}
+                title={t('transactions.removeFromGroup')}
+              >
+                ×
+              </button>
             </span>
           )
         })}
@@ -1092,7 +1122,11 @@ const groupColorMap = useMemo(() => {
               onValueChange={value => setCollectionModal(prev => prev ? { ...prev, collectionId: value ?? '', newName: '' } : null)}
             >
               <SelectTrigger className="w-full rounded-md">
-                <SelectValue placeholder="—" />
+                <SelectValue placeholder="—">
+                  {collectionModal.collectionId === '__new__'
+                    ? `+ ${t('collections.createCollection')}`
+                    : available.find(c => String(c.id) === collectionModal.collectionId)?.name}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 {available.map(c => (
@@ -1298,7 +1332,8 @@ const groupColorMap = useMemo(() => {
         return (
           <TableCell key={col} className="txnv-cell-comment px-3 py-1">
             <Input
-              className="h-6 w-full border-0 border-b border-transparent rounded-none bg-transparent px-0 text-xs focus-visible:ring-0 hover:border-foreground/30 focus-visible:border-foreground/60 shadow-none placeholder:italic placeholder:text-muted-foreground"
+              className="h-6 w-full border-0 border-b border-transparent rounded-none bg-transparent px-0 focus-visible:ring-0 hover:border-foreground/30 focus-visible:border-foreground/60 shadow-none placeholder:italic placeholder:text-muted-foreground"
+              style={{ fontSize: 12 }}
               type="text"
               value={row.comment}
               placeholder={t('transactions.addComment')}
