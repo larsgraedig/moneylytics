@@ -93,7 +93,6 @@ interface RowState {
   error: string | null
   budgetAssignments: BudgetAssignment[]
   collections: CollectionSummary[]
-  addingCollection: { collectionId: string; newName: string } | null
 }
 
 type PageState =
@@ -150,6 +149,7 @@ export default function TransactionsPage({
   const [mergeChildrenMap, setMergeChildrenMap] = useState<Map<number, TransactionItem[]>>(new Map())
   const [createVirtualOpen, setCreateVirtualOpen] = useState(false)
   const [budgetModal, setBudgetModal] = useState<{ rowIndex: number; budgetId: string; amount: string } | null>(null)
+  const [collectionModal, setCollectionModal] = useState<{ rowIndex: number; collectionId: string; newName: string } | null>(null)
 
   useEffect(() => {
     fetchBudgets().then(setBudgets).catch(() => {})
@@ -219,7 +219,6 @@ export default function TransactionsPage({
           error: null,
           budgetAssignments: (tx.budgetLinks ?? []).map(l => ({ linkId: l.linkId, budgetId: l.budgetId, budgetName: l.budgetName, amount: l.amount })),
           collections: tx.collections ?? [],
-          addingCollection: null,
         })),
       )
       setPage({ phase: 'ready' })
@@ -991,10 +990,10 @@ const groupColorMap = useMemo(() => {
         next[rowIndex] = {
           ...next[rowIndex],
           collections: [...next[rowIndex].collections, { id: collectionId, name: collectionName }],
-          addingCollection: null,
         }
         return next
       })
+      setCollectionModal(null)
     } catch {
       // silent — user can retry
     }
@@ -1012,10 +1011,10 @@ const groupColorMap = useMemo(() => {
         next[rowIndex] = {
           ...next[rowIndex],
           collections: [...next[rowIndex].collections, { id: created.id, name: created.name }],
-          addingCollection: null,
         }
         return next
       })
+      setCollectionModal(null)
     } catch {
       // silent — user can retry
     }
@@ -1039,10 +1038,6 @@ const groupColorMap = useMemo(() => {
   }
 
   function renderCollectionCell(row: RowState, i: number) {
-    const alreadyIn = new Set(row.collections.map(c => c.id))
-    const available = allCollections.filter(c => !alreadyIn.has(c.id))
-    const adding = row.addingCollection
-
     return (
       <div className="txnv-budget-cell">
         {row.collections.map((c, ci) => (
@@ -1061,32 +1056,42 @@ const groupColorMap = useMemo(() => {
             </button>
           </span>
         ))}
-        {adding == null && (
-          <Button
-            variant="ghost"
-            size="icon-xs"
-            className="rounded-sm border border-dashed border-border hover:border-foreground/40"
-            onClick={() => setRows(prev => {
-              const next = [...prev]
-              next[i] = { ...next[i], addingCollection: { collectionId: '', newName: '' } }
-              return next
-            })}
-            title={t('collections.addTransaction')}
-          >
-            <Layers />
-          </Button>
-        )}
-        {adding != null && (
-          <div className="flex items-center gap-1 flex-wrap">
+        <Button
+          variant="ghost"
+          size="icon-xs"
+          className="rounded-sm border border-dashed border-border hover:border-foreground/40"
+          onClick={() => setCollectionModal({ rowIndex: i, collectionId: '', newName: '' })}
+          title={t('collections.addTransaction')}
+        >
+          <Layers />
+        </Button>
+      </div>
+    )
+  }
+
+  function renderCollectionModal() {
+    if (!collectionModal) return null
+    const row = rows[collectionModal.rowIndex]
+    const tx = row.original
+    const alreadyIn = new Set(row.collections.map(c => c.id))
+    const available = allCollections.filter(c => !alreadyIn.has(c.id))
+
+    return (
+      <Dialog open onOpenChange={open => { if (!open) setCollectionModal(null) }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>{t('collections.addTransaction')}</DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col gap-4">
+            <div className="flex items-center justify-between text-sm border rounded-md px-3 py-2 bg-muted/30">
+              <span className="text-muted-foreground truncate mr-4">{tx.counterpartyName ?? tx.purpose ?? '—'}</span>
+              <span className={`font-mono shrink-0 ${tx.amount >= 0 ? 'text-green-400' : ''}`}>{EUR.format(tx.amount)}</span>
+            </div>
             <Select
-              value={adding.collectionId}
-              onValueChange={value => setRows(prev => {
-                const next = [...prev]
-                next[i] = { ...next[i], addingCollection: { ...next[i].addingCollection!, collectionId: value ?? '' } }
-                return next
-              })}
+              value={collectionModal.collectionId}
+              onValueChange={value => setCollectionModal(prev => prev ? { ...prev, collectionId: value ?? '', newName: '' } : null)}
             >
-              <SelectTrigger className="h-7 w-40 text-xs rounded-md">
+              <SelectTrigger className="w-full rounded-md">
                 <SelectValue placeholder="—" />
               </SelectTrigger>
               <SelectContent>
@@ -1096,50 +1101,45 @@ const groupColorMap = useMemo(() => {
                 <SelectItem value="__new__">+ {t('collections.createCollection')}</SelectItem>
               </SelectContent>
             </Select>
-            {adding.collectionId === '__new__' && (
+            {collectionModal.collectionId === '__new__' && (
               <Input
-                className="h-7 w-32 text-xs rounded-md"
+                className="rounded-md text-sm"
                 type="text"
                 placeholder={t('collections.namePlaceholder')}
-                value={adding.newName}
-                onChange={e => setRows(prev => {
-                  const next = [...prev]
-                  next[i] = { ...next[i], addingCollection: { ...next[i].addingCollection!, newName: e.target.value } }
-                  return next
-                })}
+                value={collectionModal.newName}
+                autoFocus
+                onChange={e => setCollectionModal(prev => prev ? { ...prev, newName: e.target.value } : null)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter' && collectionModal.newName.trim()) {
+                    createAndAddToCollection(collectionModal.rowIndex, collectionModal.newName)
+                  }
+                }}
               />
             )}
-            <Button
-              variant="outline"
-              size="icon-xs"
-              className="rounded-sm"
-              disabled={!adding.collectionId || (adding.collectionId === '__new__' && !adding.newName.trim())}
-              onClick={() => {
-                if (adding.collectionId === '__new__') {
-                  createAndAddToCollection(i, adding.newName)
-                } else {
-                  const col = allCollections.find(c => c.id === Number(adding.collectionId))
-                  if (col) addToCollection(i, col.id, col.name)
-                }
-              }}
-            >
-              ✓
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon-xs"
-              className="rounded-sm"
-              onClick={() => setRows(prev => {
-                const next = [...prev]
-                next[i] = { ...next[i], addingCollection: null }
-                return next
-              })}
-            >
-              ×
-            </Button>
+            <div className="flex gap-2 justify-end">
+              <Button variant="ghost" size="sm" className="rounded-md" onClick={() => setCollectionModal(null)}>
+                {t('common.cancel')}
+              </Button>
+              <Button
+                variant="default"
+                size="sm"
+                className="rounded-md"
+                disabled={!collectionModal.collectionId || (collectionModal.collectionId === '__new__' && !collectionModal.newName.trim())}
+                onClick={() => {
+                  if (collectionModal.collectionId === '__new__') {
+                    createAndAddToCollection(collectionModal.rowIndex, collectionModal.newName)
+                  } else {
+                    const col = allCollections.find(c => c.id === Number(collectionModal.collectionId))
+                    if (col) addToCollection(collectionModal.rowIndex, col.id, col.name)
+                  }
+                }}
+              >
+                {t('common.confirm')}
+              </Button>
+            </div>
           </div>
-        )}
-      </div>
+        </DialogContent>
+      </Dialog>
     )
   }
 
@@ -1523,6 +1523,7 @@ const groupColorMap = useMemo(() => {
       {renderLinkModal()}
       {renderGroupModal()}
       {renderBudgetModal()}
+      {renderCollectionModal()}
       {createVirtualOpen && (
         <CreateVirtualTransactionModal
           accounts={accounts}
