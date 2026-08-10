@@ -973,8 +973,10 @@ const groupColorMap = useMemo(() => {
               value={budgetModal.budgetId}
               onValueChange={value => setBudgetModal(prev => prev ? { ...prev, budgetId: value ?? '' } : null)}
             >
-              <SelectTrigger className="rounded-md">
-                <SelectValue placeholder="—" />
+              <SelectTrigger className="w-full rounded-md">
+                <SelectValue placeholder="—">
+                  {availableBudgets.find(b => String(b.id) === budgetModal.budgetId)?.name}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 {availableBudgets.map(b => (
@@ -1406,7 +1408,7 @@ const groupColorMap = useMemo(() => {
         )}
       </div>
 
-      <div className="flex-1 overflow-auto">
+      <div className="flex-1 overflow-auto pl-4 pr-4 pb-4">
         {page.phase === 'loading' && (
           <p className="hint loading">{t('common.fetching')}</p>
         )}
@@ -1417,6 +1419,7 @@ const groupColorMap = useMemo(() => {
           <p className="hint">{t('common.noTransactions')}</p>
         )}
         {page.phase === 'ready' && filteredRows.length > 0 && (
+          <div className="rounded-lg border border-border overflow-hidden">
           <table className="w-full caption-bottom text-xs border-collapse">
             <TableHeader className="[&_tr]:border-b">
               <TableRow className="hover:bg-transparent border-b">
@@ -1552,6 +1555,7 @@ const groupColorMap = useMemo(() => {
               })}
             </TableBody>
           </table>
+          </div>
         )}
       </div>
 
