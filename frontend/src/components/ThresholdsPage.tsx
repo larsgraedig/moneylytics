@@ -13,6 +13,11 @@ import {
 } from '../api/thresholds'
 import { fetchTransactionList, type TransactionItem } from '../api/transactions'
 import { CategoryPathInput } from './CategoryPathInput'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { cn } from '@/lib/utils'
 
 const PERIODS: ThresholdPeriod[] = ['WEEKLY', 'MONTHLY', 'QUARTERLY', 'YEARLY']
 const PERIOD_IDEAL_DAYS: Record<ThresholdPeriod, number> = {
@@ -24,8 +29,6 @@ const PERIOD_IDEAL_DAYS: Record<ThresholdPeriod, number> = {
 
 const EUR = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })
 const EUR2 = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' })
-
-// ── helpers ──────────────────────────────────────────────────────────────
 
 function pickBest(thresholds: Threshold[], from: string, to: string): Threshold | null {
   if (thresholds.length === 0) return null
@@ -55,8 +58,6 @@ function progressFromItem(item: ThresholdStatusItem): Progress {
   }
 }
 
-// ── form state ────────────────────────────────────────────────────────────
-
 interface FormState {
   period: ThresholdPeriod
   notice: string
@@ -80,8 +81,6 @@ function parseAmt(s: string): number | null {
   return isNaN(n) || n < 0 ? null : n
 }
 
-// ── drilldown ─────────────────────────────────────────────────────────────
-
 interface DrilldownState {
   thresholdId: number
   categoryPath: string[]
@@ -89,7 +88,94 @@ interface DrilldownState {
   loading: boolean
 }
 
-// ── component ─────────────────────────────────────────────────────────────
+const STATUS_COLORS: Record<Status, string> = {
+  ok: 'bg-green-500',
+  notice: 'bg-yellow-400',
+  warning: 'bg-orange-500',
+  critical: 'bg-red-500',
+}
+
+function ProgressBar({ progress }: { progress: Progress }) {
+  const fillPct = Math.min(progress.pct * 100, 100)
+  const overBudget = progress.pct > 1
+
+  return (
+    <div className="flex items-center gap-2 min-w-24">
+      <div className="relative flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
+        <div
+          className={cn('absolute inset-y-0 left-0 rounded-full transition-all', STATUS_COLORS[progress.status])}
+          style={{ width: `${fillPct}%` }}
+        />
+        {progress.tickNotice != null && (
+          <div className="absolute inset-y-0 w-px bg-yellow-400/70" style={{ left: `${progress.tickNotice * 100}%` }} />
+        )}
+        {progress.tickWarning != null && (
+          <div className="absolute inset-y-0 w-px bg-orange-500/70" style={{ left: `${progress.tickWarning * 100}%` }} />
+        )}
+      </div>
+      <span className={cn('text-xs tabular-nums', overBudget ? 'text-destructive font-medium' : 'text-muted-foreground')}>
+        {Math.round(progress.pct * 100)}%
+      </span>
+    </div>
+  )
+}
+
+function DrilldownModal({ state, from, to, onClose }: { state: DrilldownState; from: string; to: string; onClose: () => void }) {
+  const { t } = useTranslation()
+  const title = state.categoryPath.filter(Boolean).join(' > ')
+  const total = state.transactions?.reduce((s, tx) => s + Math.abs(tx.effectiveAmount), 0) ?? 0
+
+  return (
+    <Dialog open onOpenChange={open => { if (!open) onClose() }}>
+      <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col p-0 gap-0">
+        <DialogHeader className="px-5 py-4 border-b shrink-0">
+          <DialogTitle>{title}</DialogTitle>
+          <p className="text-xs text-muted-foreground">{from} → {to}</p>
+        </DialogHeader>
+
+        {state.loading && <p className="px-5 py-6 text-sm text-muted-foreground">{t('common.loading')}</p>}
+
+        {!state.loading && state.transactions?.length === 0 && (
+          <p className="px-5 py-6 text-sm text-muted-foreground">{t('cashflow.noTransactions')}</p>
+        )}
+
+        {!state.loading && state.transactions != null && state.transactions.length > 0 && (
+          <>
+            <div className="flex-1 overflow-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>{t('common.date')}</TableHead>
+                    <TableHead>{t('common.category')}</TableHead>
+                    <TableHead>{t('common.purpose')}</TableHead>
+                    <TableHead className="text-right">{t('common.amount')}</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {state.transactions.map(tx => (
+                    <TableRow key={tx.id}>
+                      <TableCell className="text-xs text-muted-foreground tabular-nums whitespace-nowrap">{tx.accountingDate}</TableCell>
+                      <TableCell className="text-sm">{tx.category}{tx.subcategory ? ` / ${tx.subcategory}` : ''}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground max-w-48 truncate">{tx.purpose ?? '—'}</TableCell>
+                      <TableCell className="text-right tabular-nums">{EUR2.format(Math.abs(tx.effectiveAmount))}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+            <div className="flex justify-between items-center border-t px-5 py-3 shrink-0">
+              <span className="text-sm text-muted-foreground">{t('common.total')}</span>
+              <span className="font-medium tabular-nums">{EUR2.format(total)}</span>
+            </div>
+          </>
+        )}
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+const inputCls = 'h-7 w-20 rounded border border-input bg-background px-2 text-xs outline-none focus:ring-1 focus:ring-ring'
+const selectCls = 'h-7 rounded border border-input bg-background px-2 text-xs outline-none focus:ring-1 focus:ring-ring'
 
 export default function ThresholdsPage({ accountId, categories }: { accountId?: number; categories: CategoryNode[] }) {
   const { t } = useTranslation()
@@ -129,12 +215,8 @@ export default function ThresholdsPage({ accountId, categories }: { accountId?: 
       const items = await fetchThresholdStatus(localFrom, localTo, accountId)
       setStatusMap(new Map(items.map(item => [item.thresholdId, item])))
       setStatusLoaded(true)
-    } catch {
-      // silent — user can retry
-    }
+    } catch { /* silent */ }
   }
-
-  // ── edit handlers ─────────────────────────────────────────────────────
 
   function startEdit(threshold: Threshold) {
     setEditingId(threshold.id)
@@ -166,11 +248,7 @@ export default function ThresholdsPage({ accountId, categories }: { accountId?: 
       const saved = await saveThreshold(req)
       setThresholds(prev => {
         const idx = prev.findIndex(t => t.id === saved.id)
-        if (idx >= 0) {
-          const next = [...prev]
-          next[idx] = saved
-          return next
-        }
+        if (idx >= 0) { const next = [...prev]; next[idx] = saved; return next }
         return [...prev, saved]
       })
       cancelEdit()
@@ -191,8 +269,6 @@ export default function ThresholdsPage({ accountId, categories }: { accountId?: 
     }
   }
 
-  // ── add new handlers ──────────────────────────────────────────────────
-
   function startAddNew() {
     setIsAddingNew(true)
     setNewCategoryId(null)
@@ -209,10 +285,7 @@ export default function ThresholdsPage({ accountId, categories }: { accountId?: 
   }
 
   async function handleSaveNew() {
-    if (newCategoryId == null) {
-      setNewFormError(t('limits.categoryRequired'))
-      return
-    }
+    if (newCategoryId == null) { setNewFormError(t('limits.categoryRequired')); return }
     const req: SaveThresholdRequest = {
       categoryId: newCategoryId,
       period: newForm.period,
@@ -230,11 +303,7 @@ export default function ThresholdsPage({ accountId, categories }: { accountId?: 
       const saved = await saveThreshold(req)
       setThresholds(prev => {
         const idx = prev.findIndex(t => t.id === saved.id)
-        if (idx >= 0) {
-          const next = [...prev]
-          next[idx] = saved
-          return next
-        }
+        if (idx >= 0) { const next = [...prev]; next[idx] = saved; return next }
         return [...prev, saved]
       })
       cancelAddNew()
@@ -262,410 +331,132 @@ export default function ThresholdsPage({ accountId, categories }: { accountId?: 
     a.categoryPath.filter(Boolean).join(' > ').localeCompare(b.categoryPath.filter(Boolean).join(' > ')),
   )
 
-  // ── render ────────────────────────────────────────────────────────────
-
   return (
-    <div className="bgt-page">
-      <div className="bgt-controls">
+    <div className="flex flex-col gap-4 p-6">
+      <div className="flex flex-wrap items-center gap-2">
         {([1, 2, 3] as const).map(y => (
-          <button
-            key={y}
-            className={`load-btn${years === y ? ' load-btn--active' : ''}`}
-            onClick={() => setYears(y)}
-          >
+          <Button key={y} variant={years === y ? 'default' : 'outline'} size="sm" onClick={() => setYears(y)}>
             {y}J
-          </button>
+          </Button>
         ))}
         {!isAddingNew && (
-          <button className="load-btn" onClick={startAddNew}>
+          <Button variant="outline" size="sm" onClick={startAddNew}>
             + {t('limits.addThreshold')}
-          </button>
+          </Button>
         )}
         {statusLoaded && (
-          <span className="bgt-period-badge">
+          <Badge variant="secondary" className="text-xs">
             {t('limits.statusLoaded', { count: years })}
-          </span>
+          </Badge>
         )}
       </div>
 
-      <div className="bgt-body">
-        {sortedThresholds.length === 0 && !isAddingNew ? (
-          <p className="hint">{t('limits.noCategories')}</p>
-        ) : (
-          <table className="bgt-table">
-            <thead>
-              <tr>
-                <th className="bgt-th-path">{t('limits.columns.category')}</th>
-                {statusLoaded && <th className="bgt-th-spent">{t('limits.columns.spending')}</th>}
-                <th className="bgt-th-period">{t('limits.columns.period')}</th>
-                <th className="bgt-th-sev bgt-sev--notice">{t('limits.columns.notice')}</th>
-                <th className="bgt-th-sev bgt-sev--warning">{t('limits.columns.warning')}</th>
-                <th className="bgt-th-sev bgt-sev--critical">{t('limits.columns.critical')}</th>
-                {statusLoaded && <th className="bgt-th-bar">{t('limits.columns.progress')}</th>}
-                <th className="bgt-th-actions" />
-              </tr>
-            </thead>
-            <tbody>
-              {sortedThresholds.map(threshold => {
-                const isEditing = editingId === threshold.id
-                const item = statusLoaded ? statusMap.get(threshold.id) : undefined
-                const spending = item?.spending ?? 0
-                const progress = item != null ? progressFromItem(item) : null
+      {sortedThresholds.length === 0 && !isAddingNew ? (
+        <p className="text-sm text-muted-foreground">{t('limits.noCategories')}</p>
+      ) : (
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>{t('limits.columns.category')}</TableHead>
+              {statusLoaded && <TableHead>{t('limits.columns.spending')}</TableHead>}
+              <TableHead>{t('limits.columns.period')}</TableHead>
+              <TableHead className="text-yellow-500/80">{t('limits.columns.notice')}</TableHead>
+              <TableHead className="text-orange-500/80">{t('limits.columns.warning')}</TableHead>
+              <TableHead className="text-red-500/80">{t('limits.columns.critical')}</TableHead>
+              {statusLoaded && <TableHead>{t('limits.columns.progress')}</TableHead>}
+              <TableHead />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {sortedThresholds.map(threshold => {
+              const isEditing = editingId === threshold.id
+              const item = statusLoaded ? statusMap.get(threshold.id) : undefined
+              const spending = item?.spending ?? 0
+              const progress = item != null ? progressFromItem(item) : null
+              const best = item ?? pickBest([threshold], localFrom, localTo)
 
-                const rowClass = [
-                  'bgt-row',
-                  isEditing ? 'bgt-row--editing' : '',
-                ]
-                  .filter(Boolean)
-                  .join(' ')
-
-                if (isEditing) {
-                  return (
-                    <tr key={threshold.id} className={rowClass}>
-                      <td className="bgt-td-path bgt-cell-cat">
-                        {threshold.categoryPath.filter(Boolean).join(' > ')}
-                      </td>
-                      {statusLoaded && (
-                        <td className="bgt-td-spent">
-                          {spending > 0 ? EUR2.format(spending) : '—'}
-                        </td>
-                      )}
-                      <td className="bgt-td-period">
-                        <select
-                          className="bgt-select"
-                          value={form.period}
-                          onChange={e =>
-                            setForm(p => ({ ...p, period: e.target.value as ThresholdPeriod }))
-                          }
-                        >
-                          {PERIODS.map(p => (
-                            <option key={p} value={p}>
-                              {t(`limits.period.${p.toLowerCase()}`)}
-                            </option>
-                          ))}
-                        </select>
-                      </td>
-                      <td className="bgt-td-sev">
-                        <input
-                          className="bgt-sev-input"
-                          type="number"
-                          min="0"
-                          step="1"
-                          placeholder="—"
-                          value={form.notice}
-                          onChange={e => setForm(p => ({ ...p, notice: e.target.value }))}
-                        />
-                      </td>
-                      <td className="bgt-td-sev">
-                        <input
-                          className="bgt-sev-input"
-                          type="number"
-                          min="0"
-                          step="1"
-                          placeholder="—"
-                          value={form.warning}
-                          onChange={e => setForm(p => ({ ...p, warning: e.target.value }))}
-                        />
-                      </td>
-                      <td className="bgt-td-sev">
-                        <input
-                          className="bgt-sev-input"
-                          type="number"
-                          min="0"
-                          step="1"
-                          placeholder="—"
-                          value={form.critical}
-                          onChange={e => setForm(p => ({ ...p, critical: e.target.value }))}
-                        />
-                      </td>
-                      {statusLoaded && <td />}
-                      <td className="bgt-td-edit-actions">
-                        <button
-                          className="bgt-btn bgt-btn--save"
-                          onClick={() => handleSave(threshold)}
-                          disabled={saving}
-                        >
-                          {saving ? '…' : t('common.save')}
-                        </button>
-                        <button className="bgt-btn bgt-btn--delete" onClick={() => handleDelete(threshold.id)}>
-                          {t('common.delete')}
-                        </button>
-                        <button className="bgt-btn bgt-btn--cancel" onClick={cancelEdit}>
-                          ✕
-                        </button>
-                        {formError != null && (
-                          <span className="bgt-form-error">{formError}</span>
-                        )}
-                      </td>
-                    </tr>
-                  )
-                }
-
-                const best = item ?? pickBest([threshold], localFrom, localTo)
-
+              if (isEditing) {
                 return (
-                  <tr key={threshold.id} className={rowClass} onClick={() => startEdit(threshold)}>
-                    <td className="bgt-td-path bgt-cell-cat">
-                      {threshold.categoryPath.filter(Boolean).join(' > ')}
-                    </td>
-                    {statusLoaded && (
-                      <td className={`bgt-td-spent${spending === 0 ? ' bgt-cell-muted' : ''}`}>
-                        {spending > 0 ? (
-                          <button
-                            className="bgt-spent-btn"
-                            onClick={e => { e.stopPropagation(); openDrilldown(threshold) }}
-                          >
-                            {EUR2.format(spending)}
-                          </button>
-                        ) : '—'}
-                      </td>
-                    )}
-                    <td className="bgt-td-period bgt-cell-muted">
-                      {best ? t(`limits.period.${best.period.toLowerCase()}`) : '—'}
-                    </td>
-                    <td className="bgt-td-sev bgt-sev--notice">
-                      {best?.notice != null ? (
-                        EUR.format(best.notice)
-                      ) : (
-                        <span className="bgt-cell-muted">—</span>
-                      )}
-                    </td>
-                    <td className="bgt-td-sev bgt-sev--warning">
-                      {best?.warning != null ? (
-                        EUR.format(best.warning)
-                      ) : (
-                        <span className="bgt-cell-muted">—</span>
-                      )}
-                    </td>
-                    <td className="bgt-td-sev bgt-sev--critical">
-                      {best?.critical != null ? (
-                        EUR.format(best.critical)
-                      ) : (
-                        <span className="bgt-cell-muted">—</span>
-                      )}
-                    </td>
-
-                    {statusLoaded && (
-                      <td className="bgt-td-bar">
-                        {progress != null ? (
-                          <ProgressBar progress={progress} />
-                        ) : (
-                          <span className="bgt-cell-muted">—</span>
-                        )}
-                      </td>
-                    )}
-                    <td className="bgt-td-actions">
-                      <button
-                        className="bgt-icon-btn"
-                        onClick={e => {
-                          e.stopPropagation()
-                          startEdit(threshold)
-                        }}
-                        title={t('limits.editThreshold')}
-                      >
-                        ✎
-                      </button>
-                    </td>
-                  </tr>
+                  <TableRow key={threshold.id} className="bg-muted/30">
+                    <TableCell className="font-medium text-sm">{threshold.categoryPath.filter(Boolean).join(' > ')}</TableCell>
+                    {statusLoaded && <TableCell className="text-sm tabular-nums">{spending > 0 ? EUR2.format(spending) : '—'}</TableCell>}
+                    <TableCell>
+                      <select className={selectCls} value={form.period} onChange={e => setForm(p => ({ ...p, period: e.target.value as ThresholdPeriod }))}>
+                        {PERIODS.map(p => <option key={p} value={p}>{t(`limits.period.${p.toLowerCase()}`)}</option>)}
+                      </select>
+                    </TableCell>
+                    <TableCell><input className={inputCls} type="number" min="0" step="1" placeholder="—" value={form.notice} onChange={e => setForm(p => ({ ...p, notice: e.target.value }))} /></TableCell>
+                    <TableCell><input className={inputCls} type="number" min="0" step="1" placeholder="—" value={form.warning} onChange={e => setForm(p => ({ ...p, warning: e.target.value }))} /></TableCell>
+                    <TableCell><input className={inputCls} type="number" min="0" step="1" placeholder="—" value={form.critical} onChange={e => setForm(p => ({ ...p, critical: e.target.value }))} /></TableCell>
+                    {statusLoaded && <TableCell />}
+                    <TableCell>
+                      <div className="flex items-center gap-1 flex-wrap">
+                        <Button size="xs" onClick={() => handleSave(threshold)} disabled={saving}>{saving ? '…' : t('common.save')}</Button>
+                        <Button size="xs" variant="destructive" onClick={() => handleDelete(threshold.id)}>{t('common.delete')}</Button>
+                        <Button size="xs" variant="ghost" onClick={cancelEdit}>✕</Button>
+                        {formError && <span className="text-xs text-destructive">{formError}</span>}
+                      </div>
+                    </TableCell>
+                  </TableRow>
                 )
-              })}
+              }
 
-              {isAddingNew && (
-                <tr className="bgt-row bgt-row--editing bgt-row--new">
-                  <td className="bgt-td-path">
-                    <CategoryPathInput
-                      value={newCategoryId}
-                      onChange={setNewCategoryId}
-                      tree={categories}
-                      placeholder={t('limits.selectCategory')}
-                      className="bgt-category-input"
-                    />
-                  </td>
-                  {statusLoaded && <td />}
-                  <td className="bgt-td-period">
-                    <select
-                      className="bgt-select"
-                      value={newForm.period}
-                      onChange={e =>
-                        setNewForm(p => ({ ...p, period: e.target.value as ThresholdPeriod }))
-                      }
-                    >
-                      {PERIODS.map(p => (
-                        <option key={p} value={p}>
-                          {t(`limits.period.${p.toLowerCase()}`)}
-                        </option>
-                      ))}
-                    </select>
-                  </td>
-                  <td className="bgt-td-sev">
-                    <input
-                      className="bgt-sev-input"
-                      type="number"
-                      min="0"
-                      step="1"
-                      placeholder="—"
-                      value={newForm.notice}
-                      onChange={e => setNewForm(p => ({ ...p, notice: e.target.value }))}
-                    />
-                  </td>
-                  <td className="bgt-td-sev">
-                    <input
-                      className="bgt-sev-input"
-                      type="number"
-                      min="0"
-                      step="1"
-                      placeholder="—"
-                      value={newForm.warning}
-                      onChange={e => setNewForm(p => ({ ...p, warning: e.target.value }))}
-                    />
-                  </td>
-                  <td className="bgt-td-sev">
-                    <input
-                      className="bgt-sev-input"
-                      type="number"
-                      min="0"
-                      step="1"
-                      placeholder="—"
-                      value={newForm.critical}
-                      onChange={e => setNewForm(p => ({ ...p, critical: e.target.value }))}
-                    />
-                  </td>
-                  {statusLoaded && <td />}
-                  <td className="bgt-td-edit-actions">
-                    <button
-                      className="bgt-btn bgt-btn--save"
-                      onClick={handleSaveNew}
-                      disabled={newSaving}
-                    >
-                      {newSaving ? '…' : t('common.save')}
-                    </button>
-                    <button className="bgt-btn bgt-btn--cancel" onClick={cancelAddNew}>
-                      ✕
-                    </button>
-                    {newFormError != null && (
-                      <span className="bgt-form-error">{newFormError}</span>
-                    )}
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        )}
+              return (
+                <TableRow key={threshold.id} className="cursor-pointer" onClick={() => startEdit(threshold)}>
+                  <TableCell className="font-medium text-sm">{threshold.categoryPath.filter(Boolean).join(' > ')}</TableCell>
+                  {statusLoaded && (
+                    <TableCell>
+                      {spending > 0 ? (
+                        <button
+                          className="text-sm tabular-nums underline-offset-2 hover:underline"
+                          onClick={e => { e.stopPropagation(); openDrilldown(threshold) }}
+                        >
+                          {EUR2.format(spending)}
+                        </button>
+                      ) : <span className="text-muted-foreground">—</span>}
+                    </TableCell>
+                  )}
+                  <TableCell className="text-muted-foreground text-sm">{best ? t(`limits.period.${best.period.toLowerCase()}`) : '—'}</TableCell>
+                  <TableCell className="text-sm tabular-nums">{best?.notice != null ? EUR.format(best.notice) : <span className="text-muted-foreground">—</span>}</TableCell>
+                  <TableCell className="text-sm tabular-nums">{best?.warning != null ? EUR.format(best.warning) : <span className="text-muted-foreground">—</span>}</TableCell>
+                  <TableCell className="text-sm tabular-nums">{best?.critical != null ? EUR.format(best.critical) : <span className="text-muted-foreground">—</span>}</TableCell>
+                  {statusLoaded && <TableCell>{progress != null ? <ProgressBar progress={progress} /> : <span className="text-muted-foreground">—</span>}</TableCell>}
+                  <TableCell />
+                </TableRow>
+              )
+            })}
 
-      </div>
+            {isAddingNew && (
+              <TableRow className="bg-muted/30">
+                <TableCell>
+                  <CategoryPathInput value={newCategoryId} onChange={setNewCategoryId} tree={categories} placeholder={t('limits.selectCategory')} className="w-48" />
+                </TableCell>
+                {statusLoaded && <TableCell />}
+                <TableCell>
+                  <select className={selectCls} value={newForm.period} onChange={e => setNewForm(p => ({ ...p, period: e.target.value as ThresholdPeriod }))}>
+                    {PERIODS.map(p => <option key={p} value={p}>{t(`limits.period.${p.toLowerCase()}`)}</option>)}
+                  </select>
+                </TableCell>
+                <TableCell><input className={inputCls} type="number" min="0" step="1" placeholder="—" value={newForm.notice} onChange={e => setNewForm(p => ({ ...p, notice: e.target.value }))} /></TableCell>
+                <TableCell><input className={inputCls} type="number" min="0" step="1" placeholder="—" value={newForm.warning} onChange={e => setNewForm(p => ({ ...p, warning: e.target.value }))} /></TableCell>
+                <TableCell><input className={inputCls} type="number" min="0" step="1" placeholder="—" value={newForm.critical} onChange={e => setNewForm(p => ({ ...p, critical: e.target.value }))} /></TableCell>
+                {statusLoaded && <TableCell />}
+                <TableCell>
+                  <div className="flex items-center gap-1 flex-wrap">
+                    <Button size="xs" onClick={handleSaveNew} disabled={newSaving}>{newSaving ? '…' : t('common.save')}</Button>
+                    <Button size="xs" variant="ghost" onClick={cancelAddNew}>✕</Button>
+                    {newFormError && <span className="text-xs text-destructive">{newFormError}</span>}
+                  </div>
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      )}
 
       {drilldown != null && (
-        <DrilldownModal
-          state={drilldown}
-          from={localFrom}
-          to={localTo}
-          onClose={() => setDrilldown(null)}
-        />
+        <DrilldownModal state={drilldown} from={localFrom} to={localTo} onClose={() => setDrilldown(null)} />
       )}
-    </div>
-  )
-}
-
-function ProgressBar({ progress }: { progress: Progress }) {
-  const fillPct = Math.min(progress.pct * 100, 100)
-  const overBudget = progress.pct > 1
-
-  return (
-    <div className="bgt-bar">
-      <div className="bgt-bar-track">
-        <div
-          className={`bgt-bar-fill bgt-bar-fill--${progress.status}`}
-          style={{ width: `${fillPct}%` }}
-        />
-        {progress.tickNotice != null && (
-          <div
-            className="bgt-bar-tick"
-            style={{ left: `${progress.tickNotice * 100}%` }}
-          />
-        )}
-        {progress.tickWarning != null && (
-          <div
-            className="bgt-bar-tick bgt-bar-tick--warn"
-            style={{ left: `${progress.tickWarning * 100}%` }}
-          />
-        )}
-      </div>
-      <span className={`bgt-bar-pct bgt-bar-pct--${progress.status}${overBudget ? ' bgt-bar-pct--over' : ''}`}>
-        {overBudget && '▲ '}
-        {Math.round(progress.pct * 100)}%
-      </span>
-    </div>
-  )
-}
-
-function DrilldownModal({
-  state,
-  from,
-  to,
-  onClose,
-}: {
-  state: DrilldownState
-  from: string
-  to: string
-  onClose: () => void
-}) {
-  const { t } = useTranslation()
-  const title = state.categoryPath.filter(Boolean).join(' > ')
-
-  const total = state.transactions?.reduce((s, tx) => s + Math.abs(tx.effectiveAmount), 0) ?? 0
-
-  return (
-    <div className="bgt-dd-backdrop" onClick={onClose}>
-      <div className="bgt-dd-panel" onClick={e => e.stopPropagation()}>
-        <div className="bgt-dd-header">
-          <div className="bgt-dd-title">
-            <span className="bgt-dd-name">{title}</span>
-            <span className="bgt-dd-range">{from} → {to}</span>
-          </div>
-          <button className="bgt-dd-close" onClick={onClose}>✕</button>
-        </div>
-
-        {state.loading && <p className="bgt-dd-hint">{t('common.loading')}</p>}
-
-        {!state.loading && state.transactions != null && state.transactions.length === 0 && (
-          <p className="bgt-dd-hint">{t('cashflow.noTransactions')}</p>
-        )}
-
-        {!state.loading && state.transactions != null && state.transactions.length > 0 && (
-          <>
-            <div className="bgt-dd-scroll">
-              <table className="bgt-dd-table">
-                <thead>
-                  <tr>
-                    <th>{t('common.date')}</th>
-                    <th>{t('common.category')}</th>
-                    <th>{t('common.purpose')}</th>
-                    <th>{t('common.amount')}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {state.transactions.map(tx => (
-                    <tr key={tx.id}>
-                      <td className="bgt-dd-cell-date">{tx.accountingDate}</td>
-                      <td className="bgt-dd-cell-cat">{tx.category}{tx.subcategory ? ` / ${tx.subcategory}` : ''}</td>
-                      <td className="bgt-dd-cell-purpose" title={tx.purpose ?? undefined}>
-                        {tx.purpose ?? <span className="bgt-cell-muted">—</span>}
-                      </td>
-                      <td className="bgt-dd-cell-amount">
-                        {EUR2.format(Math.abs(tx.effectiveAmount))}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <div className="bgt-dd-footer">
-              <span className="bgt-dd-total-label">{t('common.total')}</span>
-              <span className="bgt-dd-total">{EUR2.format(total)}</span>
-            </div>
-          </>
-        )}
-      </div>
     </div>
   )
 }

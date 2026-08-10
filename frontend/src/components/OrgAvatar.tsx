@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from 'react'
 import type { Organization } from '../context/AuthContext'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 
 interface Props {
   organizations: Organization[]
@@ -14,72 +15,36 @@ function getInitials(name: string): string {
 }
 
 export default function OrgAvatar({ organizations, activeOrganization, onSwitch }: Props) {
-  const [open, setOpen] = useState(false)
-  const wrapRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    if (!open) return
-    function handleMouseDown(e: MouseEvent) {
-      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) {
-        setOpen(false)
-      }
-    }
-    document.addEventListener('mousedown', handleMouseDown)
-    return () => document.removeEventListener('mousedown', handleMouseDown)
-  }, [open])
-
   if (!activeOrganization) return null
 
   const initials = getInitials(activeOrganization.name)
   const isMulti = organizations.length > 1
 
-  const avatarContent = activeOrganization.logoUrl ? (
-    <img
-      className="org-avatar__img"
-      src={activeOrganization.logoUrl}
-      alt={activeOrganization.name}
-    />
-  ) : (
-    <span className="org-avatar__initials">{initials}</span>
+  const avatar = (
+    <Avatar title={activeOrganization.name}>
+      {activeOrganization.logoUrl && <AvatarImage src={activeOrganization.logoUrl} alt={activeOrganization.name} />}
+      <AvatarFallback>{initials}</AvatarFallback>
+    </Avatar>
   )
 
-  if (!isMulti) {
-    return (
-      <div className="org-avatar-wrap">
-        <div className="org-avatar" title={activeOrganization.name}>
-          {avatarContent}
-        </div>
-      </div>
-    )
-  }
+  if (!isMulti) return <div className="flex items-center">{avatar}</div>
 
   return (
-    <div className="org-avatar-wrap" ref={wrapRef}>
-      <button
-        className="org-avatar org-avatar--clickable"
-        onClick={() => setOpen(o => !o)}
-        title={activeOrganization.name}
-        type="button"
-      >
-        {avatarContent}
-      </button>
-      {open && (
-        <div className="org-avatar-menu">
-          {organizations.map(org => (
-            <button
-              key={org.id}
-              type="button"
-              className={`org-avatar-menu-item${org.id === activeOrganization.id ? ' org-avatar-menu-item--active' : ''}`}
-              onClick={() => {
-                setOpen(false)
-                if (org.id !== activeOrganization.id) onSwitch(org.id)
-              }}
-            >
-              {org.name}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
+    <DropdownMenu>
+      <DropdownMenuTrigger className="rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+        {avatar}
+      </DropdownMenuTrigger>
+      <DropdownMenuContent side="bottom" align="end">
+        {organizations.map(org => (
+          <DropdownMenuItem
+            key={org.id}
+            className={org.id === activeOrganization.id ? 'font-medium' : ''}
+            onClick={() => { if (org.id !== activeOrganization.id) onSwitch(org.id) }}
+          >
+            {org.name}
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
   )
 }

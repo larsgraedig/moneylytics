@@ -2,6 +2,11 @@ import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { updateCollection, removeTransactionFromCollection, type CollectionDto } from '../api/collections'
 import type { TransactionItem } from '../api/transactions'
+import { Card } from '@/components/ui/card'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 
 const EUR = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' })
 
@@ -10,12 +15,7 @@ function formatDate(iso: string): string {
   return `${d}.${m}.${y}`
 }
 
-function InlineEdit({
-  value,
-  placeholder,
-  multiline,
-  onSave,
-}: {
+function InlineEdit({ value, placeholder, multiline, onSave }: {
   value: string | null
   placeholder: string
   multiline?: boolean
@@ -25,9 +25,7 @@ function InlineEdit({
   const [draft, setDraft] = useState(value ?? '')
   const ref = useRef<HTMLInputElement & HTMLTextAreaElement>(null)
 
-  useEffect(() => {
-    if (editing) ref.current?.focus()
-  }, [editing])
+  useEffect(() => { if (editing) ref.current?.focus() }, [editing])
 
   function commit() {
     setEditing(false)
@@ -38,7 +36,7 @@ function InlineEdit({
   if (!editing) {
     return (
       <span
-        className={`ltx-inline-edit${value ? '' : ' ltx-inline-edit--empty'}`}
+        className={cn('cursor-text hover:underline underline-offset-2', !value && 'text-muted-foreground italic text-sm')}
         onClick={() => { setDraft(value ?? ''); setEditing(true) }}
         title={placeholder}
       >
@@ -56,7 +54,7 @@ function InlineEdit({
       if (e.key === 'Enter' && !multiline) { e.preventDefault(); commit() }
       if (e.key === 'Escape') { setEditing(false); setDraft(value ?? '') }
     },
-    className: 'ltx-inline-input',
+    className: 'w-full rounded border border-input bg-background px-2 py-1 text-sm outline-none focus:ring-1 focus:ring-ring',
   }
 
   return multiline
@@ -64,13 +62,7 @@ function InlineEdit({
     : <input {...sharedProps} type="text" />
 }
 
-export function CollectionCard({
-  collection,
-  onUpdate,
-  onDelete,
-  onRemoveTransaction,
-  onAddTransaction,
-}: {
+export function CollectionCard({ collection, onUpdate, onDelete, onRemoveTransaction, onAddTransaction }: {
   collection: CollectionDto
   onUpdate: (id: number, name: string, note: string | null) => void
   onDelete: (id: number) => void
@@ -79,9 +71,7 @@ export function CollectionCard({
 }) {
   const { t } = useTranslation()
   const [saving, setSaving] = useState(false)
-  const sorted = [...collection.transactions].sort((a, b) =>
-    b.accountingDate.localeCompare(a.accountingDate),
-  )
+  const sorted = [...collection.transactions].sort((a, b) => b.accountingDate.localeCompare(a.accountingDate))
   const total = collection.transactions.reduce((sum, tx) => sum + tx.amount, 0)
 
   function save(name: string | null, note: string | null) {
@@ -99,89 +89,71 @@ export function CollectionCard({
   }
 
   return (
-    <div className="ltx-group">
-      <div className="ltx-group-header">
-        <div className="ltx-group-meta">
-          <span className="ltx-group-id">#{collection.id}</span>
+    <Card className="overflow-hidden">
+      <div className="flex items-start justify-between gap-4 border-b px-4 py-3">
+        <div className="flex items-center gap-2 min-w-0">
+          <Badge variant="secondary" className="shrink-0 text-xs">#{collection.id}</Badge>
           <InlineEdit
             value={collection.name}
             placeholder={t('collections.namePlaceholderInline')}
             onSave={name => save(name ?? collection.name, collection.note)}
           />
-          {saving && <span className="ltx-saving">…</span>}
+          {saving && <span className="text-xs text-muted-foreground">…</span>}
         </div>
-        <div className="col-card-actions">
-          <span className={`ltx-group-net ${total < 0 ? 'ltx-group-net--neg' : total > 0 ? 'ltx-group-net--pos' : 'ltx-group-net--zero'}`}>
+        <div className="flex items-center gap-2 shrink-0">
+          <span className={cn('font-medium tabular-nums text-sm', total < 0 ? 'text-destructive' : total > 0 ? 'text-green-500' : 'text-muted-foreground')}>
             {EUR.format(total)}
           </span>
-          <button
-            className="bdg-icon-btn bdg-icon-btn--danger"
+          <Button
+            variant="destructive"
+            size="icon-xs"
             title={t('common.delete')}
-            onClick={() => {
-              if (window.confirm(t('collections.deleteConfirm'))) onDelete(collection.id)
-            }}
+            onClick={() => { if (window.confirm(t('collections.deleteConfirm'))) onDelete(collection.id) }}
           >
             ␡
-          </button>
+          </Button>
         </div>
       </div>
-      <div className="ltx-group-comment">
-        <InlineEdit
-          value={collection.note}
-          placeholder={t('collections.commentPlaceholder')}
-          multiline
-          onSave={note => save(collection.name, note)}
-        />
+      <div className="px-4 py-2 border-b text-sm">
+        <InlineEdit value={collection.note} placeholder={t('collections.commentPlaceholder')} multiline onSave={note => save(collection.name, note)} />
       </div>
-      <table className="ltx-table">
-        <thead>
-          <tr>
-            <th>{t('transactions.columns.date')}</th>
-            <th>{t('transactions.columns.counterpartyName')}</th>
-            <th>{t('transactions.columns.purpose')}</th>
-            <th>{t('transactions.columns.category')}</th>
-            <th className="ltx-col-amount">{t('transactions.columns.amount')}</th>
-            <th className="ltx-col-remove" />
-          </tr>
-        </thead>
-        <tbody>
+      <div className="overflow-x-auto">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead className="w-24">{t('transactions.columns.date')}</TableHead>
+            <TableHead>{t('transactions.columns.counterpartyName')}</TableHead>
+            <TableHead>{t('transactions.columns.purpose')}</TableHead>
+            <TableHead>{t('transactions.columns.category')}</TableHead>
+            <TableHead className="text-right">{t('transactions.columns.amount')}</TableHead>
+            <TableHead className="w-8" />
+          </TableRow>
+        </TableHeader>
+        <TableBody>
           {sorted.map(tx => (
-            <tr key={tx.id} className="ltx-row">
-              <td>{formatDate(tx.accountingDate)}</td>
-              <td className="ltx-cell-counterparty" title={tx.counterpartyIban ?? undefined}>
-                {tx.counterpartyName ?? ''}
-              </td>
-              <td className="ltx-cell-purpose" title={tx.purpose ?? undefined}>
-                <span className="ltx-purpose-text">{tx.purpose ?? ''}</span>
-              </td>
-              <td>
-                {tx.category && (
-                  <span className="ltx-cat">
-                    {tx.category}{tx.subcategory ? ` / ${tx.subcategory}` : ''}
-                  </span>
-                )}
-              </td>
-              <td className={`ltx-col-amount ${tx.amount >= 0 ? 'ltx-amount--pos' : 'ltx-amount--neg'}`}>
+            <TableRow key={tx.id}>
+              <TableCell className="text-xs text-muted-foreground tabular-nums">{formatDate(tx.accountingDate)}</TableCell>
+              <TableCell className="max-w-36 truncate text-sm" title={tx.counterpartyIban ?? undefined}>{tx.counterpartyName ?? ''}</TableCell>
+              <TableCell className="max-w-48 truncate text-sm text-muted-foreground" title={tx.purpose ?? undefined}>{tx.purpose ?? ''}</TableCell>
+              <TableCell className="text-xs text-muted-foreground">
+                {tx.category && <span>{tx.category}{tx.subcategory ? ` / ${tx.subcategory}` : ''}</span>}
+              </TableCell>
+              <TableCell className={cn('text-right tabular-nums text-sm', tx.amount >= 0 ? 'text-green-500' : 'text-destructive')}>
                 {EUR.format(tx.amount)}
-              </td>
-              <td className="ltx-col-remove">
-                <button
-                  className="ltx-remove-btn"
-                  onClick={() => removeTx(tx)}
-                  title={t('collections.removeTransaction')}
-                >
-                  ×
-                </button>
-              </td>
-            </tr>
+              </TableCell>
+              <TableCell className="p-1">
+                <Button variant="ghost" size="icon-xs" onClick={() => removeTx(tx)} title={t('collections.removeTransaction')}>×</Button>
+              </TableCell>
+            </TableRow>
           ))}
-        </tbody>
-      </table>
-      <div className="col-card-footer">
-        <button className="bdg-assign-btn" onClick={() => onAddTransaction(collection)}>
-          + {t('collections.addTransaction')}
-        </button>
+        </TableBody>
+      </Table>
       </div>
-    </div>
+      <div className="flex px-4 py-3 border-t">
+        <Button variant="outline" size="sm" onClick={() => onAddTransaction(collection)}>
+          + {t('collections.addTransaction')}
+        </Button>
+      </div>
+    </Card>
   )
 }

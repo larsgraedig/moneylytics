@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { fetchAccounts, createAccount, updateAccount, deleteAccount, type Account } from '../api/accounts'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
 
 export default function AccountsPage() {
   const { t } = useTranslation()
@@ -84,114 +87,104 @@ export default function AccountsPage() {
   }
 
   return (
-    <div className="acc-page">
-      <div className="acc-add-form">
-        <input
-          className="acc-input"
+    <div className="flex flex-col gap-4 p-4 sm:p-6">
+      <div className="flex flex-wrap items-end gap-2">
+        <Input
+          className="flex-1 min-w-0 sm:w-56 sm:flex-none"
           placeholder={t('accounts.ibanPlaceholder')}
           value={newIban}
           onChange={e => setNewIban(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && handleAdd()}
         />
-        <input
-          className="acc-input"
+        <Input
+          className="flex-1 min-w-0 sm:w-48 sm:flex-none"
           placeholder={t('accounts.namePlaceholder')}
           value={newName}
           onChange={e => setNewName(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && handleAdd()}
         />
-        <button
-          className="load-btn"
-          onClick={handleAdd}
-          disabled={adding || !newIban.trim()}
-        >
+        <Button onClick={handleAdd} disabled={adding || !newIban.trim()}>
           {adding ? '…' : t('accounts.addAccount')}
-        </button>
-        {addError && <span className="acc-error">{addError}</span>}
+        </Button>
+        {addError && <span className="text-sm text-destructive">{addError}</span>}
       </div>
 
-      {loading && <p className="hint loading">{t('common.loading')}</p>}
-      {error && <p className="hint error">{error}</p>}
-
+      {loading && <p className="text-sm text-muted-foreground">{t('common.loading')}</p>}
+      {error && <p className="text-sm text-destructive">{error}</p>}
       {!loading && !error && accounts.length === 0 && (
-        <p className="hint">{t('accounts.empty')}</p>
+        <p className="text-sm text-muted-foreground">{t('accounts.empty')}</p>
       )}
 
       {accounts.length > 0 && (
-        <div className="acc-table-wrap">
-          <table className="acc-table">
-            <thead>
-              <tr>
-                <th>{t('accounts.columns.iban')}</th>
-                <th>{t('accounts.columns.name')}</th>
-                <th>{t('accounts.columns.lastTransaction')}</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {accounts.map(account => {
-                const isEditing = editingIban === account.iban
-                const isDeleting = deleting === account.iban
-                return (
-                  <tr key={account.iban} className="acc-row">
-                    <td className="acc-cell-iban">{account.iban}</td>
-                    <td className="acc-cell-name">
-                      {isEditing ? (
-                        <input
-                          className="acc-input acc-input--inline"
-                          value={editName}
-                          autoFocus
-                          onChange={e => setEditName(e.target.value)}
-                          onKeyDown={e => {
-                            if (e.key === 'Enter') handleSaveEdit(account.iban)
-                            if (e.key === 'Escape') setEditingIban(null)
-                          }}
-                        />
-                      ) : (
-                        account.name
-                      )}
-                    </td>
-                    <td className="acc-cell-last-tx">{account.lastTransactionDate ?? '—'}</td>
-                    <td className="acc-cell-actions">
+        <div className="overflow-x-auto">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>{t('accounts.columns.iban')}</TableHead>
+              <TableHead>{t('accounts.columns.name')}</TableHead>
+              <TableHead>{t('accounts.columns.lastTransaction')}</TableHead>
+              <TableHead />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {accounts.map(account => {
+              const isEditing = editingIban === account.iban
+              const isDeleting = deleting === account.iban
+              return (
+                <TableRow key={account.iban}>
+                  <TableCell className="font-mono text-xs text-muted-foreground">{account.iban}</TableCell>
+                  <TableCell>
+                    {isEditing ? (
+                      <Input
+                        className="h-7 w-40"
+                        value={editName}
+                        autoFocus
+                        onChange={e => setEditName(e.target.value)}
+                        onKeyDown={e => {
+                          if (e.key === 'Enter') handleSaveEdit(account.iban)
+                          if (e.key === 'Escape') setEditingIban(null)
+                        }}
+                      />
+                    ) : (
+                      account.name
+                    )}
+                  </TableCell>
+                  <TableCell className="text-muted-foreground text-sm">
+                    {account.lastTransactionDate ?? '—'}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex justify-end gap-2">
                       {isEditing ? (
                         <>
-                          <button
-                            className="acc-btn acc-btn--save"
-                            onClick={() => handleSaveEdit(account.iban)}
-                            disabled={saving}
-                          >
+                          <Button size="sm" onClick={() => handleSaveEdit(account.iban)} disabled={saving}>
                             {saving ? '…' : t('accounts.save')}
-                          </button>
-                          <button
-                            className="acc-btn acc-btn--cancel"
-                            onClick={() => setEditingIban(null)}
-                          >
+                          </Button>
+                          <Button size="sm" variant="ghost" onClick={() => setEditingIban(null)}>
                             {t('accounts.cancel')}
-                          </button>
+                          </Button>
                         </>
                       ) : (
                         <>
-                          <button
-                            className="acc-btn acc-btn--edit"
-                            onClick={() => startEdit(account)}
-                          >
+                          <Button size="sm" variant="ghost" onClick={() => startEdit(account)}>
                             {t('accounts.rename')}
-                          </button>
-                          <button
-                            className="acc-btn acc-btn--delete"
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="destructive"
                             onClick={() => handleDelete(account.iban)}
                             disabled={isDeleting}
                           >
                             {isDeleting ? '…' : t('accounts.delete')}
-                          </button>
+                          </Button>
                         </>
                       )}
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              )
+            })}
+          </TableBody>
+        </Table>
         </div>
       )}
     </div>

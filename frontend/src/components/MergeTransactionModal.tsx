@@ -1,6 +1,12 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { mergeTransactions, type TransactionItem } from '../api/transactions'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Button } from '@/components/ui/button'
+import { Separator } from '@/components/ui/separator'
+import { cn } from '@/lib/utils'
 
 const EUR = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' })
 
@@ -41,73 +47,60 @@ export function MergeTransactionModal({
   }
 
   return (
-    <div
-      style={{
-        position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000,
-      }}
-      onClick={e => { if (e.target === e.currentTarget) onClose() }}
-    >
-      <div style={{ background: '#1e2028', borderRadius: 10, padding: 24, width: 500, maxWidth: '95vw' }}>
-        <h3 style={{ margin: '0 0 12px', color: '#e2e8f0' }}>{t('transactions.merge.title')}</h3>
+    <Dialog open onOpenChange={open => { if (!open) onClose() }}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>{t('transactions.merge.title')}</DialogTitle>
+        </DialogHeader>
 
-        <div style={{ background: '#2a2d3a', borderRadius: 8, padding: 12, marginBottom: 16 }}>
+        <div className="rounded-lg border p-3 flex flex-col gap-1">
           {transactions.map(tx => (
-            <div key={tx.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', fontSize: 13, color: '#cbd5e1' }}>
-              <span>{tx.accountingDate} – {tx.counterpartyName ?? tx.purpose ?? `#${tx.id}`}</span>
-              <span style={{ color: tx.amount < 0 ? '#f87171' : '#34d399' }}>{EUR.format(tx.amount)}</span>
+            <div key={tx.id} className="flex justify-between text-sm">
+              <span className="text-muted-foreground">{tx.accountingDate} – {tx.counterpartyName ?? tx.purpose ?? `#${tx.id}`}</span>
+              <span className={cn('tabular-nums', tx.amount < 0 ? 'text-destructive' : 'text-green-500')}>
+                {EUR.format(tx.amount)}
+              </span>
             </div>
           ))}
-          <div style={{ borderTop: '1px solid #3a3d4a', marginTop: 8, paddingTop: 8, display: 'flex', justifyContent: 'space-between', fontSize: 13, fontWeight: 600 }}>
-            <span style={{ color: '#94a3b8' }}>{t('transactions.merge.total')}</span>
-            <span style={{ color: total < 0 ? '#f87171' : '#34d399' }}>{EUR.format(total)}</span>
+          <Separator className="my-1" />
+          <div className="flex justify-between text-sm font-medium">
+            <span className="text-muted-foreground">{t('transactions.merge.total')}</span>
+            <span className={cn('tabular-nums', total < 0 ? 'text-destructive' : 'text-green-500')}>
+              {EUR.format(total)}
+            </span>
           </div>
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 16 }}>
-          <input
-            type="text"
+        <div className="flex flex-col gap-3">
+          <Input
             placeholder={t('transactions.merge.name')}
             value={name}
             onChange={e => setName(e.target.value)}
-            style={{ padding: '8px 10px', borderRadius: 6, border: '1px solid #3a3d4a', background: '#2a2d3a', color: '#e2e8f0', fontSize: 13 }}
           />
-          <input
-            type="text"
+          <Input
             placeholder={t('transactions.merge.comment')}
             value={comment}
             onChange={e => setComment(e.target.value)}
-            style={{ padding: '8px 10px', borderRadius: 6, border: '1px solid #3a3d4a', background: '#2a2d3a', color: '#e2e8f0', fontSize: 13 }}
           />
-          <div>
-            <label style={{ fontSize: 12, color: '#94a3b8', display: 'block', marginBottom: 4 }}>{t('transactions.merge.accountingDate')}</label>
-            <input
+          <div className="flex flex-col gap-1.5">
+            <Label>{t('transactions.merge.accountingDate')}</Label>
+            <Input
               type="date"
               value={accountingDate}
               onChange={e => setAccountingDate(e.target.value)}
-              style={{ padding: '8px 10px', borderRadius: 6, border: '1px solid #3a3d4a', background: '#2a2d3a', color: '#e2e8f0', fontSize: 13, width: '100%', boxSizing: 'border-box' }}
             />
           </div>
         </div>
 
-        {error && <p style={{ color: '#f87171', fontSize: 13, margin: '0 0 12px' }}>{error}</p>}
+        {error && <p className="text-sm text-destructive">{error}</p>}
 
-        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-          <button
-            onClick={onClose}
-            style={{ padding: '8px 16px', borderRadius: 6, border: '1px solid #3a3d4a', background: 'none', color: '#94a3b8', cursor: 'pointer' }}
-          >
-            {t('transactions.merge.cancel')}
-          </button>
-          <button
-            onClick={handleConfirm}
-            disabled={saving}
-            style={{ padding: '8px 16px', borderRadius: 6, border: 'none', background: '#10b981', color: '#fff', cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1 }}
-          >
+        <div className="flex justify-end gap-2">
+          <Button variant="outline" onClick={onClose}>{t('transactions.merge.cancel')}</Button>
+          <Button onClick={handleConfirm} disabled={saving}>
             {saving ? '…' : t('transactions.merge.confirm')}
-          </button>
+          </Button>
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   )
 }

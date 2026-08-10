@@ -5,8 +5,10 @@ import {
   Workflow, TrendingUp, TrendingDown, PieChart, BarChart2,
   List, Landmark, Wallet, Gauge,
   FileSpreadsheet, FileCode, Link2, FolderOpen, Repeat, Wrench, Building2, Tags,
+  LogOut, Settings,
 } from 'lucide-react'
 import { getPresetRange, detectPreset, PRESETS, type Preset } from './utils/datePresets'
+import { DatePicker } from '@/components/ui/date-picker'
 import SankeyChart from './components/SankeyChart'
 import CamtImportPage from './components/CamtImportPage'
 import CsvImportPage from './components/CsvImportPage'
@@ -37,9 +39,30 @@ import { fetchCategories, type CategoryNode } from './api/rawImport'
 import { fetchUserSettings } from './api/settings'
 import { useAuth } from './context/AuthContext'
 import { useTranslation, Trans } from 'react-i18next'
+import {
+  SidebarProvider,
+  Sidebar,
+  SidebarContent,
+  SidebarGroup,
+  SidebarGroupLabel,
+  SidebarMenu,
+  SidebarMenuItem,
+  SidebarMenuButton,
+  SidebarTrigger,
+  SidebarInset,
+  SidebarSeparator,
+} from '@/components/ui/sidebar'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { cn } from '@/lib/utils'
 
 function isoDate(d: Date) {
   return d.toISOString().slice(0, 10)
+}
+
+function parseIso(iso: string): Date {
+  const [y, m, d] = iso.split('-').map(Number)
+  return new Date(y, m - 1, d)
 }
 
 const today = isoDate(new Date())
@@ -122,7 +145,6 @@ export default function App() {
   const activePreset = detectPreset(from, to)
 
   const [settingsOpen, setSettingsOpen] = useState(false)
-  const [sidebarOpen, setSidebarOpen] = useState(true)
   const [accounts, setAccounts] = useState<Account[]>([])
   const [categories, setCategories] = useState<CategoryNode[]>([])
   const [txColumnOrder, setTxColumnOrder] = useState<string[] | null>(null)
@@ -137,7 +159,6 @@ export default function App() {
     })
     navigate({ search: p.toString() }, { replace: true })
   }
-
 
   useEffect(() => {
     if (!username) return
@@ -206,50 +227,51 @@ export default function App() {
   }
 
   return (
-    <div className="shell">
-      {/* ── sidebar ── */}
-      <aside className={`sidebar${sidebarOpen ? '' : ' sidebar--collapsed'}`}>
-        <button
-          className="sidebar-toggle"
-          onClick={() => setSidebarOpen(o => !o)}
-          title={sidebarOpen ? t('nav.collapse') : t('nav.expand')}
-        >
-          <span className="sidebar-toggle-icon">{sidebarOpen ? '‹' : '›'}</span>
-        </button>
-
-        <nav className="sidebar-nav">
-          {NAV.map(({ sectionKey, items }) => (
-            <div key={sectionKey} className="nav-section">
-              <span className="nav-section-title">{t(`nav.sections.${sectionKey}`)}</span>
-              {items.map(([id, labelKey, Icon]) => (
-                <Link
-                  key={id}
-                  to={{ pathname: `/${id}`, search: location.search }}
-                  className={`nav-item${tab === id ? ' active' : ''}`}
-                  title={t(labelKey)}
-                >
-                  <span className="nav-item-icon"><Icon size={15} strokeWidth={1.6} /></span>
-                  <span className="nav-item-label">{t(labelKey)}</span>
-                </Link>
-              ))}
-            </div>
+    <SidebarProvider>
+      <Sidebar collapsible="icon">
+        <SidebarContent className="px-3">
+          {NAV.map(({ sectionKey, items }, idx) => (
+            <SidebarGroup key={sectionKey}>
+              {idx > 0 && <SidebarSeparator />}
+              <SidebarGroupLabel>{t(`nav.sections.${sectionKey}`)}</SidebarGroupLabel>
+              <SidebarMenu>
+                {items.map(([id, labelKey, Icon]) => (
+                  <SidebarMenuItem key={id}>
+                    <SidebarMenuButton
+                      isActive={tab === id}
+                      tooltip={t(labelKey)}
+                      render={
+                        <Link to={{ pathname: `/${id}`, search: location.search }} />
+                      }
+                    >
+                      <Icon />
+                      <span>{t(labelKey)}</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroup>
           ))}
-        </nav>
-      </aside>
+        </SidebarContent>
+      </Sidebar>
 
-      {/* ── main column ── */}
-      <div className="main-col">
-        <header className={`bar${impersonating ? ' bar--impersonating' : ''}`}>
-          <span className="wordmark">moneylytics</span>
-          <div className="session">
+      <SidebarInset className="flex flex-col overflow-hidden">
+        {/* Topbar */}
+        <header className={cn(
+          'flex h-12 shrink-0 items-center gap-2 border-b px-3',
+          impersonating && 'bg-orange-500/10 border-orange-500/30',
+        )}>
+          <SidebarTrigger />
+          <span className="font-semibold text-sm tracking-tight">moneylytics</span>
+          <div className="ml-auto flex items-center gap-2">
             {impersonating && (
               <>
-                <span className="impersonate-badge">
+                <Badge variant="secondary" className="bg-orange-500/20 text-orange-600 border-orange-500/30 text-xs">
                   {t('admin.impersonation.active', { username: impersonating })}
-                </span>
-                <button className="deimpersonate-btn" onClick={deimpersonate}>
+                </Badge>
+                <Button variant="outline" size="xs" onClick={deimpersonate}>
                   {t('admin.impersonation.stop')}
-                </button>
+                </Button>
               </>
             )}
             <OrgAvatar
@@ -257,17 +279,22 @@ export default function App() {
               activeOrganization={activeOrganization}
               onSwitch={activateOrganization}
             />
-            <button className="session-user-btn" onClick={() => setSettingsOpen(true)}>
-              {username}
-            </button>
-            <button className="logout-btn" onClick={logout}>{t('common.signOut')}</button>
+            <Button variant="ghost" size="sm" onClick={() => setSettingsOpen(true)} className="text-sm gap-1.5">
+              <Settings className="h-4 w-4 sm:hidden" />
+              <span className="hidden sm:inline">{username}</span>
+            </Button>
+            <Button variant="ghost" size="sm" onClick={logout} className="gap-1.5">
+              <LogOut className="h-4 w-4 sm:hidden" />
+              <span className="hidden sm:inline">{t('common.signOut')}</span>
+            </Button>
           </div>
         </header>
 
-        <div className="subbar">
+        {/* Filter subbar */}
+        <div className="flex shrink-0 flex-wrap items-center gap-2 border-b px-3 py-2 sm:px-4">
           {accounts.length > 0 && (
             <select
-              className="account-select"
+              className="flex-1 min-w-0 sm:flex-none rounded-lg border border-input bg-input/30 px-3 py-1.5 text-sm outline-none focus:border-ring"
               value={selectedAccountId}
               onChange={e => updateSearch({ accountId: e.target.value })}
             >
@@ -279,7 +306,7 @@ export default function App() {
           )}
 
           <select
-            className="account-select"
+            className="flex-1 min-w-0 sm:flex-none rounded-lg border border-input bg-input/30 px-3 py-1.5 text-sm outline-none focus:border-ring"
             value={activePreset}
             onChange={e => {
               const p = e.target.value as Preset
@@ -294,36 +321,43 @@ export default function App() {
             ))}
           </select>
 
-          <fieldset className="range-group">
-            <label className="range-field">
-              <span className="range-label">{t('common.from')}</span>
-              <input type="date" value={from} max={to} onChange={e => updateSearch({ from: e.target.value })} />
-            </label>
-            <div className="range-sep" />
-            <label className="range-field">
-              <span className="range-label">{t('common.to')}</span>
-              <input type="date" value={to} min={from} max={today} onChange={e => updateSearch({ to: e.target.value })} />
-            </label>
-          </fieldset>
-
+          <div className="flex w-full sm:w-auto items-center gap-1">
+            <DatePicker
+              value={parseIso(from)}
+              onChange={d => d && updateSearch({ from: isoDate(d) })}
+              max={parseIso(to)}
+              placeholder={t('common.from')}
+              className="flex-1 sm:flex-none"
+            />
+            <span className="text-muted-foreground px-1">–</span>
+            <DatePicker
+              value={parseIso(to)}
+              onChange={d => d && updateSearch({ to: isoDate(d) })}
+              min={parseIso(from)}
+              max={parseIso(today)}
+              placeholder={t('common.to')}
+              className="flex-1 sm:flex-none"
+            />
+          </div>
         </div>
 
-        <main className="stage">
+        {/* Main content */}
+        <div className="flex-1 overflow-auto">
           {tab === 'sankey' && (
             <>
               {view.phase === 'idle' && (
-                <p className="hint">
+                <p className="flex items-center justify-center h-full text-sm text-muted-foreground">
                   <Trans i18nKey="sankey.hint"><span /><kbd /></Trans>
                 </p>
               )}
               {view.phase === 'empty' && (
-                <p className="hint">{t('sankey.noData')}</p>
+                <p className="flex items-center justify-center h-full text-sm text-muted-foreground">{t('sankey.noData')}</p>
               )}
               {view.phase === 'loading' && (
-                <p className="hint loading">{t('common.fetching')}</p>
+                <p className="flex items-center justify-center h-full text-sm text-muted-foreground">{t('common.fetching')}</p>
               )}
               {view.phase === 'error' && (
-                <p className="hint error">{view.message}</p>
+                <p className="flex items-center justify-center h-full text-sm text-destructive">{view.message}</p>
               )}
               {view.phase === 'ready' && (
                 <div className="chart" key={`${accountId}/${from}/${to}`}>
@@ -361,9 +395,16 @@ export default function App() {
           {tab === 'kategorien' && <CategoriesPage key={`${username}-${activeOrganization?.id}`} categories={categories} from={from} to={to} accountId={accountId} onCategoryDeleted={() => { fetchCategories().then(cats => setCategories(cats.categories)).catch(() => {}) }} onCategoryMoved={() => { fetchCategories().then(cats => setCategories(cats.categories)).catch(() => {}) }} onCategoryRenamed={() => { fetchCategories().then(cats => setCategories(cats.categories)).catch(() => {}) }} onCategoryMerged={() => { fetchCategories().then(cats => setCategories(cats.categories)).catch(() => {}) }} onCategoryCreated={() => { fetchCategories().then(cats => setCategories(cats.categories)).catch(() => {}) }} />}
           {tab === 'orgs' && isOrgAdminOrOwner && <OrgsPage key={activeOrganization?.id} />}
           {tab === 'admin' && isSystemAdmin && <AdminPage key={`${username}-${activeOrganization?.id}`} />}
-        </main>
-      </div>
-      {settingsOpen && <SettingsPanel accounts={accounts} defaultAccountIban={accounts.find(a => String(a.id) === selectedAccountId)?.iban ?? ''} onClose={() => setSettingsOpen(false)} />}
-    </div>
+        </div>
+      </SidebarInset>
+
+      {settingsOpen && (
+        <SettingsPanel
+          accounts={accounts}
+          defaultAccountIban={accounts.find(a => String(a.id) === selectedAccountId)?.iban ?? ''}
+          onClose={() => setSettingsOpen(false)}
+        />
+      )}
+    </SidebarProvider>
   )
 }

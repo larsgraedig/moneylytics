@@ -1,6 +1,9 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { onboardOrganization } from '../api/organizations'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
 
 interface Props {
   onComplete: () => Promise<void>
@@ -27,13 +30,14 @@ export default function OnboardingModal({ onComplete }: Props) {
   }
 
   return (
-    <div className="onboarding-backdrop">
-      <div className="onboarding-modal">
-        <h1 className="onboarding-title">{t('onboarding.title')}</h1>
-        <p className="onboarding-subtitle">{t('onboarding.subtitle')}</p>
-        <div className="onboarding-form">
-          <input
-            className="acc-input onboarding-input"
+    <Dialog open>
+      <DialogContent showCloseButton={false}>
+        <DialogHeader>
+          <DialogTitle>{t('onboarding.title')}</DialogTitle>
+          <DialogDescription>{t('onboarding.subtitle')}</DialogDescription>
+        </DialogHeader>
+        <div className="flex flex-col gap-3">
+          <Input
             type="text"
             placeholder={t('onboarding.placeholder')}
             value={name}
@@ -41,16 +45,12 @@ export default function OnboardingModal({ onComplete }: Props) {
             onKeyDown={e => e.key === 'Enter' && handleCreate()}
             autoFocus
           />
-          <button
-            className="onboarding-btn"
-            onClick={handleCreate}
-            disabled={!name.trim() || loading}
-          >
+          <Button onClick={handleCreate} disabled={!name.trim() || loading}>
             {loading ? '…' : t('onboarding.button')}
-          </button>
+          </Button>
+          {error && <p className="text-sm text-destructive">{error}</p>}
         </div>
-        {error && <p className="onboarding-error">{error}</p>}
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   )
 }

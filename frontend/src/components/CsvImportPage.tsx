@@ -390,13 +390,13 @@ export default function CsvImportPage({ categories }: { categories: CategoryNode
 
   if (phase.step === 'success') {
     return (
-      <div className="ri-center">
-        <p className="ri-success">
+      <div className="flex flex-col h-full items-center justify-center gap-4 text-center p-8">
+        <p className="text-green-500 font-medium text-lg">
           {phase.count > 0
             ? t('csvImport.success.imported', { count: phase.count })
             : t('csvImport.success.none')}
         </p>
-        <button className="load-btn" onClick={() => setPhase({ step: 'upload' })}>{t('csvImport.success.importMore')}</button>
+        <button className="rounded-lg border border-input bg-input/30 px-4 py-2 text-sm hover:bg-input/50" onClick={() => setPhase({ step: 'upload' })}>{t('csvImport.success.importMore')}</button>
       </div>
     )
   }
@@ -540,9 +540,9 @@ export default function CsvImportPage({ categories }: { categories: CategoryNode
   const isLoading = phase.step === 'detecting'
 
   return (
-    <div className="ri-page">
+    <div className="flex flex-col h-full items-center justify-center p-8">
       <div
-        className={`ri-dropzone${isDragging ? ' dragging' : ''}`}
+        className={`flex flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed p-16 text-center cursor-pointer transition-colors w-full max-w-lg ${isDragging ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50'}`}
         onDragOver={e => { e.preventDefault(); setIsDragging(true) }}
         onDragLeave={() => setIsDragging(false)}
         onDrop={e => { e.preventDefault(); setIsDragging(false); const f = e.dataTransfer.files[0]; if (f) handleFile(f) }}
@@ -555,15 +555,15 @@ export default function CsvImportPage({ categories }: { categories: CategoryNode
           style={{ display: 'none' }}
           onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f); e.target.value = '' }}
         />
-        <span className="ri-dropzone-icon">↑</span>
-        <span className="ri-dropzone-label">
+        <span className="text-4xl">↑</span>
+        <span className="text-base font-medium">
           {isLoading ? t('csvImport.dropzone.analyzing') : t('csvImport.dropzone.label')}
         </span>
-        <span className="ri-dropzone-hint">
+        <span className="text-sm text-muted-foreground">
           {isLoading ? t('csvImport.dropzone.analyzingHint') : t('csvImport.dropzone.hint')}
         </span>
         {phase.step === 'error' && (
-          <span className="ri-dropzone-error">{phase.message}</span>
+          <span className="text-sm text-destructive">{phase.message}</span>
         )}
       </div>
     </div>

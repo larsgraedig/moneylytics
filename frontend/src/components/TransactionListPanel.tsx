@@ -1,6 +1,11 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { fetchTransactionList, type SankeyNode, type TransactionItem } from '../api/transactions'
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Badge } from '@/components/ui/badge'
+import { ScrollArea } from '@/components/ui/scroll-area'
+import { cn } from '@/lib/utils'
 
 type NodeInfo =
   | { type: 'cat'; category: string }
@@ -54,12 +59,60 @@ function formatDate(iso: string): string {
   return `${d}.${m}.${y}`
 }
 
+function PanelTitle({ node, nodeKey }: { node: SankeyNode | null; nodeKey: string | null }) {
+  const info = nodeKey != null ? parseNodeKey(nodeKey) : null
+
+  if (node != null) {
+    return (
+      <span className="flex items-center gap-1 flex-wrap">
+        {node.namePath.map((segment, idx) => (
+          <span key={idx} className="flex items-center gap-1">
+            {idx > 0 && <span className="text-muted-foreground">›</span>}
+            <span className={idx === node.namePath.length - 1 ? '' : 'text-muted-foreground text-sm'}>
+              {segment}
+            </span>
+          </span>
+        ))}
+      </span>
+    )
+  }
+
+  if (info != null) {
+    if (info.type === 'cat') return <span>{info.category}</span>
+    if (info.type === 'grp') return (
+      <span className="flex items-center gap-1">
+        <span className="text-muted-foreground text-sm">{info.category}</span>
+        <span className="text-muted-foreground">›</span>
+        <span>{info.group}</span>
+      </span>
+    )
+    if (info.type === 'leaf') return (
+      <span className="flex items-center gap-1 flex-wrap">
+        <span className="text-muted-foreground text-sm">{info.category}</span>
+        <span className="text-muted-foreground">›</span>
+        <span className="text-muted-foreground text-sm">{info.group}</span>
+        <span className="text-muted-foreground">›</span>
+        <span>{info.subcategory}</span>
+      </span>
+    )
+    return (
+      <span className="flex items-center gap-1">
+        <span className="text-muted-foreground text-sm">{info.category}</span>
+        <span className="text-muted-foreground">›</span>
+        <span>{info.subcategory}</span>
+      </span>
+    )
+  }
+
+  return null
+}
+
 export default function TransactionListPanel({ from, to, accountId, onClose, ...rest }: Props) {
   const { t } = useTranslation()
   const [state, setState] = useState<State>({ phase: 'loading' })
 
-  const node = 'node' in rest ? rest.node : null
-  const nodeKey = 'nodeKey' in rest ? rest.nodeKey : null
+  const node: SankeyNode | null = 'node' in rest && rest.node != null ? rest.node : null
+  const nodeKey: string | null = 'nodeKey' in rest && rest.nodeKey != null ? rest.nodeKey : null
 
   useEffect(() => {
     setState({ phase: 'loading' })
@@ -88,119 +141,83 @@ export default function TransactionListPanel({ from, to, accountId, onClose, ...
   const showSubcategoryCol = info?.type === 'grp'
 
   return (
-    <>
-      <div className="txn-backdrop" onClick={onClose} />
-      <div className="txn-panel">
-        <div className="txn-panel-header">
-          <div className="txn-panel-title">
-            {node != null ? (
-              node.namePath.map((segment, idx) => (
-                <span key={idx}>
-                  {idx > 0 && <span className="txn-panel-sep">›</span>}
-                  <span className={idx === node.namePath.length - 1 ? 'txn-panel-name' : 'txn-panel-breadcrumb'}>
-                    {segment}
-                  </span>
-                </span>
-              ))
-            ) : info != null ? (
-              <>
-                {info.type === 'cat' && <span className="txn-panel-name">{info.category}</span>}
-                {info.type === 'grp' && (
-                  <>
-                    <span className="txn-panel-breadcrumb">{info.category}</span>
-                    <span className="txn-panel-sep">›</span>
-                    <span className="txn-panel-name">{info.group}</span>
-                  </>
-                )}
-                {info.type === 'leaf' && (
-                  <>
-                    <span className="txn-panel-breadcrumb">{info.category}</span>
-                    <span className="txn-panel-sep">›</span>
-                    <span className="txn-panel-breadcrumb">{info.group}</span>
-                    <span className="txn-panel-sep">›</span>
-                    <span className="txn-panel-name">{info.subcategory}</span>
-                  </>
-                )}
-                {info.type === 'sub' && (
-                  <>
-                    <span className="txn-panel-breadcrumb">{info.category}</span>
-                    <span className="txn-panel-sep">›</span>
-                    <span className="txn-panel-name">{info.subcategory}</span>
-                  </>
-                )}
-              </>
-            ) : null}
-          </div>
-          <button className="txn-panel-close" onClick={onClose} title="Close">✕</button>
-        </div>
+    <Sheet open onOpenChange={open => { if (!open) onClose() }}>
+      <SheetContent side="right" className="flex flex-col w-[480px] max-w-full p-0 gap-0">
+        <SheetHeader className="border-b px-5 py-4 shrink-0">
+          <SheetTitle>
+            <PanelTitle node={node} nodeKey={nodeKey} />
+          </SheetTitle>
+        </SheetHeader>
 
-        <div className="txn-panel-body">
+        <ScrollArea className="flex-1">
           {state.phase === 'loading' && (
-            <p className="txn-hint loading">{t('common.loading')}</p>
+            <p className="px-5 py-8 text-sm text-muted-foreground">{t('common.loading')}</p>
           )}
 
           {state.phase === 'error' && (
-            <p className="txn-hint error">{state.message}</p>
+            <p className="px-5 py-8 text-sm text-destructive">{state.message}</p>
           )}
 
           {state.phase === 'ready' && (
-            <>
-              <table className="txn-list-table">
-                <thead>
-                  <tr>
-                    <th>{t('transactions.panel.date')}</th>
-                    {showGroupCol && <th>{t('transactions.columns.group')}</th>}
-                    {showSubcategoryCol && <th>{t('transactions.columns.subcategory')}</th>}
-                    <th>{t('transactions.panel.details')}</th>
-                    <th className="txn-col-amount">{t('transactions.panel.amount')}</th>
-                  </tr>
-                </thead>
-                <tbody>
+            <div className="flex flex-col">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>{t('transactions.panel.date')}</TableHead>
+                    {showGroupCol && <TableHead>{t('transactions.columns.group')}</TableHead>}
+                    {showSubcategoryCol && <TableHead>{t('transactions.columns.subcategory')}</TableHead>}
+                    <TableHead>{t('transactions.panel.details')}</TableHead>
+                    <TableHead className="text-right">{t('transactions.panel.amount')}</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
                   {state.transactions.map((tx, i) => (
-                    <tr key={i}>
-                      <td className="txn-cell-date">{formatDate(tx.accountingDate)}</td>
-                      {showGroupCol && <td className="txn-cell-sub">{tx.subcategory}</td>}
-                      {showSubcategoryCol && <td className="txn-cell-sub">{tx.group}</td>}
-                      <td className="txn-cell-details">
-                        {[tx.category, tx.subcategory, tx.group].filter(Boolean).join(' › ')}
-                        {(tx.offsetLinks.length > 0 || tx.budgetLinks.length > 0 || tx.collections.length > 0) && (
-                          <span className="txn-chips">
-                            {tx.offsetLinks.length > 0 && (
-                              <span className="txn-chip txn-chip--offset">⇌</span>
-                            )}
-                            {tx.budgetLinks.map(bl => (
-                              <span key={bl.linkId} className="txn-chip txn-chip--budget">{bl.budgetName}</span>
-                            ))}
-                            {tx.collections.map(c => (
-                              <span key={c.id} className="txn-chip txn-chip--collection">{c.name}</span>
-                            ))}
+                    <TableRow key={i}>
+                      <TableCell className="text-muted-foreground tabular-nums text-xs whitespace-nowrap">
+                        {formatDate(tx.accountingDate)}
+                      </TableCell>
+                      {showGroupCol && <TableCell className="text-muted-foreground text-xs">{tx.subcategory}</TableCell>}
+                      {showSubcategoryCol && <TableCell className="text-muted-foreground text-xs">{tx.group}</TableCell>}
+                      <TableCell>
+                        <div className="flex flex-wrap items-center gap-1">
+                          <span className="text-xs text-muted-foreground">
+                            {[tx.category, tx.subcategory, tx.group].filter(Boolean).join(' › ')}
                           </span>
-                        )}
-                      </td>
-                      <td className={`txn-cell-amount${tx.amount < 0 ? ' negative' : ''}`}>
+                          {tx.offsetLinks.length > 0 && (
+                            <Badge variant="secondary" className="text-xs px-1 py-0">⇌</Badge>
+                          )}
+                          {tx.budgetLinks.map(bl => (
+                            <Badge key={bl.linkId} variant="secondary" className="text-xs px-1 py-0">{bl.budgetName}</Badge>
+                          ))}
+                          {tx.collections.map(c => (
+                            <Badge key={c.id} variant="outline" className="text-xs px-1 py-0">{c.name}</Badge>
+                          ))}
+                        </div>
+                      </TableCell>
+                      <TableCell className={cn('text-right tabular-nums font-medium text-sm whitespace-nowrap', tx.amount < 0 ? 'text-destructive' : 'text-foreground')}>
                         {EUR.format(tx.amount)}
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   ))}
-                </tbody>
-              </table>
+                </TableBody>
+              </Table>
 
               {state.transactions.length === 0 && (
-                <p className="txn-hint">{t('transactions.panel.noTransactions')}</p>
+                <p className="px-5 py-8 text-sm text-muted-foreground">{t('transactions.panel.noTransactions')}</p>
               )}
 
               {state.transactions.length > 0 && (
-                <div className="txn-total-row">
-                  <span>{t('transactions.panel.total')}</span>
-                  <span className={`txn-total-value${state.total < 0 ? ' negative' : ''}`}>
+                <div className="flex items-center justify-between border-t px-5 py-3 mt-auto">
+                  <span className="text-sm text-muted-foreground">{t('transactions.panel.total')}</span>
+                  <span className={cn('font-medium tabular-nums', state.total < 0 ? 'text-destructive' : 'text-foreground')}>
                     {EUR.format(state.total)}
                   </span>
                 </div>
               )}
-            </>
+            </div>
           )}
-        </div>
-      </div>
-    </>
+        </ScrollArea>
+      </SheetContent>
+    </Sheet>
   )
 }

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { findOrCreateCategory, type CategoryNode } from '../api/rawImport'
+import { cn } from '@/lib/utils'
 
 interface FlatItem {
   id: number
@@ -51,6 +52,7 @@ interface Props {
 export function CategoryPathInput({ value, onChange, tree, onCategoryCreated, placeholder, className, allowCreate = true }: Props) {
   const flatItems = useMemo(() => flattenTree(tree), [tree])
   const committedId = useRef<number | null>(value)
+  const inputRef = useRef<HTMLInputElement>(null)
   const [inputValue, setInputValue] = useState(() => pathStringForId(value, tree))
   const [open, setOpen] = useState(false)
   const [highlighted, setHighlighted] = useState(0)
@@ -164,6 +166,13 @@ export function CategoryPathInput({ value, onChange, tree, onCategoryCreated, pl
       if (item?.type === 'existing') {
         e.preventDefault()
         setInputValue(item.pathStr + ' > ')
+        setTimeout(() => {
+          const el = inputRef.current
+          if (el) {
+            el.setSelectionRange(el.value.length, el.value.length)
+            el.scrollLeft = el.scrollWidth
+          }
+        }, 0)
       }
     } else if (e.key === 'Escape') {
       setInputValue(pathStringForId(committedId.current, tree))
@@ -172,11 +181,15 @@ export function CategoryPathInput({ value, onChange, tree, onCategoryCreated, pl
   }
 
   return (
-    <div className="cat-path-input-wrapper">
+    <div className="relative">
       <input
+        ref={inputRef}
         type="text"
         value={inputValue}
-        className={className}
+        className={cn(
+          'h-9 w-full rounded-lg border border-input bg-input/30 px-3 py-2 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/50',
+          className,
+        )}
         placeholder={placeholder}
         onChange={e => { setInputValue(e.target.value); setOpen(true) }}
         onFocus={() => setOpen(true)}
@@ -184,16 +197,16 @@ export function CategoryPathInput({ value, onChange, tree, onCategoryCreated, pl
         onKeyDown={handleKeyDown}
       />
       {open && visibleItems.length > 0 && (
-        <ul className="cat-path-dropdown">
+        <ul className="absolute top-full left-0 z-50 mt-1 max-h-60 w-full overflow-auto rounded-lg border border-border bg-popover shadow-lg">
           {visibleItems.map((item, idx) => (
             <li
               key={item.type === 'existing' ? item.id : `create-${item.displayStr}`}
-              className={[
-                'cat-path-option',
-                item.type === 'create' ? 'cat-path-create' : '',
-                idx === highlighted ? 'cat-path-highlighted' : '',
-              ].filter(Boolean).join(' ')}
-              style={item.type === 'existing' && item.depth > 0 ? { paddingLeft: `${item.depth * 12 + 8}px` } : undefined}
+              className={cn(
+                'cursor-pointer px-3 py-2 text-sm',
+                idx === highlighted ? 'bg-accent text-accent-foreground' : 'hover:bg-accent hover:text-accent-foreground',
+                item.type === 'create' && 'text-primary italic',
+              )}
+              style={item.type === 'existing' && item.depth > 0 ? { paddingLeft: `${item.depth * 12 + 12}px` } : undefined}
               onMouseDown={e => { e.preventDefault(); void selectItem(item) }}
             >
               {item.type === 'create' ? `+ Erstellen: "${item.displayStr}"` : item.displayName}
