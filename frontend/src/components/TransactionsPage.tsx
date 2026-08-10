@@ -1191,7 +1191,7 @@ const groupColorMap = useMemo(() => {
     return (
       <TableHead
         key={col}
-        className={`${thClass} sticky top-0 bg-[var(--surface)] z-10 font-mono text-[10px] tracking-wider text-muted-foreground h-10 px-3`}
+        className={`${thClass} sticky top-0 bg-[var(--surface)] z-10 text-muted-foreground h-10 px-3`}
         draggable={true}
         onDragStart={() => setDragCol(col)}
         onDragEnd={() => { setDragCol(null); setDragOverCol(null) }}
