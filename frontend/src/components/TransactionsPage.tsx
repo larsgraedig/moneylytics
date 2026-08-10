@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { Link2, Wallet, Layers } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
@@ -91,7 +92,6 @@ interface RowState {
   savingAccountingDate: boolean
   error: string | null
   budgetAssignments: BudgetAssignment[]
-  addingBudget: { budgetId: string; amount: string } | null
   collections: CollectionSummary[]
   addingCollection: { collectionId: string; newName: string } | null
 }
@@ -149,6 +149,7 @@ export default function TransactionsPage({
   const [parentTxMap, setParentTxMap] = useState<Map<number, TransactionItem>>(new Map())
   const [mergeChildrenMap, setMergeChildrenMap] = useState<Map<number, TransactionItem[]>>(new Map())
   const [createVirtualOpen, setCreateVirtualOpen] = useState(false)
+  const [budgetModal, setBudgetModal] = useState<{ rowIndex: number; budgetId: string; amount: string } | null>(null)
 
   useEffect(() => {
     fetchBudgets().then(setBudgets).catch(() => {})
@@ -217,7 +218,6 @@ export default function TransactionsPage({
           savingAccountingDate: false,
           error: null,
           budgetAssignments: (tx.budgetLinks ?? []).map(l => ({ linkId: l.linkId, budgetId: l.budgetId, budgetName: l.budgetName, amount: l.amount })),
-          addingBudget: null,
           collections: tx.collections ?? [],
           addingCollection: null,
         })),
@@ -424,12 +424,12 @@ export default function TransactionsPage({
   }
 
 
-  async function confirmBudgetAssign(rowIndex: number) {
+  async function confirmBudgetAssign() {
+    if (!budgetModal || !budgetModal.budgetId) return
+    const { rowIndex } = budgetModal
     const row = rows[rowIndex]
-    const adding = row.addingBudget
-    if (!adding || !adding.budgetId) return
-    const budgetId = Number(adding.budgetId)
-    const amount = adding.amount !== '' ? parseFloat(adding.amount) || null : null
+    const budgetId = Number(budgetModal.budgetId)
+    const amount = budgetModal.amount !== '' ? parseFloat(budgetModal.amount) || null : null
     try {
       const link = await assignToBudget(budgetId, row.original.id, amount)
       const budget = budgets.find(b => b.id === budgetId)
@@ -445,10 +445,10 @@ export default function TransactionsPage({
         next[rowIndex] = {
           ...next[rowIndex],
           budgetAssignments: [...next[rowIndex].budgetAssignments, newAssignment],
-          addingBudget: null,
         }
         return next
       })
+      setBudgetModal(null)
     } catch {
       // silent — user can retry
     }
@@ -663,15 +663,17 @@ const groupColorMap = useMemo(() => {
             </span>
           )
         })}
-        <Button
-          variant="ghost"
-          size="xs"
-          className="rounded-sm font-mono text-[10px] border border-dashed border-border hover:border-foreground/40"
-          onClick={() => { setLinkError(null); setLinkingState({ phase: 'selecting', sourceIndex: i }) }}
-          title={t('transactions.linkToTransaction')}
-        >
-          link
-        </Button>
+        {row.original.groups.length === 0 && (
+          <Button
+            variant="ghost"
+            size="icon-xs"
+            className="rounded-sm border border-dashed border-border hover:border-foreground/40"
+            onClick={() => { setLinkError(null); setLinkingState({ phase: 'selecting', sourceIndex: i }) }}
+            title={t('transactions.linkToTransaction')}
+          >
+            <Link2 />
+          </Button>
+        )}
       </div>
     )
   }
@@ -882,7 +884,6 @@ const groupColorMap = useMemo(() => {
     const availableBudgets = budgets.filter(
       b => !row.budgetAssignments.some(a => a.budgetId === b.id),
     )
-    const adding = row.addingBudget
 
     return (
       <div className="txnv-budget-cell">
@@ -905,32 +906,45 @@ const groupColorMap = useMemo(() => {
             </button>
           </span>
         ))}
-        {adding == null && availableBudgets.length > 0 && (
+        {availableBudgets.length > 0 && (
           <Button
             variant="ghost"
-            size="xs"
-            className="rounded-sm font-mono text-[10px] border border-dashed border-border hover:border-foreground/40"
-            onClick={() => setRows(prev => {
-              const next = [...prev]
-              next[i] = { ...next[i], addingBudget: { budgetId: '', amount: '' } }
-              return next
-            })}
+            size="icon-xs"
+            className="rounded-sm border border-dashed border-border hover:border-foreground/40"
+            onClick={() => setBudgetModal({ rowIndex: i, budgetId: '', amount: '' })}
             title={t('budgets.assign')}
           >
-            budget
+            <Wallet />
           </Button>
         )}
-        {adding != null && (
-          <div className="flex items-center gap-1 flex-wrap">
+      </div>
+    )
+  }
+
+  function renderBudgetModal() {
+    if (!budgetModal) return null
+    const row = rows[budgetModal.rowIndex]
+    const tx = row.original
+    const availableBudgets = budgets.filter(
+      b => !row.budgetAssignments.some(a => a.budgetId === b.id),
+    )
+
+    return (
+      <Dialog open onOpenChange={open => { if (!open) setBudgetModal(null) }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>{t('budgets.assign')}</DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col gap-4">
+            <div className="flex items-center justify-between text-sm border rounded-md px-3 py-2 bg-muted/30">
+              <span className="text-muted-foreground truncate mr-4">{tx.counterpartyName ?? tx.purpose ?? '—'}</span>
+              <span className={`font-mono shrink-0 ${tx.amount >= 0 ? 'text-green-400' : ''}`}>{EUR.format(tx.amount)}</span>
+            </div>
             <Select
-              value={adding.budgetId}
-              onValueChange={value => setRows(prev => {
-                const next = [...prev]
-                next[i] = { ...next[i], addingBudget: { ...next[i].addingBudget!, budgetId: value ?? '' } }
-                return next
-              })}
+              value={budgetModal.budgetId}
+              onValueChange={value => setBudgetModal(prev => prev ? { ...prev, budgetId: value ?? '' } : null)}
             >
-              <SelectTrigger className="h-7 w-36 text-xs rounded-md">
+              <SelectTrigger className="rounded-md">
                 <SelectValue placeholder="—" />
               </SelectTrigger>
               <SelectContent>
@@ -940,42 +954,31 @@ const groupColorMap = useMemo(() => {
               </SelectContent>
             </Select>
             <Input
-              className="h-7 w-24 text-xs font-mono rounded-md"
+              className="rounded-md font-mono text-sm"
               type="number"
               step="0.01"
               min="0"
-              placeholder={t('transactions.partialAmount')}
-              value={adding.amount}
-              onChange={e => setRows(prev => {
-                const next = [...prev]
-                next[i] = { ...next[i], addingBudget: { ...next[i].addingBudget!, amount: e.target.value } }
-                return next
-              })}
+              placeholder={t('budgets.partialAmount')}
+              value={budgetModal.amount}
+              onChange={e => setBudgetModal(prev => prev ? { ...prev, amount: e.target.value } : null)}
             />
-            <Button
-              variant="outline"
-              size="icon-xs"
-              className="rounded-sm"
-              onClick={() => confirmBudgetAssign(i)}
-              disabled={!adding.budgetId}
-            >
-              ✓
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon-xs"
-              className="rounded-sm"
-              onClick={() => setRows(prev => {
-                const next = [...prev]
-                next[i] = { ...next[i], addingBudget: null }
-                return next
-              })}
-            >
-              ×
-            </Button>
+            <div className="flex gap-2 justify-end">
+              <Button variant="ghost" size="sm" className="rounded-md" onClick={() => setBudgetModal(null)}>
+                {t('common.cancel')}
+              </Button>
+              <Button
+                variant="default"
+                size="sm"
+                className="rounded-md"
+                onClick={confirmBudgetAssign}
+                disabled={!budgetModal.budgetId}
+              >
+                {t('common.confirm')}
+              </Button>
+            </div>
           </div>
-        )}
-      </div>
+        </DialogContent>
+      </Dialog>
     )
   }
 
@@ -1061,8 +1064,8 @@ const groupColorMap = useMemo(() => {
         {adding == null && (
           <Button
             variant="ghost"
-            size="xs"
-            className="rounded-sm font-mono text-[10px] border border-dashed border-border hover:border-foreground/40"
+            size="icon-xs"
+            className="rounded-sm border border-dashed border-border hover:border-foreground/40"
             onClick={() => setRows(prev => {
               const next = [...prev]
               next[i] = { ...next[i], addingCollection: { collectionId: '', newName: '' } }
@@ -1070,7 +1073,7 @@ const groupColorMap = useMemo(() => {
             })}
             title={t('collections.addTransaction')}
           >
-            {t('collections.collection')}
+            <Layers />
           </Button>
         )}
         {adding != null && (
@@ -1519,6 +1522,7 @@ const groupColorMap = useMemo(() => {
 
       {renderLinkModal()}
       {renderGroupModal()}
+      {renderBudgetModal()}
       {createVirtualOpen && (
         <CreateVirtualTransactionModal
           accounts={accounts}

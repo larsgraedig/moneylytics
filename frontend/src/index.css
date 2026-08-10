@@ -1045,7 +1045,6 @@ body {
 .txnv-row--dirty { background: color-mix(in srgb, var(--accent-glow) 40%, transparent) !important; }
 
 .txnv-cell-account {
-  font-family: var(--mono);
   font-size: 11px;
   color: var(--text-muted);
   white-space: nowrap;
@@ -1248,6 +1247,26 @@ body {
 }
 
 .txnv-link-chip-remove:hover { color: var(--error); }
+
+.txnv-budget-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 6px 2px 7px;
+  border: 1px solid var(--border-hi);
+  border-radius: 100px;
+  background: var(--bg);
+  font-family: var(--mono);
+  font-size: 10px;
+}
+
+.txnv-budget-chip-name {
+  color: var(--text);
+}
+
+.txnv-budget-chip-amt {
+  color: var(--text-dim);
+}
 
 .txnv-group-chip {
   cursor: pointer;
