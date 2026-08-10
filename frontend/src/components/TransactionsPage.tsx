@@ -1287,7 +1287,7 @@ const groupColorMap = useMemo(() => {
             tree={categories}
             allowCreate={false}
             placeholder={t('transactions.allCategories')}
-            className="w-48"
+            className="w-64"
           />
         )}
         <button

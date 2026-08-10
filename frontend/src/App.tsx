@@ -8,6 +8,7 @@ import {
   LogOut, Settings,
 } from 'lucide-react'
 import { getPresetRange, detectPreset, PRESETS, type Preset } from './utils/datePresets'
+import { DatePicker } from '@/components/ui/date-picker'
 import SankeyChart from './components/SankeyChart'
 import CamtImportPage from './components/CamtImportPage'
 import CsvImportPage from './components/CsvImportPage'
@@ -57,6 +58,11 @@ import { cn } from '@/lib/utils'
 
 function isoDate(d: Date) {
   return d.toISOString().slice(0, 10)
+}
+
+function parseIso(iso: string): Date {
+  const [y, m, d] = iso.split('-').map(Number)
+  return new Date(y, m - 1, d)
 }
 
 const today = isoDate(new Date())
@@ -315,12 +321,23 @@ export default function App() {
             ))}
           </select>
 
-          <div className="flex w-full sm:w-auto items-center gap-1.5 rounded-lg border border-input bg-input/30 px-3 py-1.5">
-            <span className="text-xs text-muted-foreground">{t('common.from')}</span>
-            <input type="date" value={from} max={to} onChange={e => updateSearch({ from: e.target.value })} className="flex-1 sm:flex-none bg-transparent text-sm outline-none min-w-0" />
-            <span className="text-muted-foreground mx-1">–</span>
-            <span className="text-xs text-muted-foreground">{t('common.to')}</span>
-            <input type="date" value={to} min={from} max={today} onChange={e => updateSearch({ to: e.target.value })} className="flex-1 sm:flex-none bg-transparent text-sm outline-none min-w-0" />
+          <div className="flex w-full sm:w-auto items-center gap-1">
+            <DatePicker
+              value={parseIso(from)}
+              onChange={d => d && updateSearch({ from: isoDate(d) })}
+              max={parseIso(to)}
+              placeholder={t('common.from')}
+              className="flex-1 sm:flex-none"
+            />
+            <span className="text-muted-foreground px-1">–</span>
+            <DatePicker
+              value={parseIso(to)}
+              onChange={d => d && updateSearch({ to: isoDate(d) })}
+              min={parseIso(from)}
+              max={parseIso(today)}
+              placeholder={t('common.to')}
+              className="flex-1 sm:flex-none"
+            />
           </div>
         </div>
 

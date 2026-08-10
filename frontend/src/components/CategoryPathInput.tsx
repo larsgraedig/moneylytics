@@ -52,6 +52,7 @@ interface Props {
 export function CategoryPathInput({ value, onChange, tree, onCategoryCreated, placeholder, className, allowCreate = true }: Props) {
   const flatItems = useMemo(() => flattenTree(tree), [tree])
   const committedId = useRef<number | null>(value)
+  const inputRef = useRef<HTMLInputElement>(null)
   const [inputValue, setInputValue] = useState(() => pathStringForId(value, tree))
   const [open, setOpen] = useState(false)
   const [highlighted, setHighlighted] = useState(0)
@@ -165,6 +166,13 @@ export function CategoryPathInput({ value, onChange, tree, onCategoryCreated, pl
       if (item?.type === 'existing') {
         e.preventDefault()
         setInputValue(item.pathStr + ' > ')
+        setTimeout(() => {
+          const el = inputRef.current
+          if (el) {
+            el.setSelectionRange(el.value.length, el.value.length)
+            el.scrollLeft = el.scrollWidth
+          }
+        }, 0)
       }
     } else if (e.key === 'Escape') {
       setInputValue(pathStringForId(committedId.current, tree))
@@ -175,6 +183,7 @@ export function CategoryPathInput({ value, onChange, tree, onCategoryCreated, pl
   return (
     <div className="relative">
       <input
+        ref={inputRef}
         type="text"
         value={inputValue}
         className={cn(
