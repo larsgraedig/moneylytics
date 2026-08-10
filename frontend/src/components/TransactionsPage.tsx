@@ -26,6 +26,11 @@ import { CreateVirtualTransactionModal } from './CreateVirtualTransactionModal'
 import { GroupCard } from './GroupCard'
 import { SplitTransactionModal } from './SplitTransactionModal'
 import { MergeTransactionModal } from './MergeTransactionModal'
+import { TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { DatePicker } from '@/components/ui/date-picker'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import {
@@ -609,24 +614,31 @@ const groupColorMap = useMemo(() => {
       return (
         <div className="txnv-linking-from">
           <span className="txnv-linking-badge">{t('transactions.linkingSelectingTarget')}</span>
-          <button className="txnv-link-cancel-btn" onClick={() => { setLinkingState(null); setLinkError(null) }}>
+          <Button
+            variant="ghost"
+            size="xs"
+            className="rounded-sm font-mono text-[10px]"
+            onClick={() => { setLinkingState(null); setLinkError(null) }}
+          >
             {t('common.cancel')}
-          </button>
+          </Button>
         </div>
       )
     }
 
     if (isSelecting) {
       return (
-        <button
-          className="txnv-connect-btn"
+        <Button
+          variant="outline"
+          size="xs"
+          className="rounded-sm font-mono text-[10px] border-green-500/30 text-green-400 hover:border-green-400 hover:text-green-300 hover:bg-green-400/10"
           onClick={() =>
             src !== undefined &&
             setLinkingState({ phase: 'confirming', sourceIndex: src, targetIndex: i, myAmount: '', otherAmount: '' })
           }
         >
           {t('transactions.linkHere')}
-        </button>
+        </Button>
       )
     }
 
@@ -651,13 +663,15 @@ const groupColorMap = useMemo(() => {
             </span>
           )
         })}
-        <button
-          className="txnv-add-link-btn"
+        <Button
+          variant="ghost"
+          size="xs"
+          className="rounded-sm font-mono text-[10px] border border-dashed border-border hover:border-foreground/40"
           onClick={() => { setLinkError(null); setLinkingState({ phase: 'selecting', sourceIndex: i }) }}
           title={t('transactions.linkToTransaction')}
         >
           link
-        </button>
+        </Button>
       </div>
     )
   }
@@ -758,8 +772,8 @@ const groupColorMap = useMemo(() => {
                     <label className="txnv-lm-amount-label">
                       {sourceRow.original.counterpartyName ?? EUR.format(sourceRow.original.amount)}
                     </label>
-                    <input
-                      className="txnv-partial-input"
+                    <Input
+                      className="h-8 w-28 font-mono text-xs rounded-md"
                       type="number"
                       step="0.01"
                       min="0"
@@ -777,8 +791,8 @@ const groupColorMap = useMemo(() => {
                     <label className="txnv-lm-amount-label">
                       {targetRow.original.counterpartyName ?? EUR.format(targetRow.original.amount)}
                     </label>
-                    <input
-                      className="txnv-partial-input"
+                    <Input
+                      className="h-8 w-28 font-mono text-xs rounded-md"
                       type="number"
                       step="0.01"
                       min="0"
@@ -827,8 +841,8 @@ const groupColorMap = useMemo(() => {
                     })()
                 )}
                 <div className="txnv-lm-footer">
-                  <button className="txnv-link-confirm-btn" onClick={confirmLink}>{t('transactions.link')}</button>
-                  <button className="txnv-link-cancel-btn" onClick={cancel}>{t('common.cancel')}</button>
+                  <Button variant="default" size="sm" className="rounded-md" onClick={confirmLink}>{t('transactions.link')}</Button>
+                  <Button variant="ghost" size="sm" className="rounded-md" onClick={cancel}>{t('common.cancel')}</Button>
                 </div>
               </>
             )}
@@ -837,24 +851,24 @@ const groupColorMap = useMemo(() => {
               <>
                 <div className="txnv-lm-group-section">
                   <span className="txnv-group-select-label">{t('transactions.selectGroup')}</span>
-                  <div className="txnv-group-select-options">
+                  <div className="flex flex-col gap-1">
                     {linkingState.availableGroups.map(g => (
-                      <button key={g.id} className="txnv-group-option-btn" onClick={() => confirmLinkWithGroup(g.id)}>
+                      <Button key={g.id} variant="outline" size="xs" className="rounded-md justify-start w-full font-mono text-[10px]" onClick={() => confirmLinkWithGroup(g.id)}>
                         {g.name ?? `#${g.id}`}
-                      </button>
+                      </Button>
                     ))}
-                    <button className="txnv-group-option-btn txnv-group-option-btn--new" onClick={() => confirmLinkWithGroup(undefined)}>
+                    <Button variant="outline" size="xs" className="rounded-md justify-start w-full font-mono text-[10px] border-green-500/30 text-green-400 hover:border-green-400 hover:bg-green-400/10" onClick={() => confirmLinkWithGroup(undefined)}>
                       {t('transactions.newGroup')}
-                    </button>
+                    </Button>
                   </div>
                 </div>
                 <div className="txnv-lm-footer">
-                  <button className="txnv-link-back-btn" onClick={() => {
+                  <Button variant="ghost" size="sm" className="rounded-md" onClick={() => {
                     if (linkingState.phase === 'group-select') {
                       setLinkingState({ phase: 'confirming', sourceIndex: linkingState.sourceIndex, targetIndex: linkingState.targetIndex, myAmount: linkingState.myAmount, otherAmount: linkingState.otherAmount })
                     }
-                  }}>← {t('common.back')}</button>
-                  <button className="txnv-link-cancel-btn" onClick={cancel}>{t('common.cancel')}</button>
+                  }}>← {t('common.back')}</Button>
+                  <Button variant="ghost" size="sm" className="rounded-md" onClick={cancel}>{t('common.cancel')}</Button>
                 </div>
               </>
             )}
@@ -892,8 +906,10 @@ const groupColorMap = useMemo(() => {
           </span>
         ))}
         {adding == null && availableBudgets.length > 0 && (
-          <button
-            className="txnv-add-link-btn"
+          <Button
+            variant="ghost"
+            size="xs"
+            className="rounded-sm font-mono text-[10px] border border-dashed border-border hover:border-foreground/40"
             onClick={() => setRows(prev => {
               const next = [...prev]
               next[i] = { ...next[i], addingBudget: { budgetId: '', amount: '' } }
@@ -902,27 +918,29 @@ const groupColorMap = useMemo(() => {
             title={t('budgets.assign')}
           >
             budget
-          </button>
+          </Button>
         )}
         {adding != null && (
-          <div className="txnv-budget-assign">
-            <select
-              className="txnv-budget-select"
+          <div className="flex items-center gap-1 flex-wrap">
+            <Select
               value={adding.budgetId}
-              onChange={e => setRows(prev => {
+              onValueChange={value => setRows(prev => {
                 const next = [...prev]
-                next[i] = { ...next[i], addingBudget: { ...next[i].addingBudget!, budgetId: e.target.value } }
+                next[i] = { ...next[i], addingBudget: { ...next[i].addingBudget!, budgetId: value ?? '' } }
                 return next
               })}
-              autoFocus
             >
-              <option value="">—</option>
-              {availableBudgets.map(b => (
-                <option key={b.id} value={b.id}>{b.name}</option>
-              ))}
-            </select>
-            <input
-              className="txnv-partial-input"
+              <SelectTrigger className="h-7 w-36 text-xs rounded-md">
+                <SelectValue placeholder="—" />
+              </SelectTrigger>
+              <SelectContent>
+                {availableBudgets.map(b => (
+                  <SelectItem key={b.id} value={String(b.id)}>{b.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Input
+              className="h-7 w-24 text-xs font-mono rounded-md"
               type="number"
               step="0.01"
               min="0"
@@ -934,15 +952,19 @@ const groupColorMap = useMemo(() => {
                 return next
               })}
             />
-            <button
-              className="txnv-link-confirm-btn"
+            <Button
+              variant="outline"
+              size="icon-xs"
+              className="rounded-sm"
               onClick={() => confirmBudgetAssign(i)}
               disabled={!adding.budgetId}
             >
               ✓
-            </button>
-            <button
-              className="txnv-link-back-btn"
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon-xs"
+              className="rounded-sm"
               onClick={() => setRows(prev => {
                 const next = [...prev]
                 next[i] = { ...next[i], addingBudget: null }
@@ -950,7 +972,7 @@ const groupColorMap = useMemo(() => {
               })}
             >
               ×
-            </button>
+            </Button>
           </div>
         )}
       </div>
@@ -1037,8 +1059,10 @@ const groupColorMap = useMemo(() => {
           </span>
         ))}
         {adding == null && (
-          <button
-            className="txnv-add-link-btn"
+          <Button
+            variant="ghost"
+            size="xs"
+            className="rounded-sm font-mono text-[10px] border border-dashed border-border hover:border-foreground/40"
             onClick={() => setRows(prev => {
               const next = [...prev]
               next[i] = { ...next[i], addingCollection: { collectionId: '', newName: '' } }
@@ -1047,29 +1071,31 @@ const groupColorMap = useMemo(() => {
             title={t('collections.addTransaction')}
           >
             {t('collections.collection')}
-          </button>
+          </Button>
         )}
         {adding != null && (
-          <div className="txnv-budget-assign">
-            <select
-              className="txnv-budget-select"
+          <div className="flex items-center gap-1 flex-wrap">
+            <Select
               value={adding.collectionId}
-              onChange={e => setRows(prev => {
+              onValueChange={value => setRows(prev => {
                 const next = [...prev]
-                next[i] = { ...next[i], addingCollection: { ...next[i].addingCollection!, collectionId: e.target.value } }
+                next[i] = { ...next[i], addingCollection: { ...next[i].addingCollection!, collectionId: value ?? '' } }
                 return next
               })}
-              autoFocus
             >
-              <option value="">—</option>
-              {available.map(c => (
-                <option key={c.id} value={String(c.id)}>{c.name}</option>
-              ))}
-              <option value="__new__">+ {t('collections.createCollection')}</option>
-            </select>
+              <SelectTrigger className="h-7 w-40 text-xs rounded-md">
+                <SelectValue placeholder="—" />
+              </SelectTrigger>
+              <SelectContent>
+                {available.map(c => (
+                  <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
+                ))}
+                <SelectItem value="__new__">+ {t('collections.createCollection')}</SelectItem>
+              </SelectContent>
+            </Select>
             {adding.collectionId === '__new__' && (
-              <input
-                className="txnv-partial-input"
+              <Input
+                className="h-7 w-32 text-xs rounded-md"
                 type="text"
                 placeholder={t('collections.namePlaceholder')}
                 value={adding.newName}
@@ -1080,8 +1106,10 @@ const groupColorMap = useMemo(() => {
                 })}
               />
             )}
-            <button
-              className="txnv-link-confirm-btn"
+            <Button
+              variant="outline"
+              size="icon-xs"
+              className="rounded-sm"
               disabled={!adding.collectionId || (adding.collectionId === '__new__' && !adding.newName.trim())}
               onClick={() => {
                 if (adding.collectionId === '__new__') {
@@ -1093,9 +1121,11 @@ const groupColorMap = useMemo(() => {
               }}
             >
               ✓
-            </button>
-            <button
-              className="txnv-link-back-btn"
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon-xs"
+              className="rounded-sm"
               onClick={() => setRows(prev => {
                 const next = [...prev]
                 next[i] = { ...next[i], addingCollection: null }
@@ -1103,7 +1133,7 @@ const groupColorMap = useMemo(() => {
               })}
             >
               ×
-            </button>
+            </Button>
           </div>
         )}
       </div>
@@ -1113,25 +1143,25 @@ const groupColorMap = useMemo(() => {
   function renderGhostCell(col: ColumnKey, tx: TransactionItem): ReactNode {
     switch (col) {
       case 'date':
-        return <td key={col} className="txn-cell-date">{formatDate(tx.accountingDate)}</td>
+        return <TableCell key={col} className="txn-cell-date px-3 py-1">{formatDate(tx.accountingDate)}</TableCell>
       case 'account':
-        return <td key={col} className="txnv-cell-account">{accountMap.get(tx.accountIban) ?? tx.accountIban}</td>
+        return <TableCell key={col} className="txnv-cell-account px-3 py-1">{accountMap.get(tx.accountIban) ?? tx.accountIban}</TableCell>
       case 'amount':
         return (
-          <td key={col} className={`txn-cell-amount txnv-col-amount${tx.amount < 0 ? ' negative' : ' positive'}`}>
+          <TableCell key={col} className={`txn-cell-amount txnv-col-amount px-3 py-1 text-right${tx.amount < 0 ? ' negative' : ' positive'}`}>
             {EUR.format(tx.amount)}
-          </td>
+          </TableCell>
         )
       case 'category':
-        return <td key={col}><span className="ri-cat-input" style={{ display: 'inline-block' }}>{tx.category ?? ''}</span></td>
+        return <TableCell key={col} className="px-3 py-1"><span className="ri-cat-input" style={{ display: 'inline-block' }}>{tx.category ?? ''}</span></TableCell>
       case 'counterparty':
-        return <td key={col} className="txnv-cell-counterparty"><span className="txnv-counterparty-name">{tx.counterpartyName ?? ''}</span></td>
+        return <TableCell key={col} className="txnv-cell-counterparty px-3 py-1"><span className="txnv-counterparty-name">{tx.counterpartyName ?? ''}</span></TableCell>
       case 'purpose':
-        return <td key={col} className="txnv-cell-purpose"><span className="txnv-purpose-text">{tx.purpose ?? ''}</span></td>
+        return <TableCell key={col} className="txnv-cell-purpose px-3 py-1"><span className="txnv-purpose-text">{tx.purpose ?? ''}</span></TableCell>
       case 'comment':
-        return <td key={col} className="txnv-cell-comment"><span style={{ color: 'inherit', fontSize: 12 }}>{tx.comment ?? ''}</span></td>
+        return <TableCell key={col} className="txnv-cell-comment px-3 py-1"><span style={{ color: 'inherit', fontSize: 12 }}>{tx.comment ?? ''}</span></TableCell>
       default:
-        return <td key={col} />
+        return <TableCell key={col} />
     }
   }
 
@@ -1159,9 +1189,9 @@ const groupColorMap = useMemo(() => {
     }
 
     return (
-      <th
+      <TableHead
         key={col}
-        className={thClass}
+        className={`${thClass} sticky top-0 bg-[var(--surface)] z-10 font-mono text-[10px] tracking-wider text-muted-foreground h-10 px-3`}
         draggable={true}
         onDragStart={() => setDragCol(col)}
         onDragEnd={() => { setDragCol(null); setDragOverCol(null) }}
@@ -1171,7 +1201,7 @@ const groupColorMap = useMemo(() => {
         onDrop={() => handleDrop(col)}
       >
         {label}
-      </th>
+      </TableHead>
     )
   }
 
@@ -1179,9 +1209,9 @@ const groupColorMap = useMemo(() => {
     switch (col) {
       case 'date':
         return (
-          <td
+          <TableCell
             key={col}
-            className="txn-cell-date"
+            className="txn-cell-date px-3 py-1"
             style={rowLinkColor ? { boxShadow: `inset 3px 0 0 0 ${rowLinkColor}`, paddingLeft: '9px' } : undefined}
           >
             <DatePicker
@@ -1200,23 +1230,23 @@ const groupColorMap = useMemo(() => {
                 {formatDate(row.original.bookingDate)}
               </span>
             )}
-          </td>
+          </TableCell>
         )
       case 'account':
         return (
-          <td key={col} className="txnv-cell-account">
+          <TableCell key={col} className="txnv-cell-account px-3 py-1">
             {accountMap.get(row.original.accountIban) ?? row.original.accountIban}
-          </td>
+          </TableCell>
         )
       case 'amount':
         return (
-          <td key={col} className={`txn-cell-amount txnv-col-amount${row.original.amount < 0 ? ' negative' : ' positive'}`}>
+          <TableCell key={col} className={`txn-cell-amount txnv-col-amount px-3 py-1 text-right${row.original.amount < 0 ? ' negative' : ' positive'}`}>
             {EUR.format(row.original.amount)}
-          </td>
+          </TableCell>
         )
       case 'category':
         return (
-          <td key={col}>
+          <TableCell key={col} className="px-1 py-1">
             <CategoryPathInput
               className="ri-cat-input"
               value={row.original.categoryId ?? null}
@@ -1224,48 +1254,48 @@ const groupColorMap = useMemo(() => {
               tree={categories}
               onCategoryCreated={onCategoryCreated}
             />
-          </td>
+          </TableCell>
         )
       case 'offsets':
         return (
-          <td key={col} className="txnv-cell-offsets">
+          <TableCell key={col} className="txnv-cell-offsets px-3 py-1">
             {renderOffsetCell(row, i)}
-          </td>
+          </TableCell>
         )
       case 'budget':
         return (
-          <td key={col} className="txnv-cell-budget">
+          <TableCell key={col} className="txnv-cell-budget px-3 py-1">
             {renderBudgetCell(row, i)}
-          </td>
+          </TableCell>
         )
       case 'collection':
         return (
-          <td key={col} className="txnv-cell-budget">
+          <TableCell key={col} className="txnv-cell-budget px-3 py-1">
             {renderCollectionCell(row, i)}
-          </td>
+          </TableCell>
         )
       case 'counterparty':
         return (
-          <td key={col} className="txnv-cell-counterparty">
+          <TableCell key={col} className="txnv-cell-counterparty px-3 py-1">
             <span
               className="txnv-counterparty-name"
               title={row.original.counterpartyIban ?? undefined}
             >
               {row.original.counterpartyName ?? ''}
             </span>
-          </td>
+          </TableCell>
         )
       case 'purpose':
         return (
-          <td key={col} className="txnv-cell-purpose" title={row.original.purpose ?? undefined}>
+          <TableCell key={col} className="txnv-cell-purpose px-3 py-1" title={row.original.purpose ?? undefined}>
             <span className="txnv-purpose-text">{row.original.purpose ?? ''}</span>
-          </td>
+          </TableCell>
         )
       case 'comment':
         return (
-          <td key={col} className="txnv-cell-comment">
-            <input
-              className="txnv-comment-input"
+          <TableCell key={col} className="txnv-cell-comment px-3 py-1">
+            <Input
+              className="h-6 w-full border-0 border-b border-transparent rounded-none bg-transparent px-0 text-xs focus-visible:ring-0 hover:border-foreground/30 focus-visible:border-foreground/60 shadow-none placeholder:italic placeholder:text-muted-foreground"
               type="text"
               value={row.comment}
               placeholder={t('transactions.addComment')}
@@ -1274,7 +1304,7 @@ const groupColorMap = useMemo(() => {
               onBlur={() => saveComment(i)}
               onKeyDown={e => { if (e.key === 'Enter') { e.currentTarget.blur() } }}
             />
-          </td>
+          </TableCell>
         )
     }
   }
@@ -1349,44 +1379,42 @@ const groupColorMap = useMemo(() => {
           <p className="hint">{t('common.noTransactions')}</p>
         )}
         {page.phase === 'ready' && filteredRows.length > 0 && (
-          <table className="txnv-table">
-            <thead>
-              <tr>
-                <th className="txnv-col-check">
-                  <input
-                    type="checkbox"
-                    className="txnv-checkbox"
+          <table className="w-full caption-bottom text-xs border-collapse">
+            <TableHeader className="[&_tr]:border-b">
+              <TableRow className="hover:bg-transparent border-b">
+                <TableHead className="txnv-col-check h-10 px-2 sticky top-0 bg-[var(--surface)] z-10">
+                  <Checkbox
                     checked={allSelected}
-                    ref={el => { if (el) el.indeterminate = selectedCount > 0 && !allSelected }}
-                    onChange={toggleSelectAll}
+                    indeterminate={selectedCount > 0 && !allSelected}
+                    onCheckedChange={toggleSelectAll}
                   />
-                </th>
+                </TableHead>
                 {colOrder.map(col => renderColumnHeader(col))}
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
+                <TableHead className="sticky top-0 bg-[var(--surface)] z-10 px-3 h-10" />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {displayItems.map(item => {
                 if (item.type === 'ghost') {
                   return (
-                    <tr key={`ghost-${item.parentId}`} className="txnv-row--parent-ghost">
-                      <td className="txnv-col-check" />
+                    <TableRow key={`ghost-${item.parentId}`} className="txnv-row--parent-ghost">
+                      <TableCell className="txnv-col-check p-0" />
                       {colOrder.map(col => renderGhostCell(col, item.parentTx))}
-                      <td className="txnv-cell-actions">
+                      <TableCell className="txnv-cell-actions">
                         <span className="txnv-sub-badge txnv-sub-badge--split">{t('transactions.split.splitBadge')}</span>
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   )
                 }
                 if (item.type === 'merge-child-ghost') {
                   return (
-                    <tr key={`merge-child-${item.childTx.id}`} className="txnv-row--merge-child-ghost">
-                      <td className="txnv-col-check" />
+                    <TableRow key={`merge-child-${item.childTx.id}`} className="txnv-row--merge-child-ghost">
+                      <TableCell className="txnv-col-check p-0" />
                       {colOrder.map(col => renderGhostCell(col, item.childTx))}
-                      <td className="txnv-cell-actions">
+                      <TableCell className="txnv-cell-actions">
                         <span className="txnv-sub-badge txnv-sub-badge--merged-child">{t('transactions.merge.mergedBadge')}</span>
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   )
                 }
                 const { row, i } = item
@@ -1398,17 +1426,15 @@ const groupColorMap = useMemo(() => {
                   return null
                 })()
                 return (
-                  <tr key={row.original.id} className={rowClassName(row, i)} data-txid={row.original.id}>
-                    <td className="txnv-col-check">
-                      <input
-                        type="checkbox"
-                        className="txnv-checkbox"
+                  <TableRow key={row.original.id} className={rowClassName(row, i)} data-txid={row.original.id}>
+                    <TableCell className="txnv-col-check p-0">
+                      <Checkbox
                         checked={row.selected}
-                        onChange={() => toggleSelect(i)}
+                        onCheckedChange={() => toggleSelect(i)}
                       />
-                    </td>
+                    </TableCell>
                     {colOrder.map(col => renderCell(col, row, i, rowLinkColor))}
-                    <td className="txnv-cell-actions">
+                    <TableCell className="txnv-cell-actions">
                       {row.error && (
                         <span className="txnv-row-error">{row.error}</span>
                       )}
@@ -1472,19 +1498,21 @@ const groupColorMap = useMemo(() => {
                         </span>
                       )}
                       {!row.original.isVirtual && !row.original.excluded && row.original.parentId == null && (
-                        <button
-                          className="txnv-sub-split-btn"
+                        <Button
+                          variant="ghost"
+                          size="icon-xs"
+                          className="rounded-sm text-blue-400 border border-blue-400/30 hover:bg-blue-400/10 hover:text-blue-300"
                           onClick={() => setSplitModalTx(row.original)}
                           title={t('transactions.split.button')}
                         >
                           ÷
-                        </button>
+                        </Button>
                       )}
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 )
               })}
-            </tbody>
+            </TableBody>
           </table>
         )}
       </div>
