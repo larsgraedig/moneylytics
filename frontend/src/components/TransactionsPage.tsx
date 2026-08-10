@@ -1354,7 +1354,7 @@ const groupColorMap = useMemo(() => {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex flex-wrap items-center gap-2 border-b px-4 py-2 shrink-0">
+      <div className="flex flex-wrap items-center gap-2 px-4 py-2 shrink-0">
         <button
           className="rounded-lg border border-input bg-input/30 px-3 py-1.5 text-sm hover:bg-input/50 transition-colors"
           onClick={() => setCreateVirtualOpen(true)}
@@ -1408,7 +1408,7 @@ const groupColorMap = useMemo(() => {
         )}
       </div>
 
-      <div className="flex-1 overflow-auto pl-4 pr-4 pb-4">
+      <div className="flex-1 flex flex-col overflow-hidden pl-4 pr-4 pb-4">
         {page.phase === 'loading' && (
           <p className="hint loading">{t('common.fetching')}</p>
         )}
@@ -1419,8 +1419,8 @@ const groupColorMap = useMemo(() => {
           <p className="hint">{t('common.noTransactions')}</p>
         )}
         {page.phase === 'ready' && filteredRows.length > 0 && (
-          <div className="rounded-lg border border-border overflow-hidden">
-          <table className="w-full caption-bottom text-xs border-collapse">
+          <div className="rounded-lg border border-border overflow-auto flex-1 min-h-0">
+          <table className="min-w-full caption-bottom text-xs border-collapse">
             <TableHeader className="[&_tr]:border-b">
               <TableRow className="hover:bg-transparent border-b">
                 <TableHead className="txnv-col-check h-10 px-2 sticky top-0 bg-[var(--surface)] z-10">
