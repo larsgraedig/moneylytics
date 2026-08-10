@@ -1,12 +1,23 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { mergeTransactions, type TransactionItem } from '../api/transactions'
+import { DatePicker } from '@/components/ui/date-picker'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { cn } from '@/lib/utils'
+
+function parseIso(s: string): Date | null {
+  if (!s) return null
+  const [y, m, d] = s.split('-').map(Number)
+  return new Date(y, m - 1, d)
+}
+
+function isoDate(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
 
 const EUR = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' })
 
@@ -21,7 +32,7 @@ export function MergeTransactionModal({
 }) {
   const { t } = useTranslation()
   const total = transactions.reduce((acc, tx) => acc + tx.amount, 0)
-  const today = new Date().toISOString().slice(0, 10)
+  const today = isoDate(new Date())
   const [name, setName] = useState('')
   const [comment, setComment] = useState('')
   const [accountingDate, setAccountingDate] = useState(today)
@@ -84,10 +95,10 @@ export function MergeTransactionModal({
           />
           <div className="flex flex-col gap-1.5">
             <Label>{t('transactions.merge.accountingDate')}</Label>
-            <Input
-              type="date"
-              value={accountingDate}
-              onChange={e => setAccountingDate(e.target.value)}
+            <DatePicker
+              value={parseIso(accountingDate)}
+              onChange={d => d && setAccountingDate(isoDate(d))}
+              max={new Date()}
             />
           </div>
         </div>

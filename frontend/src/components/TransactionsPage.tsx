@@ -26,6 +26,7 @@ import { CreateVirtualTransactionModal } from './CreateVirtualTransactionModal'
 import { GroupCard } from './GroupCard'
 import { SplitTransactionModal } from './SplitTransactionModal'
 import { MergeTransactionModal } from './MergeTransactionModal'
+import { DatePicker } from '@/components/ui/date-picker'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import {
   assignTransaction as assignToBudget,
@@ -41,6 +42,16 @@ import {
 } from '../api/collections'
 import type { CollectionSummary } from '../api/transactions'
 import { updateUserSettings } from '../api/settings'
+
+function parseIso(s: string): Date | null {
+  if (!s) return null
+  const [y, m, d] = s.split('-').map(Number)
+  return new Date(y, m - 1, d)
+}
+
+function isoDate(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
 
 const LINK_COLORS = ['#f59e0b', '#10b981', '#60a5fa', '#f472b6', '#a78bfa', '#fb923c']
 const BUDGET_COLORS = ['#34d399', '#818cf8', '#fb7185', '#fbbf24', '#38bdf8', '#a3e635']
@@ -287,16 +298,17 @@ export default function TransactionsPage({
     }
   }
 
-  async function saveAccountingDate(index: number) {
+  async function saveAccountingDate(index: number, valueOverride?: string) {
     const row = rows[index]
-    if (!row.accountingDate || row.accountingDate === row.original.accountingDate) return
+    const dateToSave = valueOverride ?? row.accountingDate
+    if (!dateToSave || dateToSave === row.original.accountingDate) return
     setRows(prev => {
       const next = [...prev]
       next[index] = { ...next[index], savingAccountingDate: true }
       return next
     })
     try {
-      const updated = await updateTransactionAccountingDate(row.original.id, row.accountingDate)
+      const updated = await updateTransactionAccountingDate(row.original.id, dateToSave)
       setRows(prev => {
         const next = [...prev]
         next[index] = {
@@ -1172,13 +1184,16 @@ const groupColorMap = useMemo(() => {
             className="txn-cell-date"
             style={rowLinkColor ? { boxShadow: `inset 3px 0 0 0 ${rowLinkColor}`, paddingLeft: '9px' } : undefined}
           >
-            <input
-              className="txnv-accounting-date-input"
-              type="date"
-              value={row.accountingDate}
+            <DatePicker
+              value={parseIso(row.accountingDate)}
+              onChange={d => {
+                if (!d) return
+                const iso = isoDate(d)
+                updateRow(i, 'accountingDate', iso)
+                saveAccountingDate(i, iso)
+              }}
               disabled={row.savingAccountingDate}
-              onChange={e => updateRow(i, 'accountingDate', e.target.value)}
-              onBlur={() => saveAccountingDate(i)}
+              className="h-auto border-0 border-b border-transparent hover:border-foreground/30 rounded-none px-0 text-xs font-mono hover:bg-transparent gap-1 min-w-0 w-[100px]"
             />
             {row.original.accountingDate !== row.original.bookingDate && (
               <span className="txnv-booking-date-ref" title={t('transactions.bookingDateTitle')}>

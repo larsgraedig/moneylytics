@@ -14,6 +14,7 @@ import {
 } from '../api/transactions'
 import type { CategoryNode } from '../api/rawImport'
 import { getPresetRange, PRESETS, type Preset } from '../utils/datePresets'
+import { DatePicker } from '@/components/ui/date-picker'
 import { CollectionCard } from './CollectionCard'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -25,6 +26,16 @@ import { cn } from '@/lib/utils'
 function formatDate(iso: string): string {
   const [y, m, d] = iso.split('-')
   return `${d}.${m}.${y}`
+}
+
+function parseIso(s: string): Date | null {
+  if (!s) return null
+  const [y, m, d] = s.split('-').map(Number)
+  return new Date(y, m - 1, d)
+}
+
+function isoDate(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
 const EUR = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' })
@@ -159,8 +170,9 @@ function AddToCollectionModal({ collection, accounts, categories, onClose, onAdd
   onAdded: (tx: TransactionItem) => void
 }) {
   const { t } = useTranslation()
-  const today = new Date().toISOString().slice(0, 10)
-  const firstOfYear = new Date(new Date().getFullYear(), 0, 1).toISOString().slice(0, 10)
+  const _now = new Date()
+  const today = isoDate(_now)
+  const firstOfYear = `${_now.getFullYear()}-01-01`
 
   const [filterFrom, setFilterFrom] = useState(firstOfYear)
   const [filterTo, setFilterTo] = useState(today)
@@ -225,11 +237,20 @@ function AddToCollectionModal({ collection, accounts, categories, onClose, onAdd
           </select>
           <div className="flex items-center gap-1">
             <span className="text-xs text-muted-foreground">{t('common.from')}</span>
-            <input type="date" value={filterFrom} max={filterTo} onChange={e => { setFilterFrom(e.target.value); setActivePreset('') }} className={selectCls} />
+            <DatePicker
+              value={parseIso(filterFrom)}
+              onChange={d => { if (d) { setFilterFrom(isoDate(d)); setActivePreset('') } }}
+              max={parseIso(filterTo) ?? undefined}
+            />
           </div>
           <div className="flex items-center gap-1">
             <span className="text-xs text-muted-foreground">{t('common.to')}</span>
-            <input type="date" value={filterTo} min={filterFrom} onChange={e => { setFilterTo(e.target.value); setActivePreset('') }} className={selectCls} />
+            <DatePicker
+              value={parseIso(filterTo)}
+              onChange={d => { if (d) { setFilterTo(isoDate(d)); setActivePreset('') } }}
+              min={parseIso(filterFrom) ?? undefined}
+              max={new Date()}
+            />
           </div>
           {accounts.length > 0 && (
             <select className={selectCls} value={filterIban} onChange={e => setFilterIban(e.target.value)}>

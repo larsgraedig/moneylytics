@@ -3,9 +3,20 @@ import { useTranslation } from 'react-i18next'
 import type { CategoryNode } from '../api/rawImport'
 import { createVirtualTransaction, type Account } from '../api/transactions'
 import { CategoryPathInput } from './CategoryPathInput'
+import { DatePicker } from '@/components/ui/date-picker'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
+
+function parseIso(s: string): Date | null {
+  if (!s) return null
+  const [y, m, d] = s.split('-').map(Number)
+  return new Date(y, m - 1, d)
+}
+
+function isoDate(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
 
 export function CreateVirtualTransactionModal({
   accounts,
@@ -74,10 +85,10 @@ export function CreateVirtualTransactionModal({
 
         <div className="flex flex-col gap-3">
           <div className="flex gap-2">
-            <Input
-              type="date"
-              value={accountingDate}
-              onChange={e => setAccountingDate(e.target.value)}
+            <DatePicker
+              value={parseIso(accountingDate)}
+              onChange={d => setAccountingDate(d ? isoDate(d) : '')}
+              max={new Date()}
               className="w-36 shrink-0"
             />
             <Input
