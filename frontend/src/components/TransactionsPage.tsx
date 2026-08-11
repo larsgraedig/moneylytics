@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { Link2, Wallet, Layers } from 'lucide-react'
+import { Link2, Wallet, Layers, Scissors, Package } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
@@ -1179,6 +1179,19 @@ const groupColorMap = useMemo(() => {
     )
   }
 
+  function renderRowBadge(row: RowState): ReactNode {
+    const tx = row.original
+    if (tx.isVirtual && tx.parentId == null)
+      return <span title={t('transactions.merge.virtualBadge')}><Package size={11} style={{ color: '#34d399' }} /></span>
+    if (tx.isVirtual && tx.parentId != null)
+      return <span title={t('transactions.split.virtualBadge')}><Scissors size={11} style={{ color: '#60a5fa' }} /></span>
+    if (!tx.isVirtual && tx.excluded && tx.parentId != null)
+      return <span title={t('transactions.merge.mergedBadge')}><Package size={11} style={{ color: '#6ee7b7' }} /></span>
+    if (!tx.isVirtual && tx.excluded && tx.parentId == null)
+      return <span title={t('transactions.split.splitBadge')}><Scissors size={11} style={{ color: '#93c5fd' }} /></span>
+    return null
+  }
+
   function renderGhostCell(col: ColumnKey, tx: TransactionItem): ReactNode {
     switch (col) {
       case 'date':
@@ -1430,6 +1443,7 @@ const groupColorMap = useMemo(() => {
                     onCheckedChange={toggleSelectAll}
                   />
                 </TableHead>
+                <TableHead className="txnv-col-badge sticky top-0 bg-[var(--surface)] z-10" />
                 {colOrder.map(col => renderColumnHeader(col))}
                 <TableHead className="sticky top-0 bg-[var(--surface)] z-10 px-3 h-10" />
               </TableRow>
@@ -1440,10 +1454,9 @@ const groupColorMap = useMemo(() => {
                   return (
                     <TableRow key={`ghost-${item.parentId}`} className="txnv-row--parent-ghost">
                       <TableCell className="txnv-col-check p-0" />
+                      <TableCell className="txnv-col-badge"><span title={t('transactions.split.splitBadge')}><Scissors size={11} style={{ color: '#60a5fa' }} /></span></TableCell>
                       {colOrder.map(col => renderGhostCell(col, item.parentTx))}
-                      <TableCell className="txnv-cell-actions">
-                        <span className="txnv-sub-badge txnv-sub-badge--split">{t('transactions.split.splitBadge')}</span>
-                      </TableCell>
+                      <TableCell className="txnv-cell-actions" />
                     </TableRow>
                   )
                 }
@@ -1451,10 +1464,9 @@ const groupColorMap = useMemo(() => {
                   return (
                     <TableRow key={`merge-child-${item.childTx.id}`} className="txnv-row--merge-child-ghost">
                       <TableCell className="txnv-col-check p-0" />
+                      <TableCell className="txnv-col-badge"><span title={t('transactions.merge.mergedBadge')}><Package size={11} style={{ color: '#6ee7b7' }} /></span></TableCell>
                       {colOrder.map(col => renderGhostCell(col, item.childTx))}
-                      <TableCell className="txnv-cell-actions">
-                        <span className="txnv-sub-badge txnv-sub-badge--merged-child">{t('transactions.merge.mergedBadge')}</span>
-                      </TableCell>
+                      <TableCell className="txnv-cell-actions" />
                     </TableRow>
                   )
                 }
@@ -1474,6 +1486,7 @@ const groupColorMap = useMemo(() => {
                         onCheckedChange={() => toggleSelect(i)}
                       />
                     </TableCell>
+                    <TableCell className="txnv-col-badge">{renderRowBadge(row)}</TableCell>
                     {colOrder.map(col => renderCell(col, row, i, rowLinkColor))}
                     <TableCell className="txnv-cell-actions">
                       {row.error && (
@@ -1495,7 +1508,7 @@ const groupColorMap = useMemo(() => {
                               }}
                               style={{ cursor: 'pointer' }}
                             >
-                              {t('virtualTransaction.badge')} ×
+                              ×
                             </span>
                           )
                         }
@@ -1510,20 +1523,10 @@ const groupColorMap = useMemo(() => {
                             }}
                             style={{ cursor: 'pointer' }}
                           >
-                            {t('transactions.merge.virtualBadge')} ×
+                            ×
                           </span>
                         )
                       })()}
-                      {row.original.isVirtual && row.original.parentId != null && (
-                        <span className="txnv-sub-badge txnv-sub-badge--split-child">
-                          {t('transactions.split.virtualBadge')}
-                        </span>
-                      )}
-                      {!row.original.isVirtual && row.original.excluded && row.original.parentId != null && (
-                        <span className="txnv-sub-badge txnv-sub-badge--merged-child">
-                          {t('transactions.merge.mergedBadge')}
-                        </span>
-                      )}
                       {!row.original.isVirtual && row.original.excluded && row.original.parentId == null && (
                         <span
                           className="txnv-sub-badge txnv-sub-badge--split"
@@ -1535,7 +1538,7 @@ const groupColorMap = useMemo(() => {
                           }}
                           style={{ cursor: 'pointer' }}
                         >
-                          {t('transactions.split.splitBadge')} ×
+                          ×
                         </span>
                       )}
                       {!row.original.isVirtual && !row.original.excluded && row.original.parentId == null && (
