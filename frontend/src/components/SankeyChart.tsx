@@ -81,10 +81,12 @@ export default function SankeyChart({ data, onNodeClick }: Props) {
     .sort((a, b) => data.nodes[b].value - data.nodes[a].value)
 
   const parentMap = new Map<number, number>()
+  const parentLinkValue = new Map<number, number>()
   data.links.forEach(link => {
     const cur = parentMap.get(link.target)
     if (cur === undefined || data.nodes[link.source].value > data.nodes[cur].value) {
       parentMap.set(link.target, link.source)
+      parentLinkValue.set(link.target, link.value)
     }
   })
 
@@ -94,20 +96,26 @@ export default function SankeyChart({ data, onNodeClick }: Props) {
       const posA = leftOrder.indexOf(parentMap.get(a) ?? -1)
       const posB = leftOrder.indexOf(parentMap.get(b) ?? -1)
       if (posA !== posB) return posA - posB
-      return data.nodes[b].value - data.nodes[a].value
+      return (parentLinkValue.get(b) ?? 0) - (parentLinkValue.get(a) ?? 0)
     })
 
   const middleOrder = [...sourceSet]
     .filter(i => targetSet.has(i))
     .sort((a, b) => data.nodes[b].value - data.nodes[a].value)
 
+  const nodeOrder = [...leftOrder, ...middleOrder, ...rightOrder]
+  const nodePosition = new Map<number, number>()
+  nodeOrder.forEach((nodeIdx, pos) => nodePosition.set(nodeIdx, pos))
+
   const sankeyData = {
-    nodes: [...leftOrder, ...middleOrder, ...rightOrder].map(i => ({ id: String(i) })),
-    links: data.links.map(link => ({
-      source: String(link.source),
-      target: String(link.target),
-      value: link.value,
-    })),
+    nodes: nodeOrder.map(i => ({ id: String(i) })),
+    links: [...data.links]
+      .sort((a, b) => (nodePosition.get(a.target) ?? 0) - (nodePosition.get(b.target) ?? 0))
+      .map(link => ({
+        source: String(link.source),
+        target: String(link.target),
+        value: link.value,
+      })),
   }
 
   // Derive chart height so:
