@@ -76,39 +76,44 @@ export default function SankeyChart({ data, onNodeClick }: Props) {
   const targetSet = new Set(data.links.map(l => l.target))
   const sourceSet = new Set(data.links.map(l => l.source))
 
-  const leftOrder = [...sourceSet]
-    .filter(i => !targetSet.has(i))
-    .sort((a, b) => data.nodes[b].value - data.nodes[a].value)
-
-  const parentMap = new Map<number, number>()
-  const parentLinkValue = new Map<number, number>()
+  const childrenOf = new Map<number, { child: number; linkValue: number }[]>()
   data.links.forEach(link => {
-    const cur = parentMap.get(link.target)
-    if (cur === undefined || data.nodes[link.source].value > data.nodes[cur].value) {
-      parentMap.set(link.target, link.source)
-      parentLinkValue.set(link.target, link.value)
-    }
+    if (!childrenOf.has(link.source)) childrenOf.set(link.source, [])
+    childrenOf.get(link.source)!.push({ child: link.target, linkValue: link.value })
   })
 
-  const rightOrder = [...targetSet]
-    .filter(i => !sourceSet.has(i))
-    .sort((a, b) => {
-      const posA = leftOrder.indexOf(parentMap.get(a) ?? -1)
-      const posB = leftOrder.indexOf(parentMap.get(b) ?? -1)
-      if (posA !== posB) return posA - posB
-      return (parentLinkValue.get(b) ?? 0) - (parentLinkValue.get(a) ?? 0)
-    })
+  const visited = new Set<number>()
+  const orderedNodes: number[] = []
 
-  const middleOrder = [...sourceSet]
-    .filter(i => targetSet.has(i))
+  let currentLayer = data.nodes
+    .map((_, i) => i)
+    .filter(i => sourceSet.has(i) && !targetSet.has(i))
     .sort((a, b) => data.nodes[b].value - data.nodes[a].value)
 
-  const nodeOrder = [...leftOrder, ...middleOrder, ...rightOrder]
+  while (currentLayer.length > 0) {
+    orderedNodes.push(...currentLayer)
+    currentLayer.forEach(i => visited.add(i))
+
+    const nextLayer: number[] = []
+    const seenInNextLayer = new Set<number>()
+    currentLayer.forEach(parentIdx => {
+      const children = childrenOf.get(parentIdx) ?? []
+      children
+        .filter(({ child }) => !visited.has(child) && !seenInNextLayer.has(child))
+        .sort((a, b) => b.linkValue - a.linkValue)
+        .forEach(({ child }) => {
+          seenInNextLayer.add(child)
+          nextLayer.push(child)
+        })
+    })
+    currentLayer = nextLayer
+  }
+
   const nodePosition = new Map<number, number>()
-  nodeOrder.forEach((nodeIdx, pos) => nodePosition.set(nodeIdx, pos))
+  orderedNodes.forEach((nodeIdx, pos) => nodePosition.set(nodeIdx, pos))
 
   const sankeyData = {
-    nodes: nodeOrder.map(i => ({ id: String(i) })),
+    nodes: orderedNodes.map(i => ({ id: String(i) })),
     links: [...data.links]
       .sort((a, b) => (nodePosition.get(a.target) ?? 0) - (nodePosition.get(b.target) ?? 0))
       .map(link => ({
