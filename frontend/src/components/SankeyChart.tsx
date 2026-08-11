@@ -73,8 +73,36 @@ function NodeTooltipContent({ node }: { node: SankeyNodeDatum<DefaultNode, Defau
 }
 
 export default function SankeyChart({ data, onNodeClick }: Props) {
+  const targetSet = new Set(data.links.map(l => l.target))
+  const sourceSet = new Set(data.links.map(l => l.source))
+
+  const leftOrder = [...sourceSet]
+    .filter(i => !targetSet.has(i))
+    .sort((a, b) => data.nodes[b].value - data.nodes[a].value)
+
+  const parentMap = new Map<number, number>()
+  data.links.forEach(link => {
+    const cur = parentMap.get(link.target)
+    if (cur === undefined || data.nodes[link.source].value > data.nodes[cur].value) {
+      parentMap.set(link.target, link.source)
+    }
+  })
+
+  const rightOrder = [...targetSet]
+    .filter(i => !sourceSet.has(i))
+    .sort((a, b) => {
+      const posA = leftOrder.indexOf(parentMap.get(a) ?? -1)
+      const posB = leftOrder.indexOf(parentMap.get(b) ?? -1)
+      if (posA !== posB) return posA - posB
+      return data.nodes[b].value - data.nodes[a].value
+    })
+
+  const middleOrder = [...sourceSet]
+    .filter(i => targetSet.has(i))
+    .sort((a, b) => data.nodes[b].value - data.nodes[a].value)
+
   const sankeyData = {
-    nodes: data.nodes.map((_, i) => ({ id: String(i) })),
+    nodes: [...leftOrder, ...middleOrder, ...rightOrder].map(i => ({ id: String(i) })),
     links: data.links.map(link => ({
       source: String(link.source),
       target: String(link.target),
@@ -88,7 +116,7 @@ export default function SankeyChart({ data, onNodeClick }: Props) {
   //
   // d3-sankey sets ky = (innerH − gaps) / Σvalues.
   // We want ky = MAX_NODE_PX / maxRightValue, so innerH = ky·Σvalues + gaps.
-  const rightColIndices = new Set(data.links.map(l => l.target))
+  const rightColIndices = targetSet
   const rightColCount   = rightColIndices.size
   // Cap based on the single largest node across BOTH columns — the same ky applies
   // to left and right, so Einzahlung (left) can be taller than Regulár (right).
@@ -133,7 +161,7 @@ export default function SankeyChart({ data, onNodeClick }: Props) {
         label={node => data.nodes[Number(node.id)]?.name || '—'}
         margin={{ top: 32, right: 232, bottom: 32, left: 232 }}
         align="justify"
-        sort="descending"
+        sort="input"
         colors={{ scheme: 'tableau10' }}
         nodeThickness={14}
         nodeSpacing={NODE_SPACING}
