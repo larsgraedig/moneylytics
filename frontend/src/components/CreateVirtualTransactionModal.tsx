@@ -85,6 +85,15 @@ export function CreateVirtualTransactionModal({
 
         <div className="flex flex-col gap-3">
           <div className="flex gap-2">
+            <select
+              value={accountIban}
+              onChange={e => setAccountIban(e.target.value)}
+              className="flex-1 rounded-lg border border-input bg-input/30 px-3 py-2 text-sm outline-none focus:border-ring focus:ring-2 focus:ring-ring/50"
+            >
+              {accounts.map(a => (
+                <option key={a.iban} value={a.iban}>{a.name}</option>
+              ))}
+            </select>
             <DatePicker
               value={parseIso(accountingDate)}
               onChange={d => setAccountingDate(d ? isoDate(d) : '')}
@@ -100,31 +109,20 @@ export function CreateVirtualTransactionModal({
               className="w-28 shrink-0"
               autoFocus
             />
-            <select
-              value={accountIban}
-              onChange={e => setAccountIban(e.target.value)}
-              className="flex-1 rounded-lg border border-input bg-input/30 px-3 py-2 text-sm outline-none focus:border-ring focus:ring-2 focus:ring-ring/50"
-            >
-              {accounts.map(a => (
-                <option key={a.iban} value={a.iban}>{a.name}</option>
-              ))}
-            </select>
           </div>
 
-          <div className="flex gap-2">
-            <Input
-              type="text"
-              placeholder={t('virtualTransaction.counterpartyName')}
-              value={counterpartyName}
-              onChange={e => setCounterpartyName(e.target.value)}
-            />
-            <Input
-              type="text"
-              placeholder={t('virtualTransaction.purpose')}
-              value={purpose}
-              onChange={e => setPurpose(e.target.value)}
-            />
-          </div>
+          <Input
+            type="text"
+            placeholder={t('virtualTransaction.counterpartyName')}
+            value={counterpartyName}
+            onChange={e => setCounterpartyName(e.target.value)}
+          />
+          <Input
+            type="text"
+            placeholder={t('virtualTransaction.purpose')}
+            value={purpose}
+            onChange={e => setPurpose(e.target.value)}
+          />
 
           <CategoryPathInput
             value={categoryId}

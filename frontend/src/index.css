@@ -703,10 +703,9 @@ body {
   padding: 0 8px;
   background: var(--bg);
   border: 1px solid var(--border);
-  border-radius: 3px;
+  border-radius: 8px;
   color: var(--text);
-  font-family: var(--mono);
-  font-size: 11px;
+  font-size: 12px;
   outline: none;
   transition: border-color 0.12s;
 }
