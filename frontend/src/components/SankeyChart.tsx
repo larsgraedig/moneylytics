@@ -164,7 +164,7 @@ export default function SankeyChart({ data, onNodeClick }: Props) {
         data={sankeyData}
         label={node => data.nodes[Number(node.id)]?.name || '—'}
         margin={{ top: 32, right: 232, bottom: 32, left: 232 }}
-        align="justify"
+        align="start"
         sort="input"
         colors={{ scheme: 'tableau10' }}
         nodeThickness={14}
