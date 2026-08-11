@@ -85,29 +85,20 @@ export default function SankeyChart({ data, onNodeClick }: Props) {
   const visited = new Set<number>()
   const orderedNodes: number[] = []
 
-  let currentLayer = data.nodes
+  const dfs = (nodeIdx: number) => {
+    if (visited.has(nodeIdx)) return
+    visited.add(nodeIdx)
+    orderedNodes.push(nodeIdx)
+    const children = (childrenOf.get(nodeIdx) ?? [])
+      .sort((a, b) => b.linkValue - a.linkValue)
+    for (const { child } of children) dfs(child)
+  }
+
+  data.nodes
     .map((_, i) => i)
     .filter(i => sourceSet.has(i) && !targetSet.has(i))
     .sort((a, b) => data.nodes[b].value - data.nodes[a].value)
-
-  while (currentLayer.length > 0) {
-    orderedNodes.push(...currentLayer)
-    currentLayer.forEach(i => visited.add(i))
-
-    const nextLayer: number[] = []
-    const seenInNextLayer = new Set<number>()
-    currentLayer.forEach(parentIdx => {
-      const children = childrenOf.get(parentIdx) ?? []
-      children
-        .filter(({ child }) => !visited.has(child) && !seenInNextLayer.has(child))
-        .sort((a, b) => b.linkValue - a.linkValue)
-        .forEach(({ child }) => {
-          seenInNextLayer.add(child)
-          nextLayer.push(child)
-        })
-    })
-    currentLayer = nextLayer
-  }
+    .forEach(dfs)
 
   const nodePosition = new Map<number, number>()
   orderedNodes.forEach((nodeIdx, pos) => nodePosition.set(nodeIdx, pos))
