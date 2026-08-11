@@ -13,17 +13,24 @@ interface DatePickerProps {
   max?: Date
   placeholder?: string
   className?: string
+  disabled?: boolean
 }
 
-export function DatePicker({ value, onChange, min, max, placeholder = 'TT.MM.JJJJ', className }: DatePickerProps) {
+export function DatePicker({ value, onChange, min, max, placeholder = 'TT.MM.JJJJ', className, disabled }: DatePickerProps) {
   const [open, setOpen] = React.useState(false)
+
+  const now = new Date()
+  const startMonth = min ?? new Date(2000, 0)
+  const endMonth = max ?? new Date(now.getFullYear() + 1, 11)
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger
+        disabled={disabled}
         className={cn(
           'inline-flex h-9 items-center gap-2 rounded-lg border border-border bg-transparent px-3 text-sm font-normal text-left whitespace-nowrap transition-colors hover:bg-muted',
           !value && 'text-muted-foreground',
+          disabled && 'opacity-40 cursor-not-allowed',
           className,
         )}
       >
@@ -38,6 +45,9 @@ export function DatePicker({ value, onChange, min, max, placeholder = 'TT.MM.JJJ
           disabled={d => (min ? d < min : false) || (max ? d > max : false)}
           locale={de}
           defaultMonth={value ?? undefined}
+          captionLayout="dropdown"
+          startMonth={startMonth}
+          endMonth={endMonth}
         />
       </PopoverContent>
     </Popover>

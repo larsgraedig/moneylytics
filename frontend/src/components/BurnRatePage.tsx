@@ -221,7 +221,7 @@ export default function BurnRatePage({ from, to, accountId }: { from: string; to
   const [simulatedToday, setSimulatedToday] = useState('')
   const [colHover, setColHover] = useState<ColHoverInfo | null>(null)
 
-  const realTodayIso = new Date().toISOString().slice(0, 10)
+  const realTodayIso = (() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` })()
   const effectiveToday = simulatedToday || realTodayIso
 
   async function load(overrideWindow?: RollingWindow) {

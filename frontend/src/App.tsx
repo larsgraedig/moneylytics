@@ -57,7 +57,10 @@ import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
 
 function isoDate(d: Date) {
-  return d.toISOString().slice(0, 10)
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
 }
 
 function parseIso(iso: string): Date {
@@ -85,6 +88,7 @@ const BASE_NAV: NavSection[] = [
   {
     sectionKey: 'analytics',
     items: [
+      ['kontoauszug', 'nav.kontoauszug', List],
       ['sankey', 'nav.sankey', Workflow],
       ['trends', 'nav.trends', TrendingUp],
       ['breakdown', 'nav.breakdown', PieChart],
@@ -95,7 +99,6 @@ const BASE_NAV: NavSection[] = [
   {
     sectionKey: 'accounts',
     items: [
-      ['kontoauszug', 'nav.kontoauszug', List],
       ['verknuepfungen', 'nav.verknuepfungen', Link2],
       ['sammlungen', 'nav.sammlungen', FolderOpen],
       ['konten', 'nav.konten', Landmark],
@@ -113,6 +116,10 @@ const BASE_NAV: NavSection[] = [
     ],
   },
 ]
+
+const ANALYTICS_TABS = new Set(
+  BASE_NAV.find(s => s.sectionKey === 'analytics')?.items.map(([id]) => id) ?? [],
+)
 
 export default function App() {
   const { username, isSystemAdmin, impersonating, deimpersonate, isLoading, logout, activeOrganization, organizations, activateOrganization, refreshAuth } = useAuth()
@@ -291,7 +298,7 @@ export default function App() {
         </header>
 
         {/* Filter subbar */}
-        <div className="flex shrink-0 flex-wrap items-center gap-2 border-b px-3 py-2 sm:px-4">
+        {ANALYTICS_TABS.has(tab) && <div className="flex shrink-0 flex-wrap items-center gap-2 border-b px-3 py-2 sm:px-4">
           {accounts.length > 0 && (
             <select
               className="flex-1 min-w-0 sm:flex-none rounded-lg border border-input bg-input/30 px-3 py-1.5 text-sm outline-none focus:border-ring"
@@ -339,7 +346,7 @@ export default function App() {
               className="flex-1 sm:flex-none"
             />
           </div>
-        </div>
+        </div>}
 
         {/* Main content */}
         <div className="flex-1 overflow-auto">

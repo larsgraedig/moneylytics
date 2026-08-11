@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { findOrCreateCategory, type CategoryNode } from '../api/rawImport'
 import { cn } from '@/lib/utils'
 
@@ -53,9 +53,17 @@ export function CategoryPathInput({ value, onChange, tree, onCategoryCreated, pl
   const flatItems = useMemo(() => flattenTree(tree), [tree])
   const committedId = useRef<number | null>(value)
   const inputRef = useRef<HTMLInputElement>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
   const [inputValue, setInputValue] = useState(() => pathStringForId(value, tree))
   const [open, setOpen] = useState(false)
+  const [dropUp, setDropUp] = useState(false)
   const [highlighted, setHighlighted] = useState(0)
+
+  useEffect(() => {
+    if (!open || !containerRef.current) return
+    const rect = containerRef.current.getBoundingClientRect()
+    setDropUp(window.innerHeight - rect.bottom < 260)
+  }, [open])
 
   useEffect(() => {
     setInputValue(pathStringForId(value, tree))
@@ -181,7 +189,7 @@ export function CategoryPathInput({ value, onChange, tree, onCategoryCreated, pl
   }
 
   return (
-    <div className="relative">
+    <div className="relative" ref={containerRef}>
       <input
         ref={inputRef}
         type="text"
@@ -197,21 +205,28 @@ export function CategoryPathInput({ value, onChange, tree, onCategoryCreated, pl
         onKeyDown={handleKeyDown}
       />
       {open && visibleItems.length > 0 && (
-        <ul className="absolute top-full left-0 z-50 mt-1 max-h-60 w-full overflow-auto rounded-lg border border-border bg-popover shadow-lg">
-          {visibleItems.map((item, idx) => (
-            <li
-              key={item.type === 'existing' ? item.id : `create-${item.displayStr}`}
-              className={cn(
-                'cursor-pointer px-3 py-2 text-sm',
-                idx === highlighted ? 'bg-accent text-accent-foreground' : 'hover:bg-accent hover:text-accent-foreground',
-                item.type === 'create' && 'text-primary italic',
-              )}
-              style={item.type === 'existing' && item.depth > 0 ? { paddingLeft: `${item.depth * 12 + 12}px` } : undefined}
-              onMouseDown={e => { e.preventDefault(); void selectItem(item) }}
-            >
-              {item.type === 'create' ? `+ Erstellen: "${item.displayStr}"` : item.displayName}
-            </li>
-          ))}
+        <ul className={cn("absolute left-0 z-50 max-h-60 min-w-full w-max max-w-xs overflow-auto rounded-lg border border-border bg-popover shadow-lg", dropUp ? "bottom-full mb-1" : "top-full mt-1")}>
+          {visibleItems.map((item, idx) => {
+            const showSeparator = item.type === 'existing' && item.depth === 0 && idx > 0
+            return (
+              <Fragment key={item.type === 'existing' ? item.id : `create-${item.displayStr}`}>
+                {showSeparator && (
+                  <li role="separator" className="border-t border-border mx-2 my-0.5" />
+                )}
+                <li
+                  className={cn(
+                    'cursor-pointer px-3 py-2 text-sm',
+                    idx === highlighted ? 'bg-accent text-accent-foreground' : 'hover:bg-accent hover:text-accent-foreground',
+                    item.type === 'create' && 'text-primary italic',
+                  )}
+                  style={item.type === 'existing' && item.depth > 0 ? { paddingLeft: `${item.depth * 12 + 12}px` } : undefined}
+                  onMouseDown={e => { e.preventDefault(); void selectItem(item) }}
+                >
+                  {item.type === 'create' ? `+ Erstellen: "${item.displayStr}"` : item.displayName}
+                </li>
+              </Fragment>
+            )
+          })}
         </ul>
       )}
     </div>

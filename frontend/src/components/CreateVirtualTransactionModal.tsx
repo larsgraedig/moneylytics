@@ -3,9 +3,20 @@ import { useTranslation } from 'react-i18next'
 import type { CategoryNode } from '../api/rawImport'
 import { createVirtualTransaction, type Account } from '../api/transactions'
 import { CategoryPathInput } from './CategoryPathInput'
+import { DatePicker } from '@/components/ui/date-picker'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
+
+function parseIso(s: string): Date | null {
+  if (!s) return null
+  const [y, m, d] = s.split('-').map(Number)
+  return new Date(y, m - 1, d)
+}
+
+function isoDate(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
 
 export function CreateVirtualTransactionModal({
   accounts,
@@ -74,10 +85,19 @@ export function CreateVirtualTransactionModal({
 
         <div className="flex flex-col gap-3">
           <div className="flex gap-2">
-            <Input
-              type="date"
-              value={accountingDate}
-              onChange={e => setAccountingDate(e.target.value)}
+            <select
+              value={accountIban}
+              onChange={e => setAccountIban(e.target.value)}
+              className="flex-1 rounded-lg border border-input bg-input/30 px-3 py-2 text-sm outline-none focus:border-ring focus:ring-2 focus:ring-ring/50"
+            >
+              {accounts.map(a => (
+                <option key={a.iban} value={a.iban}>{a.name}</option>
+              ))}
+            </select>
+            <DatePicker
+              value={parseIso(accountingDate)}
+              onChange={d => setAccountingDate(d ? isoDate(d) : '')}
+              max={new Date()}
               className="w-36 shrink-0"
             />
             <Input
@@ -89,31 +109,20 @@ export function CreateVirtualTransactionModal({
               className="w-28 shrink-0"
               autoFocus
             />
-            <select
-              value={accountIban}
-              onChange={e => setAccountIban(e.target.value)}
-              className="flex-1 rounded-lg border border-input bg-input/30 px-3 py-2 text-sm outline-none focus:border-ring focus:ring-2 focus:ring-ring/50"
-            >
-              {accounts.map(a => (
-                <option key={a.iban} value={a.iban}>{a.name}</option>
-              ))}
-            </select>
           </div>
 
-          <div className="flex gap-2">
-            <Input
-              type="text"
-              placeholder={t('virtualTransaction.counterpartyName')}
-              value={counterpartyName}
-              onChange={e => setCounterpartyName(e.target.value)}
-            />
-            <Input
-              type="text"
-              placeholder={t('virtualTransaction.purpose')}
-              value={purpose}
-              onChange={e => setPurpose(e.target.value)}
-            />
-          </div>
+          <Input
+            type="text"
+            placeholder={t('virtualTransaction.counterpartyName')}
+            value={counterpartyName}
+            onChange={e => setCounterpartyName(e.target.value)}
+          />
+          <Input
+            type="text"
+            placeholder={t('virtualTransaction.purpose')}
+            value={purpose}
+            onChange={e => setPurpose(e.target.value)}
+          />
 
           <CategoryPathInput
             value={categoryId}

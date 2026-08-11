@@ -520,7 +520,7 @@ function DrilldownModal({
 
   return (
     <Dialog open onOpenChange={open => { if (!open) onClose() }}>
-      <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col p-0 gap-0">
+      <DialogContent className="max-w-4xl max-h-[85vh] flex flex-col p-0 gap-0">
         <DialogHeader className="px-5 py-4 border-b shrink-0">
           <DialogTitle>
             <span style={{ color: state.type === 'income' ? '#4ade80' : '#f87171' }}>{title}</span>

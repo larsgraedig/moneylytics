@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { fetchTransactionList, type SankeyNode, type TransactionItem } from '../api/transactions'
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Badge } from '@/components/ui/badge'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { cn } from '@/lib/utils'
+
+const LINK_COLORS = ['#f59e0b', '#10b981', '#60a5fa', '#f472b6', '#a78bfa', '#fb923c']
+const BUDGET_COLORS = ['#34d399', '#818cf8', '#fb7185', '#fbbf24', '#38bdf8', '#a3e635']
 
 type NodeInfo =
   | { type: 'cat'; category: string }
@@ -141,13 +143,13 @@ export default function TransactionListPanel({ from, to, accountId, onClose, ...
   const showSubcategoryCol = info?.type === 'grp'
 
   return (
-    <Sheet open onOpenChange={open => { if (!open) onClose() }}>
-      <SheetContent side="right" className="flex flex-col w-[480px] max-w-full p-0 gap-0">
-        <SheetHeader className="border-b px-5 py-4 shrink-0">
-          <SheetTitle>
+    <Dialog open onOpenChange={open => { if (!open) onClose() }}>
+      <DialogContent className="flex flex-col max-w-4xl max-h-[85vh] p-0 gap-0">
+        <DialogHeader className="border-b px-5 py-4 shrink-0">
+          <DialogTitle>
             <PanelTitle node={node} nodeKey={nodeKey} />
-          </SheetTitle>
-        </SheetHeader>
+          </DialogTitle>
+        </DialogHeader>
 
         <ScrollArea className="flex-1">
           {state.phase === 'loading' && (
@@ -183,14 +185,35 @@ export default function TransactionListPanel({ from, to, accountId, onClose, ...
                           <span className="text-xs text-muted-foreground">
                             {[tx.category, tx.subcategory, tx.group].filter(Boolean).join(' › ')}
                           </span>
-                          {tx.offsetLinks.length > 0 && (
-                            <Badge variant="secondary" className="text-xs px-1 py-0">⇌</Badge>
-                          )}
-                          {tx.budgetLinks.map(bl => (
-                            <Badge key={bl.linkId} variant="secondary" className="text-xs px-1 py-0">{bl.budgetName}</Badge>
+                          {tx.groups.map((g, gi) => (
+                            <span
+                              key={g.id}
+                              className="txnv-link-chip"
+                              style={{ borderColor: LINK_COLORS[gi % LINK_COLORS.length] }}
+                            >
+                              {g.name ?? `#${g.id}`}
+                            </span>
                           ))}
-                          {tx.collections.map(c => (
-                            <Badge key={c.id} variant="outline" className="text-xs px-1 py-0">{c.name}</Badge>
+                          {tx.budgetLinks.map((bl, bi) => (
+                            <span
+                              key={bl.linkId}
+                              className="txnv-budget-chip"
+                              style={{ borderColor: BUDGET_COLORS[bi % BUDGET_COLORS.length] }}
+                            >
+                              <span className="txnv-budget-chip-name">{bl.budgetName}</span>
+                              {bl.amount != null && (
+                                <span className="txnv-budget-chip-amt">{EUR.format(bl.amount)}</span>
+                              )}
+                            </span>
+                          ))}
+                          {tx.collections.map((c, ci) => (
+                            <span
+                              key={c.id}
+                              className="txnv-budget-chip"
+                              style={{ borderColor: BUDGET_COLORS[ci % BUDGET_COLORS.length] }}
+                            >
+                              <span className="txnv-budget-chip-name">{c.name}</span>
+                            </span>
                           ))}
                         </div>
                       </TableCell>
@@ -217,7 +240,7 @@ export default function TransactionListPanel({ from, to, accountId, onClose, ...
             </div>
           )}
         </ScrollArea>
-      </SheetContent>
-    </Sheet>
+      </DialogContent>
+    </Dialog>
   )
 }
