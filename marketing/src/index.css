@@ -1,0 +1,48 @@
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:wght@300;400&family=Geist+Mono:wght@400;500&display=swap');
+@import "@fontsource-variable/raleway";
+@import "@fontsource-variable/montserrat";
+@import "tailwindcss";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --font-sans: 'Raleway Variable', system-ui, sans-serif;
+  --font-heading: 'Montserrat Variable', system-ui, sans-serif;
+  --font-mono: 'Geist Mono', ui-monospace, 'SF Mono', Consolas, monospace;
+  --font-display: 'Fraunces', Georgia, serif;
+
+  --color-bg: #13141a;
+  --color-surface: #1a1c24;
+  --color-border: #2a2c38;
+  --color-border-hi: #333645;
+  --color-text: #e6e3dc;
+  --color-muted: #7a7a8a;
+  --color-dim: #2e3040;
+  --color-green: #4ade80;
+  --color-red: #f87171;
+  --color-blue: #60a5fa;
+  --color-purple: #a78bfa;
+  --color-orange: #fb923c;
+}
+
+@layer base {
+  *, *::before, *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background: #13141a;
+    color: #e6e3dc;
+    font-family: 'Raleway Variable', system-ui, sans-serif;
+    font-size: 16px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}

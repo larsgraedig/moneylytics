@@ -54,6 +54,7 @@ import {
 } from '@/components/ui/sidebar'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
 
 function isoDate(d: Date) {
@@ -290,10 +291,14 @@ export default function App() {
               <Settings className="h-4 w-4 sm:hidden" />
               <span className="hidden sm:inline">{username}</span>
             </Button>
-            <Button variant="ghost" size="sm" onClick={logout} className="gap-1.5">
-              <LogOut className="h-4 w-4 sm:hidden" />
-              <span className="hidden sm:inline">{t('common.signOut')}</span>
-            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="icon" onClick={logout}>
+                  <LogOut className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>{t('common.signOut')}</TooltipContent>
+            </Tooltip>
           </div>
         </header>
 

@@ -1,0 +1,182 @@
+{
+  "nav": {
+    "features": "Features",
+    "howItWorks": "So funktioniert's",
+    "pricing": "Preise",
+    "faq": "FAQ",
+    "login": "Anmelden",
+    "cta": "Kostenlos starten"
+  },
+  "hero": {
+    "badge": "Persönliche Finanzen",
+    "headline1": "Deine Finanzen.",
+    "headline2": "Endlich im Griff.",
+    "subline": "Moneylytics gibt dir einen klaren Überblick über dein Geld — ohne Aufwand, ohne Excel-Tabellen. Importiere deinen Kontoauszug und sieh sofort, wohin dein Geld fließt.",
+    "cta": "Kostenlos starten",
+    "ctaSecondary": "Features ansehen",
+    "trust1value": "100%",
+    "trust1label": "kostenlos starten",
+    "trust2value": "Keine",
+    "trust2label": "Kreditkarte nötig",
+    "trust3value": "DSGVO",
+    "trust3label": "konform",
+    "sankey": {
+      "title": "Sankey-Diagramm · Januar 2026",
+      "income": "Einkommen",
+      "rent": "Miete",
+      "groceries": "Lebensmittel",
+      "subscriptions": "Abos",
+      "leisure": "Freizeit",
+      "savings": "Sparen",
+      "legendIncome": "Einnahmen",
+      "legendExpenses": "Ausgaben",
+      "saved": "+€696 gespart"
+    }
+  },
+  "features": {
+    "badge": "Features",
+    "headline": "Alles was du brauchst. Nichts, was du nicht brauchst.",
+    "subline": "Moneylytics konzentriert sich auf das Wesentliche: deinen Finanzüberblick — klar, schnell und ohne unnötigen Lärm.",
+    "sankey": {
+      "title": "Sankey-Diagramm",
+      "desc": "Sieh auf einen Blick, wohin dein Geld fließt — von Einnahmen zu Ausgabenkategorien. Kein Raten mehr."
+    },
+    "import": {
+      "title": "CSV & CAMT-Import",
+      "desc": "Lade deinen Kontoauszug hoch und Moneylytics erledigt den Rest. Duplikate werden automatisch erkannt."
+    },
+    "ai": {
+      "title": "KI-Kategorisierung",
+      "desc": "Transaktionen werden automatisch der richtigen Kategorie zugeordnet — und mit der Zeit immer besser."
+    },
+    "budgets": {
+      "title": "Budgets & Alerts",
+      "desc": "Setze dir monatliche Ziele und erhalte eine Warnung, bevor du dein Budget überziehst."
+    },
+    "recurring": {
+      "title": "Wiederkehrende Posten",
+      "desc": "Alle Daueraufträge und Abonnements werden automatisch erkannt und übersichtlich gruppiert."
+    },
+    "categories": {
+      "title": "Eigene Kategorien",
+      "desc": "Erstelle eine beliebig tiefe Kategorie-Hierarchie, die zu deinem Leben passt — vollständig anpassbar."
+    }
+  },
+  "howItWorks": {
+    "badge": "So funktioniert's",
+    "headline": "In drei Schritten zum Überblick",
+    "step1": {
+      "title": "Kostenlosen Account erstellen",
+      "desc": "Registriere dich in wenigen Sekunden — keine Kreditkarte, kein Abo, keine Fangfragen."
+    },
+    "step2": {
+      "title": "Kontoauszug importieren",
+      "desc": "Exportiere deinen Kontoauszug als CSV oder CAMT aus deiner Banking-App und lade ihn hoch."
+    },
+    "step3": {
+      "title": "Sofort den Überblick haben",
+      "desc": "Sankey-Diagramm, Trends und Budget-Übersicht warten auf dich — ohne Setup-Aufwand."
+    }
+  },
+  "pricing": {
+    "badge": "Preise",
+    "headline": "Einfache, faire Preise",
+    "subline": "Starte kostenlos und upgrade jederzeit — ohne Bindung.",
+    "monthly": "Monatlich",
+    "yearly": "Jährlich",
+    "perMonth": "/Monat",
+    "perYear": "/ Jahr",
+    "free": "Kostenlos",
+    "popular": "Beliebteste Wahl",
+    "tiers": {
+      "free": {
+        "desc": "Zum Ausprobieren und Reinkommen.",
+        "cta": "Jetzt starten",
+        "features": [
+          "Letzten 2 Monate Transaktionen",
+          "1 Bankkonto",
+          "Transaktionsliste",
+          "Einfaches Kategorien-Breakdown"
+        ]
+      },
+      "starter": {
+        "desc": "Der vollständige Überblick für Einsteiger.",
+        "cta": "Starter wählen",
+        "features": [
+          "Unbegrenzte Transaktionshistorie",
+          "Unbegrenzte Bankkonten",
+          "CSV & CAMT-Import",
+          "Duplikat-Erkennung",
+          "Sankey-Diagramm",
+          "Trends, Cashflow, Breakdown",
+          "Transaktionen splitten & mergen",
+          "Sammlungen (Collections)",
+          "Unbegrenzte Kategorien & Hierarchie"
+        ]
+      },
+      "plus": {
+        "desc": "Für alle, die ihre Finanzen aktiv steuern.",
+        "cta": "Plus wählen",
+        "features": [
+          "Alles aus Starter",
+          "KI-Kategorisierung",
+          "Budgets & Transaktionszuweisung",
+          "Ausgaben-Alerts (3 Stufen)",
+          "Wiederkehrer-Erkennung",
+          "Transaktionsverknüpfungen",
+          "Burn Rate Chart",
+          "Bulk-Kategorie-Updates"
+        ]
+      },
+      "pro": {
+        "desc": "Für Paare, Familien und mehrere Finanzkreise.",
+        "cta": "Pro wählen",
+        "features": [
+          "Alles aus Plus",
+          "Mehrere Organisationen",
+          "Team-Collaboration",
+          "Mitglieder einladen & Rollen verwalten",
+          "Organisations-Branding",
+          "Prioritäts-Support"
+        ]
+      }
+    }
+  },
+  "faq": {
+    "badge": "FAQ",
+    "headline": "Häufige Fragen",
+    "items": [
+      {
+        "q": "Sind meine Bankdaten sicher?",
+        "a": "Ja. Moneylytics speichert keine Bankzugangsdaten oder Login-Informationen. Du importierst lediglich exportierte Kontoauszüge als CSV- oder CAMT-Datei — die App hat zu keinem Zeitpunkt direkten Zugriff auf dein Bankkonto."
+      },
+      {
+        "q": "Wie funktioniert der Import genau?",
+        "a": "Exportiere deinen Kontoauszug aus deiner Banking-App oder dem Online-Banking deiner Bank als CSV- oder CAMT.053-Datei. Diese Datei lädst du in Moneylytics hoch. Das System erkennt Duplikate automatisch, sodass du mehrfach importieren kannst ohne doppelte Einträge zu bekommen."
+      },
+      {
+        "q": "Kann ich jederzeit kündigen?",
+        "a": "Ja, du kannst dein Abo jederzeit kündigen. Bei monatlicher Abrechnung endet das Abo zum Ende des laufenden Monats, bei jährlicher Abrechnung zum Ende des laufenden Jahres. Deine Daten bleiben dabei erhalten."
+      },
+      {
+        "q": "Was passiert, wenn ich den Free-Plan nutze?",
+        "a": "Im Free-Plan siehst du die Transaktionen der letzten zwei Monate und kannst ein Bankkonto anlegen. Kein CSV-Import, keine Sankey-Visualisierung, keine Budgets. Du kannst jederzeit auf einen bezahlten Plan upgraden, um alle Funktionen freizuschalten."
+      },
+      {
+        "q": "Gibt es eine mobile App?",
+        "a": "Aktuell gibt es keine native mobile App. Die Weboberfläche ist jedoch vollständig responsive und funktioniert gut auf Smartphones. Eine mobile App ist für die Zukunft geplant."
+      },
+      {
+        "q": "Welche Zahlungsmethoden werden akzeptiert?",
+        "a": "Wir akzeptieren alle gängigen Kredit- und Debitkarten (Visa, Mastercard, Amex) sowie SEPA-Lastschrift. Die Abrechnung erfolgt sicher über Stripe."
+      }
+    ]
+  },
+  "footer": {
+    "tagline": "Dein persönlicher Finanzüberblick — klar, schnell und ohne Aufwand.",
+    "privacy": "Datenschutz",
+    "legal": "Impressum",
+    "contact": "Kontakt",
+    "copyright": "Alle Rechte vorbehalten."
+  }
+}

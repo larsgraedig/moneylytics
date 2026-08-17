@@ -1,0 +1,182 @@
+{
+  "nav": {
+    "features": "Features",
+    "howItWorks": "How it works",
+    "pricing": "Pricing",
+    "faq": "FAQ",
+    "login": "Log in",
+    "cta": "Get started free"
+  },
+  "hero": {
+    "badge": "Personal Finance",
+    "headline1": "Your Finances.",
+    "headline2": "Finally Under Control.",
+    "subline": "Moneylytics gives you a clear overview of your money — no hassle, no spreadsheets. Import your bank statement and instantly see where your money goes.",
+    "cta": "Get started free",
+    "ctaSecondary": "See features",
+    "trust1value": "100%",
+    "trust1label": "free to start",
+    "trust2value": "No",
+    "trust2label": "credit card needed",
+    "trust3value": "GDPR",
+    "trust3label": "compliant",
+    "sankey": {
+      "title": "Sankey Diagram · January 2026",
+      "income": "Income",
+      "rent": "Rent",
+      "groceries": "Groceries",
+      "subscriptions": "Subscriptions",
+      "leisure": "Leisure",
+      "savings": "Savings",
+      "legendIncome": "Income",
+      "legendExpenses": "Expenses",
+      "saved": "+€696 saved"
+    }
+  },
+  "features": {
+    "badge": "Features",
+    "headline": "Everything you need. Nothing you don't.",
+    "subline": "Moneylytics focuses on what matters: your financial overview — clear, fast, and without unnecessary noise.",
+    "sankey": {
+      "title": "Sankey Diagram",
+      "desc": "See at a glance where your money flows — from income to spending categories. No more guessing."
+    },
+    "import": {
+      "title": "CSV & CAMT Import",
+      "desc": "Upload your bank statement and Moneylytics does the rest. Duplicates are detected automatically."
+    },
+    "ai": {
+      "title": "AI Categorization",
+      "desc": "Transactions are automatically assigned to the right category — and it gets smarter over time."
+    },
+    "budgets": {
+      "title": "Budgets & Alerts",
+      "desc": "Set monthly goals and get a warning before you overspend your budget."
+    },
+    "recurring": {
+      "title": "Recurring Transactions",
+      "desc": "All standing orders and subscriptions are automatically detected and neatly grouped."
+    },
+    "categories": {
+      "title": "Custom Categories",
+      "desc": "Create a category hierarchy as deep as you like, tailored to your life — fully customizable."
+    }
+  },
+  "howItWorks": {
+    "badge": "How it works",
+    "headline": "Three steps to financial clarity",
+    "step1": {
+      "title": "Create a free account",
+      "desc": "Sign up in seconds — no credit card, no subscription, no strings attached."
+    },
+    "step2": {
+      "title": "Import your bank statement",
+      "desc": "Export your statement as CSV or CAMT from your banking app and upload it."
+    },
+    "step3": {
+      "title": "Get the overview instantly",
+      "desc": "The Sankey diagram, trends, and budget overview are ready for you — zero setup required."
+    }
+  },
+  "pricing": {
+    "badge": "Pricing",
+    "headline": "Simple, fair pricing",
+    "subline": "Start free and upgrade anytime — no lock-in.",
+    "monthly": "Monthly",
+    "yearly": "Yearly",
+    "perMonth": "/month",
+    "perYear": "/ year",
+    "free": "Free",
+    "popular": "Most popular",
+    "tiers": {
+      "free": {
+        "desc": "Try it out, no commitment.",
+        "cta": "Get started",
+        "features": [
+          "Last 2 months of transactions",
+          "1 bank account",
+          "Transaction list",
+          "Basic category breakdown"
+        ]
+      },
+      "starter": {
+        "desc": "The complete overview for everyday users.",
+        "cta": "Choose Starter",
+        "features": [
+          "Unlimited transaction history",
+          "Unlimited bank accounts",
+          "CSV & CAMT import",
+          "Duplicate detection",
+          "Sankey diagram",
+          "Trends, cashflow, breakdown",
+          "Split & merge transactions",
+          "Collections",
+          "Unlimited categories & hierarchy"
+        ]
+      },
+      "plus": {
+        "desc": "For those who actively manage their finances.",
+        "cta": "Choose Plus",
+        "features": [
+          "Everything in Starter",
+          "AI categorization",
+          "Budgets & transaction allocation",
+          "Spending alerts (3 levels)",
+          "Recurring transaction detection",
+          "Transaction linking",
+          "Burn rate chart",
+          "Bulk category updates"
+        ]
+      },
+      "pro": {
+        "desc": "For couples, families, and multiple financial circles.",
+        "cta": "Choose Pro",
+        "features": [
+          "Everything in Plus",
+          "Multiple organizations",
+          "Team collaboration",
+          "Invite members & manage roles",
+          "Organization branding",
+          "Priority support"
+        ]
+      }
+    }
+  },
+  "faq": {
+    "badge": "FAQ",
+    "headline": "Frequently Asked Questions",
+    "items": [
+      {
+        "q": "Is my banking data secure?",
+        "a": "Yes. Moneylytics does not store any banking credentials or login information. You only import exported bank statements as CSV or CAMT files — the app never has direct access to your bank account."
+      },
+      {
+        "q": "How does the import work exactly?",
+        "a": "Export your bank statement from your banking app or online banking portal as a CSV or CAMT.053 file. Upload it to Moneylytics. The system automatically detects duplicates, so you can import multiple times without getting double entries."
+      },
+      {
+        "q": "Can I cancel at any time?",
+        "a": "Yes, you can cancel your subscription at any time. With monthly billing, the subscription ends at the end of the current month; with annual billing, at the end of the current year. Your data is retained."
+      },
+      {
+        "q": "What happens if I use the free plan?",
+        "a": "On the free plan, you can see the last two months of transactions and add one bank account. No CSV import, no Sankey visualization, no budgets. You can upgrade to a paid plan at any time to unlock all features."
+      },
+      {
+        "q": "Is there a mobile app?",
+        "a": "There is no native mobile app yet. However, the web interface is fully responsive and works well on smartphones. A mobile app is planned for the future."
+      },
+      {
+        "q": "What payment methods are accepted?",
+        "a": "We accept all major credit and debit cards (Visa, Mastercard, Amex) as well as SEPA direct debit. Billing is handled securely through Stripe."
+      }
+    ]
+  },
+  "footer": {
+    "tagline": "Your personal finance overview — clear, fast, and effortless.",
+    "privacy": "Privacy",
+    "legal": "Legal Notice",
+    "contact": "Contact",
+    "copyright": "All rights reserved."
+  }
+}
