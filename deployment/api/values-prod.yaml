@@ -8,7 +8,7 @@ frontend:
     type: ClusterIP
   ingress:
     enabled: true
-    className: nginx
+    className: traefik
     hosts:
       - host: moneylytics.io
         paths:
