@@ -1,4 +1,4 @@
-frontendUrl: "https://moneylytics.io"
+frontendUrl: "https://moneylytics.io/ml"
 
 service:
   type: ClusterIP
