@@ -1,0 +1,16 @@
+frontendUrl: "http://moneylytics.io"
+
+service:
+  type: ClusterIP
+
+frontend:
+  service:
+    type: ClusterIP
+  ingress:
+    enabled: true
+    className: nginx
+    hosts:
+      - host: moneylytics.io
+        paths:
+          - path: /
+            pathType: Prefix

@@ -66,6 +66,7 @@ jobs:
       - name: Deploy to production
         run: |
           helm upgrade --install moneylytics deployment/api \
+            -f deployment/api/values-prod.yaml \
             --namespace moneylytics \
             --kube-context moneylytics \
             --set image.tag=$COMMIT_HASH \

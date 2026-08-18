@@ -169,6 +169,12 @@ frontend:
     tag: "latest"
   service:
     type: NodePort
+  ingress:
+    enabled: false
+    className: ""
+    annotations: {}
+    hosts: []
+    tls: []
 
 postgres:
   image: postgres:16-alpine
