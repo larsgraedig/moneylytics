@@ -1,4 +1,4 @@
-frontendUrl: "https://moneylytics.io/ml"
+frontendUrl: "https://app.moneylytics.io"
 
 service:
   type: ClusterIP
@@ -13,11 +13,11 @@ frontend:
       cert-manager.io/cluster-issuer: letsencrypt-prod
       traefik.ingress.kubernetes.io/router.entrypoints: websecure
     hosts:
-      - host: moneylytics.io
+      - host: app.moneylytics.io
         paths:
           - path: /
             pathType: Prefix
     tls:
       - hosts:
-          - moneylytics.io
-        secretName: moneylytics-tls
+          - app.moneylytics.io
+        secretName: moneylytics-app-tls
