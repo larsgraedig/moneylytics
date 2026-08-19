@@ -1,5 +1,8 @@
 frontendUrl: "https://ml.larsupilami.de"
 
+backup:
+  hostPath: /var/backups/moneylytics-stage
+
 service:
   type: ClusterIP
 
