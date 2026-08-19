@@ -1,0 +1,23 @@
+frontendUrl: "https://ml.larsupilami.de"
+
+service:
+  type: ClusterIP
+
+frontend:
+  service:
+    type: ClusterIP
+  ingress:
+    enabled: true
+    className: traefik
+    annotations:
+      cert-manager.io/cluster-issuer: letsencrypt-prod
+      traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    hosts:
+      - host: ml.larsupilami.de
+        paths:
+          - path: /
+            pathType: Prefix
+    tls:
+      - hosts:
+          - ml.larsupilami.de
+        secretName: moneylytics-stage-app-tls
