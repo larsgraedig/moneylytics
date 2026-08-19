@@ -1,6 +1,13 @@
 app:
   oauth2-success-redirect: http://localhost:5173
 
+stripe:
+  secret-key: sk_test_dummy
+  webhook-secret: whsec_dummy
+  price-id-monthly: price_dummy_monthly
+  price-id-yearly: price_dummy_yearly
+  publishable-key: pk_test_dummy
+
 spring:
   datasource:
     url: jdbc:h2:mem:moneylyticsdb;DB_CLOSE_DELAY=-1

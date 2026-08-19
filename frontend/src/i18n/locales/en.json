@@ -780,6 +780,50 @@
     "title": "Select organization",
     "subtitle": "You belong to multiple organizations. Which one do you want to enter?"
   },
+  "subscription": {
+    "title": "Subscription",
+    "currentPlan": "Current plan",
+    "free": "Standard (free)",
+    "pro": "Pro",
+    "status": {
+      "ACTIVE": "Active",
+      "TRIALING": "Trial",
+      "PAST_DUE": "Payment overdue",
+      "CANCELED": "Canceled",
+      "CANCELING": "Canceling",
+      "UNPAID": "Unpaid",
+      "INCOMPLETE": "Incomplete",
+      "INCOMPLETE_EXPIRED": "Expired",
+      "PAUSED": "Paused"
+    },
+    "renewsOn": "Renews on",
+    "expiresOn": "Expires on",
+    "interval": {
+      "MONTHLY": "Monthly",
+      "YEARLY": "Yearly"
+    },
+    "upgradeButton": "Upgrade to Pro",
+    "cancelButton": "Cancel subscription",
+    "cancelConfirm": "Really cancel? Your subscription stays active until the end of the billing period.",
+    "cancelConfirmYes": "Cancel subscription",
+    "cancelConfirmNo": "Keep subscription",
+    "cancelSuccess": "Subscription will be canceled at the end of the billing period.",
+    "invoices": "Invoices",
+    "noInvoices": "No invoices yet.",
+    "downloadPdf": "PDF",
+    "upgradeModal": {
+      "title": "Upgrade to Pro",
+      "chooseInterval": "Choose billing interval",
+      "monthly": "Monthly",
+      "yearly": "Yearly",
+      "paymentDetails": "Payment details",
+      "pay": "Pay now",
+      "processing": "Processing…",
+      "success": "Payment successful! Your account will be upgraded to Pro.",
+      "error": "Payment failed. Please check your payment details.",
+      "cancel": "Cancel"
+    }
+  },
   "virtualTransaction": {
     "title": "Create manual entry",
     "button": "Manual",

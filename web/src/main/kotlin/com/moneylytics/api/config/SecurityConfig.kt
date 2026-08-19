@@ -38,6 +38,8 @@ class SecurityConfig(
                 auth
                     .pathMatchers(HttpMethod.GET, "/invitations/*")
                     .permitAll()
+                    .pathMatchers("/webhooks/stripe")
+                    .permitAll()
                     .pathMatchers("/auth/login", "/auth/register", "/oauth2/authorization/**", "/login/oauth2/code/**")
                     .permitAll()
                     .pathMatchers("/admin/**")

@@ -24,6 +24,9 @@ export default defineConfig({
       '/admin': 'http://localhost:8080',
       '/organizations': 'http://localhost:8080',
       '/invitations': 'http://localhost:8080',
+      '/subscriptions': 'http://localhost:8080',
+      '/invoices': 'http://localhost:8080',
+      '/webhooks': 'http://localhost:8080',
     },
   },
 })

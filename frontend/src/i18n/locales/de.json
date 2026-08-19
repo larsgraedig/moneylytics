@@ -780,6 +780,50 @@
     "title": "Organisation auswählen",
     "subtitle": "Sie gehören mehreren Organisationen an. Welche möchten Sie betreten?"
   },
+  "subscription": {
+    "title": "Abonnement",
+    "currentPlan": "Aktueller Plan",
+    "free": "Standard (kostenlos)",
+    "pro": "Pro",
+    "status": {
+      "ACTIVE": "Aktiv",
+      "TRIALING": "Testphase",
+      "PAST_DUE": "Zahlung überfällig",
+      "CANCELED": "Gekündigt",
+      "CANCELING": "Läuft aus",
+      "UNPAID": "Unbezahlt",
+      "INCOMPLETE": "Unvollständig",
+      "INCOMPLETE_EXPIRED": "Abgelaufen",
+      "PAUSED": "Pausiert"
+    },
+    "renewsOn": "Verlängert sich am",
+    "expiresOn": "Läuft ab am",
+    "interval": {
+      "MONTHLY": "Monatlich",
+      "YEARLY": "Jährlich"
+    },
+    "upgradeButton": "Auf Pro upgraden",
+    "cancelButton": "Abo kündigen",
+    "cancelConfirm": "Abo wirklich kündigen? Das Abo bleibt bis zum Ende des Abrechnungszeitraums aktiv.",
+    "cancelConfirmYes": "Kündigen",
+    "cancelConfirmNo": "Abbrechen",
+    "cancelSuccess": "Abo wird zum Ende des Zeitraums gekündigt.",
+    "invoices": "Rechnungen",
+    "noInvoices": "Noch keine Rechnungen vorhanden.",
+    "downloadPdf": "PDF",
+    "upgradeModal": {
+      "title": "Auf Pro upgraden",
+      "chooseInterval": "Abrechnungszeitraum wählen",
+      "monthly": "Monatlich",
+      "yearly": "Jährlich",
+      "paymentDetails": "Zahlungsdaten",
+      "pay": "Jetzt bezahlen",
+      "processing": "Wird verarbeitet…",
+      "success": "Zahlung erfolgreich! Dein Account wird auf Pro umgestellt.",
+      "error": "Fehler bei der Zahlung. Bitte prüfe deine Zahlungsdaten.",
+      "cancel": "Abbrechen"
+    }
+  },
   "virtualTransaction": {
     "title": "Manuelle Buchung anlegen",
     "button": "Manuell",
