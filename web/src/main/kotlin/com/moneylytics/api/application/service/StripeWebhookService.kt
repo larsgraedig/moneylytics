@@ -108,6 +108,7 @@ class StripeWebhookService(
     private fun handleInvoicePaid(stripeInvoice: StripeInvoice) {
         val customerId = stripeInvoice.customer ?: return
         val stripeCustomer = stripeCustomerRepository.findByStripeCustomerId(customerId) ?: return
+        val lineItem = stripeInvoice.lines?.data?.firstOrNull()
 
         val existing = invoiceRepository.findByStripeInvoiceId(stripeInvoice.id)
         if (existing != null) {
@@ -120,7 +121,6 @@ class StripeWebhookService(
                     .recoverCatching { pdfUrl?.let { stripeGateway.downloadInvoicePdf(it) } ?: throw it }
                     .getOrNull()
 
-            val lineItem = stripeInvoice.lines?.data?.firstOrNull()
             val periodStart =
                 LocalDateTime.ofInstant(
                     Instant.ofEpochSecond(lineItem?.period?.start ?: stripeInvoice.periodStart),
@@ -146,18 +146,24 @@ class StripeWebhookService(
             invoiceRepository.save(invoice, pdfData)
         }
 
-        val priceId =
-            stripeInvoice.lines
-                ?.data
-                ?.firstOrNull()
-                ?.price
-                ?.id
+        val priceId = lineItem?.price?.id
         val tier = priceId?.let { tierRepository.findByStripePriceId(it) }
         if (tier == null) {
             logger.warn { "No tier mapped to price $priceId — skipping tier assignment for invoice ${stripeInvoice.id}" }
             return
         }
         assignTierToUserUseCase.assignTierToUser(stripeCustomer.userId, tier.id)
+
+        val subscriptionId = stripeInvoice.subscription
+        if (subscriptionId != null) {
+            stripeCustomerRepository.updateSubscription(
+                stripeCustomerId = customerId,
+                subscriptionId = subscriptionId,
+                status = SubscriptionStatus.ACTIVE,
+                currentPeriodEnd = lineItem?.period?.end ?: stripeInvoice.periodEnd,
+                priceId = priceId,
+            )
+        }
 
         logger.info { "Processed paid invoice ${stripeInvoice.id} for user ${stripeCustomer.userId} → tier '${tier.name}'" }
     }
