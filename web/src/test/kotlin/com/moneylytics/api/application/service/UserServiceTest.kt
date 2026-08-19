@@ -64,6 +64,42 @@ class UserServiceTest {
     }
 
     @Test
+    fun `should throw InvalidEmailException when registering with plain username`() {
+        assertThatThrownBy { service.registerUser("plainusername", "secret") }
+            .isInstanceOf(InvalidEmailException::class.java)
+    }
+
+    @Test
+    fun `should throw InvalidEmailException when registering without domain`() {
+        assertThatThrownBy { service.registerUser("user@", "secret") }
+            .isInstanceOf(InvalidEmailException::class.java)
+    }
+
+    @Test
+    fun `should normalize email to lowercase before saving`() {
+        val newUser = User(id = 6L, externalId = "upper@test.de", passwordHash = "encoded", tier = standardTier)
+        whenever(userRepository.findByExternalId("upper@test.de")).thenReturn(null)
+        whenever(passwordEncoder.encode("pass")).thenReturn("encoded")
+        whenever(userRepository.save("upper@test.de", "encoded")).thenReturn(newUser)
+
+        service.registerUser("UPPER@TEST.DE", "pass")
+
+        verify(userRepository).save("upper@test.de", "encoded")
+    }
+
+    @Test
+    fun `should trim whitespace from email before saving`() {
+        val newUser = User(id = 7L, externalId = "trim@test.de", passwordHash = "encoded", tier = standardTier)
+        whenever(userRepository.findByExternalId("trim@test.de")).thenReturn(null)
+        whenever(passwordEncoder.encode("pass")).thenReturn("encoded")
+        whenever(userRepository.save("trim@test.de", "encoded")).thenReturn(newUser)
+
+        service.registerUser("  trim@test.de  ", "pass")
+
+        verify(userRepository).save("trim@test.de", "encoded")
+    }
+
+    @Test
     fun `should resolve user id by external id when user exists`() {
         val user = User(id = 7L, externalId = "oauth|abc", passwordHash = null, tier = standardTier)
         whenever(userRepository.findByExternalId("oauth|abc")).thenReturn(user)

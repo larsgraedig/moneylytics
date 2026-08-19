@@ -5,6 +5,7 @@ import com.moneylytics.api.application.port.input.GetOrganizationsUseCase
 import com.moneylytics.api.application.port.input.GetUserTierUseCase
 import com.moneylytics.api.application.port.input.RegisterUserUseCase
 import com.moneylytics.api.application.port.input.ResolveUserUseCase
+import com.moneylytics.api.application.service.InvalidEmailException
 import com.moneylytics.api.application.service.SESSION_KEY_ACTIVE_ORG
 import com.moneylytics.api.application.service.UserAlreadyExistsException
 import com.moneylytics.api.config.ImpersonationWebFilter.Companion.IMPERSONATED_USER_ID_KEY
@@ -40,6 +41,7 @@ class AuthController(
     private val getUserTierUseCase: GetUserTierUseCase,
 ) {
     companion object {
+        private const val HTTP_BAD_REQUEST = 400
         private const val HTTP_UNAUTHORIZED = 401
         private const val HTTP_CONFLICT = 409
     }
@@ -53,7 +55,7 @@ class AuthController(
         @RequestBody request: LoginRequest,
         exchange: ServerWebExchange,
     ): ResponseEntity<AuthResponse> {
-        val token = UsernamePasswordAuthenticationToken(request.username, request.password)
+        val token = UsernamePasswordAuthenticationToken(request.username.trim().lowercase(), request.password)
         return try {
             val auth = authManager.authenticate(token).awaitSingle()
             securityContextRepository.save(exchange, SecurityContextImpl(auth)).awaitFirstOrNull()
@@ -87,18 +89,23 @@ class AuthController(
     suspend fun register(
         @RequestBody request: RegisterRequest,
         exchange: ServerWebExchange,
-    ): ResponseEntity<AuthResponse> =
-        try {
-            withContext(Dispatchers.IO) { registerUserUseCase.registerUser(request.username, request.password) }
-            val token = UsernamePasswordAuthenticationToken(request.username, request.password)
+    ): ResponseEntity<AuthResponse> {
+        val normalizedUsername = request.username.trim().lowercase()
+        return try {
+            withContext(Dispatchers.IO) { registerUserUseCase.registerUser(normalizedUsername, request.password) }
+            val token = UsernamePasswordAuthenticationToken(normalizedUsername, request.password)
             val auth = authManager.authenticate(token).awaitSingle()
             securityContextRepository.save(exchange, SecurityContextImpl(auth)).awaitFirstOrNull()
             val response = withContext(Dispatchers.IO) { buildAuthResponse(auth.name, auth.authorities.isSystemAdmin()) }
             ResponseEntity.ok(response)
+        } catch (e: InvalidEmailException) {
+            logger.debug(e) { "Registration failed: '${request.username}' is not a valid email address" }
+            ResponseEntity.status(HTTP_BAD_REQUEST).build()
         } catch (e: UserAlreadyExistsException) {
-            logger.debug(e) { "Registration failed: user ${request.username} already exists" }
+            logger.debug(e) { "Registration failed: user $normalizedUsername already exists" }
             ResponseEntity.status(HTTP_CONFLICT).build()
         }
+    }
 
     @PostMapping("/logout")
     suspend fun logout(exchange: ServerWebExchange): ResponseEntity<Void> {

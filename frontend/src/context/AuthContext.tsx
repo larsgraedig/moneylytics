@@ -146,6 +146,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username: user, password }),
     })
+    if (res.status === 400) throw new Error('Invalid email')
     if (res.status === 409) throw new Error('Username already taken')
     if (!res.ok) throw new Error('Registration failed')
     const data = await res.json() as AuthResponse

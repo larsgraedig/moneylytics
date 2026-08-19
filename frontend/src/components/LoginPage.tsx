@@ -55,7 +55,8 @@ export default function LoginPage() {
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : ''
-      if (msg === 'Username already taken') setError(t('auth.usernameTaken'))
+      if (msg === 'Invalid email') setError(t('auth.invalidEmail'))
+      else if (msg === 'Username already taken') setError(t('auth.usernameTaken'))
       else if (msg === 'Registration failed') setError(t('auth.registrationFailed'))
       else if (msg === 'Invalid credentials') setError(t('auth.invalidCredentials'))
       else setError(t('auth.error'))
@@ -79,8 +80,8 @@ export default function LoginPage() {
                 <Label htmlFor="username">{t('auth.username')}</Label>
                 <Input
                   id="username"
-                  type="text"
-                  autoComplete="username"
+                  type="email"
+                  autoComplete="email"
                   autoFocus
                   value={username}
                   onChange={e => setUsername(e.target.value)}

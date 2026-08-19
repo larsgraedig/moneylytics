@@ -19,6 +19,12 @@ class UserAlreadyExistsException(
     username: String,
 ) : RuntimeException("User '$username' already exists")
 
+class InvalidEmailException(
+    value: String,
+) : RuntimeException("'$value' is not a valid email address")
+
+private val EMAIL_REGEX = Regex("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$")
+
 @Service
 class UserService(
     private val userRepository: UserRepository,
@@ -60,9 +66,11 @@ class UserService(
         externalId: String,
         rawPassword: String,
     ): Long {
-        if (userRepository.findByExternalId(externalId) != null) throw UserAlreadyExistsException(externalId)
+        val normalized = externalId.trim().lowercase()
+        if (!EMAIL_REGEX.matches(normalized)) throw InvalidEmailException(normalized)
+        if (userRepository.findByExternalId(normalized) != null) throw UserAlreadyExistsException(normalized)
         val passwordHash = passwordEncoder.encode(rawPassword)
-        val user = userRepository.save(externalId, passwordHash)
+        val user = userRepository.save(normalized, passwordHash)
         return user.id
     }
 

@@ -14,7 +14,7 @@ class UserDetailsServiceImpl(
 ) : ReactiveUserDetailsService {
     override fun findByUsername(username: String): Mono<UserDetails> =
         Mono
-            .fromCallable { userRepository.findByExternalId(username) }
+            .fromCallable { userRepository.findByExternalId(username.lowercase()) }
             .subscribeOn(Schedulers.boundedElastic())
             .flatMap { domainUser ->
                 if (domainUser == null) return@flatMap Mono.empty()

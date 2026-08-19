@@ -61,7 +61,7 @@
     "selectDateAndLoad": "Select a date range and press <1>load</1>"
   },
   "auth": {
-    "username": "username",
+    "username": "email address",
     "password": "password",
     "confirmPassword": "confirm password",
     "signIn": "sign in",
@@ -70,9 +70,10 @@
     "createAccount": "create account",
     "noAccount": "no account? <1>register</1>",
     "alreadyHaveAccount": "already have one? <1>sign in</1>",
-    "invalidCredentials": "Invalid username or password",
+    "invalidCredentials": "Invalid email address or password",
+    "invalidEmail": "Please enter a valid email address",
     "passwordMismatch": "Passwords do not match",
-    "usernameTaken": "Username already taken",
+    "usernameTaken": "Email address already taken",
     "registrationFailed": "Registration failed",
     "error": "Something went wrong"
   },

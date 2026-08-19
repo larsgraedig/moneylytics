@@ -61,7 +61,7 @@
     "selectDateAndLoad": "Zeitraum wählen und <1>Laden</1> drücken"
   },
   "auth": {
-    "username": "Benutzername",
+    "username": "E-Mail-Adresse",
     "password": "Passwort",
     "confirmPassword": "Passwort bestätigen",
     "signIn": "Anmelden",
@@ -70,9 +70,10 @@
     "createAccount": "Konto erstellen",
     "noAccount": "Kein Konto? <1>Registrieren</1>",
     "alreadyHaveAccount": "Schon registriert? <1>Anmelden</1>",
-    "invalidCredentials": "Benutzername oder Passwort falsch",
+    "invalidCredentials": "E-Mail-Adresse oder Passwort falsch",
+    "invalidEmail": "Bitte eine gültige E-Mail-Adresse eingeben",
     "passwordMismatch": "Passwörter stimmen nicht überein",
-    "usernameTaken": "Benutzername bereits vergeben",
+    "usernameTaken": "E-Mail-Adresse bereits vergeben",
     "registrationFailed": "Registrierung fehlgeschlagen",
     "error": "Ein Fehler ist aufgetreten"
   },
