@@ -17,6 +17,11 @@ class InvoiceService(
     GetInvoicePdfUseCase {
     override fun listInvoices(userId: Long): List<Invoice> = invoiceRepository.findByUserId(userId)
 
+    override fun findInvoice(
+        userId: Long,
+        invoiceId: Long,
+    ): Invoice? = invoiceRepository.findByIdAndUserId(invoiceId, userId)
+
     override fun getInvoicePdf(
         userId: Long,
         invoiceId: Long,

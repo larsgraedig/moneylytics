@@ -6,6 +6,7 @@ data class Invoice(
     val id: Long,
     val userId: Long,
     val stripeInvoiceId: String?,
+    val invoiceNumber: String?,
     val amountCents: Int,
     val currency: String,
     val status: String,

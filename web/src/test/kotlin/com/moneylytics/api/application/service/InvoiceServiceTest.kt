@@ -26,6 +26,7 @@ class InvoiceServiceTest {
             id = invoiceId,
             userId = userId,
             stripeInvoiceId = "in_test",
+            invoiceNumber = "INV-0001",
             amountCents = 999,
             currency = "eur",
             status = "paid",

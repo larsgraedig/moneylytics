@@ -39,11 +39,13 @@ class InvoiceController(
         @AuthenticationPrincipal principal: UserDetails,
     ): ResponseEntity<ByteArrayResource> {
         val userId = withContext(Dispatchers.IO) { resolveUserUseCase.resolveUser(principal.username) }
+        val invoice = withContext(Dispatchers.IO) { listInvoicesUseCase.findInvoice(userId, id) }
         val pdf = withContext(Dispatchers.IO) { getInvoicePdfUseCase.getInvoicePdf(userId, id) }
+        val filename = invoice?.invoiceNumber?.let { "$it.pdf" } ?: "invoice-$id.pdf"
         return ResponseEntity
             .ok()
             .contentType(MediaType.APPLICATION_PDF)
-            .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"invoice-$id.pdf\"")
+            .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"$filename\"")
             .body(ByteArrayResource(pdf))
     }
 }
@@ -52,6 +54,7 @@ private val dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
 
 data class InvoiceResponse(
     val id: Long,
+    val invoiceNumber: String?,
     val amountCents: Int,
     val currency: String,
     val status: String,
@@ -64,6 +67,7 @@ data class InvoiceResponse(
 private fun Invoice.toResponse() =
     InvoiceResponse(
         id = id,
+        invoiceNumber = invoiceNumber,
         amountCents = amountCents,
         currency = currency,
         status = status,

@@ -9,6 +9,7 @@ internal fun InvoiceEntity.toDomain() =
         id = id!!,
         userId = userId,
         stripeInvoiceId = stripeInvoiceId,
+        invoiceNumber = invoiceNumber,
         amountCents = amountCents,
         currency = currency,
         status = status,
@@ -50,6 +51,7 @@ class InvoicePersistenceAdapter(
             InvoiceEntity(
                 userId = invoice.userId,
                 stripeInvoiceId = invoice.stripeInvoiceId,
+                invoiceNumber = invoice.invoiceNumber,
                 amountCents = invoice.amountCents,
                 currency = invoice.currency,
                 status = invoice.status,

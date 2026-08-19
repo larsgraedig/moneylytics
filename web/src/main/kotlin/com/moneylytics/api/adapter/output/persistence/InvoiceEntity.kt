@@ -25,6 +25,8 @@ class InvoiceEntity(
     val periodStart: LocalDateTime,
     @Column(name = "period_end", nullable = false)
     val periodEnd: LocalDateTime,
+    @Column(name = "invoice_number", nullable = true, length = 100)
+    val invoiceNumber: String? = null,
     @Column(name = "pdf_data", nullable = true)
     var pdfData: ByteArray? = null,
     @Column(name = "issued_at", nullable = false)

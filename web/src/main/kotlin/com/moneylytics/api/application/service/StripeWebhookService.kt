@@ -76,8 +76,13 @@ class StripeWebhookService(
                 .recoverCatching { pdfUrl?.let { stripeGateway.downloadInvoicePdf(it) } ?: throw it }
                 .getOrNull()
 
-        val periodStart = LocalDateTime.ofInstant(Instant.ofEpochSecond(stripeInvoice.periodStart), ZoneOffset.UTC)
-        val periodEnd = LocalDateTime.ofInstant(Instant.ofEpochSecond(stripeInvoice.periodEnd), ZoneOffset.UTC)
+        val lineItem = stripeInvoice.lines?.data?.firstOrNull()
+        val periodStart =
+            LocalDateTime.ofInstant(
+                Instant.ofEpochSecond(lineItem?.period?.start ?: stripeInvoice.periodStart),
+                ZoneOffset.UTC,
+            )
+        val periodEnd = LocalDateTime.ofInstant(Instant.ofEpochSecond(lineItem?.period?.end ?: stripeInvoice.periodEnd), ZoneOffset.UTC)
         val issuedAt = LocalDateTime.ofInstant(Instant.ofEpochSecond(stripeInvoice.created), ZoneOffset.UTC)
 
         val invoice =
@@ -85,7 +90,8 @@ class StripeWebhookService(
                 id = 0,
                 userId = stripeCustomer.userId,
                 stripeInvoiceId = stripeInvoice.id,
-                amountCents = stripeInvoice.amountPaid.toInt(),
+                invoiceNumber = stripeInvoice.number,
+                amountCents = stripeInvoice.amountDue.toInt(),
                 currency = stripeInvoice.currency,
                 status = "open",
                 periodStart = periodStart,
@@ -113,8 +119,13 @@ class StripeWebhookService(
                     .recoverCatching { pdfUrl?.let { stripeGateway.downloadInvoicePdf(it) } ?: throw it }
                     .getOrNull()
 
-            val periodStart = LocalDateTime.ofInstant(Instant.ofEpochSecond(stripeInvoice.periodStart), ZoneOffset.UTC)
-            val periodEnd = LocalDateTime.ofInstant(Instant.ofEpochSecond(stripeInvoice.periodEnd), ZoneOffset.UTC)
+            val lineItem = stripeInvoice.lines?.data?.firstOrNull()
+            val periodStart =
+                LocalDateTime.ofInstant(
+                    Instant.ofEpochSecond(lineItem?.period?.start ?: stripeInvoice.periodStart),
+                    ZoneOffset.UTC,
+                )
+            val periodEnd = LocalDateTime.ofInstant(Instant.ofEpochSecond(lineItem?.period?.end ?: stripeInvoice.periodEnd), ZoneOffset.UTC)
             val issuedAt = LocalDateTime.ofInstant(Instant.ofEpochSecond(stripeInvoice.created), ZoneOffset.UTC)
 
             val invoice =
@@ -122,6 +133,7 @@ class StripeWebhookService(
                     id = 0,
                     userId = stripeCustomer.userId,
                     stripeInvoiceId = stripeInvoice.id,
+                    invoiceNumber = stripeInvoice.number,
                     amountCents = stripeInvoice.amountPaid.toInt(),
                     currency = stripeInvoice.currency,
                     status = "paid",
