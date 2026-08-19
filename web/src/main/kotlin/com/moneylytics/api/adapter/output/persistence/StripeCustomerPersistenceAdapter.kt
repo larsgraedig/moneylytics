@@ -52,6 +52,7 @@ class StripeCustomerPersistenceAdapter(
         entity.subscriptionStatus = status.name
         entity.currentPeriodEnd = currentPeriodEnd
         entity.priceId = priceId
+        jpaRepository.save(entity)
     }
 
     @Transactional
@@ -61,5 +62,6 @@ class StripeCustomerPersistenceAdapter(
     ) {
         val entity = jpaRepository.findByStripeCustomerId(stripeCustomerId) ?: return
         entity.subscriptionStatus = status.name
+        jpaRepository.save(entity)
     }
 }
