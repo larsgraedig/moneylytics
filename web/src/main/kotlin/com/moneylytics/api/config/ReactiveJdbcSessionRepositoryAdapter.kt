@@ -1,5 +1,6 @@
 package com.moneylytics.api.config
 
+import org.springframework.dao.DuplicateKeyException
 import org.springframework.session.ReactiveSessionRepository
 import org.springframework.session.Session
 import org.springframework.session.SessionRepository
@@ -20,6 +21,7 @@ internal class ReactiveJdbcSessionRepositoryAdapter(
         Mono
             .fromRunnable<Void> { (delegate as SessionRepository<Session>).save(session) }
             .subscribeOn(Schedulers.boundedElastic())
+            .onErrorComplete { it is DuplicateKeyException }
 
     override fun findById(id: String): Mono<Session> =
         Mono

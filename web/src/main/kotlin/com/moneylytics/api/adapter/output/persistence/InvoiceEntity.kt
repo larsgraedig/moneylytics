@@ -5,7 +5,6 @@ import jakarta.persistence.Entity
 import jakarta.persistence.GeneratedValue
 import jakarta.persistence.GenerationType
 import jakarta.persistence.Id
-import jakarta.persistence.Lob
 import jakarta.persistence.Table
 import java.time.LocalDateTime
 
@@ -26,7 +25,6 @@ class InvoiceEntity(
     val periodStart: LocalDateTime,
     @Column(name = "period_end", nullable = false)
     val periodEnd: LocalDateTime,
-    @Lob
     @Column(name = "pdf_data", nullable = true)
     var pdfData: ByteArray? = null,
     @Column(name = "issued_at", nullable = false)
