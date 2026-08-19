@@ -20,7 +20,17 @@ class InvoiceService(
     override fun findInvoice(
         userId: Long,
         invoiceId: Long,
-    ): Invoice? = invoiceRepository.findByIdAndUserId(invoiceId, userId)
+    ): Invoice? {
+        val invoice = invoiceRepository.findByIdAndUserId(invoiceId, userId) ?: return null
+        if (invoice.invoiceNumber == null && invoice.stripeInvoiceId != null) {
+            val number = runCatching { stripeGateway.retrieveInvoiceNumber(invoice.stripeInvoiceId) }.getOrNull()
+            if (number != null) {
+                invoiceRepository.updateInvoiceNumber(invoice.id, number)
+                return invoice.copy(invoiceNumber = number)
+            }
+        }
+        return invoice
+    }
 
     override fun getInvoicePdf(
         userId: Long,

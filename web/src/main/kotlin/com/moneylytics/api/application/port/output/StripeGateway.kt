@@ -16,4 +16,6 @@ interface StripeGateway {
     fun downloadInvoicePdf(pdfUrl: String): ByteArray
 
     fun downloadInvoicePdfById(stripeInvoiceId: String): ByteArray
+
+    fun retrieveInvoiceNumber(stripeInvoiceId: String): String?
 }

@@ -43,6 +43,15 @@ class InvoicePersistenceAdapter(
         jpaRepository.save(entity)
     }
 
+    override fun updateInvoiceNumber(
+        invoiceId: Long,
+        number: String,
+    ) {
+        val entity = jpaRepository.findById(invoiceId).orElse(null) ?: return
+        entity.invoiceNumber = number
+        jpaRepository.save(entity)
+    }
+
     override fun save(
         invoice: Invoice,
         pdfData: ByteArray?,

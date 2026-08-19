@@ -83,4 +83,6 @@ class StripeAdapter(
         val pdfUrl = invoice.invoicePdf ?: error("No PDF URL available for invoice $stripeInvoiceId")
         return downloadInvoicePdf(pdfUrl)
     }
+
+    override fun retrieveInvoiceNumber(stripeInvoiceId: String): String? = client.invoices().retrieve(stripeInvoiceId).number
 }

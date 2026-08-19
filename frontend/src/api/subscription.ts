@@ -62,11 +62,14 @@ export async function fetchInvoices(): Promise<Invoice[]> {
 export async function downloadInvoicePdf(invoiceId: number): Promise<void> {
   const res = await fetchWithUser(`/invoices/${invoiceId}/pdf`)
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  const contentDisposition = res.headers.get('Content-Disposition')
+  const filenameMatch = contentDisposition?.match(/filename="([^"]+)"/)
+  const filename = filenameMatch?.[1] ?? `invoice-${invoiceId}.pdf`
   const blob = await res.blob()
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
-  a.download = `invoice-${invoiceId}.pdf`
+  a.download = filename
   document.body.appendChild(a)
   a.click()
   document.body.removeChild(a)

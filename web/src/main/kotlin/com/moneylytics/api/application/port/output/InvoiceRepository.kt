@@ -23,4 +23,9 @@ interface InvoiceRepository {
         invoiceId: Long,
         status: String,
     )
+
+    fun updateInvoiceNumber(
+        invoiceId: Long,
+        number: String,
+    )
 }
