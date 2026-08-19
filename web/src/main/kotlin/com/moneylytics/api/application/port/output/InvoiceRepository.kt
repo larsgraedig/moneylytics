@@ -16,4 +16,11 @@ interface InvoiceRepository {
         invoice: Invoice,
         pdfData: ByteArray?,
     ): Invoice
+
+    fun findByStripeInvoiceId(stripeInvoiceId: String): Invoice?
+
+    fun updateStatus(
+        invoiceId: Long,
+        status: String,
+    )
 }

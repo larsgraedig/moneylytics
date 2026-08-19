@@ -9,4 +9,6 @@ interface InvoiceJpaRepository : JpaRepository<InvoiceEntity, Long> {
         id: Long,
         userId: Long,
     ): InvoiceEntity?
+
+    fun findByStripeInvoiceId(stripeInvoiceId: String): InvoiceEntity?
 }

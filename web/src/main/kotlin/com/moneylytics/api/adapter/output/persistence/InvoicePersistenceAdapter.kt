@@ -31,6 +31,17 @@ class InvoicePersistenceAdapter(
 
     override fun getPdfData(invoiceId: Long): ByteArray? = jpaRepository.findById(invoiceId).orElse(null)?.pdfData
 
+    override fun findByStripeInvoiceId(stripeInvoiceId: String): Invoice? = jpaRepository.findByStripeInvoiceId(stripeInvoiceId)?.toDomain()
+
+    override fun updateStatus(
+        invoiceId: Long,
+        status: String,
+    ) {
+        val entity = jpaRepository.findById(invoiceId).orElse(null) ?: return
+        entity.status = status
+        jpaRepository.save(entity)
+    }
+
     override fun save(
         invoice: Invoice,
         pdfData: ByteArray?,

@@ -20,7 +20,7 @@ class InvoiceEntity(
     @Column(name = "currency", nullable = false, length = 3)
     val currency: String,
     @Column(name = "status", nullable = false, length = 50)
-    val status: String,
+    var status: String,
     @Column(name = "period_start", nullable = false)
     val periodStart: LocalDateTime,
     @Column(name = "period_end", nullable = false)

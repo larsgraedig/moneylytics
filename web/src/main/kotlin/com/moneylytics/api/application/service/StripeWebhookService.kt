@@ -52,6 +52,7 @@ class StripeWebhookService(
         logger.info { "Received Stripe event: ${event.type}" }
 
         when (event.type) {
+            "invoice.finalized" -> handleInvoiceFinalized(event.dataObjectDeserializer.deserializeUnsafe() as StripeInvoice)
             "invoice.paid" -> handleInvoicePaid(event.dataObjectDeserializer.deserializeUnsafe() as StripeInvoice)
             "invoice.payment_failed" -> handleInvoicePaymentFailed(event.dataObjectDeserializer.deserializeUnsafe() as StripeInvoice)
             "customer.subscription.updated" -> handleSubscriptionUpdated(event.dataObjectDeserializer.deserializeUnsafe() as Subscription)
@@ -60,9 +61,14 @@ class StripeWebhookService(
         }
     }
 
-    private fun handleInvoicePaid(stripeInvoice: StripeInvoice) {
+    private fun handleInvoiceFinalized(stripeInvoice: StripeInvoice) {
         val customerId = stripeInvoice.customer ?: return
         val stripeCustomer = stripeCustomerRepository.findByStripeCustomerId(customerId) ?: return
+
+        if (invoiceRepository.findByStripeInvoiceId(stripeInvoice.id) != null) {
+            logger.debug { "Invoice ${stripeInvoice.id} already stored, skipping finalized event" }
+            return
+        }
 
         val pdfUrl = stripeInvoice.invoicePdf
         val pdfData =
@@ -81,13 +87,51 @@ class StripeWebhookService(
                 stripeInvoiceId = stripeInvoice.id,
                 amountCents = stripeInvoice.amountPaid.toInt(),
                 currency = stripeInvoice.currency,
-                status = "paid",
+                status = "open",
                 periodStart = periodStart,
                 periodEnd = periodEnd,
                 hasPdf = pdfData != null,
                 issuedAt = issuedAt,
             )
         invoiceRepository.save(invoice, pdfData)
+
+        logger.info { "Stored finalized invoice ${stripeInvoice.id} for user ${stripeCustomer.userId}" }
+    }
+
+    private fun handleInvoicePaid(stripeInvoice: StripeInvoice) {
+        val customerId = stripeInvoice.customer ?: return
+        val stripeCustomer = stripeCustomerRepository.findByStripeCustomerId(customerId) ?: return
+
+        val existing = invoiceRepository.findByStripeInvoiceId(stripeInvoice.id)
+        if (existing != null) {
+            invoiceRepository.updateStatus(existing.id, "paid")
+        } else {
+            // Backward compat: invoice.finalized was not processed (e.g. pre-migration invoices)
+            val pdfUrl = stripeInvoice.invoicePdf
+            val pdfData =
+                runCatching { stripeGateway.downloadInvoicePdfById(stripeInvoice.id) }
+                    .recoverCatching { pdfUrl?.let { stripeGateway.downloadInvoicePdf(it) } ?: throw it }
+                    .getOrNull()
+
+            val periodStart = LocalDateTime.ofInstant(Instant.ofEpochSecond(stripeInvoice.periodStart), ZoneOffset.UTC)
+            val periodEnd = LocalDateTime.ofInstant(Instant.ofEpochSecond(stripeInvoice.periodEnd), ZoneOffset.UTC)
+            val issuedAt = LocalDateTime.ofInstant(Instant.ofEpochSecond(stripeInvoice.created), ZoneOffset.UTC)
+
+            val invoice =
+                Invoice(
+                    id = 0,
+                    userId = stripeCustomer.userId,
+                    stripeInvoiceId = stripeInvoice.id,
+                    amountCents = stripeInvoice.amountPaid.toInt(),
+                    currency = stripeInvoice.currency,
+                    status = "paid",
+                    periodStart = periodStart,
+                    periodEnd = periodEnd,
+                    hasPdf = pdfData != null,
+                    issuedAt = issuedAt,
+                )
+            invoiceRepository.save(invoice, pdfData)
+        }
 
         val priceId =
             stripeInvoice.lines
