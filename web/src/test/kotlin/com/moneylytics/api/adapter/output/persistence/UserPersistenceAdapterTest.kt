@@ -1,6 +1,7 @@
 package com.moneylytics.api.adapter.output.persistence
 
 import com.moneylytics.api.domain.Role
+import com.moneylytics.api.domain.Tier
 import com.moneylytics.api.domain.User
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
@@ -12,10 +13,13 @@ import org.mockito.kotlin.whenever
 class UserPersistenceAdapterTest {
     private val jpaRepository: UserJpaRepository = mock()
     private val accountJpaRepository: AccountJpaRepository = mock()
-    private val adapter = UserPersistenceAdapter(jpaRepository, accountJpaRepository)
+    private val tierJpaRepository: TierJpaRepository = mock()
+    private val adapter = UserPersistenceAdapter(jpaRepository, accountJpaRepository, tierJpaRepository)
 
     private val userId = 1L
-    private val userEntity = UserEntity(externalId = "test@test.de", id = userId)
+    private val tierEntity = TierEntity(name = "Standard", isDefault = true, id = 10L)
+    private val tier = Tier(id = 10L, name = "Standard", description = null, active = true, isDefault = true)
+    private val userEntity = UserEntity(externalId = "test@test.de", tier = tierEntity, id = userId)
 
     @Test
     fun `should return null when user not found by externalId`() {
@@ -32,12 +36,13 @@ class UserPersistenceAdapterTest {
 
         val result = adapter.findByExternalId("test@test.de")
 
-        assertThat(result).isEqualTo(User(id = userId, externalId = "test@test.de", passwordHash = null, role = Role.USER))
+        assertThat(result).isEqualTo(User(id = userId, externalId = "test@test.de", passwordHash = null, role = Role.USER, tier = tier))
     }
 
     @Test
     fun `should create new user when not found`() {
-        val newEntity = UserEntity(externalId = "new@test.de", passwordHash = "hash", id = 2L)
+        val newEntity = UserEntity(externalId = "new@test.de", passwordHash = "hash", tier = tierEntity, id = 2L)
+        whenever(tierJpaRepository.findByIsDefaultTrue()).thenReturn(tierEntity)
         whenever(jpaRepository.findByExternalId("new@test.de")).thenReturn(null)
         whenever(jpaRepository.save(any())).thenReturn(newEntity)
 
@@ -49,8 +54,9 @@ class UserPersistenceAdapterTest {
 
     @Test
     fun `should update password hash on existing user`() {
-        val existing = UserEntity(externalId = "test@test.de", passwordHash = "old", id = userId)
-        val updated = UserEntity(externalId = "test@test.de", passwordHash = "new", id = userId)
+        val existing = UserEntity(externalId = "test@test.de", passwordHash = "old", tier = tierEntity, id = userId)
+        val updated = UserEntity(externalId = "test@test.de", passwordHash = "new", tier = tierEntity, id = userId)
+        whenever(tierJpaRepository.findByIsDefaultTrue()).thenReturn(tierEntity)
         whenever(jpaRepository.findByExternalId("test@test.de")).thenReturn(existing)
         whenever(jpaRepository.save(existing)).thenReturn(updated)
 
@@ -61,7 +67,8 @@ class UserPersistenceAdapterTest {
 
     @Test
     fun `should parse comma-separated column order in getSettings`() {
-        val entity = UserEntity(externalId = "test@test.de", transactionsColumnOrder = "date,amount,category", id = userId)
+        val entity =
+            UserEntity(externalId = "test@test.de", tier = tierEntity, transactionsColumnOrder = "date,amount,category", id = userId)
         whenever(jpaRepository.getReferenceById(userId)).thenReturn(entity)
 
         val settings = adapter.getSettings(userId)
@@ -80,7 +87,7 @@ class UserPersistenceAdapterTest {
 
     @Test
     fun `should return null column order when all entries are blank after filtering`() {
-        val entity = UserEntity(externalId = "test@test.de", transactionsColumnOrder = " , ", id = userId)
+        val entity = UserEntity(externalId = "test@test.de", tier = tierEntity, transactionsColumnOrder = " , ", id = userId)
         whenever(jpaRepository.getReferenceById(userId)).thenReturn(entity)
 
         val settings = adapter.getSettings(userId)
@@ -93,8 +100,8 @@ class UserPersistenceAdapterTest {
         val orgId = 10L
         val orgEntity = OrganizationEntity(name = "Org", id = orgId)
         val accountEntity = AccountEntity(iban = "DE01", name = "Giro", organization = orgEntity, id = 5L)
-        val entityToUpdate = UserEntity(externalId = "test@test.de", id = userId)
-        val saved = UserEntity(externalId = "test@test.de", defaultAccount = accountEntity, id = userId)
+        val entityToUpdate = UserEntity(externalId = "test@test.de", tier = tierEntity, id = userId)
+        val saved = UserEntity(externalId = "test@test.de", tier = tierEntity, defaultAccount = accountEntity, id = userId)
         whenever(jpaRepository.getReferenceById(userId)).thenReturn(entityToUpdate)
         whenever(accountJpaRepository.findByIbanAndOrganizationId("DE01", orgId)).thenReturn(accountEntity)
         whenever(jpaRepository.save(entityToUpdate)).thenReturn(saved)
@@ -114,7 +121,7 @@ class UserPersistenceAdapterTest {
     @Test
     fun `should set default account to null when IBAN is null in updateSettings`() {
         val orgId = 10L
-        val entityToUpdate = UserEntity(externalId = "test@test.de", id = userId)
+        val entityToUpdate = UserEntity(externalId = "test@test.de", tier = tierEntity, id = userId)
         whenever(jpaRepository.getReferenceById(userId)).thenReturn(entityToUpdate)
         whenever(jpaRepository.save(entityToUpdate)).thenReturn(entityToUpdate)
 
@@ -132,7 +139,7 @@ class UserPersistenceAdapterTest {
 
     @Test
     fun `should map SYSTEM_ADMIN role from entity to domain user`() {
-        val adminEntity = UserEntity(externalId = "admin@test.de", role = Role.SYSTEM_ADMIN, id = userId)
+        val adminEntity = UserEntity(externalId = "admin@test.de", tier = tierEntity, role = Role.SYSTEM_ADMIN, id = userId)
         whenever(jpaRepository.findByExternalId("admin@test.de")).thenReturn(adminEntity)
 
         val result = adapter.findByExternalId("admin@test.de")
@@ -142,7 +149,7 @@ class UserPersistenceAdapterTest {
 
     @Test
     fun `should set role to SYSTEM_ADMIN when promoteToSystemAdmin is called`() {
-        val entity = UserEntity(externalId = "test@test.de", id = userId)
+        val entity = UserEntity(externalId = "test@test.de", tier = tierEntity, id = userId)
         whenever(jpaRepository.getReferenceById(userId)).thenReturn(entity)
 
         adapter.promoteToSystemAdmin(userId)

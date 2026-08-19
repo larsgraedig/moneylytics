@@ -18,6 +18,9 @@ import jakarta.persistence.Table
 class UserEntity(
     @Column(nullable = false, unique = true)
     val externalId: String,
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "tier_id", nullable = false)
+    var tier: TierEntity,
     @Column(nullable = true)
     var passwordHash: String? = null,
     @ManyToOne(fetch = FetchType.LAZY, optional = true)

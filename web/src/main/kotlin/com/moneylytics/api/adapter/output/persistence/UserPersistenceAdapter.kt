@@ -11,6 +11,7 @@ import org.springframework.transaction.annotation.Transactional
 class UserPersistenceAdapter(
     private val jpaRepository: UserJpaRepository,
     private val accountJpaRepository: AccountJpaRepository,
+    private val tierJpaRepository: TierJpaRepository,
 ) : UserRepository {
     override fun findByExternalId(externalId: String): User? = jpaRepository.findByExternalId(externalId)?.toDomain()
 
@@ -21,11 +22,14 @@ class UserPersistenceAdapter(
         externalId: String,
         passwordHash: String?,
     ): User {
+        val defaultTier =
+            tierJpaRepository.findByIsDefaultTrue()
+                ?: error("No default tier configured — run Flyway migration V38")
         val entity =
             jpaRepository
                 .findByExternalId(externalId)
                 ?.also { it.passwordHash = passwordHash }
-                ?: UserEntity(externalId = externalId, passwordHash = passwordHash)
+                ?: UserEntity(externalId = externalId, passwordHash = passwordHash, tier = defaultTier)
         return jpaRepository.save(entity).toDomain()
     }
 
@@ -56,7 +60,8 @@ class UserPersistenceAdapter(
         jpaRepository.getReferenceById(userId).role = Role.SYSTEM_ADMIN
     }
 
-    private fun UserEntity.toDomain() = User(id = id!!, externalId = externalId, passwordHash = passwordHash, role = role)
+    private fun UserEntity.toDomain() =
+        User(id = id!!, externalId = externalId, passwordHash = passwordHash, role = role, tier = tier.toDomain())
 
     private fun UserEntity.toSettings() =
         UserSettings(

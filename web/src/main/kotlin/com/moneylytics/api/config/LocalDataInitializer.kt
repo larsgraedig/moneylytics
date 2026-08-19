@@ -1,9 +1,11 @@
 package com.moneylytics.api.config
 
+import com.moneylytics.api.application.port.input.AssignTierToUserUseCase
 import com.moneylytics.api.application.port.input.AssignTransactionToBudgetUseCase
 import com.moneylytics.api.application.port.input.CreateBudgetUseCase
 import com.moneylytics.api.application.port.input.CreateCollectionUseCase
 import com.moneylytics.api.application.port.input.CreateOrganizationUseCase
+import com.moneylytics.api.application.port.input.CreateTierUseCase
 import com.moneylytics.api.application.port.input.CreateUserUseCase
 import com.moneylytics.api.application.port.input.DetectRecurringSeriesUseCase
 import com.moneylytics.api.application.port.input.GetTransactionsQuery
@@ -47,6 +49,8 @@ class LocalDataInitializer(
     private val createCollectionUseCase: CreateCollectionUseCase,
     private val manageCollectionMembersUseCase: ManageCollectionMembersUseCase,
     private val detectRecurringSeriesUseCase: DetectRecurringSeriesUseCase,
+    private val assignTierToUserUseCase: AssignTierToUserUseCase,
+    private val createTierUseCase: CreateTierUseCase,
 ) : ApplicationRunner {
     companion object {
         private const val MAIN_RNG_SEED = 42L
@@ -134,11 +138,15 @@ class LocalDataInitializer(
     private val savingsName = "Sparkonto"
 
     override fun run(args: ApplicationArguments) {
+        createTierUseCase.createTier("Standard", "Standard Tier", isDefault = true)
+        val proTier = createTierUseCase.createTier("Pro", "Pro Tier", isDefault = false)
+
         val adminId = createUserUseCase.createUser("local-admin", "admin")
         userRepository.promoteToSystemAdmin(adminId)
         createOrganizationUseCase.createOrganization("Admin Org", adminId)
 
         val devUserId = createUserUseCase.createUser("local-dev-user", "local")
+        assignTierToUserUseCase.assignTierToUser(devUserId, proTier.id)
         val orgId = createOrganizationUseCase.createOrganization("Persönlich", devUserId).id
 
         importTransactionsUseCase.importTransactions(

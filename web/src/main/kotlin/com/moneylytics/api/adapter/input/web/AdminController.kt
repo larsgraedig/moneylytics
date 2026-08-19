@@ -1,7 +1,11 @@
 package com.moneylytics.api.adapter.input.web
 
+import com.fasterxml.jackson.annotation.JsonProperty
 import com.moneylytics.api.application.port.input.AdminManageOrgMembersUseCase
+import com.moneylytics.api.application.port.input.AssignTierToUserUseCase
 import com.moneylytics.api.application.port.input.CreateOrganizationUseCase
+import com.moneylytics.api.application.port.input.CreateTierUseCase
+import com.moneylytics.api.application.port.input.ListTiersUseCase
 import com.moneylytics.api.application.port.input.ListUsersUseCase
 import com.moneylytics.api.application.port.input.ListUsersWithOrgsUseCase
 import com.moneylytics.api.application.port.input.ResolveUserUseCase
@@ -37,6 +41,9 @@ class AdminController(
     private val createOrganizationUseCase: CreateOrganizationUseCase,
     private val adminManageOrgMembersUseCase: AdminManageOrgMembersUseCase,
     private val resolveUserUseCase: ResolveUserUseCase,
+    private val listTiersUseCase: ListTiersUseCase,
+    private val createTierUseCase: CreateTierUseCase,
+    private val assignTierToUserUseCase: AssignTierToUserUseCase,
 ) {
     @PostMapping("/recurring/sync")
     @ResponseStatus(HttpStatus.NO_CONTENT)
@@ -105,6 +112,43 @@ class AdminController(
             .attributes
             .remove(IMPERSONATED_USER_ID_KEY)
     }
+
+    @GetMapping("/users/tiers")
+    suspend fun listUserTiers(): List<UserTierResponse> =
+        withContext(Dispatchers.IO) {
+            listUsersUseCase.listUsers().map { user ->
+                UserTierResponse(
+                    externalId = user.externalId,
+                    tier = AdminTierInfo(id = user.tier.id, name = user.tier.name),
+                )
+            }
+        }
+
+    @GetMapping("/tiers")
+    suspend fun listTiers(): List<TierResponse> =
+        withContext(Dispatchers.IO) {
+            listTiersUseCase.listTiers().map { TierResponse(it.id, it.name, it.description, it.active, it.isDefault) }
+        }
+
+    @PostMapping("/tiers")
+    @ResponseStatus(HttpStatus.CREATED)
+    suspend fun createTier(
+        @RequestBody request: CreateTierRequest,
+    ): TierResponse =
+        withContext(Dispatchers.IO) {
+            val tier = createTierUseCase.createTier(request.name, request.description, request.isDefault ?: false)
+            TierResponse(tier.id, tier.name, tier.description, tier.active, tier.isDefault)
+        }
+
+    @PostMapping("/users/{externalId}/tier")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    suspend fun assignTier(
+        @PathVariable externalId: String,
+        @RequestBody request: AssignTierRequest,
+    ) = withContext(Dispatchers.IO) {
+        val userId = resolveUserUseCase.resolveUser(URLDecoder.decode(externalId, StandardCharsets.UTF_8))
+        assignTierToUserUseCase.assignTierToUser(userId, request.tierId)
+    }
 }
 
 data class AdminOrgGroupDto(
@@ -121,4 +165,32 @@ data class AdminUsersResponse(
 data class AdminMemberRequest(
     val externalId: String,
     val role: String,
+)
+
+data class TierResponse(
+    val id: Long,
+    val name: String,
+    val description: String?,
+    val active: Boolean,
+    @JsonProperty("isDefault") val isDefault: Boolean,
+)
+
+data class CreateTierRequest(
+    val name: String,
+    val description: String? = null,
+    val isDefault: Boolean? = false,
+)
+
+data class AssignTierRequest(
+    val tierId: Long,
+)
+
+data class AdminTierInfo(
+    val id: Long,
+    val name: String,
+)
+
+data class UserTierResponse(
+    val externalId: String,
+    val tier: AdminTierInfo,
 )

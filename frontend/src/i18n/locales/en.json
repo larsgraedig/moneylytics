@@ -705,6 +705,10 @@
       "triggering": "Running…",
       "success": "Scheduler executed successfully.",
       "description": "Triggers the matching of new transactions against existing recurring series — identical to the daily scheduled run (log entry: Automatic)."
+    },
+    "tiers": {
+      "title": "Tiers",
+      "assignError": "Failed to save tier."
     }
   },
   "orgs": {

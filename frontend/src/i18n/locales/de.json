@@ -705,6 +705,10 @@
       "triggering": "Wird ausgeführt…",
       "success": "Scheduler erfolgreich ausgeführt.",
       "description": "Startet den Abgleich neuer Transaktionen mit bestehenden Wiederkehrer-Definitionen — identisch zum täglichen Scheduler-Lauf (Protokolleintrag: Automatisch)."
+    },
+    "tiers": {
+      "title": "Tiers",
+      "assignError": "Tier konnte nicht gespeichert werden."
     }
   },
   "orgs": {

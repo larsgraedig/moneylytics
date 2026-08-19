@@ -17,10 +17,13 @@ abstract class AbstractServiceIT {
 
     @Autowired protected lateinit var userRepo: UserJpaRepository
 
+    @Autowired protected lateinit var tierRepo: TierJpaRepository
+
     @Autowired protected lateinit var organizationRepo: OrganizationJpaRepository
 
     @Autowired protected lateinit var accountRepo: AccountJpaRepository
 
+    protected lateinit var defaultTier: TierEntity
     protected lateinit var user: UserEntity
     protected lateinit var otherUser: UserEntity
     protected lateinit var organization: OrganizationEntity
@@ -32,8 +35,9 @@ abstract class AbstractServiceIT {
 
     @BeforeEach
     fun setUpBaseEntities() {
-        user = userRepo.save(UserEntity(externalId = "test-user-1"))
-        otherUser = userRepo.save(UserEntity(externalId = "test-user-2"))
+        defaultTier = tierRepo.save(TierEntity(name = "Standard", isDefault = true))
+        user = userRepo.save(UserEntity(externalId = "test-user-1", tier = defaultTier))
+        otherUser = userRepo.save(UserEntity(externalId = "test-user-2", tier = defaultTier))
         organization = organizationRepo.save(OrganizationEntity(name = "Test Org 1"))
         otherOrganization = organizationRepo.save(OrganizationEntity(name = "Test Org 2"))
         account = accountRepo.save(AccountEntity(iban = "DE00TEST000000000001", name = "Girokonto", organization = organization))

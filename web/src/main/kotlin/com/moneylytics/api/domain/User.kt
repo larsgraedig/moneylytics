@@ -5,4 +5,5 @@ data class User(
     val externalId: String,
     val passwordHash: String?,
     val role: Role = Role.USER,
+    val tier: Tier,
 )
