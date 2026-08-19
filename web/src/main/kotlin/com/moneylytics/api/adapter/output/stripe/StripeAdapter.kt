@@ -22,7 +22,7 @@ class StripeAdapter(
     private val stripeProperties: StripeProperties,
 ) : StripeGateway {
     private val client by lazy { StripeClient(stripeProperties.secretKey) }
-    private val httpClient by lazy { HttpClient.newHttpClient() }
+    private val httpClient by lazy { HttpClient.newBuilder().followRedirects(HttpClient.Redirect.NORMAL).build() }
 
     override fun createCustomer(email: String): String {
         val params = CustomerCreateParams.builder().setEmail(email).build()
