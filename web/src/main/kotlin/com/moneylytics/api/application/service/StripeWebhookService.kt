@@ -147,13 +147,6 @@ class StripeWebhookService(
         }
 
         val priceId = lineItem?.price?.id
-        val tier = priceId?.let { tierRepository.findByStripePriceId(it) }
-        if (tier == null) {
-            logger.warn { "No tier mapped to price $priceId — skipping tier assignment for invoice ${stripeInvoice.id}" }
-            return
-        }
-        assignTierToUserUseCase.assignTierToUser(stripeCustomer.userId, tier.id)
-
         val subscriptionId = stripeInvoice.subscription
         if (subscriptionId != null) {
             stripeCustomerRepository.updateSubscription(
@@ -164,6 +157,13 @@ class StripeWebhookService(
                 priceId = priceId,
             )
         }
+
+        val tier = priceId?.let { tierRepository.findByStripePriceId(it) }
+        if (tier == null) {
+            logger.warn { "No tier mapped to price $priceId — skipping tier assignment for invoice ${stripeInvoice.id}" }
+            return
+        }
+        assignTierToUserUseCase.assignTierToUser(stripeCustomer.userId, tier.id)
 
         logger.info { "Processed paid invoice ${stripeInvoice.id} for user ${stripeCustomer.userId} → tier '${tier.name}'" }
     }
