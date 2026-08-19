@@ -53,12 +53,18 @@ class StripeAdapter(
                         .setPrice(priceId)
                         .build(),
                 ).setPaymentBehavior(SubscriptionCreateParams.PaymentBehavior.DEFAULT_INCOMPLETE)
-                .addAllExpand(listOf("latest_invoice"))
+                .addAllExpand(listOf("latest_invoice.payments.data.payment.payment_intent"))
                 .build()
 
         val subscription = client.v1().subscriptions().create(params)
         val clientSecret =
-            subscription.latestInvoiceObject?.confirmationSecret?.clientSecret
+            subscription.latestInvoiceObject
+                ?.payments
+                ?.data
+                ?.firstOrNull()
+                ?.payment
+                ?.paymentIntentObject
+                ?.clientSecret
                 ?: error("No client_secret returned from Stripe — check subscription payment_behavior")
         val item = subscription.items?.data?.firstOrNull()
 
