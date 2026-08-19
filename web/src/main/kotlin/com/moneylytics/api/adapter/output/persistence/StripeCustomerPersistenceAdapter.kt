@@ -13,6 +13,7 @@ internal fun StripeCustomerEntity.toDomain() =
         stripeCustomerId = stripeCustomerId,
         stripeSubscriptionId = stripeSubscriptionId,
         subscriptionStatus = subscriptionStatus?.let { runCatching { SubscriptionStatus.valueOf(it) }.getOrNull() },
+        currentPeriodStart = currentPeriodStart,
         currentPeriodEnd = currentPeriodEnd,
         priceId = priceId,
     )
@@ -33,6 +34,7 @@ class StripeCustomerPersistenceAdapter(
                 stripeCustomerId = stripeCustomer.stripeCustomerId,
                 stripeSubscriptionId = stripeCustomer.stripeSubscriptionId,
                 subscriptionStatus = stripeCustomer.subscriptionStatus?.name,
+                currentPeriodStart = stripeCustomer.currentPeriodStart,
                 currentPeriodEnd = stripeCustomer.currentPeriodEnd,
                 priceId = stripeCustomer.priceId,
             )
@@ -44,12 +46,14 @@ class StripeCustomerPersistenceAdapter(
         stripeCustomerId: String,
         subscriptionId: String,
         status: SubscriptionStatus,
+        currentPeriodStart: Long?,
         currentPeriodEnd: Long?,
         priceId: String?,
     ) {
         val entity = jpaRepository.findByStripeCustomerId(stripeCustomerId) ?: return
         entity.stripeSubscriptionId = subscriptionId
         entity.subscriptionStatus = status.name
+        entity.currentPeriodStart = currentPeriodStart
         entity.currentPeriodEnd = currentPeriodEnd
         entity.priceId = priceId
         jpaRepository.save(entity)

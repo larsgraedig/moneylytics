@@ -60,6 +60,7 @@ class StripeAdapter(
         return SubscriptionSetupResult(
             subscriptionId = subscription.id,
             clientSecret = clientSecret,
+            currentPeriodStart = subscription.currentPeriodStart,
             currentPeriodEnd = subscription.currentPeriodEnd,
             priceId =
                 subscription.items

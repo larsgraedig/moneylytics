@@ -6,6 +6,7 @@ data class StripeCustomer(
     val stripeCustomerId: String,
     val stripeSubscriptionId: String?,
     val subscriptionStatus: SubscriptionStatus?,
+    val currentPeriodStart: Long?,
     val currentPeriodEnd: Long?,
     val priceId: String?,
 )

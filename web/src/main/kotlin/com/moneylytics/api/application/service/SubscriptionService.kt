@@ -46,6 +46,7 @@ class SubscriptionService(
                         stripeCustomerId = id,
                         stripeSubscriptionId = null,
                         subscriptionStatus = null,
+                        currentPeriodStart = null,
                         currentPeriodEnd = null,
                         priceId = null,
                     ),
@@ -58,6 +59,7 @@ class SubscriptionService(
             stripeCustomerId = stripeCustomerId,
             subscriptionId = result.subscriptionId,
             status = SubscriptionStatus.INCOMPLETE,
+            currentPeriodStart = result.currentPeriodStart,
             currentPeriodEnd = result.currentPeriodEnd,
             priceId = result.priceId,
         )

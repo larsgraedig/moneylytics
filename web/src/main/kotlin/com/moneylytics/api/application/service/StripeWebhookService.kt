@@ -153,6 +153,7 @@ class StripeWebhookService(
                 stripeCustomerId = customerId,
                 subscriptionId = subscriptionId,
                 status = SubscriptionStatus.ACTIVE,
+                currentPeriodStart = lineItem?.period?.start ?: stripeInvoice.periodStart,
                 currentPeriodEnd = lineItem?.period?.end ?: stripeInvoice.periodEnd,
                 priceId = priceId,
             )
@@ -184,6 +185,7 @@ class StripeWebhookService(
             stripeCustomerId = customerId,
             subscriptionId = subscription.id,
             status = status,
+            currentPeriodStart = subscription.currentPeriodStart,
             currentPeriodEnd = subscription.currentPeriodEnd,
             priceId =
                 subscription.items

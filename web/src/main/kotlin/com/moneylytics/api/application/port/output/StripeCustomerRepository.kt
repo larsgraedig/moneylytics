@@ -14,6 +14,7 @@ interface StripeCustomerRepository {
         stripeCustomerId: String,
         subscriptionId: String,
         status: SubscriptionStatus,
+        currentPeriodStart: Long?,
         currentPeriodEnd: Long?,
         priceId: String?,
     )

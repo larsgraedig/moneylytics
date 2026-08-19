@@ -42,6 +42,7 @@ class SubscriptionServiceTest {
             SubscriptionSetupResult(
                 subscriptionId = subscriptionId,
                 clientSecret = clientSecret,
+                currentPeriodStart = 1797408000L,
                 currentPeriodEnd = 1800000000L,
                 priceId = "price_monthly",
             ),
@@ -56,6 +57,7 @@ class SubscriptionServiceTest {
             stripeCustomerId = eq(stripeCustomerId),
             subscriptionId = eq(subscriptionId),
             status = eq(SubscriptionStatus.INCOMPLETE),
+            currentPeriodStart = eq(1797408000L),
             currentPeriodEnd = eq(1800000000L),
             priceId = eq("price_monthly"),
         )
@@ -70,13 +72,20 @@ class SubscriptionServiceTest {
                 stripeCustomerId = stripeCustomerId,
                 stripeSubscriptionId = null,
                 subscriptionStatus = null,
+                currentPeriodStart = null,
                 currentPeriodEnd = null,
                 priceId = null,
             )
         whenever(userRepository.findById(userId)).thenReturn(user)
         whenever(stripeCustomerRepository.findByUserId(userId)).thenReturn(existing)
         whenever(stripeGateway.createSubscription(stripeCustomerId, BillingInterval.YEARLY)).thenReturn(
-            SubscriptionSetupResult(subscriptionId = subscriptionId, clientSecret = clientSecret, currentPeriodEnd = null, priceId = null),
+            SubscriptionSetupResult(
+                subscriptionId = subscriptionId,
+                clientSecret = clientSecret,
+                currentPeriodStart = null,
+                currentPeriodEnd = null,
+                priceId = null,
+            ),
         )
 
         val result = service.createSubscription(userId, BillingInterval.YEARLY)
@@ -94,6 +103,7 @@ class SubscriptionServiceTest {
                 stripeCustomerId = stripeCustomerId,
                 stripeSubscriptionId = subscriptionId,
                 subscriptionStatus = SubscriptionStatus.ACTIVE,
+                currentPeriodStart = null,
                 currentPeriodEnd = null,
                 priceId = null,
             )
@@ -123,6 +133,7 @@ class SubscriptionServiceTest {
                 stripeCustomerId = stripeCustomerId,
                 stripeSubscriptionId = null,
                 subscriptionStatus = null,
+                currentPeriodStart = null,
                 currentPeriodEnd = null,
                 priceId = null,
             )
@@ -151,6 +162,7 @@ class SubscriptionServiceTest {
                 stripeCustomerId = stripeCustomerId,
                 stripeSubscriptionId = subscriptionId,
                 subscriptionStatus = SubscriptionStatus.ACTIVE,
+                currentPeriodStart = 1797408000L,
                 currentPeriodEnd = 1800000000L,
                 priceId = "price_monthly",
             )
