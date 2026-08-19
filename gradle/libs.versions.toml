@@ -9,7 +9,7 @@ ktlint = "14.2.0"
 mockito-kotlin = "5.4.0"
 kotlin-logging = "8.0.4"
 springdoc-openapi = "2.8.6"
-stripe = "28.3.0"
+stripe = "33.3.0"
 
 [libraries]
 spring-boot-starter-webflux = { group = "org.springframework.boot", name = "spring-boot-starter-webflux" }

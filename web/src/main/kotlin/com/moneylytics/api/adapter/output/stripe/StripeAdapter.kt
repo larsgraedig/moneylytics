@@ -26,7 +26,11 @@ class StripeAdapter(
 
     override fun createCustomer(email: String): String {
         val params = CustomerCreateParams.builder().setEmail(email).build()
-        return client.customers().create(params).id
+        return client
+            .v1()
+            .customers()
+            .create(params)
+            .id
     }
 
     override fun createSubscription(
@@ -49,31 +53,27 @@ class StripeAdapter(
                         .setPrice(priceId)
                         .build(),
                 ).setPaymentBehavior(SubscriptionCreateParams.PaymentBehavior.DEFAULT_INCOMPLETE)
-                .addAllExpand(listOf("latest_invoice.payment_intent"))
+                .addAllExpand(listOf("latest_invoice"))
                 .build()
 
-        val subscription = client.subscriptions().create(params)
+        val subscription = client.v1().subscriptions().create(params)
         val clientSecret =
-            subscription.latestInvoiceObject?.paymentIntentObject?.clientSecret
+            subscription.latestInvoiceObject?.confirmationSecret?.clientSecret
                 ?: error("No client_secret returned from Stripe — check subscription payment_behavior")
+        val item = subscription.items?.data?.firstOrNull()
 
         return SubscriptionSetupResult(
             subscriptionId = subscription.id,
             clientSecret = clientSecret,
-            currentPeriodStart = subscription.currentPeriodStart,
-            currentPeriodEnd = subscription.currentPeriodEnd,
-            priceId =
-                subscription.items
-                    ?.data
-                    ?.firstOrNull()
-                    ?.price
-                    ?.id,
+            currentPeriodStart = item?.currentPeriodStart,
+            currentPeriodEnd = item?.currentPeriodEnd,
+            priceId = item?.price?.id,
         )
     }
 
     override fun cancelSubscription(subscriptionId: String) {
         val params = SubscriptionUpdateParams.builder().setCancelAtPeriodEnd(true).build()
-        client.subscriptions().update(subscriptionId, params)
+        client.v1().subscriptions().update(subscriptionId, params)
     }
 
     override fun downloadInvoicePdf(pdfUrl: String): ByteArray {
@@ -87,10 +87,15 @@ class StripeAdapter(
     }
 
     override fun downloadInvoicePdfById(stripeInvoiceId: String): ByteArray {
-        val invoice = client.invoices().retrieve(stripeInvoiceId)
+        val invoice = client.v1().invoices().retrieve(stripeInvoiceId)
         val pdfUrl = invoice.invoicePdf ?: error("No PDF URL available for invoice $stripeInvoiceId")
         return downloadInvoicePdf(pdfUrl)
     }
 
-    override fun retrieveInvoiceNumber(stripeInvoiceId: String): String? = client.invoices().retrieve(stripeInvoiceId).number
+    override fun retrieveInvoiceNumber(stripeInvoiceId: String): String? =
+        client
+            .v1()
+            .invoices()
+            .retrieve(stripeInvoiceId)
+            .number
 }

@@ -146,8 +146,8 @@ class StripeWebhookService(
             invoiceRepository.save(invoice, pdfData)
         }
 
-        val priceId = lineItem?.price?.id
-        val subscriptionId = stripeInvoice.subscription
+        val priceId = lineItem?.pricing?.priceDetails?.price
+        val subscriptionId = stripeInvoice.parent?.subscriptionDetails?.subscription
         if (subscriptionId != null) {
             stripeCustomerRepository.updateSubscription(
                 stripeCustomerId = customerId,
@@ -181,18 +181,14 @@ class StripeWebhookService(
             } else {
                 mapStripeStatus(subscription.status)
             }
+        val item = subscription.items?.data?.firstOrNull()
         stripeCustomerRepository.updateSubscription(
             stripeCustomerId = customerId,
             subscriptionId = subscription.id,
             status = status,
-            currentPeriodStart = subscription.currentPeriodStart,
-            currentPeriodEnd = subscription.currentPeriodEnd,
-            priceId =
-                subscription.items
-                    ?.data
-                    ?.firstOrNull()
-                    ?.price
-                    ?.id,
+            currentPeriodStart = item?.currentPeriodStart,
+            currentPeriodEnd = item?.currentPeriodEnd,
+            priceId = item?.price?.id,
         )
     }
 
