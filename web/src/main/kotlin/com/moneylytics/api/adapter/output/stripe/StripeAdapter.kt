@@ -6,6 +6,7 @@ import com.moneylytics.api.domain.BillingInterval
 import com.moneylytics.api.domain.SubscriptionSetupResult
 import com.stripe.StripeClient
 import com.stripe.param.CustomerCreateParams
+import com.stripe.param.InvoiceRetrieveParams
 import com.stripe.param.SubscriptionCreateParams
 import com.stripe.param.SubscriptionUpdateParams
 import io.github.oshai.kotlinlogging.KotlinLogging
@@ -53,13 +54,22 @@ class StripeAdapter(
                         .setPrice(priceId)
                         .build(),
                 ).setPaymentBehavior(SubscriptionCreateParams.PaymentBehavior.DEFAULT_INCOMPLETE)
-                .addAllExpand(listOf("latest_invoice.payments.payment.payment_intent"))
                 .build()
 
         val subscription = client.v1().subscriptions().create(params)
+        val invoiceId =
+            subscription.latestInvoice
+                ?: error("No latest_invoice on subscription — check subscription payment_behavior")
+        val invoice =
+            client.v1().invoices().retrieve(
+                invoiceId,
+                InvoiceRetrieveParams
+                    .builder()
+                    .addExpand("payments.data.payment.payment_intent")
+                    .build(),
+            )
         val clientSecret =
-            subscription.latestInvoiceObject
-                ?.payments
+            invoice.payments
                 ?.data
                 ?.firstOrNull()
                 ?.payment
