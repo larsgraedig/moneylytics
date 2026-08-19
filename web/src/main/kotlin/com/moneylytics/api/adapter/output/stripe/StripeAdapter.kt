@@ -53,7 +53,7 @@ class StripeAdapter(
                         .setPrice(priceId)
                         .build(),
                 ).setPaymentBehavior(SubscriptionCreateParams.PaymentBehavior.DEFAULT_INCOMPLETE)
-                .addAllExpand(listOf("latest_invoice.payments.data.payment.payment_intent"))
+                .addAllExpand(listOf("latest_invoice.payments.payment.payment_intent"))
                 .build()
 
         val subscription = client.v1().subscriptions().create(params)
