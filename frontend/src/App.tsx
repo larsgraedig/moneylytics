@@ -5,7 +5,7 @@ import {
   Workflow, TrendingUp, TrendingDown, PieChart, BarChart2,
   List, Landmark, Wallet, Gauge,
   FileSpreadsheet, FileCode, Link2, FolderOpen, Repeat, Wrench, Building2, Tags,
-  LogOut, Settings,
+  LogOut, UserCog,
 } from 'lucide-react'
 import { getPresetRange, detectPreset, PRESETS, type Preset } from './utils/datePresets'
 import { DatePicker } from '@/components/ui/date-picker'
@@ -28,7 +28,7 @@ import RecurringPage from './components/RecurringPage'
 import AdminPage from './components/AdminPage'
 import OrgsPage from './components/OrgsPage'
 import LoginPage from './components/LoginPage'
-import SettingsPanel from './components/SettingsPanel'
+import SettingsPage from './components/SettingsPage'
 import InvitePage from './components/InvitePage'
 import OnboardingModal from './components/OnboardingModal'
 import OrgSelectModal from './components/OrgSelectModal'
@@ -43,6 +43,7 @@ import {
   SidebarProvider,
   Sidebar,
   SidebarContent,
+  SidebarFooter,
   SidebarGroup,
   SidebarGroupLabel,
   SidebarMenu,
@@ -71,9 +72,9 @@ function parseIso(iso: string): Date {
 const today = isoDate(new Date())
 const firstOfYear = isoDate(new Date(new Date().getFullYear(), 0, 1))
 
-type Tab = 'sankey' | 'trends' | 'breakdown' | 'cashflow' | 'burnrate' | 'kontoauszug' | 'verknuepfungen' | 'sammlungen' | 'konten' | 'budgets' | 'limits' | 'csv' | 'camt' | 'wiederkehrer' | 'kategorien' | 'admin' | 'orgs'
+type Tab = 'sankey' | 'trends' | 'breakdown' | 'cashflow' | 'burnrate' | 'kontoauszug' | 'verknuepfungen' | 'sammlungen' | 'konten' | 'budgets' | 'limits' | 'csv' | 'camt' | 'wiederkehrer' | 'kategorien' | 'admin' | 'orgs' | 'einstellungen'
 
-const VALID_TABS = new Set<string>(['sankey', 'trends', 'breakdown', 'cashflow', 'burnrate', 'kontoauszug', 'verknuepfungen', 'sammlungen', 'konten', 'budgets', 'limits', 'csv', 'camt', 'wiederkehrer', 'kategorien', 'admin', 'orgs'])
+const VALID_TABS = new Set<string>(['sankey', 'trends', 'breakdown', 'cashflow', 'burnrate', 'kontoauszug', 'verknuepfungen', 'sammlungen', 'konten', 'budgets', 'limits', 'csv', 'camt', 'wiederkehrer', 'kategorien', 'admin', 'orgs', 'einstellungen'])
 
 type ViewState =
   | { phase: 'idle' }
@@ -151,7 +152,6 @@ export default function App() {
   const selectedAccountId = searchParams.get('accountId') ?? ''
   const activePreset = detectPreset(from, to)
 
-  const [settingsOpen, setSettingsOpen] = useState(false)
   const [accounts, setAccounts] = useState<Account[]>([])
   const [categories, setCategories] = useState<CategoryNode[]>([])
   const [txColumnOrder, setTxColumnOrder] = useState<string[] | null>(null)
@@ -260,6 +260,20 @@ export default function App() {
             </SidebarGroup>
           ))}
         </SidebarContent>
+        <SidebarFooter>
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                isActive={tab === 'einstellungen'}
+                tooltip={t('nav.einstellungen')}
+                render={<Link to="/einstellungen" />}
+              >
+                <UserCog />
+                <span>{t('nav.einstellungen')}</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          </SidebarMenu>
+        </SidebarFooter>
       </Sidebar>
 
       <SidebarInset className="flex flex-col overflow-hidden">
@@ -286,8 +300,8 @@ export default function App() {
               activeOrganization={activeOrganization}
               onSwitch={activateOrganization}
             />
-            <Button variant="ghost" size="sm" onClick={() => setSettingsOpen(true)} className="text-sm gap-1.5">
-              <Settings className="h-4 w-4 sm:hidden" />
+            <Button variant="ghost" size="sm" onClick={() => navigate('/einstellungen')} className="text-sm gap-1.5">
+              <UserCog className="h-4 w-4 sm:hidden" />
               <span className="hidden sm:inline">{username}</span>
             </Button>
             <Button variant="ghost" size="sm" onClick={logout} className="gap-1.5">
@@ -402,16 +416,10 @@ export default function App() {
           {tab === 'kategorien' && <CategoriesPage key={`${username}-${activeOrganization?.id}`} categories={categories} from={from} to={to} accountId={accountId} onCategoryDeleted={() => { fetchCategories().then(cats => setCategories(cats.categories)).catch(() => {}) }} onCategoryMoved={() => { fetchCategories().then(cats => setCategories(cats.categories)).catch(() => {}) }} onCategoryRenamed={() => { fetchCategories().then(cats => setCategories(cats.categories)).catch(() => {}) }} onCategoryMerged={() => { fetchCategories().then(cats => setCategories(cats.categories)).catch(() => {}) }} onCategoryCreated={() => { fetchCategories().then(cats => setCategories(cats.categories)).catch(() => {}) }} />}
           {tab === 'orgs' && isOrgAdminOrOwner && <OrgsPage key={activeOrganization?.id} />}
           {tab === 'admin' && isSystemAdmin && <AdminPage key={`${username}-${activeOrganization?.id}`} />}
+          {tab === 'einstellungen' && <SettingsPage accounts={accounts} defaultAccountIban={accounts.find(a => String(a.id) === selectedAccountId)?.iban ?? ''} />}
         </div>
       </SidebarInset>
 
-      {settingsOpen && (
-        <SettingsPanel
-          accounts={accounts}
-          defaultAccountIban={accounts.find(a => String(a.id) === selectedAccountId)?.iban ?? ''}
-          onClose={() => setSettingsOpen(false)}
-        />
-      )}
     </SidebarProvider>
   )
 }

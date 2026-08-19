@@ -23,6 +23,7 @@
     "kategorien": "Kategorien",
     "admin": "Technisches",
     "orgs": "Organisation",
+    "einstellungen": "Einstellungen",
     "collapse": "Menü einklappen",
     "expand": "Menü ausklappen"
   },
@@ -504,7 +505,11 @@
     "title": "Einstellungen",
     "language": "Sprache",
     "defaultAccount": "Standardkonto",
-    "noDefaultAccount": "Kein Standard"
+    "noDefaultAccount": "Kein Standard",
+    "tabs": {
+      "allgemein": "Allgemein",
+      "abonnement": "Abonnement"
+    }
   },
   "recurring": {
     "title": "Wiederkehrende Transaktionen",

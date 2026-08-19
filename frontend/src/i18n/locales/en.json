@@ -23,6 +23,7 @@
     "kategorien": "Categories",
     "admin": "Technical",
     "orgs": "Organization",
+    "einstellungen": "Settings",
     "collapse": "Collapse menu",
     "expand": "Expand menu"
   },
@@ -504,7 +505,11 @@
     "title": "Settings",
     "language": "Language",
     "defaultAccount": "Default account",
-    "noDefaultAccount": "No default"
+    "noDefaultAccount": "No default",
+    "tabs": {
+      "allgemein": "General",
+      "abonnement": "Subscription"
+    }
   },
   "recurring": {
     "title": "Recurring Transactions",
