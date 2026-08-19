@@ -1,0 +1,1 @@
+ALTER TABLE tier ADD COLUMN stripe_price_id VARCHAR(255) UNIQUE;

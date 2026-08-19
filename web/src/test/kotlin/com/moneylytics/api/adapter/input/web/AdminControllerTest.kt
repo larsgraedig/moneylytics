@@ -5,6 +5,7 @@ import com.moneylytics.api.application.port.input.AssignTierToUserUseCase
 import com.moneylytics.api.application.port.input.CreateOrganizationUseCase
 import com.moneylytics.api.application.port.input.CreateTierUseCase
 import com.moneylytics.api.application.port.input.ListTiersUseCase
+import com.moneylytics.api.application.port.input.SetTierStripePriceUseCase
 import com.moneylytics.api.application.port.input.ListUsersUseCase
 import com.moneylytics.api.application.port.input.ListUsersWithOrgsUseCase
 import com.moneylytics.api.application.port.input.ResolveUserUseCase
@@ -34,6 +35,7 @@ class AdminControllerTest {
     private val listTiersUseCase: ListTiersUseCase = mock()
     private val createTierUseCase: CreateTierUseCase = mock()
     private val assignTierToUserUseCase: AssignTierToUserUseCase = mock()
+    private val setTierStripePriceUseCase: SetTierStripePriceUseCase = mock()
     private val controller =
         AdminController(
             syncRecurringSeriesUseCase,
@@ -45,6 +47,7 @@ class AdminControllerTest {
             listTiersUseCase,
             createTierUseCase,
             assignTierToUserUseCase,
+            setTierStripePriceUseCase,
         )
 
     private val standardTier = Tier(id = 1L, name = "Standard", description = null, active = true, isDefault = true)

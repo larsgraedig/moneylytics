@@ -18,6 +18,8 @@ class TierEntity(
     var active: Boolean = true,
     @Column(nullable = false, name = "is_default")
     var isDefault: Boolean = false,
+    @Column(nullable = true, unique = true, name = "stripe_price_id", length = 255)
+    var stripePriceId: String? = null,
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     var id: Long? = null,

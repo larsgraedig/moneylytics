@@ -4,6 +4,7 @@ import com.moneylytics.api.application.port.input.AssignTierToUserUseCase
 import com.moneylytics.api.application.port.input.CreateTierUseCase
 import com.moneylytics.api.application.port.input.GetUserTierUseCase
 import com.moneylytics.api.application.port.input.ListTiersUseCase
+import com.moneylytics.api.application.port.input.SetTierStripePriceUseCase
 import com.moneylytics.api.application.port.output.TierRepository
 import com.moneylytics.api.domain.Tier
 import org.springframework.stereotype.Service
@@ -19,7 +20,8 @@ class TierService(
 ) : CreateTierUseCase,
     ListTiersUseCase,
     AssignTierToUserUseCase,
-    GetUserTierUseCase {
+    GetUserTierUseCase,
+    SetTierStripePriceUseCase {
     override fun listTiers(): List<Tier> = tierRepository.findAll()
 
     override fun getUserTier(userId: Long): Tier = tierRepository.findByUserId(userId)
@@ -42,5 +44,14 @@ class TierService(
     ) {
         tierRepository.findById(tierId) ?: throw TierNotFoundException(tierId)
         tierRepository.assignToUser(userId, tierId)
+    }
+
+    @Transactional
+    override fun setStripePrice(
+        tierId: Long,
+        priceId: String?,
+    ) {
+        tierRepository.findById(tierId) ?: throw TierNotFoundException(tierId)
+        tierRepository.setStripePrice(tierId, priceId)
     }
 }

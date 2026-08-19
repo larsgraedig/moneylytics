@@ -13,6 +13,13 @@ interface TierRepository {
 
     fun setDefault(tierId: Long)
 
+    fun findByStripePriceId(priceId: String): Tier?
+
+    fun setStripePrice(
+        tierId: Long,
+        priceId: String?,
+    )
+
     fun findByUserId(userId: Long): Tier
 
     fun assignToUser(

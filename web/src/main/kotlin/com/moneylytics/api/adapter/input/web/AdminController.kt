@@ -9,6 +9,7 @@ import com.moneylytics.api.application.port.input.ListTiersUseCase
 import com.moneylytics.api.application.port.input.ListUsersUseCase
 import com.moneylytics.api.application.port.input.ListUsersWithOrgsUseCase
 import com.moneylytics.api.application.port.input.ResolveUserUseCase
+import com.moneylytics.api.application.port.input.SetTierStripePriceUseCase
 import com.moneylytics.api.application.port.input.SyncRecurringSeriesUseCase
 import com.moneylytics.api.config.ImpersonationWebFilter.Companion.IMPERSONATED_USER_ID_KEY
 import com.moneylytics.api.domain.OrgRole
@@ -21,6 +22,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.security.core.userdetails.UserDetails
 import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PatchMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
@@ -44,6 +46,7 @@ class AdminController(
     private val listTiersUseCase: ListTiersUseCase,
     private val createTierUseCase: CreateTierUseCase,
     private val assignTierToUserUseCase: AssignTierToUserUseCase,
+    private val setTierStripePriceUseCase: SetTierStripePriceUseCase,
 ) {
     @PostMapping("/recurring/sync")
     @ResponseStatus(HttpStatus.NO_CONTENT)
@@ -127,7 +130,7 @@ class AdminController(
     @GetMapping("/tiers")
     suspend fun listTiers(): List<TierResponse> =
         withContext(Dispatchers.IO) {
-            listTiersUseCase.listTiers().map { TierResponse(it.id, it.name, it.description, it.active, it.isDefault) }
+            listTiersUseCase.listTiers().map { TierResponse(it.id, it.name, it.description, it.active, it.isDefault, it.stripePriceId) }
         }
 
     @PostMapping("/tiers")
@@ -137,8 +140,17 @@ class AdminController(
     ): TierResponse =
         withContext(Dispatchers.IO) {
             val tier = createTierUseCase.createTier(request.name, request.description, request.isDefault ?: false)
-            TierResponse(tier.id, tier.name, tier.description, tier.active, tier.isDefault)
+            TierResponse(tier.id, tier.name, tier.description, tier.active, tier.isDefault, tier.stripePriceId)
         }
+
+    @PatchMapping("/tiers/{id}/stripe-price")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    suspend fun setTierStripePrice(
+        @PathVariable id: Long,
+        @RequestBody request: SetStripePriceRequest,
+    ) = withContext(Dispatchers.IO) {
+        setTierStripePriceUseCase.setStripePrice(id, request.priceId)
+    }
 
     @PostMapping("/users/{externalId}/tier")
     @ResponseStatus(HttpStatus.NO_CONTENT)
@@ -173,6 +185,11 @@ data class TierResponse(
     val description: String?,
     val active: Boolean,
     @JsonProperty("isDefault") val isDefault: Boolean,
+    val stripePriceId: String?,
+)
+
+data class SetStripePriceRequest(
+    val priceId: String?,
 )
 
 data class CreateTierRequest(

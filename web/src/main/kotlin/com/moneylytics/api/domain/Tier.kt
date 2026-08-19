@@ -6,4 +6,5 @@ data class Tier(
     val description: String?,
     val active: Boolean,
     val isDefault: Boolean,
+    val stripePriceId: String? = null,
 )

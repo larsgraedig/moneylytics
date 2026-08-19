@@ -86,12 +86,20 @@ class StripeWebhookService(
             )
         invoiceRepository.save(invoice, pdfData)
 
-        val proTier = tierRepository.findAll().firstOrNull { it.name.equals("Pro", ignoreCase = true) }
-        if (proTier != null) {
-            assignTierToUserUseCase.assignTierToUser(stripeCustomer.userId, proTier.id)
+        val priceId =
+            stripeInvoice.lines
+                ?.data
+                ?.firstOrNull()
+                ?.price
+                ?.id
+        val tier = priceId?.let { tierRepository.findByStripePriceId(it) }
+        if (tier == null) {
+            logger.warn { "No tier mapped to price $priceId — skipping tier assignment for invoice ${stripeInvoice.id}" }
+            return
         }
+        assignTierToUserUseCase.assignTierToUser(stripeCustomer.userId, tier.id)
 
-        logger.info { "Processed paid invoice ${stripeInvoice.id} for user ${stripeCustomer.userId}" }
+        logger.info { "Processed paid invoice ${stripeInvoice.id} for user ${stripeCustomer.userId} → tier '${tier.name}'" }
     }
 
     private fun handleInvoicePaymentFailed(stripeInvoice: StripeInvoice) {

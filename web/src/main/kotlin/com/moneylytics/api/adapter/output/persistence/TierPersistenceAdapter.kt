@@ -12,6 +12,7 @@ internal fun TierEntity.toDomain() =
         description = description,
         active = active,
         isDefault = isDefault,
+        stripePriceId = stripePriceId,
     )
 
 @Component
@@ -34,8 +35,19 @@ class TierPersistenceAdapter(
                 description = tier.description,
                 active = tier.active,
                 isDefault = tier.isDefault,
+                stripePriceId = tier.stripePriceId,
             )
         return jpaRepository.save(entity).toDomain()
+    }
+
+    override fun findByStripePriceId(priceId: String): Tier? = jpaRepository.findByStripePriceId(priceId)?.toDomain()
+
+    @Transactional
+    override fun setStripePrice(
+        tierId: Long,
+        priceId: String?,
+    ) {
+        jpaRepository.getReferenceById(tierId).stripePriceId = priceId
     }
 
     @Transactional
