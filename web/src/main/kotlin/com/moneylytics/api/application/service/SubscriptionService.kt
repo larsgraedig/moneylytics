@@ -75,6 +75,7 @@ class SubscriptionService(
                 ?: throw NoActiveSubscriptionException()
 
         stripeGateway.cancelSubscription(subscriptionId)
+        stripeCustomerRepository.updateStatus(stripeCustomer.stripeCustomerId, SubscriptionStatus.CANCELING)
         logger.info { "Cancelled subscription $subscriptionId for user $userId (at period end)" }
     }
 

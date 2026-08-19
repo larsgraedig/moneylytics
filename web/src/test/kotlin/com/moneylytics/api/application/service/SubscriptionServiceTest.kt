@@ -102,6 +102,7 @@ class SubscriptionServiceTest {
         service.cancelSubscription(userId)
 
         verify(stripeGateway).cancelSubscription(subscriptionId)
+        verify(stripeCustomerRepository).updateStatus(stripeCustomerId, SubscriptionStatus.CANCELING)
     }
 
     @Test
