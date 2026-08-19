@@ -65,7 +65,10 @@ class StripeWebhookService(
         val stripeCustomer = stripeCustomerRepository.findByStripeCustomerId(customerId) ?: return
 
         val pdfUrl = stripeInvoice.invoicePdf
-        val pdfData = if (pdfUrl != null) runCatching { stripeGateway.downloadInvoicePdf(pdfUrl) }.getOrNull() else null
+        val pdfData =
+            runCatching { stripeGateway.downloadInvoicePdfById(stripeInvoice.id) }
+                .recoverCatching { pdfUrl?.let { stripeGateway.downloadInvoicePdf(it) } ?: throw it }
+                .getOrNull()
 
         val periodStart = LocalDateTime.ofInstant(Instant.ofEpochSecond(stripeInvoice.periodStart), ZoneOffset.UTC)
         val periodEnd = LocalDateTime.ofInstant(Instant.ofEpochSecond(stripeInvoice.periodEnd), ZoneOffset.UTC)

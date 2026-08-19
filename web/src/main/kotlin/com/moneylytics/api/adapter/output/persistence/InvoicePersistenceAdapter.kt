@@ -14,7 +14,7 @@ internal fun InvoiceEntity.toDomain() =
         status = status,
         periodStart = periodStart,
         periodEnd = periodEnd,
-        hasPdf = pdfData != null,
+        hasPdf = pdfData != null || stripeInvoiceId != null,
         issuedAt = issuedAt,
     )
 

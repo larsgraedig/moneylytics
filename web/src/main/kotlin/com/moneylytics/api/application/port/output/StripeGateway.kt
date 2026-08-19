@@ -14,4 +14,6 @@ interface StripeGateway {
     fun cancelSubscription(subscriptionId: String)
 
     fun downloadInvoicePdf(pdfUrl: String): ByteArray
+
+    fun downloadInvoicePdfById(stripeInvoiceId: String): ByteArray
 }
