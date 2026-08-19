@@ -9,6 +9,7 @@ import com.moneylytics.api.application.port.output.UserRepository
 import com.moneylytics.api.domain.BillingInterval
 import com.moneylytics.api.domain.StripeCustomer
 import com.moneylytics.api.domain.SubscriptionSetupResult
+import com.moneylytics.api.domain.SubscriptionStatus
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -53,6 +54,13 @@ class SubscriptionService(
             }
 
         val result = stripeGateway.createSubscription(stripeCustomerId, interval)
+        stripeCustomerRepository.updateSubscription(
+            stripeCustomerId = stripeCustomerId,
+            subscriptionId = result.subscriptionId,
+            status = SubscriptionStatus.INCOMPLETE,
+            currentPeriodEnd = result.currentPeriodEnd,
+            priceId = result.priceId,
+        )
         logger.info { "Created Stripe subscription ${result.subscriptionId} for user $userId" }
         return result
     }

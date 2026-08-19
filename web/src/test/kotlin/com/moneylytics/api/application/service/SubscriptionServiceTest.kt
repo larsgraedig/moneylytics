@@ -13,6 +13,7 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.mockito.kotlin.any
+import org.mockito.kotlin.eq
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.never
 import org.mockito.kotlin.verify
@@ -38,7 +39,12 @@ class SubscriptionServiceTest {
         whenever(stripeGateway.createCustomer(user.externalId)).thenReturn(stripeCustomerId)
         whenever(stripeCustomerRepository.save(any())).thenAnswer { it.arguments[0] as StripeCustomer }
         whenever(stripeGateway.createSubscription(stripeCustomerId, BillingInterval.MONTHLY)).thenReturn(
-            SubscriptionSetupResult(subscriptionId = subscriptionId, clientSecret = clientSecret),
+            SubscriptionSetupResult(
+                subscriptionId = subscriptionId,
+                clientSecret = clientSecret,
+                currentPeriodEnd = 1800000000L,
+                priceId = "price_monthly",
+            ),
         )
 
         val result = service.createSubscription(userId, BillingInterval.MONTHLY)
@@ -46,6 +52,13 @@ class SubscriptionServiceTest {
         assertThat(result.clientSecret).isEqualTo(clientSecret)
         assertThat(result.subscriptionId).isEqualTo(subscriptionId)
         verify(stripeGateway).createCustomer(user.externalId)
+        verify(stripeCustomerRepository).updateSubscription(
+            stripeCustomerId = eq(stripeCustomerId),
+            subscriptionId = eq(subscriptionId),
+            status = eq(SubscriptionStatus.INCOMPLETE),
+            currentPeriodEnd = eq(1800000000L),
+            priceId = eq("price_monthly"),
+        )
     }
 
     @Test
@@ -63,7 +76,7 @@ class SubscriptionServiceTest {
         whenever(userRepository.findById(userId)).thenReturn(user)
         whenever(stripeCustomerRepository.findByUserId(userId)).thenReturn(existing)
         whenever(stripeGateway.createSubscription(stripeCustomerId, BillingInterval.YEARLY)).thenReturn(
-            SubscriptionSetupResult(subscriptionId = subscriptionId, clientSecret = clientSecret),
+            SubscriptionSetupResult(subscriptionId = subscriptionId, clientSecret = clientSecret, currentPeriodEnd = null, priceId = null),
         )
 
         val result = service.createSubscription(userId, BillingInterval.YEARLY)

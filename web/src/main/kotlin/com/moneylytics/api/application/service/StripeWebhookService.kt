@@ -55,6 +55,7 @@ class StripeWebhookService(
             "invoice.finalized" -> handleInvoiceFinalized(event.dataObjectDeserializer.deserializeUnsafe() as StripeInvoice)
             "invoice.paid" -> handleInvoicePaid(event.dataObjectDeserializer.deserializeUnsafe() as StripeInvoice)
             "invoice.payment_failed" -> handleInvoicePaymentFailed(event.dataObjectDeserializer.deserializeUnsafe() as StripeInvoice)
+            "customer.subscription.created" -> handleSubscriptionUpdated(event.dataObjectDeserializer.deserializeUnsafe() as Subscription)
             "customer.subscription.updated" -> handleSubscriptionUpdated(event.dataObjectDeserializer.deserializeUnsafe() as Subscription)
             "customer.subscription.deleted" -> handleSubscriptionDeleted(event.dataObjectDeserializer.deserializeUnsafe() as Subscription)
             else -> logger.debug { "Unhandled Stripe event type: ${event.type}" }
