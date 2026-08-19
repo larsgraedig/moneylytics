@@ -2,6 +2,7 @@ package com.moneylytics.api.application.service
 
 import com.moneylytics.api.application.port.output.CategoryRepository
 import com.moneylytics.api.application.port.output.UserRepository
+import com.moneylytics.api.domain.Tier
 import com.moneylytics.api.domain.User
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
@@ -17,9 +18,11 @@ class UserServiceTest {
     private val passwordEncoder: PasswordEncoder = mock()
     private val service = UserService(userRepository, categoryRepository, passwordEncoder)
 
+    private val standardTier = Tier(id = 1L, name = "Standard", description = null, active = true, isDefault = true)
+
     @Test
     fun `should return existing user id on loginOAuthUser when user already exists`() {
-        val existing = User(id = 42L, externalId = "oauth|123", passwordHash = null)
+        val existing = User(id = 42L, externalId = "oauth|123", passwordHash = null, tier = standardTier)
         whenever(userRepository.findByExternalId("oauth|123")).thenReturn(existing)
 
         val result = service.loginOAuthUser("oauth|123")
@@ -29,7 +32,7 @@ class UserServiceTest {
 
     @Test
     fun `should create and return new user id when user not found on loginOAuthUser`() {
-        val newUser = User(id = 99L, externalId = "oauth|new", passwordHash = null)
+        val newUser = User(id = 99L, externalId = "oauth|new", passwordHash = null, tier = standardTier)
         whenever(userRepository.findByExternalId("oauth|new")).thenReturn(null)
         whenever(userRepository.save("oauth|new", passwordHash = null)).thenReturn(newUser)
 
@@ -40,7 +43,7 @@ class UserServiceTest {
 
     @Test
     fun `should throw UserAlreadyExistsException when registering duplicate user`() {
-        val existing = User(id = 1L, externalId = "user@test.de", passwordHash = "hash")
+        val existing = User(id = 1L, externalId = "user@test.de", passwordHash = "hash", tier = standardTier)
         whenever(userRepository.findByExternalId("user@test.de")).thenReturn(existing)
 
         assertThatThrownBy { service.registerUser("user@test.de", "secret") }
@@ -49,7 +52,7 @@ class UserServiceTest {
 
     @Test
     fun `should register new user with encoded password`() {
-        val newUser = User(id = 5L, externalId = "new@test.de", passwordHash = "encoded")
+        val newUser = User(id = 5L, externalId = "new@test.de", passwordHash = "encoded", tier = standardTier)
         whenever(userRepository.findByExternalId("new@test.de")).thenReturn(null)
         whenever(passwordEncoder.encode("rawPass")).thenReturn("encoded")
         whenever(userRepository.save("new@test.de", "encoded")).thenReturn(newUser)
@@ -62,7 +65,7 @@ class UserServiceTest {
 
     @Test
     fun `should resolve user id by external id when user exists`() {
-        val user = User(id = 7L, externalId = "oauth|abc", passwordHash = null)
+        val user = User(id = 7L, externalId = "oauth|abc", passwordHash = null, tier = standardTier)
         whenever(userRepository.findByExternalId("oauth|abc")).thenReturn(user)
 
         val result = service.resolveUser("oauth|abc")
@@ -81,7 +84,7 @@ class UserServiceTest {
 
     @Test
     fun `should create user with encoded password`() {
-        val newUser = User(id = 8L, externalId = "admin", passwordHash = "hash")
+        val newUser = User(id = 8L, externalId = "admin", passwordHash = "hash", tier = standardTier)
         whenever(passwordEncoder.encode("pass")).thenReturn("hash")
         whenever(userRepository.save("admin", "hash")).thenReturn(newUser)
 

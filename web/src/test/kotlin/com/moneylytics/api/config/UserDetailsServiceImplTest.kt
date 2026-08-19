@@ -2,6 +2,7 @@ package com.moneylytics.api.config
 
 import com.moneylytics.api.application.port.output.UserRepository
 import com.moneylytics.api.domain.Role
+import com.moneylytics.api.domain.Tier
 import com.moneylytics.api.domain.User
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
@@ -13,6 +14,8 @@ class UserDetailsServiceImplTest {
     private val userRepository: UserRepository = mock()
     private val service = UserDetailsServiceImpl(userRepository)
 
+    private val standardTier = Tier(id = 1L, name = "Standard", description = null, active = true, isDefault = true)
+
     @Test
     fun `should return empty Mono when user not found`() {
         whenever(userRepository.findByExternalId("unknown@test.de")).thenReturn(null)
@@ -22,7 +25,7 @@ class UserDetailsServiceImplTest {
 
     @Test
     fun `should return UserDetails with password hash and USER role when user found`() {
-        val domainUser = User(id = 1L, externalId = "user@test.de", passwordHash = "bcrypt-hash")
+        val domainUser = User(id = 1L, externalId = "user@test.de", passwordHash = "bcrypt-hash", tier = standardTier)
         whenever(userRepository.findByExternalId("user@test.de")).thenReturn(domainUser)
 
         StepVerifier
@@ -36,7 +39,7 @@ class UserDetailsServiceImplTest {
 
     @Test
     fun `should return UserDetails with empty password for OAuth user without password hash`() {
-        val domainUser = User(id = 2L, externalId = "oauth|abc123", passwordHash = null)
+        val domainUser = User(id = 2L, externalId = "oauth|abc123", passwordHash = null, tier = standardTier)
         whenever(userRepository.findByExternalId("oauth|abc123")).thenReturn(domainUser)
 
         StepVerifier
@@ -49,7 +52,7 @@ class UserDetailsServiceImplTest {
 
     @Test
     fun `should return UserDetails with SYSTEM_ADMIN role when user has SYSTEM_ADMIN role`() {
-        val domainUser = User(id = 3L, externalId = "admin@test.de", passwordHash = "hash", role = Role.SYSTEM_ADMIN)
+        val domainUser = User(id = 3L, externalId = "admin@test.de", passwordHash = "hash", role = Role.SYSTEM_ADMIN, tier = standardTier)
         whenever(userRepository.findByExternalId("admin@test.de")).thenReturn(domainUser)
 
         StepVerifier

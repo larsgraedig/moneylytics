@@ -5,6 +5,7 @@ import com.moneylytics.api.domain.CategoryMerge
 import com.moneylytics.api.domain.NewCategoryMerge
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
+import java.time.Instant
 
 @Component
 class CategoryMergePersistenceAdapter(
@@ -64,7 +65,7 @@ class CategoryMergePersistenceAdapter(
 
     @Transactional
     override fun markReverted(mergeId: Long) {
-        mergeJpaRepository.markReverted(mergeId)
+        mergeJpaRepository.markReverted(mergeId, Instant.now())
     }
 
     private fun CategoryMergeEntity.toDomain(

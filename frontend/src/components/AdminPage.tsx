@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Play, UserCheck, LogOut, UserMinus, UserPlus } from 'lucide-react'
-import { triggerRecurringSync, listAdminUsers, adminAddMember, adminRemoveMember, type AdminUsersResponse } from '../api/admin'
+import { triggerRecurringSync, listAdminUsers, adminAddMember, adminRemoveMember, listAdminTiers, listUserTiers, adminAssignTier, type AdminUsersResponse, type AdminTier, type UserTier } from '../api/admin'
 import { createOrganization } from '../api/organizations'
 import { useAuth } from '../context/AuthContext'
 import { Button } from '@/components/ui/button'
@@ -31,6 +31,11 @@ export default function AdminPage() {
   const [memberSuccess, setMemberSuccess] = useState<string | null>(null)
   const userSearchRef = useRef<HTMLDivElement>(null)
 
+  const [tiers, setTiers] = useState<AdminTier[]>([])
+  const [userTiers, setUserTiers] = useState<UserTier[]>([])
+  const [tierError, setTierError] = useState<string | null>(null)
+  const [tierSaving, setTierSaving] = useState<string | null>(null)
+
   const allUsers = [
     ...(usersData?.organizations.flatMap(o => o.members) ?? []),
     ...(usersData?.unorganized ?? []),
@@ -44,7 +49,12 @@ export default function AdminPage() {
     listAdminUsers().then(setUsersData).catch(() => setUsersData(null))
   }
 
-  useEffect(() => { refreshUsers() }, [])
+  function refreshTiers() {
+    listAdminTiers().then(setTiers).catch(() => setTiers([]))
+    listUserTiers().then(setUserTiers).catch(() => setUserTiers([]))
+  }
+
+  useEffect(() => { refreshUsers(); refreshTiers() }, [])
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
@@ -152,6 +162,7 @@ export default function AdminPage() {
             <h2 className="text-sm font-medium">{t('admin.members.managementTitle')}</h2>
             {memberError && <p className="text-sm text-destructive">{memberError}</p>}
             {memberSuccess && <p className="text-sm text-green-600">{memberSuccess}</p>}
+            {tierError && <p className="text-sm text-destructive">{tierError}</p>}
 
             <select className={selectCls} value={selectedOrgId} onChange={e => { setSelectedOrgId(e.target.value); setAddTargetUser(''); setUserSearch(''); setMemberError(null); setMemberSuccess(null) }}>
               <option value="">{t('admin.members.selectOrg')}</option>
@@ -166,13 +177,41 @@ export default function AdminPage() {
                     : orgMembers.map(email => (
                       <div key={email} className="flex items-center justify-between py-1">
                         <span className="text-sm">{email}</span>
-                        <div className="flex gap-1">
-                          <Button variant="ghost" size="icon-xs" title={t('admin.impersonation.button')} onClick={() => handleImpersonate(email)} disabled={!!impersonating || email === username}>
-                            <UserCheck className="h-3.5 w-3.5" />
-                          </Button>
-                          <Button variant="ghost" size="icon-xs" title={t('admin.members.remove')} onClick={() => handleAdminRemove(selectedOrg.id, email)} disabled={email === username}>
-                            <UserMinus className="h-3.5 w-3.5" />
-                          </Button>
+                        <div className="flex items-center gap-2">
+                          <select
+                            className={selectCls}
+                            value={userTiers.find(u => u.externalId === email)?.tier.id ?? ''}
+                            disabled={tierSaving === email || tiers.length === 0}
+                            onChange={async e => {
+                              const tierId = Number(e.target.value)
+                              setTierSaving(email)
+                              setTierError(null)
+                              try {
+                                await adminAssignTier(email, tierId)
+                                setUserTiers(prev => prev.map(x =>
+                                  x.externalId === email
+                                    ? { ...x, tier: tiers.find(tier => tier.id === tierId) ?? x.tier }
+                                    : x
+                                ))
+                              } catch {
+                                setTierError(t('admin.tiers.assignError'))
+                              } finally {
+                                setTierSaving(null)
+                              }
+                            }}
+                          >
+                            {tiers.map(tier => (
+                              <option key={tier.id} value={tier.id}>{tier.name}</option>
+                            ))}
+                          </select>
+                          <div className="flex gap-1">
+                            <Button variant="ghost" size="icon-xs" title={t('admin.impersonation.button')} onClick={() => handleImpersonate(email)} disabled={!!impersonating || email === username}>
+                              <UserCheck className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button variant="ghost" size="icon-xs" title={t('admin.members.remove')} onClick={() => handleAdminRemove(selectedOrg.id, email)} disabled={email === username}>
+                              <UserMinus className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
                         </div>
                       </div>
                     ))

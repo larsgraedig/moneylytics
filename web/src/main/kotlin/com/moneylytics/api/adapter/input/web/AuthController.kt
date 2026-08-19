@@ -2,6 +2,7 @@ package com.moneylytics.api.adapter.input.web
 
 import com.fasterxml.jackson.annotation.JsonProperty
 import com.moneylytics.api.application.port.input.GetOrganizationsUseCase
+import com.moneylytics.api.application.port.input.GetUserTierUseCase
 import com.moneylytics.api.application.port.input.RegisterUserUseCase
 import com.moneylytics.api.application.port.input.ResolveUserUseCase
 import com.moneylytics.api.application.service.SESSION_KEY_ACTIVE_ORG
@@ -36,6 +37,7 @@ class AuthController(
     private val registerUserUseCase: RegisterUserUseCase,
     private val resolveUserUseCase: ResolveUserUseCase,
     private val getOrganizationsUseCase: GetOrganizationsUseCase,
+    private val getUserTierUseCase: GetUserTierUseCase,
 ) {
     companion object {
         private const val HTTP_UNAUTHORIZED = 401
@@ -122,12 +124,14 @@ class AuthController(
                 )
             }
         val activeOrgId = activeOrganizationId ?: orgs.firstOrNull()?.id
+        val tier = getUserTierUseCase.getUserTier(userId)
         return AuthResponse(
             username = username,
             isSystemAdmin = isSystemAdmin,
             activeOrganizationId = activeOrgId,
             organizations = orgs,
             impersonating = impersonating,
+            tier = TierInfo(id = tier.id, name = tier.name),
         )
     }
 }
@@ -149,10 +153,16 @@ data class OrganizationInfo(
     val logoUrl: String? = null,
 )
 
+data class TierInfo(
+    val id: Long,
+    val name: String,
+)
+
 data class AuthResponse(
     val username: String,
     @JsonProperty("isSystemAdmin") val isSystemAdmin: Boolean = false,
     val activeOrganizationId: Long? = null,
     val organizations: List<OrganizationInfo> = emptyList(),
     val impersonating: String? = null,
+    val tier: TierInfo? = null,
 )

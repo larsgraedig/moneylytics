@@ -5,6 +5,7 @@ import com.moneylytics.api.application.port.output.OrganizationRepository
 import com.moneylytics.api.application.port.output.UserRepository
 import com.moneylytics.api.domain.Invitation
 import com.moneylytics.api.domain.OrgRole
+import com.moneylytics.api.domain.Tier
 import com.moneylytics.api.domain.User
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test
@@ -25,7 +26,8 @@ class InvitationServiceTest {
     private val token = "abc123"
     private val userId = 10L
     private val orgId = 5L
-    private val user = User(id = userId, externalId = "invited@test.de", passwordHash = null)
+    private val standardTier = Tier(id = 1L, name = "Standard", description = null, active = true, isDefault = true)
+    private val user = User(id = userId, externalId = "invited@test.de", passwordHash = null, tier = standardTier)
 
     private fun invitation(
         acceptedAt: Instant? = null,
@@ -84,7 +86,7 @@ class InvitationServiceTest {
 
     @Test
     fun `should throw 403 when user email does not match invitation`() {
-        val wrongUser = User(id = userId, externalId = "other@test.de", passwordHash = null)
+        val wrongUser = User(id = userId, externalId = "other@test.de", passwordHash = null, tier = standardTier)
         whenever(invitationRepository.findByToken(token)).thenReturn(invitation())
         whenever(userRepository.findById(userId)).thenReturn(wrongUser)
 

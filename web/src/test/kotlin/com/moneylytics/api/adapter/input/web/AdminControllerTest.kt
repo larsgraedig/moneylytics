@@ -1,13 +1,17 @@
 package com.moneylytics.api.adapter.input.web
 
 import com.moneylytics.api.application.port.input.AdminManageOrgMembersUseCase
+import com.moneylytics.api.application.port.input.AssignTierToUserUseCase
 import com.moneylytics.api.application.port.input.CreateOrganizationUseCase
+import com.moneylytics.api.application.port.input.CreateTierUseCase
+import com.moneylytics.api.application.port.input.ListTiersUseCase
 import com.moneylytics.api.application.port.input.ListUsersUseCase
 import com.moneylytics.api.application.port.input.ListUsersWithOrgsUseCase
 import com.moneylytics.api.application.port.input.ResolveUserUseCase
 import com.moneylytics.api.application.port.input.SyncRecurringSeriesUseCase
 import com.moneylytics.api.config.ImpersonationWebFilter.Companion.IMPERSONATED_USER_ID_KEY
 import com.moneylytics.api.domain.Role
+import com.moneylytics.api.domain.Tier
 import com.moneylytics.api.domain.User
 import kotlinx.coroutines.test.runTest
 import org.assertj.core.api.Assertions.assertThat
@@ -27,6 +31,9 @@ class AdminControllerTest {
     private val createOrganizationUseCase: CreateOrganizationUseCase = mock()
     private val adminManageOrgMembersUseCase: AdminManageOrgMembersUseCase = mock()
     private val resolveUserUseCase: ResolveUserUseCase = mock()
+    private val listTiersUseCase: ListTiersUseCase = mock()
+    private val createTierUseCase: CreateTierUseCase = mock()
+    private val assignTierToUserUseCase: AssignTierToUserUseCase = mock()
     private val controller =
         AdminController(
             syncRecurringSeriesUseCase,
@@ -35,7 +42,12 @@ class AdminControllerTest {
             createOrganizationUseCase,
             adminManageOrgMembersUseCase,
             resolveUserUseCase,
+            listTiersUseCase,
+            createTierUseCase,
+            assignTierToUserUseCase,
         )
+
+    private val standardTier = Tier(id = 1L, name = "Standard", description = null, active = true, isDefault = true)
 
     private val sessionAttributes = mutableMapOf<String, Any>()
     private val session: WebSession =
@@ -57,7 +69,7 @@ class AdminControllerTest {
     @Test
     fun `should set impersonated user id in session when user exists`() =
         runTest {
-            val targetUser = User(id = 2L, externalId = "target@test.de", passwordHash = null, role = Role.USER)
+            val targetUser = User(id = 2L, externalId = "target@test.de", passwordHash = null, role = Role.USER, tier = standardTier)
             whenever(listUsersUseCase.listUsers()).thenReturn(listOf(targetUser))
 
             controller.impersonate("target@test.de", exchange)
@@ -87,5 +99,40 @@ class AdminControllerTest {
             controller.deimpersonate(exchange)
 
             assertThat(sessionAttributes.containsKey(IMPERSONATED_USER_ID_KEY)).isFalse()
+        }
+
+    @Test
+    fun `should return list of tiers`() =
+        runTest {
+            val proTier = Tier(id = 2L, name = "Pro", description = null, active = true, isDefault = false)
+            whenever(listTiersUseCase.listTiers()).thenReturn(listOf(standardTier, proTier))
+
+            val result = controller.listTiers()
+
+            assertThat(result).hasSize(2)
+            assertThat(result[0].name).isEqualTo("Standard")
+            assertThat(result[1].name).isEqualTo("Pro")
+        }
+
+    @Test
+    fun `should create a new tier and return it`() =
+        runTest {
+            val created = Tier(id = 3L, name = "Enterprise", description = "Enterprise features", active = true, isDefault = false)
+            whenever(createTierUseCase.createTier("Enterprise", "Enterprise features", false)).thenReturn(created)
+
+            val result = controller.createTier(CreateTierRequest(name = "Enterprise", description = "Enterprise features"))
+
+            assertThat(result.id).isEqualTo(3L)
+            assertThat(result.name).isEqualTo("Enterprise")
+        }
+
+    @Test
+    fun `should assign tier to user`() =
+        runTest {
+            whenever(resolveUserUseCase.resolveUser("user@test.de")).thenReturn(5L)
+
+            controller.assignTier("user@test.de", AssignTierRequest(tierId = 2L))
+
+            verify(assignTierToUserUseCase).assignTierToUser(5L, 2L)
         }
 }

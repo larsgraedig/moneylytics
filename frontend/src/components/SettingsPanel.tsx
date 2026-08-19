@@ -5,6 +5,7 @@ import { updateUserSettings } from '../api/settings'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import SubscriptionSection from './SubscriptionSection'
 
 interface Props {
   accounts: Account[]
@@ -76,6 +77,8 @@ export default function SettingsPanel({ accounts, defaultAccountIban: initialIba
               </select>
             </section>
           )}
+
+          <SubscriptionSection />
         </div>
       </SheetContent>
     </Sheet>
