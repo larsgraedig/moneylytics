@@ -225,9 +225,11 @@ export default function TransactionsPage({
   const [budgetModal, setBudgetModal] = useState<{ rowIndex: number; budgetId: string; amount: string } | null>(null)
   const [collectionModal, setCollectionModal] = useState<{ rowIndex: number; collectionId: string; newName: string } | null>(null)
 
-  const CARD_BATCH = 50
-  const [visibleCount, setVisibleCount] = useState(CARD_BATCH)
+  const [hasMore, setHasMore] = useState(false)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const loadOffsetRef = useRef(0)
   const sentinelRef = useRef<HTMLDivElement>(null)
+  const desktopSentinelRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     fetchBudgets().then(setBudgets).catch(() => {})
@@ -277,30 +279,52 @@ export default function TransactionsPage({
     return 'ALL'
   }
 
-  async function doLoad(categoryId?: number | null, uncategorized?: boolean, type?: 'ALL' | 'INCOME' | 'EXPENSES') {
-    setVisibleCount(CARD_BATCH)
-    setPage({ phase: 'loading' })
-    setLinkingState(null)
+  async function doLoad(reset: boolean = true, categoryId?: number | null, uncategorized?: boolean, type?: 'ALL' | 'INCOME' | 'EXPENSES') {
+    const offset = reset ? 0 : loadOffsetRef.current
+    if (reset) {
+      loadOffsetRef.current = 0
+      setPage({ phase: 'loading' })
+      setLinkingState(null)
+    } else {
+      setLoadingMore(true)
+    }
     try {
-      const data = await fetchAllTransactions(from, to, accountId, undefined, undefined, uncategorized, undefined, type ?? toApiType(filterType), undefined, undefined, categoryId ?? undefined)
-      setRows(
-        data.transactions.map(tx => ({
-          original: tx,
-          category: tx.category ?? '',
-          subcategory: tx.subcategory ?? '',
-          group: tx.group ?? '',
-          comment: tx.comment ?? '',
-          accountingDate: tx.accountingDate,
-          selected: false,
-          saving: false,
-          savingComment: false,
-          savingAccountingDate: false,
-          error: null,
-          budgetAssignments: (tx.budgetLinks ?? []).map(l => ({ linkId: l.linkId, budgetId: l.budgetId, budgetName: l.budgetName, amount: l.amount })),
-          collections: tx.collections ?? [],
-        })),
+      const usedCategoryId = reset ? (categoryId ?? undefined) : (filterCategoryId ?? undefined)
+      const usedUncategorized = reset ? uncategorized : (filterUncategorized || undefined)
+      const usedType = reset ? (type ?? toApiType(filterType)) : toApiType(filterType)
+      const data = await fetchAllTransactions(
+        from, to, accountId,
+        undefined, undefined,
+        usedUncategorized, undefined,
+        usedType,
+        undefined, undefined,
+        usedCategoryId,
+        50, offset,
       )
-      setPage({ phase: 'ready' })
+      const newRows = data.transactions.map(tx => ({
+        original: tx,
+        category: tx.category ?? '',
+        subcategory: tx.subcategory ?? '',
+        group: tx.group ?? '',
+        comment: tx.comment ?? '',
+        accountingDate: tx.accountingDate,
+        selected: false,
+        saving: false,
+        savingComment: false,
+        savingAccountingDate: false,
+        error: null,
+        budgetAssignments: (tx.budgetLinks ?? []).map(l => ({ linkId: l.linkId, budgetId: l.budgetId, budgetName: l.budgetName, amount: l.amount })),
+        collections: tx.collections ?? [],
+      }))
+      if (reset) {
+        setRows(newRows)
+        setPage({ phase: 'ready' })
+      } else {
+        setRows(prev => [...prev, ...newRows])
+        setLoadingMore(false)
+      }
+      setHasMore(data.hasMore)
+      loadOffsetRef.current = offset + data.transactions.length
 
       // Fetch parent transactions for virtual split children so they can be shown as ghost rows
       const parentIds = new Set<number>()
@@ -311,10 +335,14 @@ export default function TransactionsPage({
         const results = await Promise.allSettled(
           [...parentIds].map(id => fetchSubTransactionGroup(id).then(g => g ? ({ id, tx: g.parent }) : null)),
         )
-        const map = new Map<number, TransactionItem>()
-        results.forEach(r => { if (r.status === 'fulfilled' && r.value) map.set(r.value.id, r.value.tx) })
-        setParentTxMap(map)
-      } else {
+        const newMap = new Map<number, TransactionItem>()
+        results.forEach(r => { if (r.status === 'fulfilled' && r.value) newMap.set(r.value.id, r.value.tx) })
+        if (reset) {
+          setParentTxMap(newMap)
+        } else {
+          setParentTxMap(prev => new Map([...prev, ...newMap]))
+        }
+      } else if (reset) {
         setParentTxMap(new Map())
       }
 
@@ -326,14 +354,22 @@ export default function TransactionsPage({
         const results = await Promise.allSettled(
           mergeVirtualIds.map(id => fetchSubTransactionGroup(id).then(g => g ? ({ id, children: g.children }) : null)),
         )
-        const map = new Map<number, TransactionItem[]>()
-        results.forEach(r => { if (r.status === 'fulfilled' && r.value) map.set(r.value.id, r.value.children) })
-        setMergeChildrenMap(map)
-      } else {
+        const newMap = new Map<number, TransactionItem[]>()
+        results.forEach(r => { if (r.status === 'fulfilled' && r.value) newMap.set(r.value.id, r.value.children) })
+        if (reset) {
+          setMergeChildrenMap(newMap)
+        } else {
+          setMergeChildrenMap(prev => new Map([...prev, ...newMap]))
+        }
+      } else if (reset) {
         setMergeChildrenMap(new Map())
       }
     } catch (e) {
-      setPage({ phase: 'error', message: e instanceof Error ? e.message : t('common.requestFailed') })
+      if (reset) {
+        setPage({ phase: 'error', message: e instanceof Error ? e.message : t('common.requestFailed') })
+      } else {
+        setLoadingMore(false)
+      }
     }
   }
 
@@ -652,19 +688,19 @@ export default function TransactionsPage({
   }, [filteredRows, parentTxMap, mergeChildrenMap])
 
   useEffect(() => {
-    const el = sentinelRef.current
-    if (!el) return
+    const targets = [sentinelRef.current, desktopSentinelRef.current].filter(Boolean) as HTMLDivElement[]
+    if (targets.length === 0) return
     const obs = new IntersectionObserver(
       ([entry]) => {
-        if (entry.isIntersecting && visibleCount < displayItems.length) {
-          setVisibleCount(c => Math.min(c + CARD_BATCH, displayItems.length))
+        if (entry.isIntersecting && hasMore && !loadingMore) {
+          void doLoad(false)
         }
       },
       { rootMargin: '300px' },
     )
-    obs.observe(el)
+    targets.forEach(t => obs.observe(t))
     return () => obs.disconnect()
-  }, [displayItems.length, visibleCount])
+  }, [hasMore, loadingMore])
 
 const groupColorMap = useMemo(() => {
     const map = new Map<number, number>()
@@ -1716,7 +1752,7 @@ const groupColorMap = useMemo(() => {
             onChange={id => {
               setFilterCategoryId(id)
               setLinkingState(null)
-              if (page.phase === 'ready') doLoad(id)
+              if (page.phase === 'ready') doLoad(true, id)
             }}
             tree={categories}
             allowCreate={false}
@@ -1731,7 +1767,7 @@ const groupColorMap = useMemo(() => {
             setFilterUncategorized(next)
             setFilterCategoryId(null)
             setLinkingState(null)
-            if (page.phase === 'ready') doLoad(null, next || undefined)
+            if (page.phase === 'ready') doLoad(true, null, next || undefined)
           }}
         >
           {t('transactions.filterUncategorized')}
@@ -1743,7 +1779,7 @@ const groupColorMap = useMemo(() => {
               className={filterBtn(filterType === type)}
               onClick={() => {
                 setFilterType(type)
-                doLoad(filterCategoryId, filterUncategorized || undefined, toApiType(type))
+                doLoad(true, filterCategoryId, filterUncategorized || undefined, toApiType(type))
               }}
             >
               {t(`transactions.filter${type.charAt(0).toUpperCase() + type.slice(1)}`)}
@@ -1894,10 +1930,23 @@ const groupColorMap = useMemo(() => {
                 )
               })}
             </TableBody>
+            {loadingMore && (
+              <tfoot>
+                <tr>
+                  <td colSpan={100} className="py-3 text-center text-xs text-muted-foreground">
+                    {t('common.fetching')}
+                  </td>
+                </tr>
+              </tfoot>
+            )}
           </table>
+          <div ref={desktopSentinelRef} />
           </div>
           <div className="txn-cards-mobile">
-            {displayItems.slice(0, visibleCount).map(item => renderMobileCard(item))}
+            {displayItems.map(item => renderMobileCard(item))}
+            {loadingMore && (
+              <p className="hint loading">{t('common.fetching')}</p>
+            )}
             <div ref={sentinelRef} />
           </div>
           </>
