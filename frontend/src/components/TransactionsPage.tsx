@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { Link2, Wallet, Layers, Scissors, Package, MessageSquare } from 'lucide-react'
+import { Link2, Wallet, Layers, Scissors, Package, MessageSquare, CalendarDays, CalendarClock } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
@@ -159,7 +159,10 @@ function CommentInput({
       disabled={disabled}
       onChange={e => onChange(e.target.value)}
       onBlur={() => { onSave(); if (!value.trim()) setOpen(false) }}
-      onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur() }}
+      onKeyDown={e => {
+        if (e.key === 'Enter') e.currentTarget.blur()
+        if (e.key === 'Escape') { e.currentTarget.blur(); if (!value.trim()) setOpen(false) }
+      }}
     />
   )
 }
@@ -1350,19 +1353,23 @@ const groupColorMap = useMemo(() => {
             className="txn-cell-date px-3 py-1"
             style={rowLinkColor ? { boxShadow: `inset 3px 0 0 0 ${rowLinkColor}`, paddingLeft: '9px' } : undefined}
           >
-            <DatePicker
-              value={parseIso(row.accountingDate)}
-              onChange={d => {
-                if (!d) return
-                const iso = isoDate(d)
-                updateRow(i, 'accountingDate', iso)
-                saveAccountingDate(i, iso)
-              }}
-              disabled={row.savingAccountingDate}
-              className="h-auto border-0 border-b border-transparent hover:border-foreground/30 rounded-none px-0 text-xs font-mono hover:bg-transparent gap-1 min-w-0 w-[100px]"
-            />
+            <div className="flex items-center gap-1">
+              <CalendarDays size={10} className="shrink-0 text-muted-foreground/50" />
+              <DatePicker
+                value={parseIso(row.accountingDate)}
+                onChange={d => {
+                  if (!d) return
+                  const iso = isoDate(d)
+                  updateRow(i, 'accountingDate', iso)
+                  saveAccountingDate(i, iso)
+                }}
+                disabled={row.savingAccountingDate}
+                className="h-auto border-0 border-b border-transparent hover:border-foreground/30 rounded-none px-0 text-xs font-mono hover:bg-transparent gap-1 min-w-0 w-[100px]"
+              />
+            </div>
             {row.original.accountingDate !== row.original.bookingDate && (
               <span className="txnv-booking-date-ref" title={t('transactions.bookingDateTitle')}>
+                <CalendarClock size={10} className="inline mr-1 opacity-50" />
                 {formatDate(row.original.bookingDate)}
               </span>
             )}
@@ -1500,17 +1507,28 @@ const groupColorMap = useMemo(() => {
           <div className="txn-card-header-left">
             <Checkbox checked={row.selected} onCheckedChange={() => toggleSelect(i)} />
             {renderRowBadge(row)}
-            <DatePicker
-              value={parseIso(row.accountingDate)}
-              onChange={d => {
-                if (!d) return
-                const iso = isoDate(d)
-                updateRow(i, 'accountingDate', iso)
-                saveAccountingDate(i, iso)
-              }}
-              disabled={row.savingAccountingDate}
-              className="h-auto border-0 border-b border-transparent hover:border-foreground/30 rounded-none px-0 text-xs font-mono hover:bg-transparent gap-1 min-w-0 w-[90px]"
-            />
+            <div className="flex flex-col">
+              <div className="flex items-center gap-1">
+                <CalendarDays size={10} className="shrink-0 text-muted-foreground/50" />
+                <DatePicker
+                  value={parseIso(row.accountingDate)}
+                  onChange={d => {
+                    if (!d) return
+                    const iso = isoDate(d)
+                    updateRow(i, 'accountingDate', iso)
+                    saveAccountingDate(i, iso)
+                  }}
+                  disabled={row.savingAccountingDate}
+                  className="h-auto border-0 border-b border-transparent hover:border-foreground/30 rounded-none px-0 text-xs font-mono hover:bg-transparent gap-1 min-w-0 w-[90px]"
+                />
+              </div>
+              {row.original.accountingDate !== row.original.bookingDate && (
+                <span className="txnv-booking-date-ref" title={t('transactions.bookingDateTitle')}>
+                  <CalendarClock size={10} className="inline mr-1 opacity-50" />
+                  {formatDate(row.original.bookingDate)}
+                </span>
+              )}
+            </div>
           </div>
           <span className={`txn-card-amount font-mono ${row.original.amount < 0 ? 'negative' : 'positive'}`}>
             {EUR.format(row.original.amount)}
