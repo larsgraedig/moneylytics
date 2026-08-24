@@ -1142,8 +1142,9 @@ body {
   padding-top: 2px;
   padding-bottom: 2px;
 }
-.txnv-row--merge-child-ghost td.txn-cell-date {
-  border-left: 2px solid rgba(52, 211, 153, 0.5);
+.txnv-row--merge-child-ghost > td:first-child {
+  border-left: 3px solid rgba(52, 211, 153, 0.6);
+  padding-left: 1.5rem;
 }
 .txnv-row--merge-child-ghost .txnv-cell-actions {
   pointer-events: auto;
@@ -1533,7 +1534,8 @@ body {
 }
 
 .txn-card--merge-ghost {
-  border-color: rgba(52, 211, 153, 0.3);
+  border-left: 3px solid rgba(52, 211, 153, 0.6);
+  margin-left: 1.5rem;
 }
 
 .txn-card.txnv-row--dirty {
