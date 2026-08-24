@@ -14,9 +14,10 @@ interface DatePickerProps {
   placeholder?: string
   className?: string
   disabled?: boolean
+  hideIcon?: boolean
 }
 
-export function DatePicker({ value, onChange, min, max, placeholder = 'TT.MM.JJJJ', className, disabled }: DatePickerProps) {
+export function DatePicker({ value, onChange, min, max, placeholder = 'TT.MM.JJJJ', className, disabled, hideIcon }: DatePickerProps) {
   const [open, setOpen] = React.useState(false)
 
   const now = new Date()
@@ -34,7 +35,7 @@ export function DatePicker({ value, onChange, min, max, placeholder = 'TT.MM.JJJ
           className,
         )}
       >
-        <CalendarIcon className="h-4 w-4 shrink-0 opacity-50" />
+        {!hideIcon && <CalendarIcon className="h-4 w-4 shrink-0 opacity-50" />}
         {value && isValid(value) ? format(value, 'dd.MM.yyyy', { locale: de }) : placeholder}
       </PopoverTrigger>
       <PopoverContent align="start">
