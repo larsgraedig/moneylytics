@@ -113,42 +113,9 @@ export function CategoryPathInput({ value, onChange, tree, onCategoryCreated, pl
     }
   }
 
-  async function handleBlur() {
+  function handleBlur() {
     setOpen(false)
-    const q = inputValue.trim()
-
-    if (!q) {
-      committedId.current = null
-      onChange(null)
-      return
-    }
-
-    const match = flatItems.find(item => item.pathStr.toLowerCase() === q.toLowerCase())
-    if (match) {
-      committedId.current = match.id
-      setInputValue(match.pathStr)
-      onChange(match.id)
-      return
-    }
-
-    if (allowCreate) {
-      const path = q.split('>').map(s => s.trim()).filter(Boolean)
-      if (path.length > 0) {
-        try {
-          const created = await findOrCreateCategory(path)
-          committedId.current = created.id
-          setInputValue(path.join(' > '))
-          onCategoryCreated?.(created)
-          onChange(created.id)
-        } catch {
-          setInputValue(pathStringForId(committedId.current, tree))
-        }
-      } else {
-        setInputValue(pathStringForId(committedId.current, tree))
-      }
-    } else {
-      setInputValue(pathStringForId(committedId.current, tree))
-    }
+    setInputValue(pathStringForId(committedId.current, tree))
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {

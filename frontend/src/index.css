@@ -712,7 +712,7 @@ body {
 
 .ri-cat-input:focus {
   border-color: var(--accent-dim);
-  color: var(--accent);
+  color: var(--text);
 }
 
 .ri-cat-input::placeholder { color: var(--text-dim); }
