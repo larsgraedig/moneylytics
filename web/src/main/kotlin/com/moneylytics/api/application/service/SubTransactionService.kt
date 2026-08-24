@@ -5,6 +5,7 @@ import com.moneylytics.api.application.port.input.GetSubTransactionGroupUseCase
 import com.moneylytics.api.application.port.input.ManageSubTransactionUseCase
 import com.moneylytics.api.application.port.input.MergeTransactionsCommand
 import com.moneylytics.api.application.port.input.SplitTransactionCommand
+import com.moneylytics.api.application.port.input.UpdateVirtualTransactionCommand
 import com.moneylytics.api.application.port.output.SubTransactionPort
 import com.moneylytics.api.application.port.output.TransactionRepository
 import com.moneylytics.api.domain.SubTransactionGroup
@@ -168,6 +169,37 @@ class SubTransactionService(
         return subTransactionPort.createStandaloneVirtual(
             amount = command.amount,
             currency = command.currency,
+            accountIban = command.accountIban,
+            accountingDate = command.accountingDate,
+            categoryId = command.categoryId,
+            counterpartyName = command.counterpartyName,
+            purpose = command.purpose,
+            organizationId = command.organizationId,
+        )
+    }
+
+    @Transactional
+    override fun deleteVirtualTransaction(
+        transactionId: Long,
+        organizationId: Long,
+    ) {
+        val tx = requireTransaction(transactionId, organizationId)
+        require(tx.isVirtual && tx.parentId == null) { "Not a standalone virtual transaction" }
+        require(subTransactionPort.findChildren(transactionId, organizationId).isEmpty()) {
+            "Cannot delete: transaction has merge children"
+        }
+        subTransactionPort.deleteVirtual(transactionId, organizationId)
+    }
+
+    override fun updateVirtualTransaction(command: UpdateVirtualTransactionCommand): Transaction {
+        val tx =
+            transactionRepository.findByIdAndOrganizationId(command.transactionId, command.organizationId)
+                ?: throw NoSuchElementException("Transaction ${command.transactionId} not found")
+        require(tx.isVirtual && tx.parentId == null) { "Not a standalone virtual transaction" }
+        require(command.accountIban.isNotBlank()) { "Account IBAN is required" }
+        return subTransactionPort.updateStandaloneVirtual(
+            transactionId = command.transactionId,
+            amount = command.amount,
             accountIban = command.accountIban,
             accountingDate = command.accountingDate,
             categoryId = command.categoryId,

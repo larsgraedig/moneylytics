@@ -455,6 +455,31 @@ export async function createVirtualTransaction(data: {
   return res.json() as Promise<TransactionItem>
 }
 
+export async function updateVirtualTransaction(
+  id: number,
+  data: {
+    amount: number
+    accountIban: string
+    accountingDate: string
+    categoryId?: number | null
+    counterpartyName?: string | null
+    purpose?: string | null
+  },
+): Promise<TransactionItem> {
+  const res = await fetchWithUser(`/transactions/${id}/virtual`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  })
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  return res.json() as Promise<TransactionItem>
+}
+
+export async function deleteVirtualTransaction(id: number): Promise<void> {
+  const res = await fetchWithUser(`/transactions/${id}/virtual`, { method: 'DELETE' })
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+}
+
 export async function fetchSubTransactionGroup(transactionId: number): Promise<SubTransactionGroupResponse | null> {
   const res = await fetchWithUser(`/transactions/${transactionId}/sub-group`)
   if (res.status === 404) return null

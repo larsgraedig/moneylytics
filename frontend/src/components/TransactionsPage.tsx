@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { Link2, Wallet, Layers, Scissors, Package, MessageSquare, CalendarDays, CalendarClock, Wand2 } from 'lucide-react'
+import { Link2, Wallet, Layers, Scissors, Package, MessageSquare, CalendarDays, CalendarClock, Wand2, Pencil, Trash2 } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
@@ -13,6 +13,7 @@ import {
   fetchSubTransactionGroup,
   linkTransactions,
   removeTransactionFromGroup,
+  deleteVirtualTransaction,
   unsplitTransaction,
   unmergeTransactions,
   updateTransactionAccountingDate,
@@ -222,6 +223,7 @@ export default function TransactionsPage({
   const [parentTxMap, setParentTxMap] = useState<Map<number, TransactionItem>>(new Map())
   const [mergeChildrenMap, setMergeChildrenMap] = useState<Map<number, TransactionItem[]>>(new Map())
   const [createVirtualOpen, setCreateVirtualOpen] = useState(false)
+  const [editVirtualTx, setEditVirtualTx] = useState<TransactionItem | null>(null)
   const [budgetModal, setBudgetModal] = useState<{ rowIndex: number; budgetId: string; amount: string } | null>(null)
   const [collectionModal, setCollectionModal] = useState<{ rowIndex: number; collectionId: string; newName: string } | null>(null)
 
@@ -1736,6 +1738,35 @@ const groupColorMap = useMemo(() => {
               ÷
             </Button>
           )}
+          {row.original.isVirtual && row.original.parentId == null && (mergeChildrenMap.get(row.original.id)?.length ?? 0) === 0 && (
+            <>
+              <Button
+                variant="ghost"
+                size="icon-xs"
+                className="rounded-sm text-violet-400 border border-dashed border-violet-400/30 hover:bg-violet-400/10 hover:text-violet-300"
+                onClick={() => setEditVirtualTx(row.original)}
+                title={t('virtualTransaction.edit')}
+              >
+                <Pencil size={12} />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon-xs"
+                className="rounded-sm text-violet-400 border border-dashed border-violet-400/30 hover:bg-violet-400/10 hover:text-violet-300"
+                title={t('virtualTransaction.delete')}
+                onClick={() => {
+                  if (confirm(t('virtualTransaction.deleteConfirm'))) {
+                    const id = row.original.id
+                    deleteVirtualTransaction(id).then(() => {
+                      setRows(prev => prev.filter(r => r.original.id !== id))
+                    }).catch(() => {})
+                  }
+                }}
+              >
+                <Trash2 size={12} />
+              </Button>
+            </>
+          )}
         </div>
       </div>
     )
@@ -1874,15 +1905,14 @@ const groupColorMap = useMemo(() => {
                       )}
                       {row.saving && <span className="txnv-save-btn">…</span>}
                       {row.original.isVirtual && row.original.parentId == null && (() => {
-                        const children = mergeChildrenMap.get(row.original.id)
-                        const isStandalone = children != null && children.length === 0
-                        if (isStandalone) {
+                        const isMergeVirtual = (mergeChildrenMap.get(row.original.id)?.length ?? 0) > 0
+                        if (isMergeVirtual) {
                           return (
                             <span
                               className="txnv-sub-badge txnv-sub-badge--merge"
-                              title={t('virtualTransaction.deleteConfirm')}
+                              title={t('transactions.merge.undoConfirm')}
                               onClick={() => {
-                                if (confirm(t('virtualTransaction.deleteConfirm'))) {
+                                if (confirm(t('transactions.merge.undoConfirm'))) {
                                   unmergeTransactions(row.original.id).then(() => doLoad()).catch(() => {})
                                 }
                               }}
@@ -1893,18 +1923,33 @@ const groupColorMap = useMemo(() => {
                           )
                         }
                         return (
-                          <span
-                            className="txnv-sub-badge txnv-sub-badge--merge"
-                            title={t('transactions.merge.undoConfirm')}
-                            onClick={() => {
-                              if (confirm(t('transactions.merge.undoConfirm'))) {
-                                unmergeTransactions(row.original.id).then(() => doLoad()).catch(() => {})
-                              }
-                            }}
-                            style={{ cursor: 'pointer' }}
-                          >
-                            ×
-                          </span>
+                          <>
+                            <Button
+                              variant="ghost"
+                              size="icon-xs"
+                              className="rounded-sm text-violet-400 border border-dashed border-violet-400/30 hover:bg-violet-400/10 hover:text-violet-300"
+                              title={t('virtualTransaction.edit')}
+                              onClick={() => setEditVirtualTx(row.original)}
+                            >
+                              <Pencil size={12} />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon-xs"
+                              className="rounded-sm text-violet-400 border border-dashed border-violet-400/30 hover:bg-violet-400/10 hover:text-violet-300"
+                              title={t('virtualTransaction.delete')}
+                              onClick={() => {
+                                if (confirm(t('virtualTransaction.deleteConfirm'))) {
+                                  const id = row.original.id
+                                  deleteVirtualTransaction(id).then(() => {
+                                    setRows(prev => prev.filter(r => r.original.id !== id))
+                                  }).catch(() => {})
+                                }
+                              }}
+                            >
+                              <Trash2 size={12} />
+                            </Button>
+                          </>
                         )
                       })()}
                       {!row.original.isVirtual && row.original.excluded && row.original.parentId == null && (
@@ -1971,6 +2016,17 @@ const groupColorMap = useMemo(() => {
           defaultDate={to}
           onClose={() => setCreateVirtualOpen(false)}
           onCreate={() => { setCreateVirtualOpen(false); doLoad() }}
+          onCategoryCreated={onCategoryCreated}
+        />
+      )}
+      {editVirtualTx && (
+        <CreateVirtualTransactionModal
+          accounts={accounts}
+          categories={categories}
+          defaultDate={to}
+          transaction={editVirtualTx}
+          onClose={() => setEditVirtualTx(null)}
+          onUpdate={() => { setEditVirtualTx(null); doLoad() }}
           onCategoryCreated={onCategoryCreated}
         />
       )}

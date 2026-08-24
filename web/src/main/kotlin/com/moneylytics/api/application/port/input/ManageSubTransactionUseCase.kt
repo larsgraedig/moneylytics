@@ -31,6 +31,17 @@ data class CreateVirtualTransactionCommand(
     val organizationId: Long,
 )
 
+data class UpdateVirtualTransactionCommand(
+    val transactionId: Long,
+    val amount: BigDecimal,
+    val accountIban: String,
+    val accountingDate: LocalDate,
+    val categoryId: Long?,
+    val counterpartyName: String?,
+    val purpose: String?,
+    val organizationId: Long,
+)
+
 interface ManageSubTransactionUseCase {
     fun splitTransaction(command: SplitTransactionCommand): SubTransactionGroup
 
@@ -58,6 +69,13 @@ interface ManageSubTransactionUseCase {
     )
 
     fun createVirtualTransaction(command: CreateVirtualTransactionCommand): Transaction
+
+    fun updateVirtualTransaction(command: UpdateVirtualTransactionCommand): Transaction
+
+    fun deleteVirtualTransaction(
+        transactionId: Long,
+        organizationId: Long,
+    )
 }
 
 interface GetSubTransactionGroupUseCase {

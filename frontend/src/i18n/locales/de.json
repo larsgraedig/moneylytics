@@ -832,6 +832,9 @@
   },
   "virtualTransaction": {
     "title": "Manuelle Buchung anlegen",
+    "editTitle": "Manuelle Buchung bearbeiten",
+    "edit": "Bearbeiten",
+    "delete": "Löschen",
     "button": "Manuell",
     "badge": "Manuelle Buchung",
     "deleteConfirm": "Manuelle Buchung wirklich löschen?",

@@ -19,9 +19,9 @@ class TransactionEntity(
     @JoinColumn(name = "category_id", nullable = true)
     var category: CategoryEntity? = null,
     @Column(nullable = false)
-    val bookingDate: LocalDate,
+    var bookingDate: LocalDate,
     @Column(nullable = false)
-    val valueDate: LocalDate,
+    var valueDate: LocalDate,
     @Column(nullable = false, name = "accounting_date")
     var accountingDate: LocalDate,
     @Column(nullable = false, precision = 19, scale = 4)
@@ -30,7 +30,7 @@ class TransactionEntity(
     val currency: String,
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "account_id", nullable = false)
-    val account: AccountEntity,
+    var account: AccountEntity,
     @Column(nullable = true, unique = true, length = 64)
     val fingerprint: String?,
     @ManyToOne(fetch = FetchType.LAZY, optional = false)

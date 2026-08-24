@@ -832,6 +832,9 @@
   },
   "virtualTransaction": {
     "title": "Create manual entry",
+    "editTitle": "Edit manual entry",
+    "edit": "Edit",
+    "delete": "Delete",
     "button": "Manual",
     "badge": "Manual entry",
     "deleteConfirm": "Really delete this manual entry?",

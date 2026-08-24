@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { CategoryNode } from '../api/rawImport'
-import { createVirtualTransaction, type Account } from '../api/transactions'
+import { createVirtualTransaction, updateVirtualTransaction, type Account, type TransactionItem } from '../api/transactions'
 import { CategoryPathInput } from './CategoryPathInput'
 import { DatePicker } from '@/components/ui/date-picker'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -22,24 +22,29 @@ export function CreateVirtualTransactionModal({
   accounts,
   categories,
   defaultDate,
+  transaction,
   onClose,
   onCreate,
+  onUpdate,
   onCategoryCreated,
 }: {
   accounts: Account[]
   categories: CategoryNode[]
   defaultDate: string
+  transaction?: TransactionItem
   onClose: () => void
-  onCreate: () => void
+  onCreate?: () => void
+  onUpdate?: () => void
   onCategoryCreated?: (node: CategoryNode) => void
 }) {
   const { t } = useTranslation()
-  const [accountIban, setAccountIban] = useState(accounts[0]?.iban ?? '')
-  const [accountingDate, setAccountingDate] = useState(defaultDate)
-  const [amount, setAmount] = useState('')
-  const [categoryId, setCategoryId] = useState<number | null>(null)
-  const [counterpartyName, setCounterpartyName] = useState('')
-  const [purpose, setPurpose] = useState('')
+  const editMode = transaction != null
+  const [accountIban, setAccountIban] = useState(transaction?.accountIban ?? accounts[0]?.iban ?? '')
+  const [accountingDate, setAccountingDate] = useState(transaction?.accountingDate ?? defaultDate)
+  const [amount, setAmount] = useState(transaction != null ? String(transaction.amount) : '')
+  const [categoryId, setCategoryId] = useState<number | null>(transaction?.categoryId ?? null)
+  const [counterpartyName, setCounterpartyName] = useState(transaction?.counterpartyName ?? '')
+  const [purpose, setPurpose] = useState(transaction?.purpose ?? '')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -60,15 +65,27 @@ export function CreateVirtualTransactionModal({
     }
     setSaving(true)
     try {
-      await createVirtualTransaction({
-        amount: parsedAmount,
-        accountIban,
-        accountingDate,
-        categoryId,
-        counterpartyName: counterpartyName || null,
-        purpose: purpose || null,
-      })
-      onCreate()
+      if (editMode && transaction) {
+        await updateVirtualTransaction(transaction.id, {
+          amount: parsedAmount,
+          accountIban,
+          accountingDate,
+          categoryId,
+          counterpartyName: counterpartyName || null,
+          purpose: purpose || null,
+        })
+        onUpdate?.()
+      } else {
+        await createVirtualTransaction({
+          amount: parsedAmount,
+          accountIban,
+          accountingDate,
+          categoryId,
+          counterpartyName: counterpartyName || null,
+          purpose: purpose || null,
+        })
+        onCreate?.()
+      }
     } catch {
       setError(t('virtualTransaction.errorSave'))
     } finally {
@@ -80,7 +97,7 @@ export function CreateVirtualTransactionModal({
     <Dialog open onOpenChange={open => { if (!open) onClose() }}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>{t('virtualTransaction.title')}</DialogTitle>
+          <DialogTitle>{editMode ? t('virtualTransaction.editTitle') : t('virtualTransaction.title')}</DialogTitle>
         </DialogHeader>
 
         <div className="flex flex-col gap-3">

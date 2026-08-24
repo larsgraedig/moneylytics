@@ -6,6 +6,7 @@ import com.moneylytics.api.application.port.input.ManageSubTransactionUseCase
 import com.moneylytics.api.application.port.input.MergeTransactionsCommand
 import com.moneylytics.api.application.port.input.ResolveOrganizationUseCase
 import com.moneylytics.api.application.port.input.SplitTransactionCommand
+import com.moneylytics.api.application.port.input.UpdateVirtualTransactionCommand
 import com.moneylytics.api.domain.SplitItem
 import com.moneylytics.api.domain.SubTransactionGroup
 import kotlinx.coroutines.Dispatchers
@@ -16,6 +17,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.security.core.userdetails.UserDetails
 import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PatchMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
@@ -41,6 +43,16 @@ data class MergeRequest(
     val accountingDate: LocalDate,
     val name: String? = null,
     val comment: String? = null,
+)
+
+data class UpdateVirtualTransactionRequest(
+    val amount: BigDecimal,
+    val accountIban: String,
+    @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+    val accountingDate: LocalDate,
+    val categoryId: Long? = null,
+    val counterpartyName: String? = null,
+    val purpose: String? = null,
 )
 
 data class CreateVirtualTransactionRequest(
@@ -255,6 +267,65 @@ class SubTransactionController(
                     when (e) {
                         is IllegalArgumentException -> ResponseEntity.badRequest().build()
                         is IllegalStateException -> ResponseEntity.badRequest().build()
+                        is NoSuchElementException -> ResponseEntity.notFound().build()
+                        else -> throw e
+                    }
+                },
+            )
+        }
+    }
+
+    @PatchMapping("/{id}/virtual")
+    suspend fun updateVirtualTransaction(
+        @PathVariable id: Long,
+        @RequestBody request: UpdateVirtualTransactionRequest,
+        @AuthenticationPrincipal principal: UserDetails,
+        exchange: ServerWebExchange,
+    ): ResponseEntity<TransactionItem> {
+        val organizationId = resolveOrganizationUseCase.resolveOrganization(principal, exchange)
+        return withContext(Dispatchers.IO) {
+            runCatching {
+                manageSubTransactionUseCase.updateVirtualTransaction(
+                    UpdateVirtualTransactionCommand(
+                        transactionId = id,
+                        amount = request.amount,
+                        accountIban = request.accountIban,
+                        accountingDate = request.accountingDate,
+                        categoryId = request.categoryId,
+                        counterpartyName = request.counterpartyName,
+                        purpose = request.purpose,
+                        organizationId = organizationId,
+                    ),
+                )
+            }.fold(
+                onSuccess = { ResponseEntity.ok(it.toItem()) },
+                onFailure = { e ->
+                    when (e) {
+                        is NoSuchElementException -> ResponseEntity.notFound().build()
+                        is IllegalArgumentException -> ResponseEntity.badRequest().build()
+                        is IllegalStateException -> ResponseEntity.badRequest().build()
+                        else -> throw e
+                    }
+                },
+            )
+        }
+    }
+
+    @DeleteMapping("/{id}/virtual")
+    suspend fun deleteVirtualTransaction(
+        @PathVariable id: Long,
+        @AuthenticationPrincipal principal: UserDetails,
+        exchange: ServerWebExchange,
+    ): ResponseEntity<Void> {
+        val organizationId = resolveOrganizationUseCase.resolveOrganization(principal, exchange)
+        return withContext(Dispatchers.IO) {
+            runCatching {
+                manageSubTransactionUseCase.deleteVirtualTransaction(id, organizationId)
+            }.fold(
+                onSuccess = { ResponseEntity.noContent().build() },
+                onFailure = { e ->
+                    when (e) {
+                        is IllegalArgumentException -> ResponseEntity.badRequest().build()
                         is NoSuchElementException -> ResponseEntity.notFound().build()
                         else -> throw e
                     }

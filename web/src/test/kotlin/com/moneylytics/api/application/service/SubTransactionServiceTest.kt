@@ -391,4 +391,44 @@ class SubTransactionServiceTest {
 
         verify(subTransactionPort, never()).setParentId(any(), any(), any())
     }
+
+    @Test
+    fun `deleteVirtualTransaction should delete standalone virtual transaction`() {
+        val tx = virtualTx(5L, BigDecimal("-50"))
+        whenever(transactionRepository.findByIdAndOrganizationId(5L, orgId)).thenReturn(tx)
+        whenever(subTransactionPort.findChildren(5L, orgId)).thenReturn(emptyList())
+
+        service.deleteVirtualTransaction(5L, orgId)
+
+        verify(subTransactionPort).deleteVirtual(5L, orgId)
+    }
+
+    @Test
+    fun `deleteVirtualTransaction should fail when transaction is not virtual`() {
+        val tx = physicalTx(5L)
+        whenever(transactionRepository.findByIdAndOrganizationId(5L, orgId)).thenReturn(tx)
+
+        assertThatThrownBy {
+            service.deleteVirtualTransaction(5L, orgId)
+        }.isInstanceOf(IllegalArgumentException::class.java)
+            .hasMessageContaining("Not a standalone virtual transaction")
+
+        verify(subTransactionPort, never()).deleteVirtual(any(), any())
+    }
+
+    @Test
+    fun `deleteVirtualTransaction should fail when virtual transaction has merge children`() {
+        val parent = virtualTx(5L, BigDecimal("-100"))
+        val child1 = physicalTx(1L, BigDecimal("-60"), excluded = true, parentId = 5L)
+        val child2 = physicalTx(2L, BigDecimal("-40"), excluded = true, parentId = 5L)
+        whenever(transactionRepository.findByIdAndOrganizationId(5L, orgId)).thenReturn(parent)
+        whenever(subTransactionPort.findChildren(5L, orgId)).thenReturn(listOf(child1, child2))
+
+        assertThatThrownBy {
+            service.deleteVirtualTransaction(5L, orgId)
+        }.isInstanceOf(IllegalArgumentException::class.java)
+            .hasMessageContaining("merge children")
+
+        verify(subTransactionPort, never()).deleteVirtual(any(), any())
+    }
 }

@@ -58,4 +58,15 @@ interface SubTransactionPort {
         purpose: String?,
         organizationId: Long,
     ): Transaction
+
+    fun updateStandaloneVirtual(
+        transactionId: Long,
+        amount: BigDecimal,
+        accountIban: String,
+        accountingDate: LocalDate,
+        categoryId: Long?,
+        counterpartyName: String?,
+        purpose: String?,
+        organizationId: Long,
+    ): Transaction
 }

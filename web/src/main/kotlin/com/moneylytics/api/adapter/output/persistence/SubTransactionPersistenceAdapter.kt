@@ -163,6 +163,34 @@ class SubTransactionPersistenceAdapter(
         return jpaRepository.save(entity).toSimpleDomain()
     }
 
+    @Transactional
+    override fun updateStandaloneVirtual(
+        transactionId: Long,
+        amount: BigDecimal,
+        accountIban: String,
+        accountingDate: LocalDate,
+        categoryId: Long?,
+        counterpartyName: String?,
+        purpose: String?,
+        organizationId: Long,
+    ): Transaction {
+        val entity =
+            jpaRepository.findByIdAndOrganizationId(transactionId, organizationId)
+                ?: error("Transaction $transactionId not found")
+        val account =
+            accountJpaRepository.findByIbanAndOrganizationId(accountIban, organizationId)
+                ?: error("Account not found for IBAN $accountIban")
+        entity.amount = amount
+        entity.account = account
+        entity.bookingDate = accountingDate
+        entity.valueDate = accountingDate
+        entity.accountingDate = accountingDate
+        entity.category = if (categoryId != null) categoryJpaRepository.getReferenceById(categoryId) else null
+        entity.counterpartyName = counterpartyName?.takeIf { it.isNotBlank() }
+        entity.purpose = purpose?.takeIf { it.isNotBlank() }
+        return jpaRepository.save(entity).toSimpleDomain()
+    }
+
     private fun CategoryEntity.pathFromRoot(): List<String> {
         val path = ArrayDeque<String>()
         var node: CategoryEntity? = this
