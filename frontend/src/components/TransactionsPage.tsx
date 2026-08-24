@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { Link2, Wallet, Layers, Scissors, Package, MessageSquare, CalendarDays, CalendarClock } from 'lucide-react'
+import { Link2, Wallet, Layers, Scissors, Package, MessageSquare, CalendarDays, CalendarClock, Wand2 } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
@@ -1316,8 +1316,11 @@ const groupColorMap = useMemo(() => {
 
   function renderRowBadge(row: RowState): ReactNode {
     const tx = row.original
-    if (tx.isVirtual && tx.parentId == null)
-      return <span title={t('transactions.merge.virtualBadge')}><Package size={11} style={{ color: '#34d399' }} /></span>
+    if (tx.isVirtual && tx.parentId == null) {
+      if ((mergeChildrenMap.get(tx.id)?.length ?? 0) > 0)
+        return <span title={t('transactions.merge.virtualBadge')}><Package size={11} style={{ color: '#34d399' }} /></span>
+      return <span title={t('virtualTransaction.badge')}><Wand2 size={11} style={{ color: '#a78bfa' }} /></span>
+    }
     if (tx.isVirtual && tx.parentId != null)
       return <span title={t('transactions.split.virtualBadge')}><Scissors size={11} style={{ color: '#60a5fa' }} /></span>
     if (!tx.isVirtual && tx.excluded && tx.parentId != null)
