@@ -242,7 +242,7 @@ export default function App() {
   return (
     <SidebarProvider className="h-svh overflow-hidden">
       <Sidebar collapsible="icon">
-        <SidebarContent className="px-3">
+        <SidebarContent className="px-3 group-data-[collapsible=icon]:px-0">
           {NAV.map(({ sectionKey, items }, idx) => (
             <SidebarGroup key={sectionKey}>
               {idx > 0 && <SidebarSeparator />}
