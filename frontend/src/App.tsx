@@ -52,6 +52,7 @@ import {
   SidebarTrigger,
   SidebarInset,
   SidebarSeparator,
+  useSidebar,
 } from '@/components/ui/sidebar'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -121,6 +122,11 @@ const BASE_NAV: NavSection[] = [
 const ANALYTICS_TABS = new Set(
   BASE_NAV.find(s => s.sectionKey === 'analytics')?.items.map(([id]) => id) ?? [],
 )
+
+function SidebarNavLink(props: React.ComponentProps<typeof Link>) {
+  const { setOpenMobile } = useSidebar()
+  return <Link {...props} onClick={(e) => { setOpenMobile(false); props.onClick?.(e) }} />
+}
 
 export default function App() {
   const { username, isSystemAdmin, impersonating, deimpersonate, isLoading, logout, activeOrganization, organizations, activateOrganization, refreshAuth } = useAuth()
@@ -234,9 +240,9 @@ export default function App() {
   }
 
   return (
-    <SidebarProvider>
+    <SidebarProvider className="h-svh overflow-hidden">
       <Sidebar collapsible="icon">
-        <SidebarContent className="px-3">
+        <SidebarContent className="px-3 group-data-[collapsible=icon]:px-0">
           {NAV.map(({ sectionKey, items }, idx) => (
             <SidebarGroup key={sectionKey}>
               {idx > 0 && <SidebarSeparator />}
@@ -248,7 +254,7 @@ export default function App() {
                       isActive={tab === id}
                       tooltip={t(labelKey)}
                       render={
-                        <Link to={{ pathname: `/${id}`, search: location.search }} />
+                        <SidebarNavLink to={{ pathname: `/${id}`, search: location.search }} />
                       }
                     >
                       <Icon />
@@ -266,7 +272,7 @@ export default function App() {
               <SidebarMenuButton
                 isActive={tab === 'einstellungen'}
                 tooltip={t('nav.einstellungen')}
-                render={<Link to="/einstellungen" />}
+                render={<SidebarNavLink to="/einstellungen" />}
               >
                 <UserCog />
                 <span>{t('nav.einstellungen')}</span>

@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
-import { Link2, Wallet, Layers, Scissors, Package } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
+import { Link2, Wallet, Layers, Scissors, Package, MessageSquare, CalendarDays, CalendarClock } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import type { CategoryNode } from '../api/rawImport'
@@ -49,6 +49,7 @@ import {
 } from '../api/collections'
 import type { CollectionSummary } from '../api/transactions'
 import { updateUserSettings } from '../api/settings'
+import { useSidebar } from '@/components/ui/sidebar'
 
 function parseIso(s: string): Date | null {
   if (!s) return null
@@ -63,8 +64,8 @@ function isoDate(d: Date): string {
 const LINK_COLORS = ['#f59e0b', '#10b981', '#60a5fa', '#f472b6', '#a78bfa', '#fb923c']
 const BUDGET_COLORS = ['#34d399', '#818cf8', '#fb7185', '#fbbf24', '#38bdf8', '#a3e635']
 
-const DEFAULT_COLUMN_ORDER = ['date', 'account', 'amount', 'category', 'offsets', 'budget', 'collection', 'counterparty', 'purpose', 'comment'] as const
-type ColumnKey = typeof DEFAULT_COLUMN_ORDER[number]
+const DEFAULT_COLUMN_ORDER = ['date', 'account', 'amount', 'category', 'offsets', 'budget', 'collection', 'counterparty', 'comment'] as const
+type ColumnKey = typeof DEFAULT_COLUMN_ORDER[number] | 'purpose'
 
 function formatDate(iso: string): string {
   const [y, m, d] = iso.split('-')
@@ -108,6 +109,77 @@ type LinkingState =
   | { phase: 'group-select'; sourceIndex: number; targetIndex: number; myAmount: string; otherAmount: string; availableGroups: GroupSummary[] }
   | null
 
+function CommentInput({
+  value,
+  disabled,
+  placeholder,
+  className,
+  style,
+  onSave,
+}: {
+  value: string
+  disabled: boolean
+  placeholder: string
+  className: string
+  style?: React.CSSProperties
+  onSave: (v: string) => void
+}) {
+  const [localValue, setLocalValue] = useState(value)
+  const [open, setOpen] = useState(false)
+  const inputRef = useRef<HTMLInputElement>(null)
+  const skipSaveRef = useRef(false)
+  const hasComment = localValue.trim() !== ''
+  const showInput = hasComment || open
+
+  useEffect(() => setLocalValue(value), [value])
+
+  useEffect(() => {
+    if (open && inputRef.current) inputRef.current.focus()
+  }, [open])
+
+  if (!showInput) {
+    return (
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="rounded-sm border border-dashed border-border hover:border-foreground/40 text-muted-foreground/50 hover:text-muted-foreground p-1 transition-colors"
+        title={placeholder}
+      >
+        <MessageSquare size={12} />
+      </button>
+    )
+  }
+
+  return (
+    <Input
+      ref={inputRef}
+      className={className}
+      style={style}
+      type="text"
+      value={localValue}
+      placeholder={placeholder}
+      disabled={disabled}
+      onChange={e => setLocalValue(e.target.value)}
+      onBlur={() => {
+        if (!skipSaveRef.current) {
+          onSave(localValue)
+          if (!localValue.trim()) setOpen(false)
+        }
+        skipSaveRef.current = false
+      }}
+      onKeyDown={e => {
+        if (e.key === 'Enter') e.currentTarget.blur()
+        if (e.key === 'Escape') {
+          skipSaveRef.current = true
+          setLocalValue(value)
+          e.currentTarget.blur()
+          if (!value.trim()) setOpen(false)
+        }
+      }}
+    />
+  )
+}
+
 export default function TransactionsPage({
   from,
   to,
@@ -128,6 +200,7 @@ export default function TransactionsPage({
   onColumnOrderChange?: (order: string[]) => void
 }) {
   const { t } = useTranslation()
+  const { open: sidebarOpen, isMobile: sidebarIsMobile } = useSidebar()
   const location = useLocation()
   const [rows, setRows] = useState<RowState[]>([])
   const [page, setPage] = useState<PageState>({ phase: 'idle' })
@@ -151,6 +224,14 @@ export default function TransactionsPage({
   const [createVirtualOpen, setCreateVirtualOpen] = useState(false)
   const [budgetModal, setBudgetModal] = useState<{ rowIndex: number; budgetId: string; amount: string } | null>(null)
   const [collectionModal, setCollectionModal] = useState<{ rowIndex: number; collectionId: string; newName: string } | null>(null)
+
+  const [hasMore, setHasMore] = useState(false)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [serverCount, setServerCount] = useState<number | null>(null)
+  const [serverTotal, setServerTotal] = useState<number | null>(null)
+  const loadOffsetRef = useRef(0)
+  const sentinelRef = useRef<HTMLDivElement>(null)
+  const desktopSentinelRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     fetchBudgets().then(setBudgets).catch(() => {})
@@ -200,29 +281,54 @@ export default function TransactionsPage({
     return 'ALL'
   }
 
-  async function doLoad(categoryId?: number | null, uncategorized?: boolean, type?: 'ALL' | 'INCOME' | 'EXPENSES') {
-    setPage({ phase: 'loading' })
-    setLinkingState(null)
+  async function doLoad(reset: boolean = true, categoryId?: number | null, uncategorized?: boolean, type?: 'ALL' | 'INCOME' | 'EXPENSES') {
+    const offset = reset ? 0 : loadOffsetRef.current
+    if (reset) {
+      loadOffsetRef.current = 0
+      setPage({ phase: 'loading' })
+      setLinkingState(null)
+    } else {
+      setLoadingMore(true)
+    }
     try {
-      const data = await fetchAllTransactions(from, to, accountId, undefined, undefined, uncategorized, undefined, type ?? toApiType(filterType), undefined, undefined, categoryId ?? undefined)
-      setRows(
-        data.transactions.map(tx => ({
-          original: tx,
-          category: tx.category ?? '',
-          subcategory: tx.subcategory ?? '',
-          group: tx.group ?? '',
-          comment: tx.comment ?? '',
-          accountingDate: tx.accountingDate,
-          selected: false,
-          saving: false,
-          savingComment: false,
-          savingAccountingDate: false,
-          error: null,
-          budgetAssignments: (tx.budgetLinks ?? []).map(l => ({ linkId: l.linkId, budgetId: l.budgetId, budgetName: l.budgetName, amount: l.amount })),
-          collections: tx.collections ?? [],
-        })),
+      const usedCategoryId = reset ? (categoryId ?? undefined) : (filterCategoryId ?? undefined)
+      const usedUncategorized = reset ? uncategorized : (filterUncategorized || undefined)
+      const usedType = reset ? (type ?? toApiType(filterType)) : toApiType(filterType)
+      const data = await fetchAllTransactions(
+        from, to, accountId,
+        undefined, undefined,
+        usedUncategorized, undefined,
+        usedType,
+        undefined, undefined,
+        usedCategoryId,
+        50, offset,
       )
-      setPage({ phase: 'ready' })
+      const newRows = data.transactions.map(tx => ({
+        original: tx,
+        category: tx.category ?? '',
+        subcategory: tx.subcategory ?? '',
+        group: tx.group ?? '',
+        comment: tx.comment ?? '',
+        accountingDate: tx.accountingDate,
+        selected: false,
+        saving: false,
+        savingComment: false,
+        savingAccountingDate: false,
+        error: null,
+        budgetAssignments: (tx.budgetLinks ?? []).map(l => ({ linkId: l.linkId, budgetId: l.budgetId, budgetName: l.budgetName, amount: l.amount })),
+        collections: tx.collections ?? [],
+      }))
+      if (reset) {
+        setRows(newRows)
+        setPage({ phase: 'ready' })
+      } else {
+        setRows(prev => [...prev, ...newRows])
+        setLoadingMore(false)
+      }
+      setHasMore(data.hasMore)
+      setServerCount(data.totalCount)
+      setServerTotal(data.total)
+      loadOffsetRef.current = offset + data.transactions.length
 
       // Fetch parent transactions for virtual split children so they can be shown as ghost rows
       const parentIds = new Set<number>()
@@ -233,10 +339,14 @@ export default function TransactionsPage({
         const results = await Promise.allSettled(
           [...parentIds].map(id => fetchSubTransactionGroup(id).then(g => g ? ({ id, tx: g.parent }) : null)),
         )
-        const map = new Map<number, TransactionItem>()
-        results.forEach(r => { if (r.status === 'fulfilled' && r.value) map.set(r.value.id, r.value.tx) })
-        setParentTxMap(map)
-      } else {
+        const newMap = new Map<number, TransactionItem>()
+        results.forEach(r => { if (r.status === 'fulfilled' && r.value) newMap.set(r.value.id, r.value.tx) })
+        if (reset) {
+          setParentTxMap(newMap)
+        } else {
+          setParentTxMap(prev => new Map([...prev, ...newMap]))
+        }
+      } else if (reset) {
         setParentTxMap(new Map())
       }
 
@@ -248,14 +358,22 @@ export default function TransactionsPage({
         const results = await Promise.allSettled(
           mergeVirtualIds.map(id => fetchSubTransactionGroup(id).then(g => g ? ({ id, children: g.children }) : null)),
         )
-        const map = new Map<number, TransactionItem[]>()
-        results.forEach(r => { if (r.status === 'fulfilled' && r.value) map.set(r.value.id, r.value.children) })
-        setMergeChildrenMap(map)
-      } else {
+        const newMap = new Map<number, TransactionItem[]>()
+        results.forEach(r => { if (r.status === 'fulfilled' && r.value) newMap.set(r.value.id, r.value.children) })
+        if (reset) {
+          setMergeChildrenMap(newMap)
+        } else {
+          setMergeChildrenMap(prev => new Map([...prev, ...newMap]))
+        }
+      } else if (reset) {
         setMergeChildrenMap(new Map())
       }
     } catch (e) {
-      setPage({ phase: 'error', message: e instanceof Error ? e.message : t('common.requestFailed') })
+      if (reset) {
+        setPage({ phase: 'error', message: e instanceof Error ? e.message : t('common.requestFailed') })
+      } else {
+        setLoadingMore(false)
+      }
     }
   }
 
@@ -333,9 +451,9 @@ export default function TransactionsPage({
     }
   }
 
-  async function saveComment(index: number) {
+  async function saveComment(index: number, newValue: string) {
     const row = rows[index]
-    const newComment = row.comment.trim() || null
+    const newComment = newValue.trim() || null
     if (newComment === (row.original.comment ?? null)) return
     setRows(prev => {
       const next = [...prev]
@@ -573,6 +691,21 @@ export default function TransactionsPage({
     return result
   }, [filteredRows, parentTxMap, mergeChildrenMap])
 
+  useEffect(() => {
+    const targets = [sentinelRef.current, desktopSentinelRef.current].filter(Boolean) as HTMLDivElement[]
+    if (targets.length === 0) return
+    const obs = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting && hasMore && !loadingMore) {
+          void doLoad(false)
+        }
+      },
+      { rootMargin: '300px' },
+    )
+    targets.forEach(t => obs.observe(t))
+    return () => obs.disconnect()
+  }, [hasMore, loadingMore])
+
 const groupColorMap = useMemo(() => {
     const map = new Map<number, number>()
     let colorIdx = 0
@@ -602,6 +735,8 @@ const groupColorMap = useMemo(() => {
       classes.push('txnv-row--highlighted')
     if (row.selected)
       classes.push('txnv-row--selected')
+    if (row.original.isVirtual && row.original.parentId != null)
+      classes.push('txnv-row--split-child')
     return classes.join(' ')
   }
 
@@ -1207,7 +1342,12 @@ const groupColorMap = useMemo(() => {
       case 'category':
         return <TableCell key={col} className="px-3 py-1"><span className="ri-cat-input" style={{ display: 'inline-block' }}>{tx.category ?? ''}</span></TableCell>
       case 'counterparty':
-        return <TableCell key={col} className="txnv-cell-counterparty px-3 py-1"><span className="txnv-counterparty-name">{tx.counterpartyName ?? ''}</span></TableCell>
+        return (
+          <TableCell key={col} className="txnv-cell-counterparty px-3 py-1">
+            <span className="txnv-counterparty-name">{tx.counterpartyName ?? ''}</span>
+            {tx.purpose && <span className="txnv-counterparty-purpose" title={tx.purpose}>{tx.purpose}</span>}
+          </TableCell>
+        )
       case 'purpose':
         return <TableCell key={col} className="txnv-cell-purpose px-3 py-1"><span className="txnv-purpose-text">{tx.purpose ?? ''}</span></TableCell>
       case 'comment':
@@ -1266,22 +1406,29 @@ const groupColorMap = useMemo(() => {
             className="txn-cell-date px-3 py-1"
             style={rowLinkColor ? { boxShadow: `inset 3px 0 0 0 ${rowLinkColor}`, paddingLeft: '9px' } : undefined}
           >
-            <DatePicker
-              value={parseIso(row.accountingDate)}
-              onChange={d => {
-                if (!d) return
-                const iso = isoDate(d)
-                updateRow(i, 'accountingDate', iso)
-                saveAccountingDate(i, iso)
-              }}
-              disabled={row.savingAccountingDate}
-              className="h-auto border-0 border-b border-transparent hover:border-foreground/30 rounded-none px-0 text-xs font-mono hover:bg-transparent gap-1 min-w-0 w-[100px]"
-            />
-            {row.original.accountingDate !== row.original.bookingDate && (
-              <span className="txnv-booking-date-ref" title={t('transactions.bookingDateTitle')}>
-                {formatDate(row.original.bookingDate)}
-              </span>
-            )}
+            <div className="flex items-center gap-2 flex-wrap">
+              <div className="flex items-center gap-1">
+                {row.original.accountingDate !== row.original.bookingDate && <CalendarDays size={10} className="shrink-0 text-muted-foreground/50" />}
+                <DatePicker
+                  value={parseIso(row.accountingDate)}
+                  onChange={d => {
+                    if (!d) return
+                    const iso = isoDate(d)
+                    updateRow(i, 'accountingDate', iso)
+                    saveAccountingDate(i, iso)
+                  }}
+                  disabled={row.savingAccountingDate}
+                  className="h-auto border-0 border-b border-transparent hover:border-foreground/30 rounded-none px-0 text-xs font-mono hover:bg-transparent gap-1 min-w-0 w-[100px]"
+                  hideIcon
+                />
+              </div>
+              {row.original.accountingDate !== row.original.bookingDate && (
+                <div className="flex items-center gap-1 font-mono text-[10px] text-muted-foreground" title={t('transactions.bookingDateTitle')}>
+                  <CalendarClock size={10} className="shrink-0 opacity-50" />
+                  {formatDate(row.original.bookingDate)}
+                </div>
+              )}
+            </div>
           </TableCell>
         )
       case 'account':
@@ -1335,6 +1482,11 @@ const groupColorMap = useMemo(() => {
             >
               {row.original.counterpartyName ?? ''}
             </span>
+            {row.original.purpose && (
+              <span className="txnv-counterparty-purpose" title={row.original.purpose}>
+                {row.original.purpose}
+              </span>
+            )}
           </TableCell>
         )
       case 'purpose':
@@ -1346,20 +1498,244 @@ const groupColorMap = useMemo(() => {
       case 'comment':
         return (
           <TableCell key={col} className="txnv-cell-comment px-3 py-1">
-            <Input
-              className="h-6 w-full border-0 border-b border-transparent rounded-none bg-transparent px-0 focus-visible:ring-0 hover:border-foreground/30 focus-visible:border-foreground/60 shadow-none placeholder:italic placeholder:text-muted-foreground"
-              style={{ fontSize: 12 }}
-              type="text"
+            <CommentInput
               value={row.comment}
               placeholder={t('transactions.addComment')}
               disabled={row.savingComment}
-              onChange={e => updateRow(i, 'comment', e.target.value)}
-              onBlur={() => saveComment(i)}
-              onKeyDown={e => { if (e.key === 'Enter') { e.currentTarget.blur() } }}
+              className="h-6 w-full border-0 border-b border-transparent rounded-none bg-transparent px-0 focus-visible:ring-0 hover:border-foreground/30 focus-visible:border-foreground/60 shadow-none placeholder:italic placeholder:text-muted-foreground"
+              style={{ fontSize: 12 }}
+              onSave={(v) => saveComment(i, v)}
             />
           </TableCell>
         )
     }
+  }
+
+  function renderMobileCard(item: DisplayItem): ReactNode {
+    if (item.type === 'ghost') {
+      const tx = item.parentTx
+      return (
+        <div key={`ghost-${item.parentId}`} className="txn-card txn-card--ghost txn-card--split-ghost">
+          <div className="txn-card-header">
+            <div className="txn-card-header-left">
+              <span title={t('transactions.split.splitBadge')}><Scissors size={11} style={{ color: '#60a5fa' }} /></span>
+              <span className="txn-card-date">{formatDate(tx.accountingDate)}</span>
+            </div>
+            <span className={`txn-card-amount ${tx.amount < 0 ? 'negative' : 'positive'}`}>{EUR.format(tx.amount)}</span>
+          </div>
+          {(tx.counterpartyName ?? tx.purpose) && (
+            <div className="txn-card-body">
+              <div className="txn-card-counterparty">{tx.counterpartyName ?? tx.purpose}</div>
+              {tx.category && <div className="txn-card-purpose">{tx.category}{tx.subcategory ? ` › ${tx.subcategory}` : ''}</div>}
+            </div>
+          )}
+        </div>
+      )
+    }
+
+    if (item.type === 'merge-child-ghost') {
+      const tx = item.childTx
+      return (
+        <div key={`merge-child-${tx.id}`} className="txn-card txn-card--ghost txn-card--merge-ghost">
+          <div className="txn-card-header">
+            <div className="txn-card-header-left">
+              <span title={t('transactions.merge.mergedBadge')}><Package size={11} style={{ color: '#6ee7b7' }} /></span>
+              <span className="txn-card-date">{formatDate(tx.accountingDate)}</span>
+            </div>
+            <span className={`txn-card-amount ${tx.amount < 0 ? 'negative' : 'positive'}`}>{EUR.format(tx.amount)}</span>
+          </div>
+          {(tx.counterpartyName ?? tx.purpose) && (
+            <div className="txn-card-body">
+              <div className="txn-card-counterparty">{tx.counterpartyName ?? tx.purpose}</div>
+            </div>
+          )}
+        </div>
+      )
+    }
+
+    const { row, i } = item
+    const hasChips = row.budgetAssignments.length > 0 || row.collections.length > 0 || row.original.groups.length > 0
+
+    return (
+      <div key={row.original.id} className={`txn-card ${rowClassName(row, i)}`}>
+        <div className="txn-card-header">
+          <div className="txn-card-header-left">
+            <Checkbox checked={row.selected} onCheckedChange={() => toggleSelect(i)} />
+            {renderRowBadge(row)}
+            <div className="flex items-center gap-2 flex-wrap">
+              <div className="flex items-center gap-1">
+                {row.original.accountingDate !== row.original.bookingDate && <CalendarDays size={10} className="shrink-0 text-muted-foreground/50" />}
+                <DatePicker
+                  value={parseIso(row.accountingDate)}
+                  onChange={d => {
+                    if (!d) return
+                    const iso = isoDate(d)
+                    updateRow(i, 'accountingDate', iso)
+                    saveAccountingDate(i, iso)
+                  }}
+                  disabled={row.savingAccountingDate}
+                  className="h-auto border-0 border-b border-transparent hover:border-foreground/30 rounded-none px-0 text-xs font-mono hover:bg-transparent gap-1 min-w-0 w-[90px]"
+                  hideIcon
+                />
+              </div>
+              {row.original.accountingDate !== row.original.bookingDate && (
+                <div className="flex items-center gap-1 font-mono text-[10px] text-muted-foreground" title={t('transactions.bookingDateTitle')}>
+                  <CalendarClock size={10} className="shrink-0 opacity-50" />
+                  {formatDate(row.original.bookingDate)}
+                </div>
+              )}
+            </div>
+          </div>
+          <span className={`txn-card-amount font-mono ${row.original.amount < 0 ? 'negative' : 'positive'}`}>
+            {EUR.format(row.original.amount)}
+          </span>
+        </div>
+        <div className="txn-card-body">
+          {row.original.counterpartyName && (
+            <div className="txn-card-counterparty">{row.original.counterpartyName}</div>
+          )}
+          <CategoryPathInput
+            className="ri-cat-input"
+            value={row.original.categoryId ?? null}
+            onChange={id => { void handleCategoryChange(i, id) }}
+            tree={categories}
+            onCategoryCreated={onCategoryCreated}
+          />
+          {row.original.purpose && (
+            <div className="txn-card-purpose">{row.original.purpose}</div>
+          )}
+        </div>
+        {hasChips && (
+          <div className="txn-card-chips">
+            {row.original.groups.map(group => {
+              const colorIdx = groupColorMap.get(group.id)
+              const chipColor = colorIdx !== undefined ? LINK_COLORS[colorIdx] : undefined
+              return (
+                <span
+                  key={group.id}
+                  className="txnv-link-chip txnv-group-chip"
+                  style={chipColor ? { borderColor: chipColor } : undefined}
+                  onClick={() => {
+                    setGroupModal({ groupId: group.id, group: null })
+                    fetchLinkedGroup(group.id).then(g => setGroupModal({ groupId: group.id, group: g }))
+                  }}
+                >
+                  {group.name ?? `#${group.id}`}
+                  <button
+                    className="txnv-link-chip-remove"
+                    onClick={e => { e.stopPropagation(); void removeFromGroup(i, group.id) }}
+                    title={t('transactions.removeFromGroup')}
+                  >×</button>
+                </span>
+              )
+            })}
+            {row.budgetAssignments.map((a, bi) => (
+              <span
+                key={a.linkId}
+                className="txnv-budget-chip"
+                style={{ borderColor: BUDGET_COLORS[bi % BUDGET_COLORS.length] }}
+              >
+                <span className="txnv-budget-chip-name">{a.budgetName}</span>
+                {a.amount != null && <span className="txnv-budget-chip-amt">{EUR.format(a.amount)}</span>}
+                <button className="txnv-link-chip-remove" onClick={() => removeBudgetAssign(i, a.linkId)} title={t('budgets.remove')}>×</button>
+              </span>
+            ))}
+            {row.collections.map((c, ci) => (
+              <span
+                key={c.id}
+                className="txnv-budget-chip"
+                style={{ borderColor: BUDGET_COLORS[ci % BUDGET_COLORS.length] }}
+              >
+                <span className="txnv-budget-chip-name">{c.name}</span>
+                <button className="txnv-link-chip-remove" onClick={() => removeFromCollection(i, c.id)} title={t('collections.removeTransaction')}>×</button>
+              </span>
+            ))}
+          </div>
+        )}
+        <div className="txn-card-footer">
+          <CommentInput
+            value={row.comment}
+            placeholder={t('transactions.addComment')}
+            disabled={row.savingComment}
+            className="h-6 flex-1 min-w-0 border-0 border-b border-transparent rounded-none bg-transparent px-0 focus-visible:ring-0 hover:border-foreground/30 focus-visible:border-foreground/60 shadow-none placeholder:italic placeholder:text-muted-foreground"
+            style={{ fontSize: 12 }}
+            onSave={(v) => saveComment(i, v)}
+          />
+          {row.error && <span className="txnv-row-error">{row.error}</span>}
+          {row.saving && <span className="text-xs text-muted-foreground">…</span>}
+          {(() => {
+            const src = linkingState?.sourceIndex
+            const isSource = src === i
+            const isSelecting = linkingState?.phase === 'selecting'
+            if (isSource) {
+              return (
+                <>
+                  <span className="txnv-linking-badge">{t('transactions.linkingSelectingTarget')}</span>
+                  <button className="txnv-link-chip-remove" onClick={() => { setLinkingState(null); setLinkError(null) }}>×</button>
+                </>
+              )
+            }
+            if (isSelecting) {
+              return (
+                <Button
+                  variant="outline"
+                  size="xs"
+                  className="rounded-sm font-mono text-[10px] border-green-500/30 text-green-400 hover:border-green-400 hover:text-green-300 hover:bg-green-400/10"
+                  onClick={() => src !== undefined && setLinkingState({ phase: 'confirming', sourceIndex: src, targetIndex: i, myAmount: '', otherAmount: '' })}
+                >
+                  {t('transactions.linkHere')}
+                </Button>
+              )
+            }
+            return (
+              <Button
+                variant="ghost"
+                size="icon-xs"
+                className="rounded-sm border border-dashed border-border hover:border-foreground/40"
+                onClick={() => { setLinkError(null); setLinkingState({ phase: 'selecting', sourceIndex: i }) }}
+                title={t('transactions.linkToTransaction')}
+              >
+                <Link2 />
+              </Button>
+            )
+          })()}
+          {(() => {
+            const availableBudgets = budgets.filter(b => !row.budgetAssignments.some(a => a.budgetId === b.id))
+            return availableBudgets.length > 0 ? (
+              <Button
+                variant="ghost"
+                size="icon-xs"
+                className="rounded-sm border border-dashed border-border hover:border-foreground/40"
+                onClick={() => setBudgetModal({ rowIndex: i, budgetId: '', amount: '' })}
+                title={t('budgets.assign')}
+              >
+                <Wallet />
+              </Button>
+            ) : null
+          })()}
+          <Button
+            variant="ghost"
+            size="icon-xs"
+            className="rounded-sm border border-dashed border-border hover:border-foreground/40"
+            onClick={() => setCollectionModal({ rowIndex: i, collectionId: '', newName: '' })}
+            title={t('collections.addTransaction')}
+          >
+            <Layers />
+          </Button>
+          {!row.original.isVirtual && !row.original.excluded && row.original.parentId == null && (
+            <Button
+              variant="ghost"
+              size="icon-xs"
+              className="rounded-sm text-blue-400 border border-dashed border-blue-400/30 hover:bg-blue-400/10 hover:text-blue-300"
+              onClick={() => setSplitModalTx(row.original)}
+              title={t('transactions.split.button')}
+            >
+              ÷
+            </Button>
+          )}
+        </div>
+      </div>
+    )
   }
 
   const filterBtn = (active: boolean) =>
@@ -1380,7 +1756,7 @@ const groupColorMap = useMemo(() => {
             onChange={id => {
               setFilterCategoryId(id)
               setLinkingState(null)
-              if (page.phase === 'ready') doLoad(id)
+              if (page.phase === 'ready') doLoad(true, id)
             }}
             tree={categories}
             allowCreate={false}
@@ -1395,7 +1771,7 @@ const groupColorMap = useMemo(() => {
             setFilterUncategorized(next)
             setFilterCategoryId(null)
             setLinkingState(null)
-            if (page.phase === 'ready') doLoad(null, next || undefined)
+            if (page.phase === 'ready') doLoad(true, null, next || undefined)
           }}
         >
           {t('transactions.filterUncategorized')}
@@ -1407,7 +1783,7 @@ const groupColorMap = useMemo(() => {
               className={filterBtn(filterType === type)}
               onClick={() => {
                 setFilterType(type)
-                doLoad(filterCategoryId, filterUncategorized || undefined, toApiType(type))
+                doLoad(true, filterCategoryId, filterUncategorized || undefined, toApiType(type))
               }}
             >
               {t(`transactions.filter${type.charAt(0).toUpperCase() + type.slice(1)}`)}
@@ -1416,7 +1792,7 @@ const groupColorMap = useMemo(() => {
         </div>
         {page.phase === 'ready' && (
           <span className="ml-auto text-sm text-muted-foreground">
-            {t('transactions.count', { count: filteredRows.length })} · {EUR.format(filteredSum)}
+            {t('transactions.count', { count: serverCount ?? filteredRows.length })} · {EUR.format(serverTotal ?? filteredSum)}
           </span>
         )}
       </div>
@@ -1432,7 +1808,8 @@ const groupColorMap = useMemo(() => {
           <p className="hint">{t('common.noTransactions')}</p>
         )}
         {page.phase === 'ready' && filteredRows.length > 0 && (
-          <div className="rounded-lg border border-border overflow-auto flex-1 min-h-0">
+          <>
+          <div className="txn-table-wrapper rounded-lg border border-border overflow-auto flex-1 min-h-0">
           <table className="min-w-full caption-bottom text-xs border-collapse">
             <TableHeader className="[&_tr]:border-b">
               <TableRow className="hover:bg-transparent border-b">
@@ -1545,7 +1922,7 @@ const groupColorMap = useMemo(() => {
                         <Button
                           variant="ghost"
                           size="icon-xs"
-                          className="rounded-sm text-blue-400 border border-blue-400/30 hover:bg-blue-400/10 hover:text-blue-300"
+                          className="rounded-sm text-blue-400 border border-dashed border-blue-400/30 hover:bg-blue-400/10 hover:text-blue-300"
                           onClick={() => setSplitModalTx(row.original)}
                           title={t('transactions.split.button')}
                         >
@@ -1557,8 +1934,26 @@ const groupColorMap = useMemo(() => {
                 )
               })}
             </TableBody>
+            {loadingMore && (
+              <tfoot>
+                <tr>
+                  <td colSpan={100} className="py-3 text-center text-xs text-muted-foreground">
+                    {t('common.fetching')}
+                  </td>
+                </tr>
+              </tfoot>
+            )}
           </table>
+          <div ref={desktopSentinelRef} />
           </div>
+          <div className="txn-cards-mobile">
+            {displayItems.map(item => renderMobileCard(item))}
+            {loadingMore && (
+              <p className="hint loading">{t('common.fetching')}</p>
+            )}
+            <div ref={sentinelRef} />
+          </div>
+          </>
         )}
       </div>
 
@@ -1594,7 +1989,10 @@ const groupColorMap = useMemo(() => {
       )}
 
       {selectedCount > 0 && (
-        <div className="fixed bottom-0 left-0 right-0 flex items-center gap-2 border-t bg-popover px-4 py-3 shadow-lg z-40">
+        <div
+          className="fixed bottom-0 right-0 flex items-center gap-2 border-t bg-popover px-4 py-3 shadow-lg z-40 transition-[left] duration-200"
+          style={{ left: sidebarIsMobile ? 0 : sidebarOpen ? 'var(--sidebar-width)' : 'var(--sidebar-width-icon)' }}
+        >
           <span className="text-sm font-medium">{t('transactions.bulkSelected', { count: selectedCount })}</span>
           <CategoryPathInput
             className="ri-cat-input"
@@ -1611,15 +2009,13 @@ const groupColorMap = useMemo(() => {
           >
             {bulkApplying ? '…' : t('transactions.applyBulk')}
           </button>
-          {selectedCount >= 2 && (
-            <button
-              className="rounded-lg bg-green-600 text-white px-3 py-1.5 text-sm disabled:opacity-50"
-              onClick={() => { const selected = rows.filter(r => r.selected).map(r => r.original); setMergeModalTxs(selected) }}
-              disabled={bulkApplying}
-            >
-              {t('transactions.merge.button')}
-            </button>
-          )}
+          <button
+            className="rounded-lg bg-green-600 text-white px-3 py-1.5 text-sm disabled:opacity-50"
+            onClick={() => { const selected = rows.filter(r => r.selected).map(r => r.original); setMergeModalTxs(selected) }}
+            disabled={bulkApplying || selectedCount < 2}
+          >
+            {t('transactions.merge.button')}
+          </button>
           <button className="ml-auto rounded-lg border px-3 py-1.5 text-sm" onClick={clearSelection} disabled={bulkApplying}>✕</button>
         </div>
       )}

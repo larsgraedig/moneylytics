@@ -112,6 +112,8 @@ class TransactionQueryController(
         @RequestParam(required = false) excludeCollectionId: Long? = null,
         @RequestParam(required = false) excludeBudgetId: Long? = null,
         @RequestParam(required = false) categoryId: Long? = null,
+        @RequestParam(required = false) limit: Int? = null,
+        @RequestParam(required = false, defaultValue = "0") offset: Int = 0,
         @AuthenticationPrincipal principal: UserDetails,
         exchange: ServerWebExchange,
     ): TransactionListResponse {
@@ -135,12 +137,14 @@ class TransactionQueryController(
                     ),
                 )
             }
+        val sorted = transactions.sortedByDescending { it.accountingDate }
+        val total = sorted.sumOf { it.effectiveAmount() }
+        val page = if (limit != null) sorted.drop(offset).take(limit) else sorted.drop(offset)
         return TransactionListResponse(
-            transactions =
-                transactions
-                    .sortedByDescending { it.accountingDate }
-                    .map { it.toItem() },
-            total = transactions.sumOf { it.effectiveAmount() },
+            transactions = page.map { it.toItem() },
+            total = total,
+            totalCount = sorted.size,
+            hasMore = limit != null && offset + page.size < sorted.size,
         )
     }
 

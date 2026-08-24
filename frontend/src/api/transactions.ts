@@ -109,6 +109,8 @@ export interface SubTransactionGroupResponse {
 export interface TransactionListResponse {
   transactions: TransactionItem[]
   total: number
+  totalCount: number
+  hasMore: boolean
 }
 
 export async function fetchTransactionList(
@@ -143,6 +145,8 @@ export async function fetchAllTransactions(
   excludeCollectionId?: number,
   excludeBudgetId?: number,
   categoryId?: number,
+  limit?: number,
+  offset?: number,
 ): Promise<TransactionListResponse> {
   const params = new URLSearchParams({ from, to })
   if (accountId != null) params.set('accountId', String(accountId))
@@ -154,6 +158,8 @@ export async function fetchAllTransactions(
   if (excludeCollectionId != null) params.set('excludeCollectionId', String(excludeCollectionId))
   if (excludeBudgetId != null) params.set('excludeBudgetId', String(excludeBudgetId))
   if (categoryId != null) params.set('categoryId', String(categoryId))
+  if (limit != null) params.set('limit', String(limit))
+  if (offset != null && offset > 0) params.set('offset', String(offset))
   const res = await fetchWithUser(`/transactions/list?${params}`)
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
   return res.json() as Promise<TransactionListResponse>

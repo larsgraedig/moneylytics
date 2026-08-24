@@ -712,7 +712,7 @@ body {
 
 .ri-cat-input:focus {
   border-color: var(--accent-dim);
-  color: var(--accent);
+  color: var(--text);
 }
 
 .ri-cat-input::placeholder { color: var(--text-dim); }
@@ -1142,8 +1142,9 @@ body {
   padding-top: 2px;
   padding-bottom: 2px;
 }
-.txnv-row--merge-child-ghost td.txn-cell-date {
-  border-left: 2px solid rgba(52, 211, 153, 0.5);
+.txnv-row--merge-child-ghost > td:first-child {
+  border-left: 3px solid rgba(52, 211, 153, 0.6);
+  padding-left: 1.5rem;
 }
 .txnv-row--merge-child-ghost .txnv-cell-actions {
   pointer-events: auto;
@@ -1155,6 +1156,13 @@ body {
   font-size: 12px;
   color: inherit;
   cursor: default;
+}
+
+/* ── split child rows ───────────────────────── */
+
+.txnv-row--split-child > td:first-child {
+  border-left: 3px solid rgba(96, 165, 250, 0.6);
+  padding-left: 1.5rem;
 }
 
 /* ── offset / linking ─────────────────────── */
@@ -1484,6 +1492,138 @@ body {
 .txnv-cell-comment {
   min-width: 160px;
   max-width: 260px;
+}
+
+/* ── counterparty: purpose stacked below on desktop ─── */
+
+.txnv-counterparty-purpose {
+  display: block;
+  font-size: 11px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 220px;
+  margin-top: 1px;
+}
+
+/* ── mobile card view ────────────────────────────────── */
+
+.txn-table-wrapper { display: none !important; }
+
+.txn-cards-mobile {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+}
+
+.txn-card {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.txn-card--ghost {
+  opacity: 0.5;
+  border-style: dashed;
+  pointer-events: none;
+}
+
+.txn-card--split-ghost {
+  border-color: rgba(96, 165, 250, 0.3);
+}
+
+.txn-card.txnv-row--split-child {
+  border-left: 3px solid rgba(96, 165, 250, 0.6);
+  margin-left: 1.5rem;
+}
+
+.txn-card--merge-ghost {
+  border-left: 3px solid rgba(52, 211, 153, 0.6);
+  margin-left: 1.5rem;
+}
+
+.txn-card.txnv-row--dirty {
+  background: color-mix(in srgb, var(--accent-glow) 40%, transparent);
+}
+
+.txn-card.txnv-row--selected {
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  border-color: var(--accent-dim);
+}
+
+.txn-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.txn-card-header-left {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+}
+
+.txn-card-date {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.txn-card-amount {
+  font-family: var(--mono);
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.txn-card-amount.positive { color: #4ade80; }
+.txn-card-amount.negative { color: #f87171; }
+
+.txn-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.txn-card-counterparty {
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.txn-card-purpose {
+  font-size: 11px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.txn-card-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.txn-card-footer {
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 /* ── Cashflow drilldown group chips ───────────────────── */
