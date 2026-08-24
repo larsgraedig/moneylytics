@@ -143,6 +143,7 @@ class TransactionQueryController(
         return TransactionListResponse(
             transactions = page.map { it.toItem() },
             total = total,
+            totalCount = sorted.size,
             hasMore = limit != null && offset + page.size < sorted.size,
         )
     }

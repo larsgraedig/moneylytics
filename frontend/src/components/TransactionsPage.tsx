@@ -227,6 +227,8 @@ export default function TransactionsPage({
 
   const [hasMore, setHasMore] = useState(false)
   const [loadingMore, setLoadingMore] = useState(false)
+  const [serverCount, setServerCount] = useState<number | null>(null)
+  const [serverTotal, setServerTotal] = useState<number | null>(null)
   const loadOffsetRef = useRef(0)
   const sentinelRef = useRef<HTMLDivElement>(null)
   const desktopSentinelRef = useRef<HTMLDivElement>(null)
@@ -324,6 +326,8 @@ export default function TransactionsPage({
         setLoadingMore(false)
       }
       setHasMore(data.hasMore)
+      setServerCount(data.totalCount)
+      setServerTotal(data.total)
       loadOffsetRef.current = offset + data.transactions.length
 
       // Fetch parent transactions for virtual split children so they can be shown as ghost rows
@@ -1788,7 +1792,7 @@ const groupColorMap = useMemo(() => {
         </div>
         {page.phase === 'ready' && (
           <span className="ml-auto text-sm text-muted-foreground">
-            {t('transactions.count', { count: filteredRows.length })} · {EUR.format(filteredSum)}
+            {t('transactions.count', { count: serverCount ?? filteredRows.length })} · {EUR.format(serverTotal ?? filteredSum)}
           </span>
         )}
       </div>

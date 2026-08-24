@@ -14,6 +14,7 @@ data class BudgetLinkSummaryDto(
 data class TransactionListResponse(
     val transactions: List<TransactionItem>,
     val total: BigDecimal,
+    val totalCount: Int,
     val hasMore: Boolean,
 )
 

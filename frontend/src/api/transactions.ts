@@ -109,6 +109,7 @@ export interface SubTransactionGroupResponse {
 export interface TransactionListResponse {
   transactions: TransactionItem[]
   total: number
+  totalCount: number
   hasMore: boolean
 }
 
