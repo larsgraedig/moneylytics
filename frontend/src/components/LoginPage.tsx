@@ -1,11 +1,21 @@
-import { type FormEvent, useState } from 'react'
+import { type FormEvent, useEffect, useState } from 'react'
 import { useTranslation, Trans } from 'react-i18next'
+import { Info } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+
+type LocalUserInfo = {
+  username: string
+  password: string
+  tier: string
+  role: string
+  hasOrg: boolean
+}
 
 function GoogleIcon() {
   return (
@@ -29,6 +39,15 @@ export default function LoginPage() {
   const [confirmPassword, setConfirmPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [localUsers, setLocalUsers] = useState<LocalUserInfo[] | null>(null)
+  const [popoverOpen, setPopoverOpen] = useState(false)
+
+  useEffect(() => {
+    fetch('/auth/local-info')
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (Array.isArray(data)) setLocalUsers(data) })
+      .catch(() => {})
+  }, [])
 
   function switchMode(next: Mode) {
     setMode(next)
@@ -69,7 +88,49 @@ export default function LoginPage() {
 
   return (
     <div className="flex min-h-svh items-center justify-center bg-background p-4">
-      <Card className="w-full max-w-sm">
+      <Card className="relative w-full max-w-sm">
+        {localUsers && (
+          <div className="absolute right-3 top-3">
+            <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
+              <PopoverTrigger className="flex h-6 w-6 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-accent-foreground">
+                <Info className="h-4 w-4" />
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-3" align="end">
+                <p className="mb-2 text-xs font-medium">Demo users</p>
+                <table className="text-xs">
+                  <thead>
+                    <tr className="text-muted-foreground">
+                      <th className="pb-1 pr-3 text-left font-normal">Username</th>
+                      <th className="pb-1 pr-4 text-left font-normal">Password</th>
+                      <th className="pb-1 pr-3 text-left font-normal">Tier</th>
+                      <th className="pb-1 pr-3 text-left font-normal">Role</th>
+                      <th className="pb-1 text-left font-normal">Org</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {localUsers.map(u => (
+                      <tr
+                        key={u.username}
+                        className="cursor-pointer rounded hover:bg-accent"
+                        onClick={() => {
+                          setUsername(u.username)
+                          setPassword(u.password)
+                          setPopoverOpen(false)
+                        }}
+                      >
+                        <td className="py-0.5 pr-3 font-mono">{u.username}</td>
+                        <td className="py-0.5 pr-4 font-mono">{u.password}</td>
+                        <td className="py-0.5 pr-3">{u.tier}</td>
+                        <td className="py-0.5 pr-3">{u.role}</td>
+                        <td className="py-0.5 text-muted-foreground">{u.hasOrg ? '✓' : '–'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </PopoverContent>
+            </Popover>
+          </div>
+        )}
         <CardHeader className="pb-2">
           <p className="text-center text-xl font-semibold tracking-tight">moneylytics</p>
         </CardHeader>

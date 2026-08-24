@@ -40,7 +40,7 @@ class SecurityConfig(
                     .permitAll()
                     .pathMatchers("/webhooks/stripe")
                     .permitAll()
-                    .pathMatchers("/auth/login", "/auth/register", "/oauth2/authorization/**", "/login/oauth2/code/**")
+                    .pathMatchers("/auth/login", "/auth/register", "/auth/local-info", "/oauth2/authorization/**", "/login/oauth2/code/**")
                     .permitAll()
                     .pathMatchers("/admin/**")
                     .hasRole("SYSTEM_ADMIN")

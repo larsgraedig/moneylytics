@@ -18,9 +18,14 @@ import com.moneylytics.api.application.port.input.ManageTransactionOffsetUseCase
 import com.moneylytics.api.application.port.input.RefreshRecurringSeriesCommand
 import com.moneylytics.api.application.port.input.SaveThresholdUseCase
 import com.moneylytics.api.application.port.output.CategoryRepository
+import com.moneylytics.api.application.port.output.InvoiceRepository
+import com.moneylytics.api.application.port.output.StripeCustomerRepository
 import com.moneylytics.api.application.port.output.UserRepository
 import com.moneylytics.api.domain.Budget
 import com.moneylytics.api.domain.Collection
+import com.moneylytics.api.domain.Invoice
+import com.moneylytics.api.domain.StripeCustomer
+import com.moneylytics.api.domain.SubscriptionStatus
 import com.moneylytics.api.domain.Threshold
 import com.moneylytics.api.domain.ThresholdPeriod
 import com.moneylytics.api.domain.Transaction
@@ -31,6 +36,7 @@ import org.springframework.stereotype.Component
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.time.LocalDate
+import java.time.ZoneOffset
 import java.util.Random
 
 @Profile("local")
@@ -51,6 +57,8 @@ class LocalDataInitializer(
     private val detectRecurringSeriesUseCase: DetectRecurringSeriesUseCase,
     private val assignTierToUserUseCase: AssignTierToUserUseCase,
     private val createTierUseCase: CreateTierUseCase,
+    private val stripeCustomerRepository: StripeCustomerRepository,
+    private val invoiceRepository: InvoiceRepository,
 ) : ApplicationRunner {
     companion object {
         private const val MAIN_RNG_SEED = 42L
@@ -141,13 +149,29 @@ class LocalDataInitializer(
         createTierUseCase.createTier("Standard", "Standard Tier", isDefault = true)
         val proTier = createTierUseCase.createTier("Pro", "Pro Tier", isDefault = false)
 
-        val adminId = createUserUseCase.createUser("local-admin", "admin")
+        val adminId = createUserUseCase.createUser("admin@local.dev", "admin")
         userRepository.promoteToSystemAdmin(adminId)
         createOrganizationUseCase.createOrganization("Admin Org", adminId)
+        createUserUseCase.createUser("admin-no-org@local.dev", "admin").also { userRepository.promoteToSystemAdmin(it) }
 
-        val devUserId = createUserUseCase.createUser("local-dev-user", "local")
+        val devUserId = createUserUseCase.createUser("dev@local.dev", "local")
         assignTierToUserUseCase.assignTierToUser(devUserId, proTier.id)
         val orgId = createOrganizationUseCase.createOrganization("Persönlich", devUserId).id
+
+        val devNoOrgUserId = createUserUseCase.createUser("dev-no-org@local.dev", "local")
+        assignTierToUserUseCase.assignTierToUser(devNoOrgUserId, proTier.id)
+
+        createUserUseCase.createUser("standard@local.dev", "local")
+        createUserUseCase.createUser("standard-no-org@local.dev", "local")
+
+        val pastDueUserId = createUserUseCase.createUser("pastdue@local.dev", "local")
+        assignTierToUserUseCase.assignTierToUser(pastDueUserId, proTier.id)
+
+        val pastDueNoOrgUserId = createUserUseCase.createUser("pastdue-no-org@local.dev", "local")
+        assignTierToUserUseCase.assignTierToUser(pastDueNoOrgUserId, proTier.id)
+
+        val canceledUserId = createUserUseCase.createUser("canceled@local.dev", "local")
+        val canceledNoOrgUserId = createUserUseCase.createUser("canceled-no-org@local.dev", "local")
 
         importTransactionsUseCase.importTransactions(
             ImportTransactionsCommand(
@@ -165,6 +189,147 @@ class LocalDataInitializer(
         setupBudgets(orgId)
         setupCollections(orgId)
         detectRecurringSeriesUseCase.detect(RefreshRecurringSeriesCommand(organizationId = orgId))
+
+        setupActiveStripeUser(devUserId, idPrefix = "dev", invoicePrefix = "DEV")
+        setupActiveStripeUser(devNoOrgUserId, idPrefix = "dev-no-org", invoicePrefix = "DEV-NO-ORG")
+        setupPastDueStripeUser(pastDueUserId, idPrefix = "pdu", invoicePrefix = "PDU")
+        setupPastDueStripeUser(pastDueNoOrgUserId, idPrefix = "pdu-no-org", invoicePrefix = "PDU-NO-ORG")
+        setupCanceledStripeUser(canceledUserId, idPrefix = "can", invoicePrefix = "CAN")
+        setupCanceledStripeUser(canceledNoOrgUserId, idPrefix = "can-no-org", invoicePrefix = "CAN-NO-ORG")
+    }
+
+    private fun setupActiveStripeUser(
+        userId: Long,
+        idPrefix: String,
+        invoicePrefix: String,
+    ) {
+        val julFirst = LocalDate.of(2025, 7, 1).atStartOfDay().toEpochSecond(ZoneOffset.UTC)
+        val augFirst = LocalDate.of(2025, 8, 1).atStartOfDay().toEpochSecond(ZoneOffset.UTC)
+        stripeCustomerRepository.save(
+            StripeCustomer(
+                id = 0,
+                userId = userId,
+                stripeCustomerId = "cus_$idPrefix",
+                stripeSubscriptionId = "sub_$idPrefix",
+                subscriptionStatus = SubscriptionStatus.ACTIVE,
+                currentPeriodStart = julFirst,
+                currentPeriodEnd = augFirst,
+                priceId = "price_local_pro",
+            ),
+        )
+        (1..6).forEach { i ->
+            val start = LocalDate.of(2025, i, 1).atStartOfDay()
+            invoiceRepository.save(
+                Invoice(
+                    id = 0,
+                    userId = userId,
+                    stripeInvoiceId = "in_${idPrefix}_%03d".format(i),
+                    invoiceNumber = "INV-$invoicePrefix-%03d".format(i),
+                    amountCents = 999,
+                    currency = "eur",
+                    status = "paid",
+                    periodStart = start,
+                    periodEnd = start.plusMonths(1),
+                    hasPdf = false,
+                    issuedAt = start.plusMonths(1),
+                ),
+                pdfData = null,
+            )
+        }
+    }
+
+    private fun setupPastDueStripeUser(
+        userId: Long,
+        idPrefix: String,
+        invoicePrefix: String,
+    ) {
+        val julFirst = LocalDate.of(2025, 7, 1).atStartOfDay().toEpochSecond(ZoneOffset.UTC)
+        val augFirst = LocalDate.of(2025, 8, 1).atStartOfDay().toEpochSecond(ZoneOffset.UTC)
+        stripeCustomerRepository.save(
+            StripeCustomer(
+                id = 0,
+                userId = userId,
+                stripeCustomerId = "cus_$idPrefix",
+                stripeSubscriptionId = "sub_$idPrefix",
+                subscriptionStatus = SubscriptionStatus.PAST_DUE,
+                currentPeriodStart = julFirst,
+                currentPeriodEnd = augFirst,
+                priceId = "price_local_pro",
+            ),
+        )
+        (1..3).forEach { i ->
+            val start = LocalDate.of(2025, i, 1).atStartOfDay()
+            invoiceRepository.save(
+                Invoice(
+                    id = 0,
+                    userId = userId,
+                    stripeInvoiceId = "in_${idPrefix}_%03d".format(i),
+                    invoiceNumber = "INV-$invoicePrefix-%03d".format(i),
+                    amountCents = 999,
+                    currency = "eur",
+                    status = "paid",
+                    periodStart = start,
+                    periodEnd = start.plusMonths(1),
+                    hasPdf = false,
+                    issuedAt = start.plusMonths(1),
+                ),
+                pdfData = null,
+            )
+        }
+        invoiceRepository.save(
+            Invoice(
+                id = 0,
+                userId = userId,
+                stripeInvoiceId = "in_${idPrefix}_004",
+                invoiceNumber = "INV-$invoicePrefix-004",
+                amountCents = 999,
+                currency = "eur",
+                status = "open",
+                periodStart = LocalDate.of(2025, 7, 1).atStartOfDay(),
+                periodEnd = LocalDate.of(2025, 8, 1).atStartOfDay(),
+                hasPdf = false,
+                issuedAt = LocalDate.of(2025, 7, 1).atStartOfDay(),
+            ),
+            pdfData = null,
+        )
+    }
+
+    private fun setupCanceledStripeUser(
+        userId: Long,
+        idPrefix: String,
+        invoicePrefix: String,
+    ) {
+        stripeCustomerRepository.save(
+            StripeCustomer(
+                id = 0,
+                userId = userId,
+                stripeCustomerId = "cus_$idPrefix",
+                stripeSubscriptionId = "sub_$idPrefix",
+                subscriptionStatus = SubscriptionStatus.CANCELED,
+                currentPeriodStart = null,
+                currentPeriodEnd = null,
+                priceId = null,
+            ),
+        )
+        (1..2).forEach { i ->
+            val start = LocalDate.of(2025, i, 1).atStartOfDay()
+            invoiceRepository.save(
+                Invoice(
+                    id = 0,
+                    userId = userId,
+                    stripeInvoiceId = "in_${idPrefix}_%03d".format(i),
+                    invoiceNumber = "INV-$invoicePrefix-%03d".format(i),
+                    amountCents = 999,
+                    currency = "eur",
+                    status = "paid",
+                    periodStart = start,
+                    periodEnd = start.plusMonths(1),
+                    hasPdf = false,
+                    issuedAt = start.plusMonths(1),
+                ),
+                pdfData = null,
+            )
+        }
     }
 
     private fun setupOffsetLinks(orgId: Long) {
