@@ -115,7 +115,6 @@ function CommentInput({
   placeholder,
   className,
   style,
-  onChange,
   onSave,
 }: {
   value: string
@@ -123,13 +122,16 @@ function CommentInput({
   placeholder: string
   className: string
   style?: React.CSSProperties
-  onChange: (v: string) => void
-  onSave: () => void
+  onSave: (v: string) => void
 }) {
+  const [localValue, setLocalValue] = useState(value)
   const [open, setOpen] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
-  const hasComment = value.trim() !== ''
+  const skipSaveRef = useRef(false)
+  const hasComment = localValue.trim() !== ''
   const showInput = hasComment || open
+
+  useEffect(() => setLocalValue(value), [value])
 
   useEffect(() => {
     if (open && inputRef.current) inputRef.current.focus()
@@ -140,7 +142,7 @@ function CommentInput({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="text-muted-foreground/30 hover:text-muted-foreground/70 transition-colors"
+        className="rounded-sm border border-dashed border-border hover:border-foreground/40 text-muted-foreground/50 hover:text-muted-foreground p-1 transition-colors"
         title={placeholder}
       >
         <MessageSquare size={12} />
@@ -154,14 +156,25 @@ function CommentInput({
       className={className}
       style={style}
       type="text"
-      value={value}
+      value={localValue}
       placeholder={placeholder}
       disabled={disabled}
-      onChange={e => onChange(e.target.value)}
-      onBlur={() => { onSave(); if (!value.trim()) setOpen(false) }}
+      onChange={e => setLocalValue(e.target.value)}
+      onBlur={() => {
+        if (!skipSaveRef.current) {
+          onSave(localValue)
+          if (!localValue.trim()) setOpen(false)
+        }
+        skipSaveRef.current = false
+      }}
       onKeyDown={e => {
         if (e.key === 'Enter') e.currentTarget.blur()
-        if (e.key === 'Escape') { e.currentTarget.blur(); if (!value.trim()) setOpen(false) }
+        if (e.key === 'Escape') {
+          skipSaveRef.current = true
+          setLocalValue(value)
+          e.currentTarget.blur()
+          if (!value.trim()) setOpen(false)
+        }
       }}
     />
   )
@@ -398,9 +411,9 @@ export default function TransactionsPage({
     }
   }
 
-  async function saveComment(index: number) {
+  async function saveComment(index: number, newValue: string) {
     const row = rows[index]
-    const newComment = row.comment.trim() || null
+    const newComment = newValue.trim() || null
     if (newComment === (row.original.comment ?? null)) return
     setRows(prev => {
       const next = [...prev]
@@ -1451,8 +1464,7 @@ const groupColorMap = useMemo(() => {
               disabled={row.savingComment}
               className="h-6 w-full border-0 border-b border-transparent rounded-none bg-transparent px-0 focus-visible:ring-0 hover:border-foreground/30 focus-visible:border-foreground/60 shadow-none placeholder:italic placeholder:text-muted-foreground"
               style={{ fontSize: 12 }}
-              onChange={v => updateRow(i, 'comment', v)}
-              onSave={() => saveComment(i)}
+              onSave={(v) => saveComment(i, v)}
             />
           </TableCell>
         )
@@ -1607,8 +1619,7 @@ const groupColorMap = useMemo(() => {
             disabled={row.savingComment}
             className="h-6 flex-1 min-w-0 border-0 border-b border-transparent rounded-none bg-transparent px-0 focus-visible:ring-0 hover:border-foreground/30 focus-visible:border-foreground/60 shadow-none placeholder:italic placeholder:text-muted-foreground"
             style={{ fontSize: 12 }}
-            onChange={v => updateRow(i, 'comment', v)}
-            onSave={() => saveComment(i)}
+            onSave={(v) => saveComment(i, v)}
           />
           {row.error && <span className="txnv-row-error">{row.error}</span>}
           {row.saving && <span className="text-xs text-muted-foreground">…</span>}
@@ -1675,7 +1686,7 @@ const groupColorMap = useMemo(() => {
             <Button
               variant="ghost"
               size="icon-xs"
-              className="rounded-sm text-blue-400 border border-blue-400/30 hover:bg-blue-400/10 hover:text-blue-300"
+              className="rounded-sm text-blue-400 border border-dashed border-blue-400/30 hover:bg-blue-400/10 hover:text-blue-300"
               onClick={() => setSplitModalTx(row.original)}
               title={t('transactions.split.button')}
             >
@@ -1871,7 +1882,7 @@ const groupColorMap = useMemo(() => {
                         <Button
                           variant="ghost"
                           size="icon-xs"
-                          className="rounded-sm text-blue-400 border border-blue-400/30 hover:bg-blue-400/10 hover:text-blue-300"
+                          className="rounded-sm text-blue-400 border border-dashed border-blue-400/30 hover:bg-blue-400/10 hover:text-blue-300"
                           onClick={() => setSplitModalTx(row.original)}
                           title={t('transactions.split.button')}
                         >
