@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { Link2, Wallet, Layers, Scissors, Package } from 'lucide-react'
+import { Link2, Wallet, Layers, Scissors, Package, MessageSquare } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
@@ -49,6 +49,7 @@ import {
 } from '../api/collections'
 import type { CollectionSummary } from '../api/transactions'
 import { updateUserSettings } from '../api/settings'
+import { useSidebar } from '@/components/ui/sidebar'
 
 function parseIso(s: string): Date | null {
   if (!s) return null
@@ -108,6 +109,61 @@ type LinkingState =
   | { phase: 'group-select'; sourceIndex: number; targetIndex: number; myAmount: string; otherAmount: string; availableGroups: GroupSummary[] }
   | null
 
+function CommentInput({
+  value,
+  disabled,
+  placeholder,
+  className,
+  style,
+  onChange,
+  onSave,
+}: {
+  value: string
+  disabled: boolean
+  placeholder: string
+  className: string
+  style?: React.CSSProperties
+  onChange: (v: string) => void
+  onSave: () => void
+}) {
+  const [open, setOpen] = useState(false)
+  const inputRef = useRef<HTMLInputElement>(null)
+  const hasComment = value.trim() !== ''
+  const showInput = hasComment || open
+
+  useEffect(() => {
+    if (open && inputRef.current) inputRef.current.focus()
+  }, [open])
+
+  if (!showInput) {
+    return (
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="text-muted-foreground/30 hover:text-muted-foreground/70 transition-colors"
+        title={placeholder}
+      >
+        <MessageSquare size={12} />
+      </button>
+    )
+  }
+
+  return (
+    <Input
+      ref={inputRef}
+      className={className}
+      style={style}
+      type="text"
+      value={value}
+      placeholder={placeholder}
+      disabled={disabled}
+      onChange={e => onChange(e.target.value)}
+      onBlur={() => { onSave(); if (!value.trim()) setOpen(false) }}
+      onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur() }}
+    />
+  )
+}
+
 export default function TransactionsPage({
   from,
   to,
@@ -128,6 +184,7 @@ export default function TransactionsPage({
   onColumnOrderChange?: (order: string[]) => void
 }) {
   const { t } = useTranslation()
+  const { open: sidebarOpen, isMobile: sidebarIsMobile } = useSidebar()
   const location = useLocation()
   const [rows, setRows] = useState<RowState[]>([])
   const [page, setPage] = useState<PageState>({ phase: 'idle' })
@@ -622,6 +679,8 @@ const groupColorMap = useMemo(() => {
       classes.push('txnv-row--highlighted')
     if (row.selected)
       classes.push('txnv-row--selected')
+    if (row.original.isVirtual && row.original.parentId != null)
+      classes.push('txnv-row--split-child')
     return classes.join(' ')
   }
 
@@ -1376,16 +1435,14 @@ const groupColorMap = useMemo(() => {
       case 'comment':
         return (
           <TableCell key={col} className="txnv-cell-comment px-3 py-1">
-            <Input
-              className="h-6 w-full border-0 border-b border-transparent rounded-none bg-transparent px-0 focus-visible:ring-0 hover:border-foreground/30 focus-visible:border-foreground/60 shadow-none placeholder:italic placeholder:text-muted-foreground"
-              style={{ fontSize: 12 }}
-              type="text"
+            <CommentInput
               value={row.comment}
               placeholder={t('transactions.addComment')}
               disabled={row.savingComment}
-              onChange={e => updateRow(i, 'comment', e.target.value)}
-              onBlur={() => saveComment(i)}
-              onKeyDown={e => { if (e.key === 'Enter') { e.currentTarget.blur() } }}
+              className="h-6 w-full border-0 border-b border-transparent rounded-none bg-transparent px-0 focus-visible:ring-0 hover:border-foreground/30 focus-visible:border-foreground/60 shadow-none placeholder:italic placeholder:text-muted-foreground"
+              style={{ fontSize: 12 }}
+              onChange={v => updateRow(i, 'comment', v)}
+              onSave={() => saveComment(i)}
             />
           </TableCell>
         )
@@ -1522,16 +1579,14 @@ const groupColorMap = useMemo(() => {
           </div>
         )}
         <div className="txn-card-footer">
-          <Input
-            className="h-6 flex-1 min-w-0 border-0 border-b border-transparent rounded-none bg-transparent px-0 focus-visible:ring-0 hover:border-foreground/30 focus-visible:border-foreground/60 shadow-none placeholder:italic placeholder:text-muted-foreground"
-            style={{ fontSize: 12 }}
-            type="text"
+          <CommentInput
             value={row.comment}
             placeholder={t('transactions.addComment')}
             disabled={row.savingComment}
-            onChange={e => updateRow(i, 'comment', e.target.value)}
-            onBlur={() => saveComment(i)}
-            onKeyDown={e => { if (e.key === 'Enter') { e.currentTarget.blur() } }}
+            className="h-6 flex-1 min-w-0 border-0 border-b border-transparent rounded-none bg-transparent px-0 focus-visible:ring-0 hover:border-foreground/30 focus-visible:border-foreground/60 shadow-none placeholder:italic placeholder:text-muted-foreground"
+            style={{ fontSize: 12 }}
+            onChange={v => updateRow(i, 'comment', v)}
+            onSave={() => saveComment(i)}
           />
           {row.error && <span className="txnv-row-error">{row.error}</span>}
           {row.saving && <span className="text-xs text-muted-foreground">…</span>}
@@ -1848,7 +1903,10 @@ const groupColorMap = useMemo(() => {
       )}
 
       {selectedCount > 0 && (
-        <div className="fixed bottom-0 left-0 right-0 flex items-center gap-2 border-t bg-popover px-4 py-3 shadow-lg z-40">
+        <div
+          className="fixed bottom-0 right-0 flex items-center gap-2 border-t bg-popover px-4 py-3 shadow-lg z-40 transition-[left] duration-200"
+          style={{ left: sidebarIsMobile ? 0 : sidebarOpen ? 'var(--sidebar-width)' : 'var(--sidebar-width-icon)' }}
+        >
           <span className="text-sm font-medium">{t('transactions.bulkSelected', { count: selectedCount })}</span>
           <CategoryPathInput
             className="ri-cat-input"
@@ -1865,15 +1923,13 @@ const groupColorMap = useMemo(() => {
           >
             {bulkApplying ? '…' : t('transactions.applyBulk')}
           </button>
-          {selectedCount >= 2 && (
-            <button
-              className="rounded-lg bg-green-600 text-white px-3 py-1.5 text-sm disabled:opacity-50"
-              onClick={() => { const selected = rows.filter(r => r.selected).map(r => r.original); setMergeModalTxs(selected) }}
-              disabled={bulkApplying}
-            >
-              {t('transactions.merge.button')}
-            </button>
-          )}
+          <button
+            className="rounded-lg bg-green-600 text-white px-3 py-1.5 text-sm disabled:opacity-50"
+            onClick={() => { const selected = rows.filter(r => r.selected).map(r => r.original); setMergeModalTxs(selected) }}
+            disabled={bulkApplying || selectedCount < 2}
+          >
+            {t('transactions.merge.button')}
+          </button>
           <button className="ml-auto rounded-lg border px-3 py-1.5 text-sm" onClick={clearSelection} disabled={bulkApplying}>✕</button>
         </div>
       )}

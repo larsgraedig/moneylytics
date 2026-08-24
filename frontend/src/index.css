@@ -1158,6 +1158,13 @@ body {
   cursor: default;
 }
 
+/* ── split child rows ───────────────────────── */
+
+.txnv-row--split-child > td:first-child {
+  border-left: 3px solid rgba(96, 165, 250, 0.6);
+  padding-left: 1.5rem;
+}
+
 /* ── offset / linking ─────────────────────── */
 
 .txnv-row--linking-source {
@@ -1531,6 +1538,11 @@ body {
 
 .txn-card--split-ghost {
   border-color: rgba(96, 165, 250, 0.3);
+}
+
+.txn-card.txnv-row--split-child {
+  border-left: 3px solid rgba(96, 165, 250, 0.6);
+  margin-left: 1.5rem;
 }
 
 .txn-card--merge-ghost {
