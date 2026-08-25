@@ -571,15 +571,15 @@ button.ri-chip {
 }
 
 .ri-chip--dup {
-  color: var(--accent);
-  border-color: var(--accent-dim);
-  background: var(--accent-glow);
+  color: rgba(245, 158, 11, 0.5);
+  border-color: rgba(245, 158, 11, 0.2);
+  background: rgba(245, 158, 11, 0.03);
 }
 
 .ri-chip--inv {
-  color: var(--accent);
-  border-color: var(--accent-dim);
-  background: var(--accent-glow);
+  color: rgba(248, 113, 113, 0.5);
+  border-color: rgba(248, 113, 113, 0.2);
+  background: rgba(248, 113, 113, 0.03);
 }
 
 .ri-chip--inv.ri-chip--active {
