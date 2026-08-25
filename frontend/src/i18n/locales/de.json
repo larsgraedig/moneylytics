@@ -17,8 +17,7 @@
     "konten": "Konten",
     "budgets": "Budgets",
     "limits": "Limits",
-    "csv": "CSV",
-    "camt": "CAMT",
+    "import": "Importieren",
     "importe": "Import-Verlauf",
     "wiederkehrer": "Wiederkehrend",
     "kategorien": "Kategorien",
@@ -908,6 +907,8 @@
       "new": "{{count}} neu",
       "duplicate": "{{count}} Duplikate",
       "excluded": "{{count}} ausgeschlossen"
-    }
+    },
+    "errorCamtType": "Nur XML-Dateien für CAMT erlaubt",
+    "errorCsvType": "Nur CSV- oder TXT-Dateien erlaubt"
   }
 }
