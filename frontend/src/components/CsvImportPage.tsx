@@ -2,7 +2,6 @@ import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   detectCsvFormat,
-  importGenericCsv,
   importGenericRows,
   previewGenericCsv,
   type AmountFormat,
@@ -30,7 +29,6 @@ type Phase =
   | { step: 'mapping'; detection: CsvDetectionResult; mapping: CsvMapping; file: File }
   | { step: 'previewing'; detection: CsvDetectionResult; mapping: CsvMapping; file: File }
   | { step: 'categorizing'; rows: GenericCsvPreviewRow[]; detection: CsvDetectionResult; mapping: CsvMapping; file: File }
-  | { step: 'importing'; detection: CsvDetectionResult; mapping: CsvMapping; file: File }
   | { step: 'importing-rows'; rows: GenericCsvPreviewRow[]; detection: CsvDetectionResult; mapping: CsvMapping; file: File }
   | { step: 'success'; count: number }
   | { step: 'error'; message: string }
@@ -293,9 +291,6 @@ function MappingView({
   )
 }
 
-const needsPreview = (_m: CsvMapping, rows: GenericCsvPreviewRow[]) =>
-  rows.some(r => r.unknownAccount && r.status !== 'DUPLICATE')
-
 export default function CsvImportPage({ categories }: { categories: CategoryNode[] }) {
   const { t } = useTranslation()
   const [phase, setPhase] = useState<Phase>({ step: 'upload' })
@@ -318,28 +313,22 @@ export default function CsvImportPage({ categories }: { categories: CategoryNode
     setPhase({ step: 'previewing', detection, mapping, file })
     try {
       const rows = await previewGenericCsv(file, mapping)
-      if (needsPreview(mapping, rows)) {
-        const initialDecisions: Record<number, RowDecision> = {}
-        rows.forEach(r => {
-          if (r.status === 'DUPLICATE') {
-            initialDecisions[r.rowIndex] = { action: 'skip' }
-          } else {
-            const csvMappedId = findCategoryByPath(categories, [
-              r.mappedCategory,
-              r.mappedCategoryGroup,
-              r.mappedSubcategory,
-            ].filter((s): s is string => s != null))
-            const preselectedId = csvMappedId ?? r.suggestedCategoryId ?? null
-            initialDecisions[r.rowIndex] = { action: 'import', categoryId: preselectedId }
-          }
-        })
-        setDecisions(initialDecisions)
-        setPhase({ step: 'categorizing', rows, detection, mapping, file })
-      } else {
-        setPhase({ step: 'importing', detection, mapping, file })
-        const count = await importGenericCsv(file, mapping)
-        setPhase({ step: 'success', count })
-      }
+      const initialDecisions: Record<number, RowDecision> = {}
+      rows.forEach(r => {
+        if (r.status === 'DUPLICATE') {
+          initialDecisions[r.rowIndex] = { action: 'skip' }
+        } else {
+          const csvMappedId = findCategoryByPath(categories, [
+            r.mappedCategory,
+            r.mappedCategoryGroup,
+            r.mappedSubcategory,
+          ].filter((s): s is string => s != null))
+          const preselectedId = csvMappedId ?? r.suggestedCategoryId ?? null
+          initialDecisions[r.rowIndex] = { action: 'import', categoryId: preselectedId }
+        }
+      })
+      setDecisions(initialDecisions)
+      setPhase({ step: 'categorizing', rows, detection, mapping, file })
     } catch (e) {
       setPhase({ step: 'error', message: e instanceof Error ? e.message : 'Preview failed' })
     }
@@ -400,7 +389,7 @@ export default function CsvImportPage({ categories }: { categories: CategoryNode
     )
   }
 
-  if (phase.step === 'mapping' || phase.step === 'importing' || phase.step === 'previewing') {
+  if (phase.step === 'mapping' || phase.step === 'previewing') {
     const { detection, mapping, file } = phase
     return (
       <MappingView
@@ -410,7 +399,7 @@ export default function CsvImportPage({ categories }: { categories: CategoryNode
         onChange={m => setPhase({ step: 'mapping', detection, mapping: m, file })}
         onConfirm={() => handleConfirm(detection, mapping, file)}
         onCancel={() => setPhase({ step: 'upload' })}
-        importing={phase.step === 'importing' || phase.step === 'previewing'}
+        importing={phase.step === 'previewing'}
       />
     )
   }
