@@ -2,6 +2,7 @@ package com.moneylytics.api.adapter.output.persistence
 
 import com.moneylytics.api.application.port.input.ImportTransactionsCommand
 import com.moneylytics.api.application.service.TransactionImportService
+import com.moneylytics.api.domain.ImportFileType
 import com.moneylytics.api.domain.Transaction
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
@@ -23,9 +24,9 @@ class TransactionImportIT : AbstractServiceIT() {
     fun `should save all transactions and return count for fresh import`() {
         val command = command(tx("-100"), tx("-200"), tx("-50"))
 
-        val count = importService.importTransactions(command)
+        val result = importService.importTransactions(command)
 
-        assertThat(count).isEqualTo(3)
+        assertThat(result.importedCount).isEqualTo(3)
         flushAndClear()
         assertThat(transactionRepo.findByOrganizationIdAndAccountingDateBetweenAndExcludedFalse(organizationId, date, date)).hasSize(3)
     }
@@ -36,9 +37,9 @@ class TransactionImportIT : AbstractServiceIT() {
         importService.importTransactions(command)
         flushAndClear()
 
-        val count = importService.importTransactions(command)
+        val result = importService.importTransactions(command)
 
-        assertThat(count).isEqualTo(0)
+        assertThat(result.importedCount).isEqualTo(0)
         assertThat(transactionRepo.findByOrganizationIdAndAccountingDateBetweenAndExcludedFalse(organizationId, date, date)).hasSize(3)
     }
 
@@ -48,9 +49,9 @@ class TransactionImportIT : AbstractServiceIT() {
         importService.importTransactions(command(existing))
         flushAndClear()
 
-        val count = importService.importTransactions(command(existing, tx("-200"), tx("-50")))
+        val result = importService.importTransactions(command(existing, tx("-200"), tx("-50")))
 
-        assertThat(count).isEqualTo(2)
+        assertThat(result.importedCount).isEqualTo(2)
         assertThat(transactionRepo.findByOrganizationIdAndAccountingDateBetweenAndExcludedFalse(organizationId, date, date)).hasSize(3)
     }
 
@@ -58,10 +59,10 @@ class TransactionImportIT : AbstractServiceIT() {
     fun `should save identical transactions in the same batch with different fingerprints`() {
         val sameTx = tx("-100")
 
-        val count = importService.importTransactions(command(sameTx, sameTx))
+        val result = importService.importTransactions(command(sameTx, sameTx))
 
         // Both get unique fingerprints (second gets raw:1 suffix) → both saved
-        assertThat(count).isEqualTo(2)
+        assertThat(result.importedCount).isEqualTo(2)
     }
 
     @Test
@@ -84,12 +85,31 @@ class TransactionImportIT : AbstractServiceIT() {
                     ),
                 accountNames = mapOf(newIban to "New Account"),
                 organizationId = organizationId,
+                filename = "test.csv",
+                checksum = "test",
+                fileType = ImportFileType.CSV,
             )
 
         importService.importTransactions(command)
         flushAndClear()
 
         assertThat(accountRepo2.findByIbanAndOrganizationId(newIban, organizationId)).isNotNull
+    }
+
+    @Test
+    fun `should reactivate excluded transactions when reimporting after rejection`() {
+        val first = importService.importTransactions(command(tx("-100"), tx("-200")))
+        flushAndClear()
+        transactionRepo.excludeByImportId(first.importId, organizationId)
+        flushAndClear()
+
+        val result = importService.importTransactions(command(tx("-100"), tx("-200")))
+        flushAndClear()
+
+        assertThat(result.importedCount).isEqualTo(2)
+        val active = transactionRepo.findByOrganizationIdAndAccountingDateBetweenAndExcludedFalse(organizationId, date, date)
+        assertThat(active).hasSize(2)
+        active.forEach { assertThat(it.importId).isEqualTo(result.importId) }
     }
 
     @Test
@@ -122,5 +142,8 @@ class TransactionImportIT : AbstractServiceIT() {
             transactions = transactions.toList(),
             accountNames = mapOf(importIban to "Import Account"),
             organizationId = organizationId,
+            filename = "test.csv",
+            checksum = "test",
+            fileType = ImportFileType.CSV,
         )
 }

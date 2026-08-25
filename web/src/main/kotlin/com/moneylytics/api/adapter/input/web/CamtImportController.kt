@@ -11,6 +11,7 @@ import com.moneylytics.api.application.port.input.UpdateIgnoredTransactionsUseCa
 import com.moneylytics.api.application.port.output.CategoryClassifier
 import com.moneylytics.api.domain.AccountBalance
 import com.moneylytics.api.domain.CategoryClassifierFeatures
+import com.moneylytics.api.domain.ImportFileType
 import com.moneylytics.api.domain.Transaction
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.reactive.awaitSingle
@@ -202,7 +203,15 @@ class CamtImportController(
                 AccountBalance(amount = b.amount, date = LocalDate.parse(b.date))
             }
 
-        val importedCount =
+        val checksum =
+            sha256(
+                safeRequest.toImport
+                    .map { it.fingerprint }
+                    .sorted()
+                    .joinToString(",")
+                    .toByteArray(Charsets.UTF_8),
+            )
+        val importResult =
             withContext(Dispatchers.IO) {
                 importTransactionsUseCase.importTransactions(
                     ImportTransactionsCommand(
@@ -210,6 +219,9 @@ class CamtImportController(
                         accountNames = safeRequest.accountNames,
                         accountBalances = accountBalances,
                         organizationId = organizationId,
+                        filename = "camt-import",
+                        checksum = checksum,
+                        fileType = ImportFileType.CAMT,
                     ),
                 )
             }
@@ -226,7 +238,7 @@ class CamtImportController(
             }
         }
 
-        return ResponseEntity.ok(ImportSuccessResponse(importedCount = importedCount))
+        return ResponseEntity.ok(ImportSuccessResponse(importedCount = importResult.importedCount, importId = importResult.importId))
     }
 
     private fun ParsedRawRow.toPreviewRow(

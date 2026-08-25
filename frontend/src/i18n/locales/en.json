@@ -19,6 +19,7 @@
     "limits": "Limits",
     "csv": "CSV",
     "camt": "CAMT",
+    "importe": "Import History",
     "wiederkehrer": "Recurring",
     "kategorien": "Categories",
     "admin": "Technical",
@@ -849,5 +850,34 @@
     "errorNoDate": "No date provided.",
     "errorNoAmount": "Please enter a valid amount.",
     "errorSave": "Error creating the entry."
+  },
+  "imports": {
+    "title": "Import History",
+    "empty": "No imports yet.",
+    "loadError": "Could not load imports.",
+    "columns": {
+      "date": "Date",
+      "filename": "Filename",
+      "fileType": "Type",
+      "checksum": "Checksum",
+      "count": "Transactions",
+      "status": "Status"
+    },
+    "status": {
+      "ACTIVE": "Active",
+      "REJECTED": "Rejected"
+    },
+    "reject": {
+      "button": "Reject",
+      "confirmTitle": "Reject import?",
+      "confirmBody": "All {{count}} transactions from «{{filename}}» will be marked as excluded. This cannot be undone.",
+      "confirm": "Reject",
+      "cancel": "Cancel",
+      "blockedTitle": "Cannot reject",
+      "blockedBody": "The following transactions are part of other groups and cannot be rejected:",
+      "blockedTransaction": "Transaction",
+      "blockedReasons": "Reasons",
+      "close": "Close"
+    }
   }
 }

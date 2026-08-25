@@ -4,7 +4,7 @@ import type { LucideIcon } from 'lucide-react'
 import {
   Workflow, TrendingUp, TrendingDown, PieChart, BarChart2,
   List, Landmark, Wallet, Gauge,
-  FileSpreadsheet, FileCode, Link2, FolderOpen, Repeat, Wrench, Building2, Tags,
+  FileSpreadsheet, FileCode, Link2, FolderOpen, Repeat, Wrench, Building2, Tags, History,
   LogOut, UserCog,
 } from 'lucide-react'
 import { getPresetRange, detectPreset, PRESETS, type Preset } from './utils/datePresets'
@@ -25,6 +25,7 @@ import LinkedTransactionsPage from './components/LinkedTransactionsPage'
 import CategoriesPage from './components/CategoriesPage'
 import CollectionsPage from './components/CollectionsPage'
 import RecurringPage from './components/RecurringPage'
+import ImportsPage from './components/ImportsPage'
 import AdminPage from './components/AdminPage'
 import OrgsPage from './components/OrgsPage'
 import LoginPage from './components/LoginPage'
@@ -73,9 +74,9 @@ function parseIso(iso: string): Date {
 const today = isoDate(new Date())
 const firstOfYear = isoDate(new Date(new Date().getFullYear(), 0, 1))
 
-type Tab = 'sankey' | 'trends' | 'breakdown' | 'cashflow' | 'burnrate' | 'kontoauszug' | 'verknuepfungen' | 'sammlungen' | 'konten' | 'budgets' | 'limits' | 'csv' | 'camt' | 'wiederkehrer' | 'kategorien' | 'admin' | 'orgs' | 'einstellungen'
+type Tab = 'sankey' | 'trends' | 'breakdown' | 'cashflow' | 'burnrate' | 'kontoauszug' | 'verknuepfungen' | 'sammlungen' | 'konten' | 'budgets' | 'limits' | 'csv' | 'camt' | 'importe' | 'wiederkehrer' | 'kategorien' | 'admin' | 'orgs' | 'einstellungen'
 
-const VALID_TABS = new Set<string>(['sankey', 'trends', 'breakdown', 'cashflow', 'burnrate', 'kontoauszug', 'verknuepfungen', 'sammlungen', 'konten', 'budgets', 'limits', 'csv', 'camt', 'wiederkehrer', 'kategorien', 'admin', 'orgs', 'einstellungen'])
+const VALID_TABS = new Set<string>(['sankey', 'trends', 'breakdown', 'cashflow', 'burnrate', 'kontoauszug', 'verknuepfungen', 'sammlungen', 'konten', 'budgets', 'limits', 'csv', 'camt', 'importe', 'wiederkehrer', 'kategorien', 'admin', 'orgs', 'einstellungen'])
 
 type ViewState =
   | { phase: 'idle' }
@@ -115,6 +116,7 @@ const BASE_NAV: NavSection[] = [
     items: [
       ['csv', 'nav.csv', FileSpreadsheet],
       ['camt', 'nav.camt', FileCode],
+      ['importe', 'nav.importe', History],
     ],
   },
 ]
@@ -418,6 +420,7 @@ export default function App() {
           {tab === 'konten' && <AccountsPage key={`${username}-${activeOrganization?.id}`} />}
           {tab === 'csv' && <CsvImportPage key={`${username}-${activeOrganization?.id}`} categories={categories} />}
           {tab === 'camt' && <CamtImportPage key={`${username}-${activeOrganization?.id}`} categories={categories} />}
+          {tab === 'importe' && <ImportsPage key={`${username}-${activeOrganization?.id}`} />}
           {tab === 'wiederkehrer' && <RecurringPage key={`${username}-${activeOrganization?.id}`} />}
           {tab === 'kategorien' && <CategoriesPage key={`${username}-${activeOrganization?.id}`} categories={categories} from={from} to={to} accountId={accountId} onCategoryDeleted={() => { fetchCategories().then(cats => setCategories(cats.categories)).catch(() => {}) }} onCategoryMoved={() => { fetchCategories().then(cats => setCategories(cats.categories)).catch(() => {}) }} onCategoryRenamed={() => { fetchCategories().then(cats => setCategories(cats.categories)).catch(() => {}) }} onCategoryMerged={() => { fetchCategories().then(cats => setCategories(cats.categories)).catch(() => {}) }} onCategoryCreated={() => { fetchCategories().then(cats => setCategories(cats.categories)).catch(() => {}) }} />}
           {tab === 'orgs' && isOrgAdminOrOwner && <OrgsPage key={activeOrganization?.id} />}

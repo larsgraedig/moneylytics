@@ -50,6 +50,8 @@ class TransactionEntity(
     val isVirtual: Boolean = false,
     @Column(nullable = false)
     var excluded: Boolean = false,
+    @Column(nullable = true, name = "import_id")
+    var importId: Long? = null,
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     var id: Long? = null,

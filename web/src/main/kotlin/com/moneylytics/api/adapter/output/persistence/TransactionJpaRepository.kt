@@ -61,6 +61,41 @@ interface TransactionJpaRepository : JpaRepository<TransactionEntity, Long> {
         @Param("organizationId") organizationId: Long,
     ): List<String>
 
+    @Modifying
+    @Query("UPDATE TransactionEntity t SET t.importId = :importId WHERE t.id IN :ids")
+    fun setImportId(
+        @Param("importId") importId: Long,
+        @Param("ids") ids: Collection<Long>,
+    )
+
+    @Query(
+        "SELECT t.id FROM TransactionEntity t WHERE t.fingerprint IN :fingerprints AND t.organization.id = :organizationId AND t.excluded = true",
+    )
+    fun findExcludedIdsByFingerprints(
+        @Param("fingerprints") fingerprints: Collection<String>,
+        @Param("organizationId") organizationId: Long,
+    ): List<Long>
+
+    @Modifying
+    @Query("UPDATE TransactionEntity t SET t.excluded = false WHERE t.id IN :ids")
+    fun reactivateByIds(
+        @Param("ids") ids: Collection<Long>,
+    )
+
+    @Modifying
+    @Query("UPDATE TransactionEntity t SET t.excluded = true WHERE t.importId = :importId AND t.organization.id = :orgId")
+    fun excludeByImportId(
+        @Param("importId") importId: Long,
+        @Param("orgId") orgId: Long,
+    )
+
+    @Query("SELECT t.id FROM TransactionEntity t WHERE t.importId = :importId")
+    fun findIdsByImportId(
+        @Param("importId") importId: Long,
+    ): List<Long>
+
+    fun existsByParentIdAndExcludedFalse(parentId: Long): Boolean
+
     @Query("SELECT t FROM TransactionEntity t WHERE t.id IN :ids AND t.organization.id = :organizationId")
     fun findByIdsAndOrganizationId(
         @Param("ids") ids: Collection<Long>,

@@ -4,6 +4,7 @@ import com.moneylytics.api.adapter.output.persistence.CsvProfilePersistenceAdapt
 import com.moneylytics.api.application.port.input.CheckDuplicatesUseCase
 import com.moneylytics.api.application.port.input.EnrichTransactionUseCase
 import com.moneylytics.api.application.port.input.GetAccountsUseCase
+import com.moneylytics.api.application.port.input.ImportTransactionsResult
 import com.moneylytics.api.application.port.input.ImportTransactionsUseCase
 import com.moneylytics.api.application.port.input.ResolveOrganizationUseCase
 import com.moneylytics.api.application.port.output.CategoryClassifier
@@ -55,7 +56,7 @@ class GenericCsvControllerTest {
     fun `should import all rows when knownIbans is empty`() =
         runTest {
             whenever(getAccountsUseCase.getAccounts(organizationId)).thenReturn(emptyList())
-            whenever(importTransactionsUseCase.importTransactions(any())).thenReturn(3)
+            whenever(importTransactionsUseCase.importTransactions(any())).thenReturn(ImportTransactionsResult(3, 1L))
 
             val request =
                 GenericCsvImportRequest(
@@ -78,7 +79,7 @@ class GenericCsvControllerTest {
             whenever(getAccountsUseCase.getAccounts(organizationId)).thenReturn(
                 listOf(Account(iban = "DE01", name = "Giro")),
             )
-            whenever(importTransactionsUseCase.importTransactions(any())).thenReturn(1)
+            whenever(importTransactionsUseCase.importTransactions(any())).thenReturn(ImportTransactionsResult(1, 1L))
 
             val request =
                 GenericCsvImportRequest(
@@ -100,7 +101,7 @@ class GenericCsvControllerTest {
     fun `should use iban as key and value in accountNames map for importRows`() =
         runTest {
             whenever(getAccountsUseCase.getAccounts(organizationId)).thenReturn(emptyList())
-            whenever(importTransactionsUseCase.importTransactions(any())).thenReturn(1)
+            whenever(importTransactionsUseCase.importTransactions(any())).thenReturn(ImportTransactionsResult(1, 1L))
 
             controller.importRows(GenericCsvImportRequest(toImport = listOf(row("DE01"))), principal, exchange)
 
@@ -113,7 +114,7 @@ class GenericCsvControllerTest {
     fun `should call enrichByFingerprint for each toEnrich entry in importRows`() =
         runTest {
             whenever(getAccountsUseCase.getAccounts(organizationId)).thenReturn(emptyList())
-            whenever(importTransactionsUseCase.importTransactions(any())).thenReturn(0)
+            whenever(importTransactionsUseCase.importTransactions(any())).thenReturn(ImportTransactionsResult(0, 1L))
 
             val request =
                 GenericCsvImportRequest(

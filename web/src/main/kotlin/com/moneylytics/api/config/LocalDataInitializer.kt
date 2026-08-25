@@ -23,6 +23,7 @@ import com.moneylytics.api.application.port.output.StripeCustomerRepository
 import com.moneylytics.api.application.port.output.UserRepository
 import com.moneylytics.api.domain.Budget
 import com.moneylytics.api.domain.Collection
+import com.moneylytics.api.domain.ImportFileType
 import com.moneylytics.api.domain.Invoice
 import com.moneylytics.api.domain.StripeCustomer
 import com.moneylytics.api.domain.SubscriptionStatus
@@ -182,6 +183,9 @@ class LocalDataInitializer(
                         savingsIban to savingsName,
                     ),
                 organizationId = orgId,
+                filename = "seed",
+                checksum = "seed",
+                fileType = ImportFileType.CSV,
             ),
         )
         setupOffsetLinks(orgId)

@@ -12,7 +12,19 @@ interface TransactionRepository {
     fun saveAll(
         transactions: List<Transaction>,
         organizationId: Long,
-    ): Int
+    ): Pair<Int, List<Long>>
+
+    fun linkToImport(
+        importId: Long,
+        transactionIds: List<Long>,
+    )
+
+    fun excludeByImportId(
+        importId: Long,
+        organizationId: Long,
+    )
+
+    fun findIdsByImportId(importId: Long): List<Long>
 
     fun findByAccountingDateBetween(
         from: LocalDate,

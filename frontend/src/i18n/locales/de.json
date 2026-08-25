@@ -19,6 +19,7 @@
     "limits": "Limits",
     "csv": "CSV",
     "camt": "CAMT",
+    "importe": "Import-Verlauf",
     "wiederkehrer": "Wiederkehrend",
     "kategorien": "Kategorien",
     "admin": "Technisches",
@@ -849,5 +850,34 @@
     "errorNoDate": "Kein Datum angegeben.",
     "errorNoAmount": "Bitte einen gültigen Betrag eingeben.",
     "errorSave": "Fehler beim Anlegen der Buchung."
+  },
+  "imports": {
+    "title": "Import-Verlauf",
+    "empty": "Noch keine Importe vorhanden.",
+    "loadError": "Importe konnten nicht geladen werden.",
+    "columns": {
+      "date": "Datum",
+      "filename": "Dateiname",
+      "fileType": "Typ",
+      "checksum": "Prüfsumme",
+      "count": "Transaktionen",
+      "status": "Status"
+    },
+    "status": {
+      "ACTIVE": "Aktiv",
+      "REJECTED": "Abgelehnt"
+    },
+    "reject": {
+      "button": "Ablehnen",
+      "confirmTitle": "Import ablehnen?",
+      "confirmBody": "Alle {{count}} Transaktionen aus «{{filename}}» werden als ausgeschlossen markiert. Dies kann nicht rückgängig gemacht werden.",
+      "confirm": "Ablehnen",
+      "cancel": "Abbrechen",
+      "blockedTitle": "Ablehnen nicht möglich",
+      "blockedBody": "Die folgenden Transaktionen sind Teil anderer Gruppen und können nicht abgelehnt werden:",
+      "blockedTransaction": "Transaktion",
+      "blockedReasons": "Gründe",
+      "close": "Schließen"
+    }
   }
 }

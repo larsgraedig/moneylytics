@@ -9,6 +9,7 @@ import com.moneylytics.api.application.port.input.ImportTransactionsUseCase
 import com.moneylytics.api.application.port.input.ResolveOrganizationUseCase
 import com.moneylytics.api.application.port.output.CategoryClassifier
 import com.moneylytics.api.domain.CategoryClassifierFeatures
+import com.moneylytics.api.domain.ImportFileType
 import com.moneylytics.api.domain.Transaction
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.reactive.awaitSingle
@@ -69,19 +70,25 @@ class GenericCsvController(
         @AuthenticationPrincipal principal: UserDetails,
         exchange: ServerWebExchange,
     ): ResponseEntity<ImportSuccessResponse> {
-        val content = filePart.readUtf8()
+        val bytes = filePart.readBytes()
+        val content = String(bytes, Charsets.UTF_8)
+        val checksum = sha256(bytes)
         val (transactions, accountNames) = withContext(Dispatchers.Default) { parser.parse(content, mapping) }
         val organizationId = resolveOrganizationUseCase.resolveOrganization(principal, exchange)
-        val count =
+        val importResult =
             withContext(Dispatchers.IO) {
                 importTransactionsUseCase.importTransactions(
                     ImportTransactionsCommand(
                         transactions = transactions,
                         accountNames = accountNames,
                         organizationId = organizationId,
+                        filename = filePart.filename(),
+                        checksum = checksum,
+                        fileType = ImportFileType.GENERIC,
                     ),
                 )
             }
+        val count = importResult.importedCount
         val fingerprint =
             withContext(Dispatchers.Default) {
                 detector.computeFingerprint(
@@ -97,7 +104,7 @@ class GenericCsvController(
                 )
             }
         withContext(Dispatchers.IO) { csvProfileAdapter.saveMapping(organizationId, fingerprint, mapping) }
-        return ResponseEntity.ok(ImportSuccessResponse(importedCount = count))
+        return ResponseEntity.ok(ImportSuccessResponse(importedCount = count, importId = importResult.importId))
     }
 
     @PostMapping("/preview", consumes = [MediaType.MULTIPART_FORM_DATA_VALUE])
@@ -170,13 +177,24 @@ class GenericCsvController(
                 )
             }
         val accountNames = safeRows.associate { it.accountIban to it.accountIban }
-        val count =
+        val checksum =
+            sha256(
+                safeRows
+                    .map { "${it.date}|${it.amount}|${it.accountIban}" }
+                    .sorted()
+                    .joinToString(",")
+                    .toByteArray(Charsets.UTF_8),
+            )
+        val importResult =
             withContext(Dispatchers.IO) {
                 importTransactionsUseCase.importTransactions(
                     ImportTransactionsCommand(
                         transactions = transactions,
                         accountNames = accountNames,
                         organizationId = organizationId,
+                        filename = "api-import",
+                        checksum = checksum,
+                        fileType = ImportFileType.GENERIC,
                     ),
                 )
             }
@@ -191,19 +209,18 @@ class GenericCsvController(
                 )
             }
         }
-        return ResponseEntity.ok(ImportSuccessResponse(importedCount = count))
+        return ResponseEntity.ok(ImportSuccessResponse(importedCount = importResult.importedCount, importId = importResult.importId))
     }
 
-    private suspend fun FilePart.readUtf8(): String {
-        val bytes =
-            DataBufferUtils
-                .join(content())
-                .map { buffer ->
-                    val data = ByteArray(buffer.readableByteCount())
-                    buffer.read(data)
-                    DataBufferUtils.release(buffer)
-                    data
-                }.awaitSingle()
-        return String(bytes, Charsets.UTF_8)
-    }
+    private suspend fun FilePart.readBytes(): ByteArray =
+        DataBufferUtils
+            .join(content())
+            .map { buffer ->
+                val data = ByteArray(buffer.readableByteCount())
+                buffer.read(data)
+                DataBufferUtils.release(buffer)
+                data
+            }.awaitSingle()
+
+    private suspend fun FilePart.readUtf8(): String = String(readBytes(), Charsets.UTF_8)
 }

@@ -1,15 +1,18 @@
 package com.moneylytics.api.application.service
 
 import com.moneylytics.api.application.port.input.ImportTransactionsCommand
+import com.moneylytics.api.application.port.input.ImportTransactionsResult
 import com.moneylytics.api.application.port.input.ImportTransactionsUseCase
 import com.moneylytics.api.application.port.output.AccountRepository
 import com.moneylytics.api.application.port.output.CategoryClassifier
 import com.moneylytics.api.application.port.output.CategoryRepository
+import com.moneylytics.api.application.port.output.TransactionImportRepository
 import com.moneylytics.api.application.port.output.TransactionRepository
 import com.moneylytics.api.domain.Account
 import com.moneylytics.api.domain.Category
 import com.moneylytics.api.domain.CategoryClassifierFeatures
 import com.moneylytics.api.domain.Transaction
+import com.moneylytics.api.domain.TransactionImport
 import org.springframework.stereotype.Service
 
 @Service
@@ -18,19 +21,34 @@ class TransactionImportService(
     private val accountRepository: AccountRepository,
     private val categoryRepository: CategoryRepository,
     private val categoryClassifier: CategoryClassifier,
+    private val transactionImportRepository: TransactionImportRepository,
 ) : ImportTransactionsUseCase {
-    override fun importTransactions(command: ImportTransactionsCommand): Int {
+    override fun importTransactions(command: ImportTransactionsCommand): ImportTransactionsResult {
         command.accountNames.forEach { (iban, name) ->
             if (accountRepository.findByIban(iban, command.organizationId) == null) {
                 accountRepository.save(Account(iban = iban, name = name), command.organizationId)
             }
         }
-        val count = transactionRepository.saveAll(command.transactions, command.organizationId)
+        val (count, newIds) = transactionRepository.saveAll(command.transactions, command.organizationId)
+        val importRecord =
+            transactionImportRepository.save(
+                TransactionImport(
+                    organizationId = command.organizationId,
+                    filename = command.filename,
+                    checksum = command.checksum,
+                    fileType = command.fileType,
+                    transactionCount = count,
+                ),
+            )
+        val importId = requireNotNull(importRecord.id)
+        if (newIds.isNotEmpty()) {
+            transactionRepository.linkToImport(importId, newIds)
+        }
         command.accountBalances.forEach { (iban, balance) ->
             accountRepository.updateBalance(iban, command.organizationId, balance.amount, balance.date)
         }
         trainOnImportedCategories(command)
-        return count
+        return ImportTransactionsResult(importedCount = count, importId = importId)
     }
 
     private fun trainOnImportedCategories(command: ImportTransactionsCommand) {

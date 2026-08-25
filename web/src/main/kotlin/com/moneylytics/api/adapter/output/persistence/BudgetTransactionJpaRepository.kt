@@ -32,4 +32,6 @@ interface BudgetTransactionJpaRepository : JpaRepository<BudgetTransactionEntity
         @Param("id") id: Long,
         @Param("organizationId") organizationId: Long,
     )
+
+    fun existsByTransactionId(transactionId: Long): Boolean
 }

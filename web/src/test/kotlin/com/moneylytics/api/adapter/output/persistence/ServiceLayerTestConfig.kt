@@ -5,11 +5,14 @@ import com.moneylytics.api.application.port.output.CategoryClassifier
 import com.moneylytics.api.application.port.output.CategoryRepository
 import com.moneylytics.api.application.port.output.IgnoredTransactionRepository
 import com.moneylytics.api.application.port.output.ThresholdRepository
+import com.moneylytics.api.application.port.output.TransactionImportRepository
 import com.moneylytics.api.application.port.output.TransactionRepository
 import com.moneylytics.api.application.service.CategoryService
 import com.moneylytics.api.application.service.IgnoredTransactionService
 import com.moneylytics.api.application.service.TransactionImportService
 import com.moneylytics.api.domain.CategoryClassifierFeatures
+import com.moneylytics.api.domain.ImportStatus
+import com.moneylytics.api.domain.TransactionImport
 import org.mockito.kotlin.any
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.whenever
@@ -72,16 +75,37 @@ class ServiceLayerTestConfig {
     }
 
     @Bean
+    fun transactionImportRepository(): TransactionImportRepository {
+        val repo: TransactionImportRepository = mock()
+        whenever(repo.save(any())).thenAnswer { invocation ->
+            val arg = invocation.getArgument<TransactionImport>(0)
+            arg.copy(id = 1L, status = ImportStatus.ACTIVE)
+        }
+        return repo
+    }
+
+    @Bean
     fun transactionImportService(
         transactionRepository: TransactionRepository,
         accountRepository: AccountRepository,
         categoryRepository: CategoryRepository,
         categoryClassifier: CategoryClassifier,
-    ): TransactionImportService = TransactionImportService(transactionRepository, accountRepository, categoryRepository, categoryClassifier)
+        transactionImportRepository: TransactionImportRepository,
+    ): TransactionImportService =
+        TransactionImportService(
+            transactionRepository,
+            accountRepository,
+            categoryRepository,
+            categoryClassifier,
+            transactionImportRepository,
+        )
 
     @Bean
     fun ignoredTransactionService(repository: IgnoredTransactionRepository): IgnoredTransactionService =
         IgnoredTransactionService(repository)
+
+    @Bean
+    fun thresholdRepository(): ThresholdRepository = mock()
 
     @Bean
     fun categoryService(

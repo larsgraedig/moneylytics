@@ -47,7 +47,7 @@ class TransactionPersistenceAdapterTest {
     fun `should return 0 from saveAll when list is empty`() {
         val result = adapter.saveAll(emptyList(), organizationId)
 
-        assertThat(result).isEqualTo(0)
+        assertThat(result.first).isEqualTo(0)
         verify(jpaRepository, never()).saveAll(any<List<TransactionEntity>>())
     }
 
@@ -60,11 +60,12 @@ class TransactionPersistenceAdapterTest {
         val fp1 = computeFingerprint(tx1)
         val fp2 = computeFingerprint(tx2)
         whenever(jpaRepository.findExistingFingerprints(any(), any())).thenReturn(listOf(fp1))
-        whenever(jpaRepository.saveAll(any<List<TransactionEntity>>())).thenReturn(emptyList())
+        whenever(jpaRepository.findExcludedIdsByFingerprints(any(), any())).thenReturn(emptyList())
+        whenever(jpaRepository.saveAll(any<List<TransactionEntity>>())).thenReturn(listOf(txEntity(100L, amount = BigDecimal("-200"))))
 
         val result = adapter.saveAll(listOf(tx1, tx2), organizationId)
 
-        assertThat(result).isEqualTo(1)
+        assertThat(result.first).isEqualTo(1)
         val captor = argumentCaptor<List<TransactionEntity>>()
         verify(jpaRepository).saveAll(captor.capture())
         assertThat(captor.firstValue).hasSize(1)
@@ -77,11 +78,11 @@ class TransactionPersistenceAdapterTest {
         whenever(accountJpaRepository.findByIbanAndOrganizationId("DE00TEST", organizationId)).thenReturn(accountEntity)
         whenever(organizationJpaRepository.getReferenceById(organizationId)).thenReturn(organizationEntity)
         whenever(jpaRepository.findExistingFingerprints(any(), any())).thenReturn(emptyList())
-        whenever(jpaRepository.saveAll(any<List<TransactionEntity>>())).thenReturn(emptyList())
+        whenever(jpaRepository.saveAll(any<List<TransactionEntity>>())).thenReturn(listOf(txEntity(100L), txEntity(101L)))
 
         val result = adapter.saveAll(transactions, organizationId)
 
-        assertThat(result).isEqualTo(2)
+        assertThat(result.first).isEqualTo(2)
         val captor = argumentCaptor<List<TransactionEntity>>()
         verify(jpaRepository).saveAll(captor.capture())
         val fingerprints = captor.firstValue.map { it.fingerprint }
