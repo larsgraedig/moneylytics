@@ -18,7 +18,9 @@ interface ImportFileRepository {
         status: ImportStatus,
     )
 
-    fun allFilesRejected(importId: Long): Boolean
+    fun allFilesFullyRejected(importId: Long): Boolean
+
+    fun anyFileRejectedOrPartial(importId: Long): Boolean
 
     fun findTransactionIdsByFileId(fileId: Long): List<Long>
 }

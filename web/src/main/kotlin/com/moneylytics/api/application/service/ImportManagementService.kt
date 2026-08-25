@@ -5,7 +5,10 @@ import com.moneylytics.api.adapter.output.persistence.CollectionTransactionJpaRe
 import com.moneylytics.api.adapter.output.persistence.TransactionJpaRepository
 import com.moneylytics.api.adapter.output.persistence.TransactionOffsetJpaRepository
 import com.moneylytics.api.application.port.input.BlockedTransaction
+import com.moneylytics.api.application.port.input.GetImportTransactionsQuery
+import com.moneylytics.api.application.port.input.GetImportTransactionsUseCase
 import com.moneylytics.api.application.port.input.GetImportsUseCase
+import com.moneylytics.api.application.port.input.ImportTransactionItem
 import com.moneylytics.api.application.port.input.RejectImportFileResult
 import com.moneylytics.api.application.port.input.RejectImportFileUseCase
 import com.moneylytics.api.application.port.input.RejectImportResult
@@ -14,6 +17,7 @@ import com.moneylytics.api.application.port.output.ImportFileRepository
 import com.moneylytics.api.application.port.output.TransactionImportRepository
 import com.moneylytics.api.application.port.output.TransactionRepository
 import com.moneylytics.api.domain.ImportStatus
+import com.moneylytics.api.domain.Transaction
 import com.moneylytics.api.domain.TransactionImport
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -29,7 +33,8 @@ class ImportManagementService(
     private val importFileRepository: ImportFileRepository,
 ) : GetImportsUseCase,
     RejectImportUseCase,
-    RejectImportFileUseCase {
+    RejectImportFileUseCase,
+    GetImportTransactionsUseCase {
     override fun getImports(organizationId: Long): List<TransactionImport> =
         transactionImportRepository.findAllByOrganizationId(organizationId)
 
@@ -57,10 +62,12 @@ class ImportManagementService(
         val toReject = txIds.filter { it !in blockedIds }
         transactionRepository.excludeByIds(toReject, organizationId)
 
+        val fileStatus = if (blocked.isNotEmpty()) ImportStatus.PARTIALLY_REJECTED else ImportStatus.REJECTED
         import.files.filter { it.status == ImportStatus.ACTIVE }.forEach { file ->
-            importFileRepository.updateStatus(requireNotNull(file.id), ImportStatus.REJECTED)
+            importFileRepository.updateStatus(requireNotNull(file.id), fileStatus)
         }
-        transactionImportRepository.updateStatus(importId, ImportStatus.REJECTED)
+        val importStatus = if (blocked.isNotEmpty()) ImportStatus.PARTIALLY_REJECTED else ImportStatus.REJECTED
+        transactionImportRepository.updateStatus(importId, importStatus)
         return RejectImportResult.Success(toReject.size)
     }
 
@@ -92,14 +99,44 @@ class ImportManagementService(
         val blockedIds = blocked.map { it.transactionId }.toSet()
         val toReject = txIds.filter { it !in blockedIds }
         transactionRepository.excludeByIds(toReject, organizationId)
-        importFileRepository.updateStatus(fileId, ImportStatus.REJECTED)
+        val fileStatus = if (blocked.isNotEmpty()) ImportStatus.PARTIALLY_REJECTED else ImportStatus.REJECTED
+        importFileRepository.updateStatus(fileId, fileStatus)
 
-        if (importFileRepository.allFilesRejected(importId) && import.status != ImportStatus.REJECTED) {
-            transactionImportRepository.updateStatus(importId, ImportStatus.REJECTED)
+        when {
+            importFileRepository.allFilesFullyRejected(importId) ->
+                transactionImportRepository.updateStatus(importId, ImportStatus.REJECTED)
+            importFileRepository.anyFileRejectedOrPartial(importId) ->
+                transactionImportRepository.updateStatus(importId, ImportStatus.PARTIALLY_REJECTED)
         }
 
         return RejectImportFileResult.Success(toReject.size)
     }
+
+    override fun getImportTransactions(query: GetImportTransactionsQuery): List<ImportTransactionItem> =
+        transactionImportRepository
+            .findByIdAndOrganizationId(query.importId, query.organizationId)
+            ?.let {
+                transactionRepository
+                    .findByImportId(query.importId, query.organizationId)
+                    .map { it.toImportTransactionItem() }
+            }
+            ?: emptyList()
+
+    private fun Transaction.toImportTransactionItem() =
+        ImportTransactionItem(
+            id = requireNotNull(id),
+            bookingDate = bookingDate,
+            counterpartyName = counterpartyName,
+            purpose = purpose,
+            amount = amount,
+            currency = currency,
+            excluded = excluded,
+            collections = collections,
+            budgetLinks = budgetLinks,
+            groups = groups,
+            parentId = parentId,
+            isVirtual = isVirtual,
+        )
 
     private fun collectBlocked(txIds: List<Long>): List<BlockedTransaction> =
         txIds.mapNotNull { txId ->

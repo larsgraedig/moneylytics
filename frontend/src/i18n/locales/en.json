@@ -869,7 +869,25 @@
     },
     "status": {
       "ACTIVE": "Active",
-      "REJECTED": "Rejected"
+      "REJECTED": "Rejected",
+      "PARTIALLY_REJECTED": "Partially rejected"
+    },
+    "transactions": {
+      "button": "Transactions",
+      "dialogTitle": "Import Transactions",
+      "columns": {
+        "date": "Date",
+        "counterparty": "Counterparty",
+        "purpose": "Purpose",
+        "amount": "Amount",
+        "status": "Status"
+      },
+      "status": {
+        "ACCEPTED": "Accepted",
+        "REJECTED": "Rejected"
+      },
+      "empty": "No transactions found.",
+      "loadError": "Could not load transactions."
     },
     "reject": {
       "button": "Reject",

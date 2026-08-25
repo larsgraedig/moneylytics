@@ -2,7 +2,7 @@ package com.moneylytics.api.domain
 
 import java.time.Instant
 
-enum class ImportStatus { ACTIVE, REJECTED }
+enum class ImportStatus { ACTIVE, REJECTED, PARTIALLY_REJECTED }
 
 enum class ImportFileType { CSV, CAMT, GENERIC }
 

@@ -2,10 +2,12 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   fetchImports,
+  fetchImportTransactions,
   rejectImport,
   rejectImportFile,
   type BlockedTransaction,
   type ImportFileDto,
+  type ImportTransactionDto,
   type TransactionImportDto,
 } from '../api/imports'
 import { Badge } from '@/components/ui/badge'
@@ -18,7 +20,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { ChevronDown, ChevronRight } from 'lucide-react'
+import { ChevronDown, ChevronRight, List, Package, Scissors } from 'lucide-react'
 
 const DATE_FMT = new Intl.DateTimeFormat('de-DE', {
   day: '2-digit',
@@ -62,6 +64,10 @@ export default function ImportsPage() {
   const [rejecting, setRejecting] = useState(false)
   const [blockedInfo, setBlockedInfo] = useState<BlockedTransaction[] | null>(null)
   const [blockedTarget, setBlockedTarget] = useState<RejectTarget | null>(null)
+  const [txDialogImport, setTxDialogImport] = useState<TransactionImportDto | null>(null)
+  const [txDialogItems, setTxDialogItems] = useState<ImportTransactionDto[]>([])
+  const [txDialogLoading, setTxDialogLoading] = useState(false)
+  const [txDialogError, setTxDialogError] = useState<string | null>(null)
 
   useEffect(() => {
     load()
@@ -135,6 +141,26 @@ export default function ImportsPage() {
     }
   }
 
+  async function openTxDialog(imp: TransactionImportDto) {
+    setTxDialogImport(imp)
+    setTxDialogItems([])
+    setTxDialogError(null)
+    setTxDialogLoading(true)
+    try {
+      setTxDialogItems(await fetchImportTransactions(imp.id))
+    } catch {
+      setTxDialogError(t('imports.transactions.loadError'))
+    } finally {
+      setTxDialogLoading(false)
+    }
+  }
+
+  function statusBadgeVariant(status: string): 'default' | 'secondary' | 'outline' {
+    if (status === 'ACTIVE') return 'default'
+    if (status === 'REJECTED') return 'secondary'
+    return 'outline'
+  }
+
   const confirmCount =
     confirmTarget == null
       ? 0
@@ -190,20 +216,30 @@ export default function ImportsPage() {
                   </TableCell>
                   <TableCell className="text-right text-sm">{imp.transactionCount}</TableCell>
                   <TableCell>
-                    <Badge variant={imp.status === 'ACTIVE' ? 'default' : 'secondary'}>
+                    <Badge variant={statusBadgeVariant(imp.status)}>
                       {t(`imports.status.${imp.status}`)}
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right">
-                    {imp.status === 'ACTIVE' && (
+                    <div className="flex items-center justify-end gap-2">
                       <Button
-                        variant="destructive"
+                        variant="ghost"
                         size="sm"
-                        onClick={() => setConfirmTarget({ kind: 'import', imp })}
+                        onClick={() => openTxDialog(imp)}
                       >
-                        {t('imports.reject.button')}
+                        <List size={14} className="mr-1" />
+                        {t('imports.transactions.button')}
                       </Button>
-                    )}
+                      {imp.status === 'ACTIVE' && (
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => setConfirmTarget({ kind: 'import', imp })}
+                        >
+                          {t('imports.reject.button')}
+                        </Button>
+                      )}
+                    </div>
                   </TableCell>
                 </TableRow>
 
@@ -218,7 +254,16 @@ export default function ImportsPage() {
                       {file.transactionCount}
                     </TableCell>
                     <TableCell className="py-1">
-                      <Badge variant={file.status === 'ACTIVE' ? 'outline' : 'secondary'} className="text-xs">
+                      <Badge
+                        variant={
+                          file.status === 'ACTIVE'
+                            ? 'outline'
+                            : file.status === 'REJECTED'
+                              ? 'secondary'
+                              : 'outline'
+                        }
+                        className={`text-xs${file.status === 'PARTIALLY_REJECTED' ? ' text-orange-600' : ''}`}
+                      >
                         {t(`imports.status.${file.status}`)}
                       </Badge>
                     </TableCell>
@@ -296,6 +341,95 @@ export default function ImportsPage() {
             </Button>
             <Button variant="destructive" disabled={rejecting} onClick={handleForceReject}>
               {t('imports.reject.blockedConfirm')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!txDialogImport} onOpenChange={(open) => { if (!open) setTxDialogImport(null) }}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>{t('imports.transactions.dialogTitle')}</DialogTitle>
+          </DialogHeader>
+          {txDialogLoading && (
+            <p className="text-sm text-muted-foreground">{t('common.loading')}</p>
+          )}
+          {txDialogError && (
+            <p className="text-sm text-destructive">{txDialogError}</p>
+          )}
+          {!txDialogLoading && !txDialogError && (
+            txDialogItems.length === 0
+              ? <p className="text-sm text-muted-foreground">{t('imports.transactions.empty')}</p>
+              : (
+                <div className="max-h-[60vh] overflow-y-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>{t('imports.transactions.columns.date')}</TableHead>
+                        <TableHead>{t('imports.transactions.columns.counterparty')}</TableHead>
+                        <TableHead className="text-right">{t('imports.transactions.columns.amount')}</TableHead>
+                        <TableHead>{t('imports.transactions.columns.status')}</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {txDialogItems.map((tx) => (
+                        <TableRow key={tx.id}>
+                          <TableCell className="whitespace-nowrap text-sm align-top">{tx.bookingDate}</TableCell>
+                          <TableCell className="text-sm align-top">
+                            <div className="max-w-48 truncate" title={tx.counterpartyName ?? ''}>
+                              {tx.counterpartyName ?? <span className="text-muted-foreground">—</span>}
+                            </div>
+                            {(tx.collections.length > 0 || tx.budgets.length > 0 || tx.offsetGroups.length > 0 || tx.parentId != null || tx.isVirtual) && (
+                              <div className="flex flex-wrap gap-1 mt-1">
+                                {tx.collections.map((name) => (
+                                  <Badge key={`col-${name}`} variant="outline" className="text-xs font-normal">
+                                    {name}
+                                  </Badge>
+                                ))}
+                                {tx.budgets.map((name) => (
+                                  <Badge key={`bud-${name}`} variant="outline" className="text-xs font-normal">
+                                    {name}
+                                  </Badge>
+                                ))}
+                                {tx.offsetGroups.map((name, i) => (
+                                  <Badge key={`grp-${i}`} variant="outline" className="text-xs font-normal font-mono">
+                                    {name ?? '—'}
+                                  </Badge>
+                                ))}
+                                {tx.parentId != null && (
+                                  <span className="inline-flex items-center text-blue-500" title="Teil einer Transaktionsteilung">
+                                    <Scissors size={11} />
+                                  </span>
+                                )}
+                                {tx.isVirtual && tx.parentId == null && (
+                                  <span className="inline-flex items-center text-green-500" title="Verrechnung">
+                                    <Package size={11} />
+                                  </span>
+                                )}
+                              </div>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right text-sm font-mono align-top">
+                            {tx.amount.toLocaleString('de-DE', { minimumFractionDigits: 2 })} {tx.currency}
+                          </TableCell>
+                          <TableCell className="align-top">
+                            <Badge
+                              variant={tx.status === 'ACCEPTED' ? 'default' : 'secondary'}
+                              className="text-xs"
+                            >
+                              {t(`imports.transactions.status.${tx.status}`)}
+                            </Badge>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setTxDialogImport(null)}>
+              {t('imports.reject.close')}
             </Button>
           </DialogFooter>
         </DialogContent>

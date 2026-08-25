@@ -23,9 +23,17 @@ interface ImportFileJpaRepository : JpaRepository<ImportFileEntity, Long> {
 
     @Query(
         "SELECT CASE WHEN COUNT(f) = 0 THEN true ELSE false END " +
-            "FROM ImportFileEntity f WHERE f.import.id = :importId AND f.status = 'ACTIVE'",
+            "FROM ImportFileEntity f WHERE f.import.id = :importId AND f.status IN ('ACTIVE', 'PARTIALLY_REJECTED')",
     )
-    fun allFilesRejected(
+    fun allFilesFullyRejected(
+        @Param("importId") importId: Long,
+    ): Boolean
+
+    @Query(
+        "SELECT CASE WHEN COUNT(f) > 0 THEN true ELSE false END " +
+            "FROM ImportFileEntity f WHERE f.import.id = :importId AND f.status IN ('REJECTED', 'PARTIALLY_REJECTED')",
+    )
+    fun anyFileRejectedOrPartial(
         @Param("importId") importId: Long,
     ): Boolean
 

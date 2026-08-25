@@ -44,7 +44,10 @@ class ImportFilePersistenceAdapter(
     }
 
     @Transactional(readOnly = true)
-    override fun allFilesRejected(importId: Long): Boolean = jpaRepository.allFilesRejected(importId)
+    override fun allFilesFullyRejected(importId: Long): Boolean = jpaRepository.allFilesFullyRejected(importId)
+
+    @Transactional(readOnly = true)
+    override fun anyFileRejectedOrPartial(importId: Long): Boolean = jpaRepository.anyFileRejectedOrPartial(importId)
 
     @Transactional(readOnly = true)
     override fun findTransactionIdsByFileId(fileId: Long): List<Long> = jpaRepository.findTransactionIdsByImportFileId(fileId)

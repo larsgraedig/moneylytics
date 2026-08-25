@@ -1,20 +1,37 @@
 import { fetchWithUser } from './client'
 
+export type ImportStatus = 'ACTIVE' | 'REJECTED' | 'PARTIALLY_REJECTED'
+
 export interface ImportFileDto {
   id: number
   filename: string
   checksum: string
   fileType: string
   transactionCount: number
-  status: 'ACTIVE' | 'REJECTED'
+  status: ImportStatus
 }
 
 export interface TransactionImportDto {
   id: number
   importedAt: string
   transactionCount: number
-  status: 'ACTIVE' | 'REJECTED'
+  status: ImportStatus
   files: ImportFileDto[]
+}
+
+export interface ImportTransactionDto {
+  id: number
+  bookingDate: string
+  counterpartyName: string | null
+  purpose: string | null
+  amount: number
+  currency: string
+  status: 'ACCEPTED' | 'REJECTED'
+  collections: string[]
+  budgets: string[]
+  offsetGroups: (string | null)[]
+  parentId: number | null
+  isVirtual: boolean
 }
 
 export interface BlockedTransaction {
@@ -49,6 +66,12 @@ export async function rejectImport(
   if (res.status === 422) return { error: body as unknown as RejectImportFailure }
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
   return body as unknown as RejectImportSuccess
+}
+
+export async function fetchImportTransactions(importId: number): Promise<ImportTransactionDto[]> {
+  const res = await fetchWithUser(`/imports/${importId}/transactions`)
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  return res.json() as Promise<ImportTransactionDto[]>
 }
 
 export async function rejectImportFile(

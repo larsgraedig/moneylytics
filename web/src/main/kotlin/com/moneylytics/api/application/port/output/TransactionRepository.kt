@@ -41,6 +41,11 @@ interface TransactionRepository {
 
     fun findIdsByImportId(importId: Long): List<Long>
 
+    fun findByImportId(
+        importId: Long,
+        organizationId: Long,
+    ): List<Transaction>
+
     fun findByAccountingDateBetween(
         from: LocalDate,
         to: LocalDate,

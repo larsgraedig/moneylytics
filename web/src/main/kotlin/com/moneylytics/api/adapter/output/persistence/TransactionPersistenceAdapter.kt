@@ -105,6 +105,12 @@ class TransactionPersistenceAdapter(
     @Transactional(readOnly = true)
     override fun findIdsByImportId(importId: Long): List<Long> = jpaRepository.findIdsByImportId(importId)
 
+    @Transactional(readOnly = true)
+    override fun findByImportId(
+        importId: Long,
+        organizationId: Long,
+    ): List<Transaction> = enrichWithOffsetLinks(jpaRepository.findByImportIdAndOrganizationId(importId, organizationId))
+
     private fun buildCategoryMap(
         transactions: List<Transaction>,
         organizationId: Long,

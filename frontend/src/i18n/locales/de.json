@@ -869,7 +869,25 @@
     },
     "status": {
       "ACTIVE": "Aktiv",
-      "REJECTED": "Abgelehnt"
+      "REJECTED": "Abgelehnt",
+      "PARTIALLY_REJECTED": "Teilweise abgelehnt"
+    },
+    "transactions": {
+      "button": "Transaktionen",
+      "dialogTitle": "Transaktionen des Imports",
+      "columns": {
+        "date": "Datum",
+        "counterparty": "Empfänger",
+        "purpose": "Verwendungszweck",
+        "amount": "Betrag",
+        "status": "Status"
+      },
+      "status": {
+        "ACCEPTED": "Angenommen",
+        "REJECTED": "Abgelehnt"
+      },
+      "empty": "Keine Transaktionen gefunden.",
+      "loadError": "Transaktionen konnten nicht geladen werden."
     },
     "reject": {
       "button": "Ablehnen",
