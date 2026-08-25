@@ -10,8 +10,7 @@ import {
   type GenericCsvPreviewRow,
   type GenericRowToImport,
 } from '../api/genericCsvImport'
-import type { CategoryNode } from '../api/rawImport'
-import { CategoryPathInput } from './CategoryPathInput'
+import { ImportPreviewTable, type ImportDecision, type ImportPreviewRow } from './ImportPreviewTable'
 
 const COMMON_DATE_FORMATS = [
   'dd.MM.yyyy',
@@ -20,8 +19,6 @@ const COMMON_DATE_FORMATS = [
   'MM/dd/yyyy',
   'dd.MM.yy',
 ]
-
-type RowDecision = { action: 'import'; categoryId: number | null } | { action: 'skip' } | { action: 'enrich' }
 
 type Phase =
   | { step: 'upload' }
@@ -82,24 +79,6 @@ function parsePreviewDate(raw: string, fmt: string): string {
 function colIdx(headers: string[], col: string | null) {
   if (!col) return -1
   return headers.indexOf(col)
-}
-
-function findCategoryByPath(nodes: CategoryNode[], path: string[]): number | null {
-  const [head, ...tail] = path.filter(Boolean)
-  if (!head) return null
-  const node = nodes.find(n => n.name === head)
-  if (!node) return null
-  if (tail.length === 0) return node.id
-  return findCategoryByPath(node.children, tail)
-}
-
-function pathFromCategoryId(id: number, nodes: CategoryNode[], prefix: string[] = []): string[] {
-  for (const n of nodes) {
-    if (n.id === id) return [...prefix, n.name]
-    const found = pathFromCategoryId(id, n.children, [...prefix, n.name])
-    if (found.length > 0) return found
-  }
-  return []
 }
 
 function MappingRow({
@@ -291,11 +270,11 @@ function MappingView({
   )
 }
 
-export default function CsvImportPage({ categories }: { categories: CategoryNode[] }) {
+export default function CsvImportPage() {
   const { t } = useTranslation()
   const [phase, setPhase] = useState<Phase>({ step: 'upload' })
   const [isDragging, setIsDragging] = useState(false)
-  const [decisions, setDecisions] = useState<Record<number, RowDecision>>({})
+  const [decisions, setDecisions] = useState<Record<number, ImportDecision>>({})
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const handleFile = useCallback(async (file: File) => {
@@ -313,19 +292,9 @@ export default function CsvImportPage({ categories }: { categories: CategoryNode
     setPhase({ step: 'previewing', detection, mapping, file })
     try {
       const rows = await previewGenericCsv(file, mapping)
-      const initialDecisions: Record<number, RowDecision> = {}
+      const initialDecisions: Record<number, ImportDecision> = {}
       rows.forEach(r => {
-        if (r.status === 'DUPLICATE') {
-          initialDecisions[r.rowIndex] = { action: 'skip' }
-        } else {
-          const csvMappedId = findCategoryByPath(categories, [
-            r.mappedCategory,
-            r.mappedCategoryGroup,
-            r.mappedSubcategory,
-          ].filter((s): s is string => s != null))
-          const preselectedId = csvMappedId ?? r.suggestedCategoryId ?? null
-          initialDecisions[r.rowIndex] = { action: 'import', categoryId: preselectedId }
-        }
+        initialDecisions[r.rowIndex] = r.status === 'DUPLICATE' ? { action: 'ignore' } : { action: 'import' }
       })
       setDecisions(initialDecisions)
       setPhase({ step: 'categorizing', rows, detection, mapping, file })
@@ -341,35 +310,22 @@ export default function CsvImportPage({ categories }: { categories: CategoryNode
         const d = decisions[r.rowIndex]
         return d?.action === 'import'
       })
-      .map(r => {
-        const d = decisions[r.rowIndex] as { action: 'import'; categoryId: number | null }
-        const path = d.categoryId != null ? pathFromCategoryId(d.categoryId, categories) : []
-        return {
-          date: r.date,
-          amount: r.amount,
-          currency: r.currency,
-          accountIban: r.accountIban,
-          purpose: r.purpose,
-          category: path[0] ?? '',
-          subcategory: path[1] ?? null,
-          group: path[2] ?? '',
-          counterpartyName: r.counterpartyName,
-          counterpartyIban: r.counterpartyIban,
-        }
-      })
-
-    const toEnrich = rows
-      .filter(r => r.status === 'DUPLICATE' && decisions[r.rowIndex]?.action === 'enrich')
       .map(r => ({
-        fingerprint: r.fingerprint,
-        purpose: r.purpose || null,
-        counterpartyName: r.counterpartyName || null,
-        counterpartyIban: r.counterpartyIban || null,
+        date: r.date,
+        amount: r.amount,
+        currency: r.currency,
+        accountIban: r.accountIban,
+        purpose: r.purpose,
+        category: '',
+        subcategory: null,
+        group: '',
+        counterpartyName: r.counterpartyName,
+        counterpartyIban: r.counterpartyIban,
       }))
 
     setPhase({ step: 'importing-rows', rows, detection, mapping, file })
     try {
-      const count = await importGenericRows(toImport, toEnrich)
+      const count = await importGenericRows(toImport, [])
       setPhase({ step: 'success', count })
     } catch (e) {
       setPhase({ step: 'error', message: e instanceof Error ? e.message : 'Import failed' })
@@ -408,21 +364,28 @@ export default function CsvImportPage({ categories }: { categories: CategoryNode
     const { rows, detection, mapping, file } = phase
     const importing = phase.step === 'importing-rows'
 
-    const setDecision = (rowIndex: number, d: RowDecision) =>
-      setDecisions(prev => ({ ...prev, [rowIndex]: d }))
-
     const duplicateCount = rows.filter(r => r.status === 'DUPLICATE').length
     const unknownAccountCount = rows.filter(r => r.status !== 'DUPLICATE' && r.unknownAccount).length
-    const enrichCount = rows.filter(r => r.status === 'DUPLICATE' && decisions[r.rowIndex]?.action === 'enrich').length
-    const suggestedCount = rows.filter(r => r.suggestedCategoryId != null && r.status !== 'DUPLICATE').length
     const readyCount = rows.filter(r => {
       if (r.status === 'DUPLICATE' || r.unknownAccount) return false
-      const d = decisions[r.rowIndex]
-      return d?.action === 'import'
-    }).length + enrichCount
-    const skippedCount = rows.filter(r => r.status !== 'DUPLICATE' && !r.unknownAccount && decisions[r.rowIndex]?.action === 'skip').length
+      return decisions[r.rowIndex]?.action === 'import'
+    }).length
+    const ignoredCount = rows.filter(r => r.status !== 'DUPLICATE' && !r.unknownAccount && decisions[r.rowIndex]?.action === 'ignore').length
 
-    const EUR = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' })
+    const previewRows: ImportPreviewRow[] = rows.map(r => ({
+      key: r.rowIndex,
+      status: r.status === 'DUPLICATE' ? 'DUPLICATE' : 'NEW',
+      unknownAccount: r.unknownAccount,
+      date: r.date,
+      accountDisplay: r.accountIban,
+      accountIban: r.accountIban,
+      counterparty: r.counterpartyName || null,
+      purpose: r.purpose || null,
+      amount: r.amount,
+      currency: r.currency,
+      errors: [],
+      fingerprint: r.fingerprint,
+    }))
 
     return (
       <div className="ri-page">
@@ -431,8 +394,7 @@ export default function CsvImportPage({ categories }: { categories: CategoryNode
             <span className="ri-chip ri-chip--new">{t('csvImport.categorizing.new', { count: rows.length - duplicateCount })}</span>
             {duplicateCount > 0 && <span className="ri-chip ri-chip--dup">{t('csvImport.categorizing.duplicate', { count: duplicateCount })}</span>}
             {unknownAccountCount > 0 && <span className="ri-chip ri-chip--inv">{t('csvImport.categorizing.unknownAccount', { count: unknownAccountCount })}</span>}
-            {skippedCount > 0 && <span className="ri-chip ri-chip--prev-ignored">{t('csvImport.categorizing.skipped', { count: skippedCount })}</span>}
-            {suggestedCount > 0 && <span className="ri-chip ri-chip--suggested">{t('csvImport.categorizing.suggested', { count: suggestedCount })}</span>}
+            {ignoredCount > 0 && <span className="ri-chip ri-chip--prev-ignored">{t('csvImport.categorizing.skipped', { count: ignoredCount })}</span>}
             <span className="ri-summary-spacer" />
             <button className="load-btn" onClick={() => setPhase({ step: 'mapping', detection, mapping, file })} disabled={importing}>{t('csvImport.categorizing.back')}</button>
             <button
@@ -443,83 +405,11 @@ export default function CsvImportPage({ categories }: { categories: CategoryNode
               {importing ? '…' : t('csvImport.categorizing.importCount', { count: readyCount })}
             </button>
           </div>
-          <div className="ri-table-wrap">
-            <table className="ri-table">
-              <thead>
-                <tr>
-                  <th>{t('csvImport.categorizing.columns.date')}</th>
-                  <th>{t('csvImport.categorizing.columns.amount')}</th>
-                  <th>{t('csvImport.categorizing.columns.currency')}</th>
-                  <th>{t('csvImport.categorizing.columns.account')}</th>
-                  <th>{t('csvImport.categorizing.columns.purpose')}</th>
-                  <th>{t('csvImport.categorizing.columns.category')}</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map(row => {
-                  const isDuplicate = row.status === 'DUPLICATE'
-                  const isUnknown = !isDuplicate && row.unknownAccount
-                  const isExcluded = isDuplicate || isUnknown
-                  const d = decisions[row.rowIndex]
-                  const isImporting = !isExcluded && d?.action === 'import'
-                  const categoryId = isImporting && d.action === 'import' ? d.categoryId : null
-                  const isSuggested = categoryId !== null && categoryId === row.suggestedCategoryId
-                  const rowClass = isExcluded
-                    ? 'ri-row ri-row--duplicate'
-                    : isImporting ? 'ri-row ri-row--new' : 'ri-row ri-row--will-ignore'
-                  return (
-                    <tr key={row.rowIndex} className={rowClass}>
-                      <td className="ri-cell-date">{row.date}</td>
-                      <td className={`ri-cell-amount${row.amount < 0 ? ' negative' : ''}`}>{EUR.format(row.amount)}</td>
-                      <td className="ri-cell-date">{row.currency}</td>
-                      <td className={`ri-cell-date${isUnknown ? ' gcv-unknown-iban' : ''}`} title={row.accountIban}>
-                        {isUnknown ? t('csvImport.categorizing.unknownAccountLabel') : row.accountIban}
-                      </td>
-                      <td className="ri-cell-purpose" title={row.purpose ?? ''}>{row.purpose || '—'}</td>
-                      {isExcluded ? (
-                        <td className="ri-cell-muted">
-                          {isDuplicate
-                            ? (d?.action === 'enrich' ? t('csvImport.categorizing.willEnrich') : t('csvImport.categorizing.alreadyImported'))
-                            : t('csvImport.categorizing.excluded')}
-                        </td>
-                      ) : isImporting ? (
-                        <td className="ri-cell-category">
-                          {isSuggested && (
-                            <span className="ri-suggestion-badge" title={t('csvImport.categorizing.suggestedBadge')}>
-                              {t('csvImport.categorizing.suggestedBadge')}
-                            </span>
-                          )}
-                          <CategoryPathInput
-                            value={categoryId}
-                            onChange={id => setDecision(row.rowIndex, { action: 'import', categoryId: id })}
-                            tree={categories}
-                            placeholder={t('common.category')}
-                            className="ri-category-input"
-                          />
-                        </td>
-                      ) : (
-                        <td className="ri-cell-muted">—</td>
-                      )}
-                      <td className="ri-cell-action">
-                        {isDuplicate ? (
-                          d?.action === 'enrich' ? (
-                            <button className="ri-action-btn ri-action-btn--ignore" onClick={() => setDecision(row.rowIndex, { action: 'skip' })}>{t('common.skip')}</button>
-                          ) : (
-                            <button className="ri-action-btn ri-action-btn--import" onClick={() => setDecision(row.rowIndex, { action: 'enrich' })}>{t('csvImport.categorizing.enrich')}</button>
-                          )
-                        ) : !isExcluded && (isImporting ? (
-                          <button className="ri-action-btn ri-action-btn--ignore" onClick={() => setDecision(row.rowIndex, { action: 'skip' })}>{t('common.skip')}</button>
-                        ) : (
-                          <button className="ri-action-btn ri-action-btn--import" onClick={() => setDecision(row.rowIndex, { action: 'import', categoryId: null })}>{t('common.undo')}</button>
-                        ))}
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
+          <ImportPreviewTable
+            rows={previewRows}
+            decisions={decisions}
+            onDecide={(key, d) => setDecisions(prev => ({ ...prev, [key]: d }))}
+          />
         </div>
       </div>
     )

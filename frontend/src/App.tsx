@@ -418,7 +418,7 @@ export default function App() {
           {tab === 'budgets' && <BudgetsPage key={`${username}-${activeOrganization?.id}`} from={from} to={to} accountId={accountId} accounts={accounts} categories={categories} />}
           {tab === 'limits' && <ThresholdsPage key={`${username}-${activeOrganization?.id}`} accountId={accountId} categories={categories} />}
           {tab === 'konten' && <AccountsPage key={`${username}-${activeOrganization?.id}`} />}
-          {tab === 'csv' && <CsvImportPage key={`${username}-${activeOrganization?.id}`} categories={categories} />}
+          {tab === 'csv' && <CsvImportPage key={`${username}-${activeOrganization?.id}`} />}
           {tab === 'camt' && <CamtImportPage key={`${username}-${activeOrganization?.id}`} />}
           {tab === 'importe' && <ImportsPage key={`${username}-${activeOrganization?.id}`} />}
           {tab === 'wiederkehrer' && <RecurringPage key={`${username}-${activeOrganization?.id}`} />}
