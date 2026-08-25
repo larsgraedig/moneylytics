@@ -26,6 +26,12 @@ interface ImportPreviewTableProps {
   onDecide: (key: number, d: ImportDecision) => void
 }
 
+function parseDateForSort(date: string | null): string {
+  if (!date) return ''
+  const [d, m, y] = date.split('.')
+  return `${y}${m}${d}`
+}
+
 function formatAmount(amount: number | null, currency: string, raw?: string): string {
   if (amount == null) return raw ?? '—'
   try {
@@ -38,10 +44,14 @@ function formatAmount(amount: number | null, currency: string, raw?: string): st
 export function ImportPreviewTable({ rows, decisions, onDecide }: ImportPreviewTableProps) {
   const { t } = useTranslation()
 
+  const sortedRows = [...rows].sort((a, b) =>
+    parseDateForSort(b.date).localeCompare(parseDateForSort(a.date)),
+  )
+
   return (
     <div className="ri-table-wrap">
       <div className="ri-cards">
-        {rows.map(row => {
+        {sortedRows.map(row => {
           const d = decisions[row.key]
           const isImporting = d?.action === 'import'
           const isUnknown = row.unknownAccount && row.status !== 'DUPLICATE'

@@ -270,12 +270,20 @@ function MappingView({
   )
 }
 
+function defaultCsvFilters(rows: GenericCsvPreviewRow[]): Set<string> {
+  if (rows.some(r => r.status !== 'DUPLICATE' && !r.unknownAccount)) return new Set(['NEW'])
+  if (rows.some(r => r.status === 'DUPLICATE')) return new Set(['DUPLICATE'])
+  return new Set(['UNKNOWN_ACCOUNT'])
+}
+
 export default function CsvImportPage() {
   const { t } = useTranslation()
   const [phase, setPhase] = useState<Phase>({ step: 'upload' })
   const [isDragging, setIsDragging] = useState(false)
   const [decisions, setDecisions] = useState<Record<number, ImportDecision>>({})
-  const [filter, setFilter] = useState<string | null>(null)
+  const [activeFilters, setActiveFilters] = useState<Set<string>>(
+    () => new Set(['NEW', 'DUPLICATE', 'UNKNOWN_ACCOUNT', 'IGNORED']),
+  )
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const handleFile = useCallback(async (file: File) => {
@@ -299,6 +307,7 @@ export default function CsvImportPage() {
       })
       setDecisions(initialDecisions)
       setPhase({ step: 'categorizing', rows, detection, mapping, file })
+      setActiveFilters(defaultCsvFilters(rows))
     } catch (e) {
       setPhase({ step: 'error', message: e instanceof Error ? e.message : 'Preview failed' })
     }
@@ -388,27 +397,35 @@ export default function CsvImportPage() {
       fingerprint: r.fingerprint,
     }))
 
-    const filteredPreviewRows = filter == null ? previewRows
-      : filter === 'DUPLICATE' ? previewRows.filter(r => r.status === 'DUPLICATE')
-      : filter === 'UNKNOWN_ACCOUNT' ? previewRows.filter(r => r.unknownAccount && r.status !== 'DUPLICATE')
-      : filter === 'IGNORED' ? previewRows.filter(r => decisions[r.key]?.action === 'ignore')
-      : previewRows.filter(r => r.status !== 'DUPLICATE' && !r.unknownAccount)
+    const filteredPreviewRows = previewRows.filter(r => {
+      if (r.unknownAccount && r.status !== 'DUPLICATE') return activeFilters.has('UNKNOWN_ACCOUNT')
+      if (r.status === 'DUPLICATE') return activeFilters.has('DUPLICATE')
+      if (decisions[r.key]?.action === 'ignore') return activeFilters.has('IGNORED')
+      return activeFilters.has('NEW')
+    })
 
-    const toggleFilter = (key: string) => setFilter(f => f === key ? null : key)
+    const toggleFilter = (key: string) => {
+      setActiveFilters(prev => {
+        if (prev.has(key) && prev.size === 1) return prev
+        const next = new Set(prev)
+        if (next.has(key)) next.delete(key); else next.add(key)
+        return next
+      })
+    }
 
     return (
       <div className="ri-page">
         <div className="ri-preview">
           <div className="ri-summary-bar">
             <button
-              className={`ri-chip ri-chip--new${filter === 'NEW' ? ' ri-chip--active' : ''}`}
+              className={`ri-chip ri-chip--new${activeFilters.has('NEW') ? ' ri-chip--active' : ''}`}
               onClick={() => toggleFilter('NEW')}
             >
               {t('csvImport.categorizing.new', { count: rows.length - duplicateCount - unknownAccountCount })}
             </button>
             {duplicateCount > 0 && (
               <button
-                className={`ri-chip ri-chip--dup${filter === 'DUPLICATE' ? ' ri-chip--active' : ''}`}
+                className={`ri-chip ri-chip--dup${activeFilters.has('DUPLICATE') ? ' ri-chip--active' : ''}`}
                 onClick={() => toggleFilter('DUPLICATE')}
               >
                 {t('csvImport.categorizing.duplicate', { count: duplicateCount })}
@@ -416,7 +433,7 @@ export default function CsvImportPage() {
             )}
             {unknownAccountCount > 0 && (
               <button
-                className={`ri-chip ri-chip--inv${filter === 'UNKNOWN_ACCOUNT' ? ' ri-chip--active' : ''}`}
+                className={`ri-chip ri-chip--inv${activeFilters.has('UNKNOWN_ACCOUNT') ? ' ri-chip--active' : ''}`}
                 onClick={() => toggleFilter('UNKNOWN_ACCOUNT')}
               >
                 {t('csvImport.categorizing.excluded', { count: unknownAccountCount })}
@@ -424,7 +441,7 @@ export default function CsvImportPage() {
             )}
             {ignoredCount > 0 && (
               <button
-                className={`ri-chip ri-chip--prev-ignored${filter === 'IGNORED' ? ' ri-chip--active' : ''}`}
+                className={`ri-chip ri-chip--prev-ignored${activeFilters.has('IGNORED') ? ' ri-chip--active' : ''}`}
                 onClick={() => toggleFilter('IGNORED')}
               >
                 {t('csvImport.categorizing.skipped', { count: ignoredCount })}

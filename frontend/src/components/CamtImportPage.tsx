@@ -40,6 +40,12 @@ function adaptRow(row: RawPreviewRow, accountNames: Record<string, string>): Imp
   }
 }
 
+function defaultCamtFilters(rows: RawPreviewRow[]): Set<string> {
+  if (rows.some(r => r.status === 'NEW' && !r.unknownAccount)) return new Set(['NEW'])
+  if (rows.some(r => r.status === 'DUPLICATE')) return new Set(['DUPLICATE'])
+  return new Set(['UNKNOWN_ACCOUNT'])
+}
+
 function initDecisions(rows: RawPreviewRow[]): Record<number, ImportDecision> {
   const out: Record<number, ImportDecision> = {}
   for (const row of rows) {
@@ -60,7 +66,9 @@ export default function CamtImportPage() {
   const [accountNames, setAccountNames] = useState<Record<string, string>>({})
   const [importing, setImporting] = useState(false)
   const [isDragging, setIsDragging] = useState(false)
-  const [filter, setFilter] = useState<string | null>(null)
+  const [activeFilters, setActiveFilters] = useState<Set<string>>(
+    () => new Set(['NEW', 'PREVIOUSLY_IGNORED', 'DUPLICATE', 'INVALID', 'UNKNOWN_ACCOUNT']),
+  )
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const handleFiles = useCallback(async (files: File[]) => {
@@ -80,6 +88,7 @@ export default function CamtImportPage() {
       setState({ phase: 'preview', rows, accounts, accountBalances })
       setDecisions(initDecisions(rows))
       setAccountNames(names)
+      setActiveFilters(defaultCamtFilters(rows))
     } catch (e) {
       setState({ phase: 'error', message: e instanceof Error ? e.message : 'Preview failed' })
     }
@@ -204,39 +213,47 @@ export default function CamtImportPage() {
   const nUnknown = rows.filter(r => r.unknownAccount && r.status !== 'DUPLICATE').length
 
   const adaptedRows = rows.map(r => adaptRow(r, accountNames))
-  const filteredRows = filter == null ? adaptedRows
-    : filter === 'UNKNOWN_ACCOUNT' ? adaptedRows.filter(r => r.unknownAccount && r.status !== 'DUPLICATE')
-    : filter === 'NEW' ? adaptedRows.filter(r => r.status === 'NEW' && !r.unknownAccount)
-    : adaptedRows.filter(r => r.status === filter)
+  const filteredRows = adaptedRows.filter(r => {
+    if (r.unknownAccount && r.status !== 'DUPLICATE') return activeFilters.has('UNKNOWN_ACCOUNT')
+    if (r.status === 'NEW') return activeFilters.has('NEW')
+    return activeFilters.has(r.status)
+  })
 
-  const toggleFilter = (key: string) => setFilter(f => f === key ? null : key)
+  const toggleFilter = (key: string) => {
+    setActiveFilters(prev => {
+      if (prev.has(key) && prev.size === 1) return prev
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key); else next.add(key)
+      return next
+    })
+  }
 
   return (
     <div className="ri-page">
       <div className="ri-preview">
         <div className="ri-summary-bar">
           {nNew > 0 && (
-            <button className={`ri-chip ri-chip--new${filter === 'NEW' ? ' ri-chip--active' : ''}`} onClick={() => toggleFilter('NEW')}>
+            <button className={`ri-chip ri-chip--new${activeFilters.has('NEW') ? ' ri-chip--active' : ''}`} onClick={() => toggleFilter('NEW')}>
               {t('camtImport.chips.new', { count: nNew })}
             </button>
           )}
           {nIgn > 0 && (
-            <button className={`ri-chip ri-chip--prev-ignored${filter === 'PREVIOUSLY_IGNORED' ? ' ri-chip--active' : ''}`} onClick={() => toggleFilter('PREVIOUSLY_IGNORED')}>
+            <button className={`ri-chip ri-chip--prev-ignored${activeFilters.has('PREVIOUSLY_IGNORED') ? ' ri-chip--active' : ''}`} onClick={() => toggleFilter('PREVIOUSLY_IGNORED')}>
               {t('camtImport.chips.previouslyIgnored', { count: nIgn })}
             </button>
           )}
           {nDup > 0 && (
-            <button className={`ri-chip ri-chip--dup${filter === 'DUPLICATE' ? ' ri-chip--active' : ''}`} onClick={() => toggleFilter('DUPLICATE')}>
+            <button className={`ri-chip ri-chip--dup${activeFilters.has('DUPLICATE') ? ' ri-chip--active' : ''}`} onClick={() => toggleFilter('DUPLICATE')}>
               {t('camtImport.chips.duplicate', { count: nDup })}
             </button>
           )}
           {nInv > 0 && (
-            <button className={`ri-chip ri-chip--inv${filter === 'INVALID' ? ' ri-chip--active' : ''}`} onClick={() => toggleFilter('INVALID')}>
+            <button className={`ri-chip ri-chip--inv${activeFilters.has('INVALID') ? ' ri-chip--active' : ''}`} onClick={() => toggleFilter('INVALID')}>
               {t('camtImport.chips.invalid', { count: nInv })}
             </button>
           )}
           {nUnknown > 0 && (
-            <button className={`ri-chip ri-chip--inv${filter === 'UNKNOWN_ACCOUNT' ? ' ri-chip--active' : ''}`} onClick={() => toggleFilter('UNKNOWN_ACCOUNT')}>
+            <button className={`ri-chip ri-chip--inv${activeFilters.has('UNKNOWN_ACCOUNT') ? ' ri-chip--active' : ''}`} onClick={() => toggleFilter('UNKNOWN_ACCOUNT')}>
               {t('camtImport.chips.excluded', { count: nUnknown })}
             </button>
           )}
