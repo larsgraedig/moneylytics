@@ -40,58 +40,64 @@ export function ImportPreviewTable({ rows, decisions, onDecide }: ImportPreviewT
 
   return (
     <div className="ri-table-wrap">
-      <table className="ri-table">
-        <thead>
-          <tr>
-            <th>{t('camtImport.columns.status')}</th>
-            <th>{t('camtImport.columns.date')}</th>
-            <th>{t('camtImport.columns.account')}</th>
-            <th>{t('camtImport.columns.counterparty')}</th>
-            <th>{t('camtImport.columns.purpose')}</th>
-            <th>{t('camtImport.columns.amount')}</th>
-            <th></th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map(row => {
-            const d = decisions[row.key]
-            const isImporting = d?.action === 'import'
-            const isUnknown = row.unknownAccount && row.status !== 'DUPLICATE'
+      <div className="ri-cards">
+        {rows.map(row => {
+          const d = decisions[row.key]
+          const isImporting = d?.action === 'import'
+          const isUnknown = row.unknownAccount && row.status !== 'DUPLICATE'
+          const isActionable = !isUnknown && row.status !== 'INVALID' && row.status !== 'DUPLICATE'
 
-            const rowClass = (() => {
-              if (isUnknown) return 'ri-row ri-row--duplicate'
-              if (row.status === 'INVALID') return 'ri-row ri-row--invalid'
-              if (row.status === 'DUPLICATE') return 'ri-row ri-row--duplicate'
-              if (row.status === 'PREVIOUSLY_IGNORED') {
-                return isImporting ? 'ri-row ri-row--prev-ignored-importing' : 'ri-row ri-row--prev-ignored'
-              }
-              return isImporting ? 'ri-row ri-row--new' : 'ri-row ri-row--will-ignore'
-            })()
+          const cardStatusClass = (() => {
+            if (isUnknown) return 'ri-card--duplicate'
+            if (row.status === 'INVALID') return 'ri-card--invalid'
+            if (row.status === 'DUPLICATE') return 'ri-card--duplicate'
+            if (row.status === 'PREVIOUSLY_IGNORED') {
+              return isImporting ? 'ri-card--prev-ignored-importing' : 'ri-card--prev-ignored'
+            }
+            return isImporting ? 'ri-card--new' : 'ri-card--will-ignore'
+          })()
 
-            return (
-              <tr key={row.key} className={rowClass}>
-                <td>
+          return (
+            <div key={row.key} className={`txn-card ${cardStatusClass}`}>
+              <div className="txn-card-header">
+                <div className="txn-card-header-left">
                   <StatusBadge row={row} decision={d} />
-                </td>
-                <td className="ri-cell-date">{row.date ?? '—'}</td>
-                <td className={`ri-cell-date${isUnknown ? ' gcv-unknown-iban' : ''}`} title={row.accountIban}>
-                  {isUnknown ? t('camtImport.unknownAccount') : row.accountDisplay}
-                </td>
-                <td className="ri-cell-party" title={row.counterparty ?? ''}>{row.counterparty || '—'}</td>
-                <td className="ri-cell-purpose" title={row.purpose ?? ''}>{row.purpose || '—'}</td>
-                <td className={`ri-cell-amount${row.amount != null && row.amount < 0 ? ' negative' : ''}`}>
+                  <span className="txn-card-date">{row.date ?? '—'}</span>
+                </div>
+                <span className={`txn-card-amount${row.amount != null && row.amount < 0 ? ' negative' : ' positive'}`}>
                   {formatAmount(row.amount, row.currency, row.amountRaw)}
-                </td>
-                <DetailCell row={row} />
-                <td className="ri-cell-action">
+                </span>
+              </div>
+
+              <div className="txn-card-body">
+                <span className="txn-card-counterparty">
+                  {isUnknown
+                    ? <span className="gcv-unknown-iban">{t('camtImport.unknownAccount')}</span>
+                    : (row.counterparty || '—')
+                  }
+                </span>
+                {!isUnknown && row.purpose && (
+                  <span className="txn-card-purpose">{row.purpose}</span>
+                )}
+                <span
+                  className={`ri-card-account${isUnknown ? ' gcv-unknown-iban' : ''}`}
+                  title={row.accountIban}
+                >
+                  {isUnknown ? row.accountIban : row.accountDisplay}
+                </span>
+              </div>
+
+              <ErrorTags row={row} />
+
+              {isActionable && (
+                <div className="txn-card-footer">
                   <ActionToggle row={row} decision={d} onDecide={d => onDecide(row.key, d)} />
-                </td>
-              </tr>
-            )
-          })}
-        </tbody>
-      </table>
+                </div>
+              )}
+            </div>
+          )
+        })}
+      </div>
     </div>
   )
 }
@@ -112,19 +118,17 @@ function StatusBadge({ row, decision }: { row: ImportPreviewRow; decision: Impor
     : <span className="ri-badge ri-badge--new">{t('camtImport.status.new')}</span>
 }
 
-function DetailCell({ row }: { row: ImportPreviewRow }) {
-  if (row.status === 'INVALID') {
-    return (
-      <td className="ri-cell-errors">
-        {row.errors.map((err, i) => (
-          <span key={i} className="ri-error-tag" title={err.message}>
-            {err.column}: <em>{err.value || '∅'}</em>
-          </span>
-        ))}
-      </td>
-    )
-  }
-  return <td className="ri-cell-muted">—</td>
+function ErrorTags({ row }: { row: ImportPreviewRow }) {
+  if (row.status !== 'INVALID' || row.errors.length === 0) return null
+  return (
+    <div className="ri-card-errors">
+      {row.errors.map((err, i) => (
+        <span key={i} className="ri-error-tag" title={err.message}>
+          {err.column}: <em>{err.value || '∅'}</em>
+        </span>
+      ))}
+    </div>
+  )
 }
 
 function ActionToggle({
