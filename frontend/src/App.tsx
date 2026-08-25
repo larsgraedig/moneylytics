@@ -419,7 +419,7 @@ export default function App() {
           {tab === 'limits' && <ThresholdsPage key={`${username}-${activeOrganization?.id}`} accountId={accountId} categories={categories} />}
           {tab === 'konten' && <AccountsPage key={`${username}-${activeOrganization?.id}`} />}
           {tab === 'csv' && <CsvImportPage key={`${username}-${activeOrganization?.id}`} categories={categories} />}
-          {tab === 'camt' && <CamtImportPage key={`${username}-${activeOrganization?.id}`} categories={categories} />}
+          {tab === 'camt' && <CamtImportPage key={`${username}-${activeOrganization?.id}`} />}
           {tab === 'importe' && <ImportsPage key={`${username}-${activeOrganization?.id}`} />}
           {tab === 'wiederkehrer' && <RecurringPage key={`${username}-${activeOrganization?.id}`} />}
           {tab === 'kategorien' && <CategoriesPage key={`${username}-${activeOrganization?.id}`} categories={categories} from={from} to={to} accountId={accountId} onCategoryDeleted={() => { fetchCategories().then(cats => setCategories(cats.categories)).catch(() => {}) }} onCategoryMoved={() => { fetchCategories().then(cats => setCategories(cats.categories)).catch(() => {}) }} onCategoryRenamed={() => { fetchCategories().then(cats => setCategories(cats.categories)).catch(() => {}) }} onCategoryMerged={() => { fetchCategories().then(cats => setCategories(cats.categories)).catch(() => {}) }} onCategoryCreated={() => { fetchCategories().then(cats => setCategories(cats.categories)).catch(() => {}) }} />}
