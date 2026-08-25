@@ -116,23 +116,35 @@ class GenericCsvController(
 
     @PostMapping("/preview", consumes = [MediaType.MULTIPART_FORM_DATA_VALUE])
     suspend fun preview(
-        @RequestPart("file") filePart: FilePart,
         @RequestPart("mapping") mapping: GenericCsvMapping,
         @AuthenticationPrincipal principal: UserDetails,
         exchange: ServerWebExchange,
     ): List<GenericCsvPreviewRow> {
-        val content = filePart.readUtf8()
-        val rows = withContext(Dispatchers.Default) { parser.preview(content, mapping) }
-        if (rows.isEmpty()) return rows
+        val parts = exchange.multipartData.awaitSingle()
+        val fileParts = parts["files"]?.filterIsInstance<FilePart>() ?: emptyList()
+        if (fileParts.isEmpty()) return emptyList()
+
+        val allRows = mutableListOf<GenericCsvPreviewRow>()
+        var nextRowIndex = 0
+        for (filePart in fileParts) {
+            val content = filePart.readUtf8()
+            val rows = withContext(Dispatchers.Default) { parser.preview(content, mapping) }
+            rows.mapIndexedTo(allRows) { idx, row ->
+                row.copy(rowIndex = nextRowIndex + idx, sourceFilename = filePart.filename())
+            }
+            nextRowIndex += rows.size
+        }
+
+        if (allRows.isEmpty()) return allRows
 
         val organizationId = resolveOrganizationUseCase.resolveOrganization(principal, exchange)
-        val allFingerprints = rows.map { it.fingerprint }.toSet()
+        val allFingerprints = allRows.map { it.fingerprint }.toSet()
         val (existingFingerprints, knownIbans, suggestions) =
             withContext(Dispatchers.IO) {
                 val fingerprints = checkDuplicatesUseCase.findExistingFingerprints(allFingerprints, organizationId)
                 val ibans = getAccountsUseCase.getAccounts(organizationId).map { it.iban }.toSet()
                 val features =
-                    rows.map { row ->
+                    allRows.map { row ->
                         CategoryClassifierFeatures(
                             purpose = row.purpose,
                             counterpartyName = row.counterpartyName,
@@ -141,9 +153,9 @@ class GenericCsvController(
                         )
                     }
                 val suggested = categoryClassifier.suggestAll(organizationId, features)
-                Triple(fingerprints, ibans, rows.zip(suggested).associate { (row, catId) -> row.fingerprint to catId })
+                Triple(fingerprints, ibans, allRows.zip(suggested).associate { (row, catId) -> row.fingerprint to catId })
             }
-        return rows.map { row ->
+        return allRows.map { row ->
             val isDuplicate = row.fingerprint in existingFingerprints
             row.copy(
                 status = if (isDuplicate) RowStatus.DUPLICATE else row.status,

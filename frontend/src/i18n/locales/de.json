@@ -341,7 +341,7 @@
   "csvImport": {
     "dropzone": {
       "label": "Beliebige CSV hochladen oder hierher ziehen",
-      "hint": "Trennzeichen und Formate werden automatisch erkannt",
+      "hint": "Mehrere Dateien möglich – Trennzeichen und Formate werden automatisch erkannt",
       "analyzing": "Analysiere Datei…",
       "analyzingHint": "Trennzeichen, Spalten und Formate werden erkannt"
     },
@@ -372,7 +372,9 @@
       "cancel": "Abbrechen",
       "import": "Importieren",
       "importing": "Importiert…",
-      "previewTitle": "Vorschau ({{count}} Zeilen)"
+      "previewTitle": "Vorschau ({{count}} Zeilen)",
+      "fileProgress": "Datei {{current}} von {{total}}",
+      "sessionBadge": "Von vorheriger Datei übernommen"
     },
     "categorizing": {
       "unknownAccount": "{{count}} unbekanntes Konto",
@@ -725,12 +727,13 @@
       "remove": "Entfernen"
     },
     "invite": {
-      "title": "Mitglied einladen",
-      "emailPlaceholder": "E-Mail",
-      "passwordPlaceholder": "Passwort",
-      "button": "Anlegen",
-      "success": "Mitglied erfolgreich eingeladen.",
-      "error": "Einladen fehlgeschlagen."
+      "generateTitle": "Einladungslink generieren",
+      "emailPlaceholder": "E-Mail des Eingeladenen",
+      "generate": "Link generieren",
+      "copy": "Kopieren",
+      "expires": "Läuft ab",
+      "linkGenerated": "Einladungslink wurde erstellt.",
+      "error": "Einladung fehlgeschlagen."
     },
     "create": {
       "title": "Neue Organisation anlegen",
@@ -743,15 +746,6 @@
       "loadMembers": "Mitglieder konnten nicht geladen werden.",
       "removeMember": "Entfernen fehlgeschlagen.",
       "updateRole": "Rolle konnte nicht aktualisiert werden."
-    },
-    "invite": {
-      "generateTitle": "Einladungslink generieren",
-      "emailPlaceholder": "E-Mail des Eingeladenen",
-      "generate": "Link generieren",
-      "copy": "Kopieren",
-      "expires": "Läuft ab",
-      "linkGenerated": "Einladungslink wurde erstellt.",
-      "error": "Einladung fehlgeschlagen."
     },
     "logo": {
       "title": "Organisationslogo",

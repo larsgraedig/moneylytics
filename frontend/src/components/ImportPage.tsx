@@ -170,6 +170,8 @@ function MappingView({
   onConfirm,
   onCancel,
   importing,
+  fileProgress,
+  sessionSuggested,
 }: {
   detection: CsvDetectionResult
   mapping: CsvMapping
@@ -178,6 +180,8 @@ function MappingView({
   onConfirm: () => void
   onCancel: () => void
   importing: boolean
+  fileProgress?: { current: number; total: number }
+  sessionSuggested?: boolean
 }) {
   const { t } = useTranslation()
   const { headers, sampleRows } = detection
@@ -206,8 +210,16 @@ function MappingView({
             {detection.savedMapping && (
               <span className="gcv-saved-badge">{t('csvImport.mapping.savedBadge')}</span>
             )}
+            {sessionSuggested && !detection.savedMapping && (
+              <span className="gcv-saved-badge">{t('csvImport.mapping.sessionBadge')}</span>
+            )}
           </div>
-          <div className="gcv-subtitle">{file.name} · {t('csvImport.mapping.delimiter')}: <code>{mapping.delimiter === '\t' ? 'Tab' : mapping.delimiter}</code></div>
+          <div className="gcv-subtitle">
+            {file.name} · {t('csvImport.mapping.delimiter')}: <code>{mapping.delimiter === '\t' ? 'Tab' : mapping.delimiter}</code>
+            {fileProgress && fileProgress.total > 1 && (
+              <span style={{ marginLeft: 8, opacity: 0.6 }}>{t('csvImport.mapping.fileProgress', fileProgress)}</span>
+            )}
+          </div>
         </div>
         <div className="gcv-header-actions">
           <button className="gcv-cancel-btn" onClick={onCancel} disabled={importing}>{t('csvImport.mapping.cancel')}</button>
@@ -321,16 +333,19 @@ function MappingView({
 
 // ── Page state ─────────────────────────────────────────────────────────────────
 
+type MappedFile = { file: File; mapping: CsvMapping; detection: CsvDetectionResult }
+type PendingFile = { file: File; detection: CsvDetectionResult }
+
 type PageState =
   | { mode: 'idle' }
   | { mode: 'camt-loading' }
   | { mode: 'camt-preview'; rows: RawPreviewRow[]; accounts: CamtAccountInfo[]; accountBalances: Record<string, CamtAccountBalance> }
   | { mode: 'camt-imported'; importedCount: number; ignoredCount: number }
   | { mode: 'csv-detecting' }
-  | { mode: 'csv-mapping'; detection: CsvDetectionResult; mapping: CsvMapping; file: File }
-  | { mode: 'csv-previewing'; detection: CsvDetectionResult; mapping: CsvMapping; file: File }
-  | { mode: 'csv-categorizing'; rows: GenericCsvPreviewRow[]; detection: CsvDetectionResult; mapping: CsvMapping; file: File }
-  | { mode: 'csv-importing'; rows: GenericCsvPreviewRow[]; detection: CsvDetectionResult; mapping: CsvMapping; file: File }
+  | { mode: 'csv-mapping'; detection: CsvDetectionResult; mapping: CsvMapping; file: File; mappedFiles: MappedFile[]; pendingFiles: PendingFile[] }
+  | { mode: 'csv-previewing'; mappedFiles: MappedFile[] }
+  | { mode: 'csv-categorizing'; rows: GenericCsvPreviewRow[]; mappedFiles: MappedFile[] }
+  | { mode: 'csv-importing'; rows: GenericCsvPreviewRow[]; mappedFiles: MappedFile[] }
   | { mode: 'csv-success'; count: number }
 
 export default function ImportPage() {
@@ -356,6 +371,7 @@ export default function ImportPage() {
 
   const camtInputRef = useRef<HTMLInputElement>(null)
   const csvInputRef = useRef<HTMLInputElement>(null)
+  const sessionMappings = useRef(new Map<string, CsvMapping>())
 
   const resetToIdle = () => {
     setState({ mode: 'idle' })
@@ -464,51 +480,113 @@ export default function ImportPage() {
 
   // ── CSV handlers ─────────────────────────────────────────────────────────────
 
-  const handleCsvFile = useCallback(async (file: File) => {
-    setCsvError(null)
-    setState({ mode: 'csv-detecting' })
+  const startCsvPreview = useCallback(async (mappedFiles: MappedFile[]) => {
+    setState({ mode: 'csv-previewing', mappedFiles })
     try {
-      const detection = await detectCsvFormat(file)
-      const mapping = buildInitialMapping(detection)
-      setState({ mode: 'csv-mapping', detection, mapping, file })
-    } catch (e) {
-      setState({ mode: 'idle' })
-      setCsvError(e instanceof Error ? e.message : 'Detection failed')
-    }
-  }, [])
+      const groups = new Map<string, { files: File[]; mapping: CsvMapping }>()
+      for (const { file, mapping } of mappedFiles) {
+        const key = JSON.stringify(mapping)
+        if (!groups.has(key)) groups.set(key, { files: [], mapping })
+        groups.get(key)!.files.push(file)
+      }
 
-  const handleCsvDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault()
-    setCsvDragging(false)
-    const file = e.dataTransfer.files[0]
-    if (!file) return
-    const name = file.name.toLowerCase()
-    if (!name.endsWith('.csv') && !name.endsWith('.txt')) {
-      setCsvError(t('import.errorCsvType'))
-      return
-    }
-    setCsvError(null)
-    handleCsvFile(file)
-  }, [handleCsvFile, t])
+      const allRows: GenericCsvPreviewRow[] = []
+      let nextRowIndex = 0
+      for (const { files, mapping } of groups.values()) {
+        const rows = await previewGenericCsv(files, mapping)
+        for (const row of rows) {
+          allRows.push({ ...row, rowIndex: nextRowIndex++ })
+        }
+      }
 
-  const handleCsvConfirm = async (detection: CsvDetectionResult, mapping: CsvMapping, file: File) => {
-    setState({ mode: 'csv-previewing', detection, mapping, file })
-    try {
-      const rows = await previewGenericCsv(file, mapping)
       const initialDecisions: Record<number, ImportDecision> = {}
-      rows.forEach(r => {
+      allRows.forEach(r => {
         initialDecisions[r.rowIndex] = r.status === 'DUPLICATE' ? { action: 'ignore' } : { action: 'import' }
       })
       setCsvDecisions(initialDecisions)
-      setState({ mode: 'csv-categorizing', rows, detection, mapping, file })
-      setCsvFilters(defaultCsvFilters(rows))
+      setState({ mode: 'csv-categorizing', rows: allRows, mappedFiles })
+      setCsvFilters(defaultCsvFilters(allRows))
     } catch (e) {
       setState({ mode: 'idle' })
       setCsvError(e instanceof Error ? e.message : 'Preview failed')
     }
+  }, [])
+
+  const handleCsvFiles = useCallback(async (files: File[]) => {
+    if (files.length === 0) return
+    setCsvError(null)
+    setState({ mode: 'csv-detecting' })
+    try {
+      const detections = await Promise.all(files.map(f => detectCsvFormat(f)))
+      const mappedFiles: MappedFile[] = []
+      const pendingFiles: PendingFile[] = []
+      for (let i = 0; i < files.length; i++) {
+        const detection = detections[i]
+        if (detection.savedMapping) {
+          mappedFiles.push({ file: files[i], mapping: detection.savedMapping, detection })
+        } else {
+          pendingFiles.push({ file: files[i], detection })
+        }
+      }
+      if (pendingFiles.length === 0) {
+        await startCsvPreview(mappedFiles)
+      } else {
+        const [first, ...rest] = pendingFiles
+        setState({
+          mode: 'csv-mapping',
+          detection: first.detection,
+          mapping: buildInitialMapping(first.detection),
+          file: first.file,
+          mappedFiles,
+          pendingFiles: rest,
+        })
+      }
+    } catch (e) {
+      setState({ mode: 'idle' })
+      setCsvError(e instanceof Error ? e.message : 'Detection failed')
+    }
+  }, [startCsvPreview])
+
+  const handleCsvDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    setCsvDragging(false)
+    const all = Array.from(e.dataTransfer.files)
+    if (all.length === 0) return
+    if (all.some(f => !f.name.toLowerCase().endsWith('.csv') && !f.name.toLowerCase().endsWith('.txt'))) {
+      setCsvError(t('import.errorCsvType'))
+      return
+    }
+    setCsvError(null)
+    void handleCsvFiles(all)
+  }, [handleCsvFiles, t])
+
+  const handleCsvConfirm = async (
+    detection: CsvDetectionResult,
+    mapping: CsvMapping,
+    file: File,
+    mappedFiles: MappedFile[],
+    pendingFiles: PendingFile[],
+  ) => {
+    sessionMappings.current.set(detection.fingerprint, mapping)
+    const newMappedFiles = [...mappedFiles, { file, mapping, detection }]
+    if (pendingFiles.length === 0) {
+      await startCsvPreview(newMappedFiles)
+    } else {
+      const [first, ...rest] = pendingFiles
+      const sessionMapping = sessionMappings.current.get(first.detection.fingerprint)
+      const initialMapping = sessionMapping ?? buildInitialMapping(first.detection)
+      setState({
+        mode: 'csv-mapping',
+        detection: first.detection,
+        mapping: initialMapping,
+        file: first.file,
+        mappedFiles: newMappedFiles,
+        pendingFiles: rest,
+      })
+    }
   }
 
-  const handleCsvImportRows = async (rows: GenericCsvPreviewRow[], detection: CsvDetectionResult, mapping: CsvMapping, file: File) => {
+  const handleCsvImportRows = async (rows: GenericCsvPreviewRow[], mappedFiles: MappedFile[]) => {
     const toImport: GenericRowToImport[] = rows
       .filter(r => {
         if (r.status === 'DUPLICATE' || r.unknownAccount) return false
@@ -527,7 +605,7 @@ export default function ImportPage() {
         counterpartyIban: r.counterpartyIban,
       }))
 
-    setState({ mode: 'csv-importing', rows, detection, mapping, file })
+    setState({ mode: 'csv-importing', rows, mappedFiles })
     try {
       const count = await importGenericRows(toImport, [])
       setState({ mode: 'csv-success', count })
@@ -576,24 +654,39 @@ export default function ImportPage() {
   // ── CSV mapping ──────────────────────────────────────────────────────────────
 
   if (state.mode === 'csv-mapping' || state.mode === 'csv-previewing') {
-    const { detection, mapping, file } = state
+    if (state.mode === 'csv-mapping') {
+      const { detection, mapping, file, mappedFiles, pendingFiles } = state
+      const totalFiles = mappedFiles.length + pendingFiles.length + 1
+      return (
+        <MappingView
+          detection={detection}
+          mapping={mapping}
+          file={file}
+          onChange={m => setState({ mode: 'csv-mapping', detection, mapping: m, file, mappedFiles, pendingFiles })}
+          onConfirm={() => void handleCsvConfirm(detection, mapping, file, mappedFiles, pendingFiles)}
+          onCancel={resetToIdle}
+          importing={false}
+          fileProgress={totalFiles > 1 ? { current: mappedFiles.length + 1, total: totalFiles } : undefined}
+          sessionSuggested={sessionMappings.current.has(detection.fingerprint)}
+        />
+      )
+    }
+    // csv-previewing: loading state while fetching preview
     return (
-      <MappingView
-        detection={detection}
-        mapping={mapping}
-        file={file}
-        onChange={m => setState({ mode: 'csv-mapping', detection, mapping: m, file })}
-        onConfirm={() => handleCsvConfirm(detection, mapping, file)}
-        onCancel={resetToIdle}
-        importing={state.mode === 'csv-previewing'}
-      />
+      <div className="flex h-full items-center justify-center p-8">
+        <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-border p-16 text-center w-full max-w-lg">
+          <FileSpreadsheet className="h-10 w-10 text-muted-foreground" />
+          <span className="text-base font-medium">{t('csvImport.dropzone.analyzing')}</span>
+          <span className="text-sm text-muted-foreground">{t('csvImport.dropzone.analyzingHint')}</span>
+        </div>
+      </div>
     )
   }
 
   // ── CSV categorizing ─────────────────────────────────────────────────────────
 
   if (state.mode === 'csv-categorizing' || state.mode === 'csv-importing') {
-    const { rows, detection, mapping, file } = state
+    const { rows, mappedFiles } = state
     const importing = state.mode === 'csv-importing'
 
     const duplicateCount = rows.filter(r => r.status === 'DUPLICATE').length
@@ -661,11 +754,18 @@ export default function ImportPage() {
               </button>
             )}
             <span className="ri-summary-spacer" />
-            <button className="load-btn" onClick={() => setState({ mode: 'csv-mapping', detection, mapping, file })} disabled={importing}>{t('csvImport.categorizing.back')}</button>
+            <button className="load-btn" onClick={() => {
+              if (mappedFiles.length === 1) {
+                const { file, mapping, detection } = mappedFiles[0]
+                setState({ mode: 'csv-mapping', detection, mapping, file, mappedFiles: [], pendingFiles: [] })
+              } else {
+                resetToIdle()
+              }
+            }} disabled={importing}>{t('csvImport.categorizing.back')}</button>
             <button
               className="load-btn ri-import-btn"
               disabled={readyCount === 0 || importing}
-              onClick={() => handleCsvImportRows(rows, detection, mapping, file)}
+              onClick={() => void handleCsvImportRows(rows, mappedFiles)}
             >
               {importing ? '…' : t('csvImport.categorizing.importCount', { count: readyCount })}
             </button>
@@ -764,6 +864,7 @@ export default function ImportPage() {
     )
   }
 
+
   // ── Idle: two drop zones ─────────────────────────────────────────────────────
 
   return (
@@ -809,10 +910,11 @@ export default function ImportPage() {
             ref={csvInputRef}
             type="file"
             accept=".csv,.txt"
+            multiple
             style={{ display: 'none' }}
             onChange={e => {
-              const f = e.target.files?.[0]
-              if (f) handleCsvFile(f)
+              const files = Array.from(e.target.files ?? [])
+              if (files.length > 0) void handleCsvFiles(files)
               e.target.value = ''
             }}
           />

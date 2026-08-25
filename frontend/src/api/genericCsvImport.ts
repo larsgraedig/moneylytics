@@ -60,6 +60,7 @@ export interface GenericCsvPreviewRow {
   counterpartyName: string | null
   counterpartyIban: string | null
   suggestedCategoryId: number | null
+  sourceFilename: string | null
 }
 
 export interface GenericRowToImport {
@@ -83,9 +84,11 @@ export async function detectCsvFormat(file: File): Promise<CsvDetectionResult> {
   return res.json() as Promise<CsvDetectionResult>
 }
 
-export async function previewGenericCsv(file: File, mapping: CsvMapping): Promise<GenericCsvPreviewRow[]> {
+export async function previewGenericCsv(files: File[], mapping: CsvMapping): Promise<GenericCsvPreviewRow[]> {
   const form = new FormData()
-  form.append('file', file)
+  for (const file of files) {
+    form.append('files', file)
+  }
   form.append('mapping', new Blob([JSON.stringify(mapping)], { type: 'application/json' }))
   const res = await fetch('/transactions/csv/preview', { method: 'POST', body: form })
   if (!res.ok) throw new Error(`HTTP ${res.status}`)

@@ -341,7 +341,7 @@
   "csvImport": {
     "dropzone": {
       "label": "Upload any CSV or drop it here",
-      "hint": "Delimiter and formats are detected automatically",
+      "hint": "Multiple files supported – delimiter and formats are detected automatically",
       "analyzing": "Analysing file…",
       "analyzingHint": "Detecting delimiter, columns and formats"
     },
@@ -372,7 +372,9 @@
       "cancel": "cancel",
       "import": "import",
       "importing": "importing…",
-      "previewTitle": "Preview ({{count}} rows)"
+      "previewTitle": "Preview ({{count}} rows)",
+      "fileProgress": "File {{current}} of {{total}}",
+      "sessionBadge": "Applied from previous file"
     },
     "categorizing": {
       "unknownAccount": "{{count}} unknown account",
@@ -725,12 +727,13 @@
       "remove": "Remove"
     },
     "invite": {
-      "title": "Invite member",
-      "emailPlaceholder": "Email",
-      "passwordPlaceholder": "Password",
-      "button": "Create",
-      "success": "Member invited successfully.",
-      "error": "Failed to invite member."
+      "generateTitle": "Generate invitation link",
+      "emailPlaceholder": "Email of invitee",
+      "generate": "Generate link",
+      "copy": "Copy",
+      "expires": "Expires",
+      "linkGenerated": "Invitation link created.",
+      "error": "Failed to create invitation."
     },
     "create": {
       "title": "Create new organization",
@@ -743,15 +746,6 @@
       "loadMembers": "Failed to load members.",
       "removeMember": "Failed to remove member.",
       "updateRole": "Failed to update role."
-    },
-    "invite": {
-      "generateTitle": "Generate invitation link",
-      "emailPlaceholder": "Email of invitee",
-      "generate": "Generate link",
-      "copy": "Copy",
-      "expires": "Expires",
-      "linkGenerated": "Invitation link created.",
-      "error": "Failed to create invitation."
     },
     "logo": {
       "title": "Organization logo",

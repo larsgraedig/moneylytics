@@ -17,9 +17,14 @@ import org.mockito.kotlin.argumentCaptor
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
+import org.springframework.core.io.buffer.DefaultDataBufferFactory
 import org.springframework.http.HttpStatus
+import org.springframework.http.codec.multipart.FilePart
 import org.springframework.security.core.userdetails.User
+import org.springframework.util.LinkedMultiValueMap
 import org.springframework.web.server.ServerWebExchange
+import reactor.core.publisher.Flux
+import reactor.core.publisher.Mono
 
 class GenericCsvControllerTest {
     private val organizationId = 1L
@@ -133,6 +138,99 @@ class GenericCsvControllerTest {
 
             verify(enrichTransactionUseCase).enrichByFingerprint("fp1", organizationId, "Test", null, null)
         }
+
+    @Test
+    fun `should combine rows from multiple files and assign sourceFilename in preview`() =
+        runTest {
+            val mapping = aMapping()
+            val file1Rows =
+                listOf(
+                    previewRow(rowIndex = 0, fingerprint = "fp1", accountIban = "DE01"),
+                    previewRow(rowIndex = 1, fingerprint = "fp2", accountIban = "DE01"),
+                )
+            val file2Rows =
+                listOf(
+                    previewRow(rowIndex = 0, fingerprint = "fp3", accountIban = "DE01"),
+                )
+            val filePart1 = mockFilePart("csv-content-1", "january.csv")
+            val filePart2 = mockFilePart("csv-content-2", "february.csv")
+            whenever(parser.preview("csv-content-1", mapping)).thenReturn(file1Rows)
+            whenever(parser.preview("csv-content-2", mapping)).thenReturn(file2Rows)
+            whenever(checkDuplicatesUseCase.findExistingFingerprints(any(), any())).thenReturn(emptySet())
+            whenever(getAccountsUseCase.getAccounts(organizationId)).thenReturn(emptyList())
+            whenever(categoryClassifier.suggestAll(any(), any())).thenReturn(listOf(null, null, null))
+            val multipartData = LinkedMultiValueMap<String, org.springframework.http.codec.multipart.Part>()
+            multipartData.add("files", filePart1)
+            multipartData.add("files", filePart2)
+            whenever(exchange.multipartData).thenReturn(Mono.just(multipartData))
+
+            val result = controller.preview(mapping, principal, exchange)
+
+            assertThat(result).hasSize(3)
+            assertThat(result[0].rowIndex).isEqualTo(0)
+            assertThat(result[0].sourceFilename).isEqualTo("january.csv")
+            assertThat(result[1].rowIndex).isEqualTo(1)
+            assertThat(result[1].sourceFilename).isEqualTo("january.csv")
+            assertThat(result[2].rowIndex).isEqualTo(2)
+            assertThat(result[2].sourceFilename).isEqualTo("february.csv")
+        }
+
+    @Test
+    fun `should return empty list when no files provided in preview`() =
+        runTest {
+            val multipartData = LinkedMultiValueMap<String, org.springframework.http.codec.multipart.Part>()
+            whenever(exchange.multipartData).thenReturn(Mono.just(multipartData))
+
+            val result = controller.preview(aMapping(), principal, exchange)
+
+            assertThat(result).isEmpty()
+        }
+
+    private fun aMapping() =
+        GenericCsvMapping(
+            delimiter = ";",
+            dateColumn = "Datum",
+            dateFormat = "dd.MM.yyyy",
+            amountColumn = "Betrag",
+            amountFormat = AmountFormat.GERMAN,
+            purposeColumn = null,
+            categoryColumn = null,
+            groupColumn = null,
+            accountIbanColumn = "IBAN",
+            currencyColumn = null,
+            fixedAccountIban = null,
+            fixedCurrency = "EUR",
+        )
+
+    private fun previewRow(
+        rowIndex: Int,
+        fingerprint: String,
+        accountIban: String,
+    ) = GenericCsvPreviewRow(
+        rowIndex = rowIndex,
+        date = "2025-01-15",
+        amount = -100.0,
+        currency = "EUR",
+        accountIban = accountIban,
+        purpose = null,
+        fingerprint = fingerprint,
+        status = RowStatus.NEW,
+        unknownAccount = false,
+        mappedCategory = null,
+        mappedGroup = null,
+    )
+
+    private fun mockFilePart(
+        content: String,
+        filename: String,
+    ): FilePart {
+        val filePart: FilePart = mock()
+        whenever(filePart.filename()).thenReturn(filename)
+        val bytes = content.toByteArray(Charsets.UTF_8)
+        val buffer = DefaultDataBufferFactory.sharedInstance.wrap(bytes)
+        whenever(filePart.content()).thenReturn(Flux.just(buffer))
+        return filePart
+    }
 
     private fun row(iban: String) =
         GenericRowToImport(
