@@ -379,6 +379,7 @@
       "new": "{{count}} new",
       "duplicate": "{{count}} already imported",
       "unknownAccount": "{{count}} unknown account",
+      "excluded": "{{count}} excluded",
       "skipped": "{{count}} skipped",
       "suggested": "{{count}} category suggested",
       "suggested_plural": "{{count}} categories suggested",
@@ -431,7 +432,8 @@
       "previouslyIgnored": "{{count}} previously ignored",
       "duplicate": "{{count}} duplicate",
       "invalid": "{{count}} invalid",
-      "unknownAccount": "{{count}} unknown account"
+      "unknownAccount": "{{count}} unknown account",
+      "excluded": "{{count}} excluded"
     },
     "columns": {
       "row": "#",

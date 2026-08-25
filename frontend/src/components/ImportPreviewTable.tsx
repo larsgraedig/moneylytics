@@ -57,7 +57,7 @@ export function ImportPreviewTable({ rows, decisions, onDecide }: ImportPreviewT
             return isImporting ? 'ri-card--new' : 'ri-card--will-ignore'
           })()
 
-          const ghostClass = row.status === 'DUPLICATE' ? ' txn-card--ghost' : ''
+          const ghostClass = (row.status === 'DUPLICATE' || isUnknown) ? ' txn-card--ghost' : ''
 
           return (
             <div key={row.key} className={`txn-card ${cardStatusClass}${ghostClass}`}>

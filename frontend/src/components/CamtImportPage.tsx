@@ -197,7 +197,7 @@ export default function CamtImportPage() {
   // ── preview ────────────────────────────────────────────────────────────────
 
   const { rows } = state
-  const nNew = rows.filter(r => r.status === 'NEW').length
+  const nNew = rows.filter(r => r.status === 'NEW' && !r.unknownAccount).length
   const nDup = rows.filter(r => r.status === 'DUPLICATE').length
   const nInv = rows.filter(r => r.status === 'INVALID').length
   const nIgn = rows.filter(r => r.status === 'PREVIOUSLY_IGNORED').length
@@ -206,6 +206,7 @@ export default function CamtImportPage() {
   const adaptedRows = rows.map(r => adaptRow(r, accountNames))
   const filteredRows = filter == null ? adaptedRows
     : filter === 'UNKNOWN_ACCOUNT' ? adaptedRows.filter(r => r.unknownAccount && r.status !== 'DUPLICATE')
+    : filter === 'NEW' ? adaptedRows.filter(r => r.status === 'NEW' && !r.unknownAccount)
     : adaptedRows.filter(r => r.status === filter)
 
   const toggleFilter = (key: string) => setFilter(f => f === key ? null : key)
@@ -236,7 +237,7 @@ export default function CamtImportPage() {
           )}
           {nUnknown > 0 && (
             <button className={`ri-chip ri-chip--inv${filter === 'UNKNOWN_ACCOUNT' ? ' ri-chip--active' : ''}`} onClick={() => toggleFilter('UNKNOWN_ACCOUNT')}>
-              {t('camtImport.chips.unknownAccount', { count: nUnknown })}
+              {t('camtImport.chips.excluded', { count: nUnknown })}
             </button>
           )}
           <span className="ri-summary-spacer" />

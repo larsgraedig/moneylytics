@@ -404,7 +404,7 @@ export default function CsvImportPage() {
               className={`ri-chip ri-chip--new${filter === 'NEW' ? ' ri-chip--active' : ''}`}
               onClick={() => toggleFilter('NEW')}
             >
-              {t('csvImport.categorizing.new', { count: rows.length - duplicateCount })}
+              {t('csvImport.categorizing.new', { count: rows.length - duplicateCount - unknownAccountCount })}
             </button>
             {duplicateCount > 0 && (
               <button
@@ -419,7 +419,7 @@ export default function CsvImportPage() {
                 className={`ri-chip ri-chip--inv${filter === 'UNKNOWN_ACCOUNT' ? ' ri-chip--active' : ''}`}
                 onClick={() => toggleFilter('UNKNOWN_ACCOUNT')}
               >
-                {t('csvImport.categorizing.unknownAccount', { count: unknownAccountCount })}
+                {t('csvImport.categorizing.excluded', { count: unknownAccountCount })}
               </button>
             )}
             {ignoredCount > 0 && (
