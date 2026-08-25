@@ -6,11 +6,13 @@ import com.moneylytics.api.application.port.input.ImportTransactionsUseCase
 import com.moneylytics.api.application.port.output.AccountRepository
 import com.moneylytics.api.application.port.output.CategoryClassifier
 import com.moneylytics.api.application.port.output.CategoryRepository
+import com.moneylytics.api.application.port.output.ImportFileRepository
 import com.moneylytics.api.application.port.output.TransactionImportRepository
 import com.moneylytics.api.application.port.output.TransactionRepository
 import com.moneylytics.api.domain.Account
 import com.moneylytics.api.domain.Category
 import com.moneylytics.api.domain.CategoryClassifierFeatures
+import com.moneylytics.api.domain.ImportFile
 import com.moneylytics.api.domain.Transaction
 import com.moneylytics.api.domain.TransactionImport
 import org.springframework.stereotype.Service
@@ -22,6 +24,7 @@ class TransactionImportService(
     private val categoryRepository: CategoryRepository,
     private val categoryClassifier: CategoryClassifier,
     private val transactionImportRepository: TransactionImportRepository,
+    private val importFileRepository: ImportFileRepository,
 ) : ImportTransactionsUseCase {
     override fun importTransactions(command: ImportTransactionsCommand): ImportTransactionsResult {
         command.accountNames.forEach { (iban, name) ->
@@ -32,17 +35,33 @@ class TransactionImportService(
         val (count, newIds) = transactionRepository.saveAll(command.transactions, command.organizationId)
         val importRecord =
             transactionImportRepository.save(
-                TransactionImport(
-                    organizationId = command.organizationId,
-                    filename = command.filename,
-                    checksum = command.checksum,
-                    fileType = command.fileType,
-                    transactionCount = count,
-                ),
+                TransactionImport(organizationId = command.organizationId),
             )
         val importId = requireNotNull(importRecord.id)
         if (newIds.isNotEmpty()) {
             transactionRepository.linkToImport(importId, newIds)
+        }
+        for (spec in command.files) {
+            val idsForFile =
+                if (spec.fingerprints.isEmpty()) {
+                    newIds
+                } else {
+                    transactionRepository.findIdsByFingerprints(spec.fingerprints, command.organizationId)
+                }
+            val importFile =
+                importFileRepository.save(
+                    ImportFile(
+                        importId = importId,
+                        filename = spec.filename,
+                        checksum = spec.checksum,
+                        fileType = spec.fileType,
+                        transactionCount = idsForFile.size,
+                    ),
+                )
+            val fileId = requireNotNull(importFile.id)
+            if (idsForFile.isNotEmpty()) {
+                transactionRepository.linkToImportFile(fileId, idsForFile)
+            }
         }
         command.accountBalances.forEach { (iban, balance) ->
             accountRepository.updateBalance(iban, command.organizationId, balance.amount, balance.date)

@@ -85,6 +85,24 @@ class TransactionPersistenceAdapter(
     }
 
     @Transactional(readOnly = true)
+    override fun findIdsByFingerprints(
+        fingerprints: List<String>,
+        organizationId: Long,
+    ): List<Long> {
+        if (fingerprints.isEmpty()) return emptyList()
+        return jpaRepository.findIdsByFingerprints(fingerprints, organizationId)
+    }
+
+    @Transactional
+    override fun linkToImportFile(
+        importFileId: Long,
+        transactionIds: List<Long>,
+    ) {
+        if (transactionIds.isEmpty()) return
+        jpaRepository.setImportFileId(importFileId, transactionIds)
+    }
+
+    @Transactional(readOnly = true)
     override fun findIdsByImportId(importId: Long): List<Long> = jpaRepository.findIdsByImportId(importId)
 
     private fun buildCategoryMap(

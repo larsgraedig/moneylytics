@@ -859,9 +859,11 @@
     "loadError": "Could not load imports.",
     "columns": {
       "date": "Date",
+      "count": "Transactions",
+      "status": "Status"
+    },
+    "files": {
       "filename": "Filename",
-      "fileType": "Type",
-      "checksum": "Checksum",
       "count": "Transactions",
       "status": "Status"
     },

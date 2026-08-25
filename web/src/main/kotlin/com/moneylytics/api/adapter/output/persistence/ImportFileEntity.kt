@@ -9,16 +9,21 @@ import jakarta.persistence.Id
 import jakarta.persistence.JoinColumn
 import jakarta.persistence.ManyToOne
 import jakarta.persistence.Table
-import java.time.Instant
 
 @Entity
-@Table(name = "transaction_import")
-class TransactionImportEntity(
+@Table(name = "import_file")
+class ImportFileEntity(
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "organization_id", nullable = false)
-    val organization: OrganizationEntity,
-    @Column(nullable = false)
-    val importedAt: Instant,
+    @JoinColumn(name = "import_id", nullable = false)
+    val import: TransactionImportEntity,
+    @Column(nullable = false, length = 500)
+    val filename: String,
+    @Column(nullable = false, length = 64)
+    val checksum: String,
+    @Column(nullable = false, length = 10, name = "file_type")
+    val fileType: String,
+    @Column(nullable = false, name = "transaction_count")
+    val transactionCount: Int,
     @Column(nullable = false, length = 10)
     var status: String,
     @Id

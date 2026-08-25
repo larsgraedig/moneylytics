@@ -1,5 +1,6 @@
 package com.moneylytics.api.application.service
 
+import com.moneylytics.api.application.port.input.ImportFileSpec
 import com.moneylytics.api.application.port.input.ImportTransactionsCommand
 import com.moneylytics.api.application.port.output.AccountRepository
 import com.moneylytics.api.application.port.output.CategoryClassifier
@@ -8,11 +9,13 @@ import com.moneylytics.api.application.port.output.TransactionImportRepository
 import com.moneylytics.api.application.port.output.TransactionRepository
 import com.moneylytics.api.domain.Account
 import com.moneylytics.api.domain.AccountBalance
+import com.moneylytics.api.domain.ImportFile
 import com.moneylytics.api.domain.ImportFileType
 import com.moneylytics.api.domain.ImportStatus
 import com.moneylytics.api.domain.Transaction
 import com.moneylytics.api.domain.TransactionImport
 import org.assertj.core.api.Assertions.assertThat
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.any
 import org.mockito.kotlin.mock
@@ -28,6 +31,7 @@ class TransactionImportServiceTest {
     private val categoryRepository: CategoryRepository = mock()
     private val categoryClassifier: CategoryClassifier = mock()
     private val transactionImportRepository: TransactionImportRepository = mock()
+    private val importFileRepository: com.moneylytics.api.application.port.output.ImportFileRepository = mock()
     private val service =
         TransactionImportService(
             transactionRepository,
@@ -35,6 +39,7 @@ class TransactionImportServiceTest {
             categoryRepository,
             categoryClassifier,
             transactionImportRepository,
+            importFileRepository,
         )
 
     private val organizationId = 1L
@@ -43,21 +48,30 @@ class TransactionImportServiceTest {
         TransactionImport(
             id = 42L,
             organizationId = organizationId,
+            status = ImportStatus.ACTIVE,
+        )
+
+    private val savedFile =
+        ImportFile(
+            id = 1L,
+            importId = 42L,
             filename = "test.csv",
             checksum = "abc",
             fileType = ImportFileType.CSV,
             transactionCount = 0,
-            status = ImportStatus.ACTIVE,
         )
+
+    @BeforeEach
+    fun setUp() {
+        whenever(importFileRepository.save(any())).thenReturn(savedFile)
+    }
 
     private fun baseCommand(transactions: List<Transaction>) =
         ImportTransactionsCommand(
             transactions = transactions,
             accountNames = mapOf("DE01" to "Giro"),
             organizationId = organizationId,
-            filename = "test.csv",
-            checksum = "abc",
-            fileType = ImportFileType.CSV,
+            files = listOf(ImportFileSpec("test.csv", "abc", ImportFileType.CSV, emptyList())),
         )
 
     @Test

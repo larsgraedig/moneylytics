@@ -21,6 +21,7 @@ data class RawPreviewRow(
     val unknownAccount: Boolean = false,
     val counterpartyIban: String? = null,
     val suggestedCategoryId: Long? = null,
+    val sourceFilename: String? = null,
 )
 
 data class RawPreviewError(
@@ -73,6 +74,7 @@ data class CamtTransactionImport(
     val counterpartyName: String? = null,
     val counterpartyIban: String? = null,
     val subcategory: String? = null,
+    val sourceFilename: String? = null,
 )
 
 data class CategoriesResponse(

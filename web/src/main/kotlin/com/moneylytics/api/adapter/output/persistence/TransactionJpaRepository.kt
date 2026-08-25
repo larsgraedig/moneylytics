@@ -104,6 +104,24 @@ interface TransactionJpaRepository : JpaRepository<TransactionEntity, Long> {
         @Param("orgId") orgId: Long,
     )
 
+    @Modifying
+    @Query("UPDATE TransactionEntity t SET t.importFileId = :fileId WHERE t.id IN :ids")
+    fun setImportFileId(
+        @Param("fileId") fileId: Long,
+        @Param("ids") ids: Collection<Long>,
+    )
+
+    @Query("SELECT t.id FROM TransactionEntity t WHERE t.fingerprint IN :fps AND t.organization.id = :orgId")
+    fun findIdsByFingerprints(
+        @Param("fps") fps: Collection<String>,
+        @Param("orgId") orgId: Long,
+    ): List<Long>
+
+    @Query("SELECT t.id FROM TransactionEntity t WHERE t.importFileId = :importFileId")
+    fun findIdsByImportFileId(
+        @Param("importFileId") importFileId: Long,
+    ): List<Long>
+
     @Query("SELECT t.id FROM TransactionEntity t WHERE t.importId = :importId")
     fun findIdsByImportId(
         @Param("importId") importId: Long,

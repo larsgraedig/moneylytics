@@ -85,9 +85,11 @@ class TransactionImportIT : AbstractServiceIT() {
                     ),
                 accountNames = mapOf(newIban to "New Account"),
                 organizationId = organizationId,
-                filename = "test.csv",
-                checksum = "test",
-                fileType = ImportFileType.CSV,
+                files =
+                    listOf(
+                        com.moneylytics.api.application.port.input
+                            .ImportFileSpec("test.csv", "test", ImportFileType.CSV, emptyList()),
+                    ),
             )
 
         importService.importTransactions(command)
@@ -142,8 +144,10 @@ class TransactionImportIT : AbstractServiceIT() {
             transactions = transactions.toList(),
             accountNames = mapOf(importIban to "Import Account"),
             organizationId = organizationId,
-            filename = "test.csv",
-            checksum = "test",
-            fileType = ImportFileType.CSV,
+            files =
+                listOf(
+                    com.moneylytics.api.application.port.input
+                        .ImportFileSpec("test.csv", "test", ImportFileType.CSV, emptyList()),
+                ),
         )
 }

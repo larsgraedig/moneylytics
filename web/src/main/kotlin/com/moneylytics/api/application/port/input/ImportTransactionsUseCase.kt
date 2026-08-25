@@ -13,12 +13,17 @@ fun interface ImportTransactionsUseCase {
     fun importTransactions(command: ImportTransactionsCommand): ImportTransactionsResult
 }
 
+data class ImportFileSpec(
+    val filename: String,
+    val checksum: String,
+    val fileType: ImportFileType,
+    val fingerprints: List<String>,
+)
+
 data class ImportTransactionsCommand(
     val transactions: List<Transaction>,
     val accountNames: Map<String, String>,
     val organizationId: Long,
     val accountBalances: Map<String, AccountBalance> = emptyMap(),
-    val filename: String,
-    val checksum: String,
-    val fileType: ImportFileType,
+    val files: List<ImportFileSpec>,
 )

@@ -1,5 +1,6 @@
 package com.moneylytics.api.adapter.input.web
 
+import com.moneylytics.api.application.port.input.ImportFileSpec
 import com.moneylytics.api.application.port.input.ImportTransactionsCommand
 import com.moneylytics.api.application.port.input.ImportTransactionsUseCase
 import com.moneylytics.api.application.port.input.ResolveOrganizationUseCase
@@ -61,9 +62,15 @@ class TransactionImportController(
                                 accountNames = result.accountNames,
                                 accountBalances = result.accountBalances,
                                 organizationId = organizationId,
-                                filename = filePart.filename(),
-                                checksum = sha256(bytes),
-                                fileType = ImportFileType.CSV,
+                                files =
+                                    listOf(
+                                        ImportFileSpec(
+                                            filename = filePart.filename(),
+                                            checksum = sha256(bytes),
+                                            fileType = ImportFileType.CSV,
+                                            fingerprints = emptyList(),
+                                        ),
+                                    ),
                             ),
                         )
                     }

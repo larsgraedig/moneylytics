@@ -10,9 +10,8 @@ data class TransactionImport(
     val id: Long? = null,
     val organizationId: Long,
     val importedAt: Instant = Instant.now(),
-    val filename: String,
-    val checksum: String,
-    val fileType: ImportFileType,
-    val transactionCount: Int,
     val status: ImportStatus = ImportStatus.ACTIVE,
-)
+    val files: List<ImportFile> = emptyList(),
+) {
+    val transactionCount: Int get() = files.sumOf { it.transactionCount }
+}

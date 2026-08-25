@@ -11,8 +11,6 @@ import com.moneylytics.api.application.service.CategoryService
 import com.moneylytics.api.application.service.IgnoredTransactionService
 import com.moneylytics.api.application.service.TransactionImportService
 import com.moneylytics.api.domain.CategoryClassifierFeatures
-import com.moneylytics.api.domain.ImportStatus
-import com.moneylytics.api.domain.TransactionImport
 import org.mockito.kotlin.any
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.whenever
@@ -75,14 +73,18 @@ class ServiceLayerTestConfig {
     }
 
     @Bean
-    fun transactionImportRepository(): TransactionImportRepository {
-        val repo: TransactionImportRepository = mock()
-        whenever(repo.save(any())).thenAnswer { invocation ->
-            val arg = invocation.getArgument<TransactionImport>(0)
-            arg.copy(id = 1L, status = ImportStatus.ACTIVE)
-        }
-        return repo
-    }
+    fun transactionImportRepository(
+        jpaRepository: TransactionImportJpaRepository,
+        importFileJpaRepository: ImportFileJpaRepository,
+        organizationJpaRepository: OrganizationJpaRepository,
+    ): TransactionImportPersistenceAdapter =
+        TransactionImportPersistenceAdapter(jpaRepository, importFileJpaRepository, organizationJpaRepository)
+
+    @Bean
+    fun importFileRepository(
+        jpaRepository: ImportFileJpaRepository,
+        transactionImportJpaRepository: TransactionImportJpaRepository,
+    ): ImportFilePersistenceAdapter = ImportFilePersistenceAdapter(jpaRepository, transactionImportJpaRepository)
 
     @Bean
     fun transactionImportService(
@@ -91,6 +93,7 @@ class ServiceLayerTestConfig {
         categoryRepository: CategoryRepository,
         categoryClassifier: CategoryClassifier,
         transactionImportRepository: TransactionImportRepository,
+        importFileRepository: com.moneylytics.api.application.port.output.ImportFileRepository,
     ): TransactionImportService =
         TransactionImportService(
             transactionRepository,
@@ -98,6 +101,7 @@ class ServiceLayerTestConfig {
             categoryRepository,
             categoryClassifier,
             transactionImportRepository,
+            importFileRepository,
         )
 
     @Bean

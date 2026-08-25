@@ -4,6 +4,7 @@ import com.moneylytics.api.application.port.input.CheckDuplicatesUseCase
 import com.moneylytics.api.application.port.input.EnrichTransactionUseCase
 import com.moneylytics.api.application.port.input.FindIgnoredFingerprintsUseCase
 import com.moneylytics.api.application.port.input.GetAccountsUseCase
+import com.moneylytics.api.application.port.input.ImportFileSpec
 import com.moneylytics.api.application.port.input.ImportTransactionsCommand
 import com.moneylytics.api.application.port.input.ImportTransactionsUseCase
 import com.moneylytics.api.application.port.input.ResolveOrganizationUseCase
@@ -61,6 +62,7 @@ class CamtImportController(
         }
 
         val allRows = mutableListOf<ParsedRawRow>()
+        val rowSourceFilename = mutableMapOf<Int, String>()
         val mergedBalances = mutableMapOf<String, CamtAccountBalance>()
         var nextRowNumber = 1
 
@@ -74,6 +76,7 @@ class CamtImportController(
 
                 is CamtParseResult.Success -> {
                     val renumbered = result.rows.mapIndexed { idx, row -> row.copy(rowNumber = nextRowNumber + idx) }
+                    renumbered.forEach { rowSourceFilename[it.rowNumber] = filePart.filename() }
                     allRows += renumbered
                     nextRowNumber += result.rows.size
                     result.accountBalances.forEach { (iban, balance) ->
@@ -121,6 +124,7 @@ class CamtImportController(
                     status = status,
                     fingerprint = fp,
                     unknownAccount = knownIbans.isNotEmpty() && row.accountIban !in knownIbans,
+                    sourceFilename = rowSourceFilename[row.rowNumber],
                 )
             }
 
@@ -141,6 +145,7 @@ class CamtImportController(
             previewRows.zip(suggestions).map { (row, catId) ->
                 if (row.status == RowStatus.NEW && !row.unknownAccount) row.copy(suggestedCategoryId = catId) else row
             }
+        // sourceFilename already preserved via copy() above
 
         val response =
             CamtPreviewResponse(
@@ -203,14 +208,22 @@ class CamtImportController(
                 AccountBalance(amount = b.amount, date = LocalDate.parse(b.date))
             }
 
-        val checksum =
-            sha256(
-                safeRequest.toImport
-                    .map { it.fingerprint }
-                    .sorted()
-                    .joinToString(",")
-                    .toByteArray(Charsets.UTF_8),
-            )
+        val fileSpecs =
+            safeRequest.toImport
+                .groupBy { it.sourceFilename ?: "camt-import" }
+                .map { (filename, rows) ->
+                    val fingerprints = rows.map { it.fingerprint }
+                    val checksum =
+                        sha256(
+                            fingerprints.sorted().joinToString(",").toByteArray(Charsets.UTF_8),
+                        )
+                    ImportFileSpec(
+                        filename = filename,
+                        checksum = checksum,
+                        fileType = ImportFileType.CAMT,
+                        fingerprints = fingerprints,
+                    )
+                }
         val importResult =
             withContext(Dispatchers.IO) {
                 importTransactionsUseCase.importTransactions(
@@ -219,9 +232,7 @@ class CamtImportController(
                         accountNames = safeRequest.accountNames,
                         accountBalances = accountBalances,
                         organizationId = organizationId,
-                        filename = "camt-import",
-                        checksum = checksum,
-                        fileType = ImportFileType.CAMT,
+                        files = fileSpecs,
                     ),
                 )
             }
@@ -245,6 +256,7 @@ class CamtImportController(
         status: RowStatus,
         fingerprint: String?,
         unknownAccount: Boolean = false,
+        sourceFilename: String? = null,
     ) = RawPreviewRow(
         rowNumber = rowNumber,
         status = status,
@@ -261,6 +273,7 @@ class CamtImportController(
         errors = errors.map { RawPreviewError(column = it.column, value = it.value, message = it.message) },
         unknownAccount = unknownAccount,
         counterpartyIban = counterpartyIban,
+        sourceFilename = sourceFilename,
     )
 
     private suspend fun FilePart.readBytes(): ByteArray =

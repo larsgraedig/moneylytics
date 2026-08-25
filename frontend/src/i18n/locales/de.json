@@ -859,9 +859,11 @@
     "loadError": "Importe konnten nicht geladen werden.",
     "columns": {
       "date": "Datum",
+      "count": "Transaktionen",
+      "status": "Status"
+    },
+    "files": {
       "filename": "Dateiname",
-      "fileType": "Typ",
-      "checksum": "Prüfsumme",
       "count": "Transaktionen",
       "status": "Status"
     },

@@ -1,9 +1,12 @@
 package com.moneylytics.api.adapter.input.web
 
 import com.moneylytics.api.application.port.input.GetImportsUseCase
+import com.moneylytics.api.application.port.input.RejectImportFileResult
+import com.moneylytics.api.application.port.input.RejectImportFileUseCase
 import com.moneylytics.api.application.port.input.RejectImportResult
 import com.moneylytics.api.application.port.input.RejectImportUseCase
 import com.moneylytics.api.application.port.input.ResolveOrganizationUseCase
+import com.moneylytics.api.domain.ImportFile
 import com.moneylytics.api.domain.TransactionImport
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -18,14 +21,21 @@ import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.server.ServerWebExchange
 
-data class TransactionImportDto(
+data class ImportFileDto(
     val id: Long,
-    val importedAt: String,
     val filename: String,
     val checksum: String,
     val fileType: String,
     val transactionCount: Int,
     val status: String,
+)
+
+data class TransactionImportDto(
+    val id: Long,
+    val importedAt: String,
+    val transactionCount: Int,
+    val status: String,
+    val files: List<ImportFileDto>,
 )
 
 data class RejectImportSuccessResponse(
@@ -50,6 +60,7 @@ data class RejectImportRequest(
 class ImportController(
     private val getImportsUseCase: GetImportsUseCase,
     private val rejectImportUseCase: RejectImportUseCase,
+    private val rejectImportFileUseCase: RejectImportFileUseCase,
     private val resolveOrganizationUseCase: ResolveOrganizationUseCase,
 ) {
     @GetMapping
@@ -88,10 +99,44 @@ class ImportController(
         }
     }
 
+    @PostMapping("/{id}/files/{fileId}/reject")
+    suspend fun rejectImportFile(
+        @PathVariable id: Long,
+        @PathVariable fileId: Long,
+        @RequestBody(required = false) request: RejectImportRequest?,
+        @AuthenticationPrincipal principal: UserDetails,
+        exchange: ServerWebExchange,
+    ): ResponseEntity<out Any> {
+        val organizationId = resolveOrganizationUseCase.resolveOrganization(principal, exchange)
+        return withContext(Dispatchers.IO) {
+            when (val result = rejectImportFileUseCase.rejectImportFile(fileId, id, organizationId, request?.force ?: false)) {
+                is RejectImportFileResult.Success ->
+                    ResponseEntity.ok(RejectImportSuccessResponse(rejectedCount = result.rejectedCount))
+
+                is RejectImportFileResult.Failure ->
+                    ResponseEntity
+                        .status(422)
+                        .body(
+                            RejectImportFailureResponse(
+                                blocked = result.blockedTransactions.map { BlockedTransactionDto(it.transactionId, it.reasons) },
+                            ),
+                        )
+            }
+        }
+    }
+
     private fun TransactionImport.toDto() =
         TransactionImportDto(
             id = requireNotNull(id),
             importedAt = importedAt.toString(),
+            transactionCount = transactionCount,
+            status = status.name,
+            files = files.map { it.toDto() },
+        )
+
+    private fun ImportFile.toDto() =
+        ImportFileDto(
+            id = requireNotNull(id),
             filename = filename,
             checksum = checksum,
             fileType = fileType.name,

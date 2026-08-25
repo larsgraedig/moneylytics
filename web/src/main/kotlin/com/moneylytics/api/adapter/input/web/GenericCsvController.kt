@@ -4,6 +4,7 @@ import com.moneylytics.api.adapter.output.persistence.CsvProfilePersistenceAdapt
 import com.moneylytics.api.application.port.input.CheckDuplicatesUseCase
 import com.moneylytics.api.application.port.input.EnrichTransactionUseCase
 import com.moneylytics.api.application.port.input.GetAccountsUseCase
+import com.moneylytics.api.application.port.input.ImportFileSpec
 import com.moneylytics.api.application.port.input.ImportTransactionsCommand
 import com.moneylytics.api.application.port.input.ImportTransactionsUseCase
 import com.moneylytics.api.application.port.input.ResolveOrganizationUseCase
@@ -82,9 +83,15 @@ class GenericCsvController(
                         transactions = transactions,
                         accountNames = accountNames,
                         organizationId = organizationId,
-                        filename = filePart.filename(),
-                        checksum = checksum,
-                        fileType = ImportFileType.GENERIC,
+                        files =
+                            listOf(
+                                ImportFileSpec(
+                                    filename = filePart.filename(),
+                                    checksum = checksum,
+                                    fileType = ImportFileType.GENERIC,
+                                    fingerprints = emptyList(),
+                                ),
+                            ),
                     ),
                 )
             }
@@ -192,9 +199,15 @@ class GenericCsvController(
                         transactions = transactions,
                         accountNames = accountNames,
                         organizationId = organizationId,
-                        filename = "api-import",
-                        checksum = checksum,
-                        fileType = ImportFileType.GENERIC,
+                        files =
+                            listOf(
+                                ImportFileSpec(
+                                    filename = "api-import",
+                                    checksum = checksum,
+                                    fileType = ImportFileType.GENERIC,
+                                    fingerprints = emptyList(),
+                                ),
+                            ),
                     ),
                 )
             }
