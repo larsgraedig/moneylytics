@@ -195,7 +195,7 @@ export default function CamtImportPage() {
 
   // ── preview ────────────────────────────────────────────────────────────────
 
-  const { rows, accounts } = state
+  const { rows } = state
   const nNew = rows.filter(r => r.status === 'NEW').length
   const nDup = rows.filter(r => r.status === 'DUPLICATE').length
   const nInv = rows.filter(r => r.status === 'INVALID').length
@@ -221,23 +221,6 @@ export default function CamtImportPage() {
             {importing ? '…' : t('camtImport.confirm')}
           </button>
         </div>
-
-        {accounts.length > 0 && (
-          <div className="ri-account-names">
-            <span className="ri-account-names-label">{t('camtImport.accountNames')}</span>
-            {accounts.map(acc => (
-              <label key={acc.iban} className="ri-account-name-row">
-                <span className="ri-account-iban">{acc.iban}</span>
-                <input
-                  className="ri-account-name-input"
-                  placeholder={t('camtImport.accountNamePlaceholder')}
-                  value={accountNames[acc.iban] ?? ''}
-                  onChange={e => setAccountNames(prev => ({ ...prev, [acc.iban]: e.target.value }))}
-                />
-              </label>
-            ))}
-          </div>
-        )}
 
         <ImportPreviewTable
           rows={rows.map(r => adaptRow(r, accountNames))}
