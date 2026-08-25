@@ -552,16 +552,28 @@ button.ri-chip {
   box-shadow: 0 0 0 1.5px currentColor;
 }
 
+.ri-chip--dup.ri-chip--active {
+  color: #f59e0b;
+  border-color: rgba(245, 158, 11, 0.4);
+  background: rgba(245, 158, 11, 0.06);
+}
+
 .ri-chip--new {
+  color: var(--accent);
+  border-color: var(--accent-dim);
+  background: var(--accent-glow);
+}
+
+.ri-chip--new.ri-chip--active {
   color: #4ade80;
   border-color: rgba(74, 222, 128, 0.3);
   background: rgba(74, 222, 128, 0.06);
 }
 
 .ri-chip--dup {
-  color: var(--accent);
-  border-color: var(--accent-dim);
-  background: var(--accent-glow);
+  color: #f59e0b;
+  border-color: rgba(245, 158, 11, 0.3);
+  background: rgba(245, 158, 11, 0.06);
 }
 
 .ri-chip--inv {
@@ -655,7 +667,7 @@ button.ri-chip {
 }
 
 .ri-badge--new          { color: #4ade80; border-color: rgba(74,222,128,0.3); }
-.ri-badge--duplicate    { color: var(--accent); border-color: var(--accent-dim); }
+.ri-badge--duplicate    { color: #f59e0b; border-color: rgba(245,158,11,0.3); }
 .ri-badge--invalid      { color: var(--error); border-color: rgba(248,113,113,0.3); }
 .ri-badge--prev-ignored { color: #a78bfa; border-color: rgba(167,139,250,0.3); }
 .ri-badge--will-ignore  { color: var(--text-muted); border-color: var(--border-hi); }
