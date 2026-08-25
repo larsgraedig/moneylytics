@@ -60,6 +60,7 @@ export default function CamtImportPage() {
   const [accountNames, setAccountNames] = useState<Record<string, string>>({})
   const [importing, setImporting] = useState(false)
   const [isDragging, setIsDragging] = useState(false)
+  const [filter, setFilter] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const handleFiles = useCallback(async (files: File[]) => {
@@ -202,15 +203,42 @@ export default function CamtImportPage() {
   const nIgn = rows.filter(r => r.status === 'PREVIOUSLY_IGNORED').length
   const nUnknown = rows.filter(r => r.unknownAccount && r.status !== 'DUPLICATE').length
 
+  const adaptedRows = rows.map(r => adaptRow(r, accountNames))
+  const filteredRows = filter == null ? adaptedRows
+    : filter === 'UNKNOWN_ACCOUNT' ? adaptedRows.filter(r => r.unknownAccount && r.status !== 'DUPLICATE')
+    : adaptedRows.filter(r => r.status === filter)
+
+  const toggleFilter = (key: string) => setFilter(f => f === key ? null : key)
+
   return (
     <div className="ri-page">
       <div className="ri-preview">
         <div className="ri-summary-bar">
-          {nNew > 0 && <span className="ri-chip ri-chip--new">{t('camtImport.chips.new', { count: nNew })}</span>}
-          {nIgn > 0 && <span className="ri-chip ri-chip--prev-ignored">{t('camtImport.chips.previouslyIgnored', { count: nIgn })}</span>}
-          {nDup > 0 && <span className="ri-chip ri-chip--dup">{t('camtImport.chips.duplicate', { count: nDup })}</span>}
-          {nInv > 0 && <span className="ri-chip ri-chip--inv">{t('camtImport.chips.invalid', { count: nInv })}</span>}
-          {nUnknown > 0 && <span className="ri-chip ri-chip--inv">{t('camtImport.chips.unknownAccount', { count: nUnknown })}</span>}
+          {nNew > 0 && (
+            <button className={`ri-chip ri-chip--new${filter === 'NEW' ? ' ri-chip--active' : ''}`} onClick={() => toggleFilter('NEW')}>
+              {t('camtImport.chips.new', { count: nNew })}
+            </button>
+          )}
+          {nIgn > 0 && (
+            <button className={`ri-chip ri-chip--prev-ignored${filter === 'PREVIOUSLY_IGNORED' ? ' ri-chip--active' : ''}`} onClick={() => toggleFilter('PREVIOUSLY_IGNORED')}>
+              {t('camtImport.chips.previouslyIgnored', { count: nIgn })}
+            </button>
+          )}
+          {nDup > 0 && (
+            <button className={`ri-chip ri-chip--dup${filter === 'DUPLICATE' ? ' ri-chip--active' : ''}`} onClick={() => toggleFilter('DUPLICATE')}>
+              {t('camtImport.chips.duplicate', { count: nDup })}
+            </button>
+          )}
+          {nInv > 0 && (
+            <button className={`ri-chip ri-chip--inv${filter === 'INVALID' ? ' ri-chip--active' : ''}`} onClick={() => toggleFilter('INVALID')}>
+              {t('camtImport.chips.invalid', { count: nInv })}
+            </button>
+          )}
+          {nUnknown > 0 && (
+            <button className={`ri-chip ri-chip--inv${filter === 'UNKNOWN_ACCOUNT' ? ' ri-chip--active' : ''}`} onClick={() => toggleFilter('UNKNOWN_ACCOUNT')}>
+              {t('camtImport.chips.unknownAccount', { count: nUnknown })}
+            </button>
+          )}
           <span className="ri-summary-spacer" />
           <button className="load-btn" onClick={() => setState({ phase: 'idle' })}>{t('camtImport.back')}</button>
           <button
@@ -223,7 +251,7 @@ export default function CamtImportPage() {
         </div>
 
         <ImportPreviewTable
-          rows={rows.map(r => adaptRow(r, accountNames))}
+          rows={filteredRows}
           decisions={decisions}
           onDecide={(key, d) => setDecisions(prev => ({ ...prev, [key]: d }))}
         />

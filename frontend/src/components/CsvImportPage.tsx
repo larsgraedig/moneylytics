@@ -275,6 +275,7 @@ export default function CsvImportPage() {
   const [phase, setPhase] = useState<Phase>({ step: 'upload' })
   const [isDragging, setIsDragging] = useState(false)
   const [decisions, setDecisions] = useState<Record<number, ImportDecision>>({})
+  const [filter, setFilter] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const handleFile = useCallback(async (file: File) => {
@@ -387,14 +388,48 @@ export default function CsvImportPage() {
       fingerprint: r.fingerprint,
     }))
 
+    const filteredPreviewRows = filter == null ? previewRows
+      : filter === 'DUPLICATE' ? previewRows.filter(r => r.status === 'DUPLICATE')
+      : filter === 'UNKNOWN_ACCOUNT' ? previewRows.filter(r => r.unknownAccount && r.status !== 'DUPLICATE')
+      : filter === 'IGNORED' ? previewRows.filter(r => decisions[r.key]?.action === 'ignore')
+      : previewRows.filter(r => r.status !== 'DUPLICATE' && !r.unknownAccount)
+
+    const toggleFilter = (key: string) => setFilter(f => f === key ? null : key)
+
     return (
       <div className="ri-page">
         <div className="ri-preview">
           <div className="ri-summary-bar">
-            <span className="ri-chip ri-chip--new">{t('csvImport.categorizing.new', { count: rows.length - duplicateCount })}</span>
-            {duplicateCount > 0 && <span className="ri-chip ri-chip--dup">{t('csvImport.categorizing.duplicate', { count: duplicateCount })}</span>}
-            {unknownAccountCount > 0 && <span className="ri-chip ri-chip--inv">{t('csvImport.categorizing.unknownAccount', { count: unknownAccountCount })}</span>}
-            {ignoredCount > 0 && <span className="ri-chip ri-chip--prev-ignored">{t('csvImport.categorizing.skipped', { count: ignoredCount })}</span>}
+            <button
+              className={`ri-chip ri-chip--new${filter === 'NEW' ? ' ri-chip--active' : ''}`}
+              onClick={() => toggleFilter('NEW')}
+            >
+              {t('csvImport.categorizing.new', { count: rows.length - duplicateCount })}
+            </button>
+            {duplicateCount > 0 && (
+              <button
+                className={`ri-chip ri-chip--dup${filter === 'DUPLICATE' ? ' ri-chip--active' : ''}`}
+                onClick={() => toggleFilter('DUPLICATE')}
+              >
+                {t('csvImport.categorizing.duplicate', { count: duplicateCount })}
+              </button>
+            )}
+            {unknownAccountCount > 0 && (
+              <button
+                className={`ri-chip ri-chip--inv${filter === 'UNKNOWN_ACCOUNT' ? ' ri-chip--active' : ''}`}
+                onClick={() => toggleFilter('UNKNOWN_ACCOUNT')}
+              >
+                {t('csvImport.categorizing.unknownAccount', { count: unknownAccountCount })}
+              </button>
+            )}
+            {ignoredCount > 0 && (
+              <button
+                className={`ri-chip ri-chip--prev-ignored${filter === 'IGNORED' ? ' ri-chip--active' : ''}`}
+                onClick={() => toggleFilter('IGNORED')}
+              >
+                {t('csvImport.categorizing.skipped', { count: ignoredCount })}
+              </button>
+            )}
             <span className="ri-summary-spacer" />
             <button className="load-btn" onClick={() => setPhase({ step: 'mapping', detection, mapping, file })} disabled={importing}>{t('csvImport.categorizing.back')}</button>
             <button
@@ -406,7 +441,7 @@ export default function CsvImportPage() {
             </button>
           </div>
           <ImportPreviewTable
-            rows={previewRows}
+            rows={filteredPreviewRows}
             decisions={decisions}
             onDecide={(key, d) => setDecisions(prev => ({ ...prev, [key]: d }))}
           />

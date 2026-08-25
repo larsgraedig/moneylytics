@@ -451,6 +451,8 @@
     "skipAgain": "skip again",
     "importAnyway": "import anyway",
     "skip": "skip",
+    "ignore": "Ignore",
+    "ignoreAgain": "Ignore again",
     "undo": "undo",
     "alreadyImported": "already imported",
     "willEnrich": "fields will be filled",

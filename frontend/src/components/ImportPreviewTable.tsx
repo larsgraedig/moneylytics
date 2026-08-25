@@ -57,8 +57,10 @@ export function ImportPreviewTable({ rows, decisions, onDecide }: ImportPreviewT
             return isImporting ? 'ri-card--new' : 'ri-card--will-ignore'
           })()
 
+          const ghostClass = row.status === 'DUPLICATE' ? ' txn-card--ghost' : ''
+
           return (
-            <div key={row.key} className={`txn-card ${cardStatusClass}`}>
+            <div key={row.key} className={`txn-card ${cardStatusClass}${ghostClass}`}>
               <div className="txn-card-header">
                 <div className="txn-card-header-left">
                   <StatusBadge row={row} decision={d} />
@@ -145,7 +147,7 @@ function ActionToggle({
   if (row.status === 'PREVIOUSLY_IGNORED') {
     return decision?.action === 'import' ? (
       <button className="ri-action-btn ri-action-btn--ignore" onClick={() => onDecide({ action: 'ignore' })}>
-        {t('camtImport.skipAgain')}
+        {t('camtImport.ignoreAgain')}
       </button>
     ) : (
       <button className="ri-action-btn ri-action-btn--import" onClick={() => onDecide({ action: 'import' })}>
@@ -160,7 +162,7 @@ function ActionToggle({
     </button>
   ) : (
     <button className="ri-action-btn ri-action-btn--ignore" onClick={() => onDecide({ action: 'ignore' })}>
-      {t('common.skip')}
+      {t('camtImport.ignore')}
     </button>
   )
 }

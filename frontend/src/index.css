@@ -540,6 +540,16 @@ body {
   padding: 3px 10px;
   border-radius: 100px;
   border: 1px solid transparent;
+  cursor: pointer;
+}
+
+button.ri-chip {
+  background: none;
+  font: inherit;
+}
+
+.ri-chip--active {
+  box-shadow: 0 0 0 1.5px currentColor;
 }
 
 .ri-chip--new {
