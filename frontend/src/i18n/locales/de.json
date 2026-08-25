@@ -395,6 +395,8 @@
         "currency": "Währung",
         "account": "Konto",
         "purpose": "Verwendungszweck",
+        "counterpartyName": "Zahlungsbeteiligte",
+        "counterpartyIban": "Zahlungsbeteiligte IBAN",
         "category": "Kategorie",
         "group": "Gruppe",
         "subcategory": "Unterkategorie"

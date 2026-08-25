@@ -44,9 +44,9 @@ function buildInitialMapping(d: CsvDetectionResult): CsvMapping {
     amountColumn: d.suggestions.amount ?? '',
     amountFormat: d.detectedAmountFormat,
     purposeColumn: d.suggestions.purpose ?? null,
-    categoryColumn: d.suggestions.category ?? null,
-    subcategoryColumn: d.suggestions.subcategory ?? null,
-    categoryGroupColumn: d.suggestions.categoryGroup ?? null,
+    categoryColumn: null,
+    subcategoryColumn: null,
+    categoryGroupColumn: null,
     accountIbanColumn: d.suggestions.accountIban ?? null,
     currencyColumn: d.suggestions.currency ?? null,
     fixedAccountIban: null,
@@ -159,12 +159,13 @@ function MappingView({
   const dateIdx = colIdx(headers, mapping.dateColumn)
   const amtIdx = colIdx(headers, mapping.amountColumn)
   const purpIdx = colIdx(headers, mapping.purposeColumn)
-  const catIdx = colIdx(headers, mapping.categoryColumn)
-  const subIdx = colIdx(headers, mapping.subcategoryColumn)
   const ibanIdx = colIdx(headers, mapping.accountIbanColumn)
   const currIdx = colIdx(headers, mapping.currencyColumn)
+  const cpNameIdx = colIdx(headers, mapping.counterpartyNameColumn)
+  const cpIbanIdx = colIdx(headers, mapping.counterpartyIbanColumn)
 
-  const canConfirm = mapping.dateColumn && mapping.amountColumn
+  const canConfirm = mapping.dateColumn && mapping.amountColumn &&
+    (mapping.accountIbanColumn || mapping.fixedAccountIban)
 
   function set<K extends keyof CsvMapping>(key: K, value: CsvMapping[K]) {
     onChange({ ...mapping, [key]: value })
@@ -216,15 +217,10 @@ function MappingView({
             </div>
           </div>
 
-          <div className="gcv-section-title" style={{ marginTop: 16 }}>{t('csvImport.mapping.optionalFields')}</div>
-          <MappingRow label={t('csvImport.mapping.purpose')} headers={headers} value={mapping.purposeColumn} onChange={v => set('purposeColumn', v)} />
-          <MappingRow label={t('csvImport.mapping.category')} headers={headers} value={mapping.categoryColumn} onChange={v => set('categoryColumn', v)} />
-          <MappingRow label={t('csvImport.mapping.categoryGroup')} headers={headers} value={mapping.categoryGroupColumn} onChange={v => set('categoryGroupColumn', v)} />
-          <MappingRow label={t('csvImport.mapping.subcategory')} headers={headers} value={mapping.subcategoryColumn} onChange={v => set('subcategoryColumn', v)} />
-          <MappingRow label={t('csvImport.mapping.accountIban')} headers={headers} value={mapping.accountIbanColumn} onChange={v => set('accountIbanColumn', v)} />
+          <MappingRow label={`${t('csvImport.mapping.accountIban')} *`} headers={headers} value={mapping.accountIbanColumn} onChange={v => set('accountIbanColumn', v)} />
           {!mapping.accountIbanColumn && (
             <div className="gcv-map-row">
-              <span className="gcv-map-label gcv-map-label--sub">{t('csvImport.mapping.fixedIban')}</span>
+              <span className="gcv-map-label gcv-map-label--sub">{t('csvImport.mapping.fixedIban')}<span className="gcv-map-required">*</span></span>
               <input
                 className="gcv-map-input"
                 placeholder={t('csvImport.mapping.fixedIbanPlaceholder')}
@@ -233,6 +229,9 @@ function MappingView({
               />
             </div>
           )}
+
+          <div className="gcv-section-title" style={{ marginTop: 16 }}>{t('csvImport.mapping.optionalFields')}</div>
+          <MappingRow label={t('csvImport.mapping.purpose')} headers={headers} value={mapping.purposeColumn} onChange={v => set('purposeColumn', v)} />
           <MappingRow label={t('csvImport.mapping.currency')} headers={headers} value={mapping.currencyColumn} onChange={v => set('currencyColumn', v)} />
           {!mapping.currencyColumn && (
             <div className="gcv-map-row">
@@ -259,8 +258,8 @@ function MappingView({
                   {currIdx >= 0 && <th>{t('csvImport.categorizing.columns.currency')}</th>}
                   {ibanIdx >= 0 && <th>{t('csvImport.categorizing.columns.account')}</th>}
                   {purpIdx >= 0 && <th>{t('csvImport.categorizing.columns.purpose')}</th>}
-                  {catIdx >= 0 && <th>{t('csvImport.categorizing.columns.category')}</th>}
-                  {subIdx >= 0 && <th>{t('csvImport.categorizing.columns.subcategory')}</th>}
+                  {cpNameIdx >= 0 && <th>{t('csvImport.categorizing.columns.counterpartyName')}</th>}
+                  {cpIbanIdx >= 0 && <th>{t('csvImport.categorizing.columns.counterpartyIban')}</th>}
                 </tr>
               </thead>
               <tbody>
@@ -280,8 +279,8 @@ function MappingView({
                       {currIdx >= 0 && <td className="gcv-currency">{row[currIdx] ?? ''}</td>}
                       {ibanIdx >= 0 && <td className="gcv-iban">{row[ibanIdx] ?? ''}</td>}
                       {purpIdx >= 0 && <td className="gcv-purpose">{row[purpIdx] ?? ''}</td>}
-                      {catIdx >= 0 && <td>{row[catIdx] ?? ''}</td>}
-                      {subIdx >= 0 && <td>{row[subIdx] ?? ''}</td>}
+                      {cpNameIdx >= 0 && <td>{row[cpNameIdx] ?? ''}</td>}
+                      {cpIbanIdx >= 0 && <td className="gcv-iban">{row[cpIbanIdx] ?? ''}</td>}
                     </tr>
                   )
                 })}
@@ -294,8 +293,8 @@ function MappingView({
   )
 }
 
-const needsPreview = (m: CsvMapping, rows: GenericCsvPreviewRow[]) =>
-  !m.categoryColumn || !m.subcategoryColumn || rows.some(r => r.unknownAccount && r.status !== 'DUPLICATE')
+const needsPreview = (_m: CsvMapping, rows: GenericCsvPreviewRow[]) =>
+  rows.some(r => r.unknownAccount && r.status !== 'DUPLICATE')
 
 export default function CsvImportPage({ categories }: { categories: CategoryNode[] }) {
   const { t } = useTranslation()

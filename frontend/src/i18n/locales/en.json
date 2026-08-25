@@ -395,6 +395,8 @@
         "currency": "currency",
         "account": "account",
         "purpose": "purpose",
+        "counterpartyName": "Counterparty",
+        "counterpartyIban": "Counterparty IBAN",
         "category": "category",
         "group": "group",
         "subcategory": "subcategory"
