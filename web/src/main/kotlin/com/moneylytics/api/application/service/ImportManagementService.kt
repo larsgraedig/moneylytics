@@ -32,6 +32,7 @@ class ImportManagementService(
     override fun rejectImport(
         importId: Long,
         organizationId: Long,
+        force: Boolean,
     ): RejectImportResult {
         val import =
             transactionImportRepository.findByIdAndOrganizationId(importId, organizationId)
@@ -57,10 +58,12 @@ class ImportManagementService(
                 if (reasons.isNotEmpty()) BlockedTransaction(txId, reasons) else null
             }
 
-        if (blocked.isNotEmpty()) return RejectImportResult.Failure(blocked)
+        if (blocked.isNotEmpty() && !force) return RejectImportResult.Failure(blocked)
 
-        transactionRepository.excludeByImportId(importId, organizationId)
+        val blockedIds = blocked.map { it.transactionId }.toSet()
+        val toReject = txIds.filter { it !in blockedIds }
+        transactionRepository.excludeByIds(toReject, organizationId)
         transactionImportRepository.updateStatus(importId, ImportStatus.REJECTED)
-        return RejectImportResult.Success(txIds.size)
+        return RejectImportResult.Success(toReject.size)
     }
 }

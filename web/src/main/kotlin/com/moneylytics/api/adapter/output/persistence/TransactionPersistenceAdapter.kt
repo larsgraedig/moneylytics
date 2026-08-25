@@ -76,6 +76,14 @@ class TransactionPersistenceAdapter(
         jpaRepository.excludeByImportId(importId, organizationId)
     }
 
+    @Transactional
+    override fun excludeByIds(
+        ids: List<Long>,
+        organizationId: Long,
+    ) {
+        if (ids.isNotEmpty()) jpaRepository.excludeByIds(ids, organizationId)
+    }
+
     @Transactional(readOnly = true)
     override fun findIdsByImportId(importId: Long): List<Long> = jpaRepository.findIdsByImportId(importId)
 

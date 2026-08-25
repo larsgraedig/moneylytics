@@ -24,6 +24,11 @@ interface TransactionRepository {
         organizationId: Long,
     )
 
+    fun excludeByIds(
+        ids: List<Long>,
+        organizationId: Long,
+    )
+
     fun findIdsByImportId(importId: Long): List<Long>
 
     fun findByAccountingDateBetween(

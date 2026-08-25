@@ -13,6 +13,7 @@ import org.springframework.security.core.userdetails.UserDetails
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.server.ServerWebExchange
@@ -40,6 +41,10 @@ data class BlockedTransactionDto(
     val reasons: List<String>,
 )
 
+data class RejectImportRequest(
+    val force: Boolean = false,
+)
+
 @RestController
 @RequestMapping("/imports")
 class ImportController(
@@ -61,12 +66,13 @@ class ImportController(
     @PostMapping("/{id}/reject")
     suspend fun rejectImport(
         @PathVariable id: Long,
+        @RequestBody(required = false) request: RejectImportRequest?,
         @AuthenticationPrincipal principal: UserDetails,
         exchange: ServerWebExchange,
     ): ResponseEntity<out Any> {
         val organizationId = resolveOrganizationUseCase.resolveOrganization(principal, exchange)
         return withContext(Dispatchers.IO) {
-            when (val result = rejectImportUseCase.rejectImport(id, organizationId)) {
+            when (val result = rejectImportUseCase.rejectImport(id, organizationId, request?.force ?: false)) {
                 is RejectImportResult.Success ->
                     ResponseEntity.ok(RejectImportSuccessResponse(rejectedCount = result.rejectedCount))
 

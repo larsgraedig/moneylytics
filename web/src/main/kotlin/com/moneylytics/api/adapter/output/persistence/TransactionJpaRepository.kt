@@ -97,6 +97,13 @@ interface TransactionJpaRepository : JpaRepository<TransactionEntity, Long> {
         @Param("orgId") orgId: Long,
     )
 
+    @Modifying
+    @Query("UPDATE TransactionEntity t SET t.excluded = true WHERE t.id IN :ids AND t.organization.id = :orgId")
+    fun excludeByIds(
+        @Param("ids") ids: Collection<Long>,
+        @Param("orgId") orgId: Long,
+    )
+
     @Query("SELECT t.id FROM TransactionEntity t WHERE t.importId = :importId")
     fun findIdsByImportId(
         @Param("importId") importId: Long,

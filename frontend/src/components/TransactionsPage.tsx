@@ -1335,7 +1335,12 @@ const groupColorMap = useMemo(() => {
   function renderGhostCell(col: ColumnKey, tx: TransactionItem): ReactNode {
     switch (col) {
       case 'date':
-        return <TableCell key={col} className="txn-cell-date px-3 py-1">{formatDate(tx.accountingDate)}</TableCell>
+        return (
+          <TableCell key={col} className="txn-cell-date px-3 py-1">
+            <div>{formatDate(tx.accountingDate)}</div>
+            <div className="font-mono text-[10px] opacity-40">#{tx.id}</div>
+          </TableCell>
+        )
       case 'account':
         return <TableCell key={col} className="txnv-cell-account px-3 py-1">{accountMap.get(tx.accountIban) ?? tx.accountIban}</TableCell>
       case 'amount':
@@ -1433,6 +1438,7 @@ const groupColorMap = useMemo(() => {
                   {formatDate(row.original.bookingDate)}
                 </div>
               )}
+              <span className="font-mono text-[10px] opacity-40">#{row.original.id}</span>
             </div>
           </TableCell>
         )
@@ -1525,6 +1531,7 @@ const groupColorMap = useMemo(() => {
             <div className="txn-card-header-left">
               <span title={t('transactions.split.splitBadge')}><Scissors size={11} style={{ color: '#60a5fa' }} /></span>
               <span className="txn-card-date">{formatDate(tx.accountingDate)}</span>
+              <span className="font-mono text-[10px] opacity-40">#{tx.id}</span>
             </div>
             <span className={`txn-card-amount ${tx.amount < 0 ? 'negative' : 'positive'}`}>{EUR.format(tx.amount)}</span>
           </div>
@@ -1546,6 +1553,7 @@ const groupColorMap = useMemo(() => {
             <div className="txn-card-header-left">
               <span title={t('transactions.merge.mergedBadge')}><Package size={11} style={{ color: '#6ee7b7' }} /></span>
               <span className="txn-card-date">{formatDate(tx.accountingDate)}</span>
+              <span className="font-mono text-[10px] opacity-40">#{tx.id}</span>
             </div>
             <span className={`txn-card-amount ${tx.amount < 0 ? 'negative' : 'positive'}`}>{EUR.format(tx.amount)}</span>
           </div>
@@ -1557,6 +1565,7 @@ const groupColorMap = useMemo(() => {
         </div>
       )
     }
+
 
     const { row, i } = item
     const hasChips = row.budgetAssignments.length > 0 || row.collections.length > 0 || row.original.groups.length > 0
@@ -1589,6 +1598,7 @@ const groupColorMap = useMemo(() => {
                   {formatDate(row.original.bookingDate)}
                 </div>
               )}
+              <span className="font-mono text-[10px] opacity-40">#{row.original.id}</span>
             </div>
           </div>
           <span className={`txn-card-amount font-mono ${row.original.amount < 0 ? 'negative' : 'positive'}`}>
@@ -1881,6 +1891,7 @@ const groupColorMap = useMemo(() => {
                     </TableRow>
                   )
                 }
+
                 const { row, i } = item
                 const rowLinkColor = (() => {
                   for (const group of row.original.groups) {

@@ -875,11 +875,12 @@
       "confirmBody": "Alle {{count}} Transaktionen aus «{{filename}}» werden als ausgeschlossen markiert. Dies kann nicht rückgängig gemacht werden.",
       "confirm": "Ablehnen",
       "cancel": "Abbrechen",
-      "blockedTitle": "Ablehnen nicht möglich",
-      "blockedBody": "Die folgenden Transaktionen sind Teil anderer Gruppen und können nicht abgelehnt werden:",
+      "blockedTitle": "Teilweise ablehnen?",
+      "blockedBody": "Die folgenden Transaktionen haben Referenzen und können nicht abgelehnt werden. Möchtest du trotzdem alle anderen Transaktionen dieses Imports ablehnen?",
       "blockedTransaction": "Transaktion",
       "blockedReasons": "Gründe",
-      "close": "Schließen"
+      "blockedConfirm": "Verbleibende ablehnen",
+      "close": "Abbrechen"
     }
   }
 }

@@ -53,6 +53,7 @@ export default function ImportsPage() {
   const [confirmTarget, setConfirmTarget] = useState<TransactionImportDto | null>(null)
   const [rejecting, setRejecting] = useState(false)
   const [blockedInfo, setBlockedInfo] = useState<BlockedTransaction[] | null>(null)
+  const [blockedTarget, setBlockedTarget] = useState<TransactionImportDto | null>(null)
 
   useEffect(() => {
     load()
@@ -76,6 +77,7 @@ export default function ImportsPage() {
     try {
       const result = await rejectImport(confirmTarget.id)
       if ('error' in result) {
+        setBlockedTarget(confirmTarget)
         setBlockedInfo(result.error.blocked)
         setConfirmTarget(null)
       } else {
@@ -84,6 +86,22 @@ export default function ImportsPage() {
       }
     } catch {
       setConfirmTarget(null)
+    } finally {
+      setRejecting(false)
+    }
+  }
+
+  async function handleForceReject() {
+    if (!blockedTarget) return
+    setRejecting(true)
+    try {
+      await rejectImport(blockedTarget.id, true)
+      setBlockedInfo(null)
+      setBlockedTarget(null)
+      await load()
+    } catch {
+      setBlockedInfo(null)
+      setBlockedTarget(null)
     } finally {
       setRejecting(false)
     }
@@ -169,7 +187,7 @@ export default function ImportsPage() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={!!blockedInfo} onOpenChange={(open) => { if (!open) setBlockedInfo(null) }}>
+      <Dialog open={!!blockedInfo} onOpenChange={(open) => { if (!open) { setBlockedInfo(null); setBlockedTarget(null) } }}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>{t('imports.reject.blockedTitle')}</DialogTitle>
@@ -196,8 +214,11 @@ export default function ImportsPage() {
             </Table>
           )}
           <DialogFooter>
-            <Button variant="outline" onClick={() => setBlockedInfo(null)}>
+            <Button variant="outline" onClick={() => { setBlockedInfo(null); setBlockedTarget(null) }}>
               {t('imports.reject.close')}
+            </Button>
+            <Button variant="destructive" disabled={rejecting} onClick={handleForceReject}>
+              {t('imports.reject.blockedConfirm')}
             </Button>
           </DialogFooter>
         </DialogContent>

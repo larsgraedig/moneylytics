@@ -15,9 +15,10 @@ sealed class RejectImportResult {
     ) : RejectImportResult()
 }
 
-fun interface RejectImportUseCase {
+interface RejectImportUseCase {
     fun rejectImport(
         importId: Long,
         organizationId: Long,
+        force: Boolean = false,
     ): RejectImportResult
 }

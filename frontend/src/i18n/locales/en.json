@@ -875,11 +875,12 @@
       "confirmBody": "All {{count}} transactions from «{{filename}}» will be marked as excluded. This cannot be undone.",
       "confirm": "Reject",
       "cancel": "Cancel",
-      "blockedTitle": "Cannot reject",
-      "blockedBody": "The following transactions are part of other groups and cannot be rejected:",
+      "blockedTitle": "Partial rejection?",
+      "blockedBody": "The following transactions have references and cannot be rejected. Do you still want to reject all other transactions from this import?",
       "blockedTransaction": "Transaction",
       "blockedReasons": "Reasons",
-      "close": "Close"
+      "blockedConfirm": "Reject remaining",
+      "close": "Cancel"
     }
   }
 }
