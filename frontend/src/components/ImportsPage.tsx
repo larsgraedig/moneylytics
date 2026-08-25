@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
+  fetchImportFileTransactions,
   fetchImports,
   fetchImportTransactions,
   rejectImport,
@@ -64,7 +65,11 @@ export default function ImportsPage() {
   const [rejecting, setRejecting] = useState(false)
   const [blockedInfo, setBlockedInfo] = useState<BlockedTransaction[] | null>(null)
   const [blockedTarget, setBlockedTarget] = useState<RejectTarget | null>(null)
-  const [txDialogImport, setTxDialogImport] = useState<TransactionImportDto | null>(null)
+  const [txDialogTarget, setTxDialogTarget] = useState<
+    | { kind: 'import'; imp: TransactionImportDto }
+    | { kind: 'file'; imp: TransactionImportDto; file: ImportFileDto }
+    | null
+  >(null)
   const [txDialogItems, setTxDialogItems] = useState<ImportTransactionDto[]>([])
   const [txDialogLoading, setTxDialogLoading] = useState(false)
   const [txDialogError, setTxDialogError] = useState<string | null>(null)
@@ -141,13 +146,21 @@ export default function ImportsPage() {
     }
   }
 
-  async function openTxDialog(imp: TransactionImportDto) {
-    setTxDialogImport(imp)
+  async function openTxDialog(
+    target:
+      | { kind: 'import'; imp: TransactionImportDto }
+      | { kind: 'file'; imp: TransactionImportDto; file: ImportFileDto },
+  ) {
+    setTxDialogTarget(target)
     setTxDialogItems([])
     setTxDialogError(null)
     setTxDialogLoading(true)
     try {
-      setTxDialogItems(await fetchImportTransactions(imp.id))
+      const items =
+        target.kind === 'import'
+          ? await fetchImportTransactions(target.imp.id)
+          : await fetchImportFileTransactions(target.imp.id, target.file.id)
+      setTxDialogItems(items)
     } catch {
       setTxDialogError(t('imports.transactions.loadError'))
     } finally {
@@ -225,7 +238,7 @@ export default function ImportsPage() {
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => openTxDialog(imp)}
+                        onClick={() => openTxDialog({ kind: 'import', imp })}
                       >
                         <List size={14} className="mr-1" />
                         {t('imports.transactions.button')}
@@ -268,16 +281,27 @@ export default function ImportsPage() {
                       </Badge>
                     </TableCell>
                     <TableCell className="py-1 text-right">
-                      {file.status === 'ACTIVE' && (
+                      <div className="flex items-center justify-end gap-2">
                         <Button
-                          variant="destructive"
+                          variant="ghost"
                           size="sm"
                           className="h-7 text-xs"
-                          onClick={() => setConfirmTarget({ kind: 'file', imp, file })}
+                          onClick={() => openTxDialog({ kind: 'file', imp, file })}
                         >
-                          {t('imports.reject.button')}
+                          <List size={12} className="mr-1" />
+                          {t('imports.transactions.button')}
                         </Button>
-                      )}
+                        {file.status === 'ACTIVE' && (
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            className="h-7 text-xs"
+                            onClick={() => setConfirmTarget({ kind: 'file', imp, file })}
+                          >
+                            {t('imports.reject.button')}
+                          </Button>
+                        )}
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -346,10 +370,14 @@ export default function ImportsPage() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={!!txDialogImport} onOpenChange={(open) => { if (!open) setTxDialogImport(null) }}>
-        <DialogContent className="max-w-3xl">
+      <Dialog open={!!txDialogTarget} onOpenChange={(open) => { if (!open) setTxDialogTarget(null) }}>
+        <DialogContent className="max-w-4xl">
           <DialogHeader>
-            <DialogTitle>{t('imports.transactions.dialogTitle')}</DialogTitle>
+            <DialogTitle>
+              {txDialogTarget?.kind === 'file'
+                ? txDialogTarget.file.filename
+                : t('imports.transactions.dialogTitle')}
+            </DialogTitle>
           </DialogHeader>
           {txDialogLoading && (
             <p className="text-sm text-muted-foreground">{t('common.loading')}</p>
@@ -365,8 +393,10 @@ export default function ImportsPage() {
                   <Table>
                     <TableHeader>
                       <TableRow>
+                        <TableHead className="w-16">{t('imports.transactions.columns.id')}</TableHead>
                         <TableHead>{t('imports.transactions.columns.date')}</TableHead>
                         <TableHead>{t('imports.transactions.columns.counterparty')}</TableHead>
+                        <TableHead>{t('imports.transactions.columns.category')}</TableHead>
                         <TableHead className="text-right">{t('imports.transactions.columns.amount')}</TableHead>
                         <TableHead>{t('imports.transactions.columns.status')}</TableHead>
                       </TableRow>
@@ -374,6 +404,7 @@ export default function ImportsPage() {
                     <TableBody>
                       {txDialogItems.map((tx) => (
                         <TableRow key={tx.id}>
+                          <TableCell className="font-mono text-xs text-muted-foreground align-top">#{tx.id}</TableCell>
                           <TableCell className="whitespace-nowrap text-sm align-top">{tx.bookingDate}</TableCell>
                           <TableCell className="text-sm align-top">
                             <div className="max-w-48 truncate" title={tx.counterpartyName ?? ''}>
@@ -409,6 +440,9 @@ export default function ImportsPage() {
                               </div>
                             )}
                           </TableCell>
+                          <TableCell className="text-xs text-muted-foreground align-top max-w-32 truncate" title={tx.categoryPath ?? ''}>
+                            {tx.categoryPath ?? <span className="opacity-40">—</span>}
+                          </TableCell>
                           <TableCell className="text-right text-sm font-mono align-top">
                             {tx.amount.toLocaleString('de-DE', { minimumFractionDigits: 2 })} {tx.currency}
                           </TableCell>
@@ -428,7 +462,7 @@ export default function ImportsPage() {
               )
           )}
           <DialogFooter>
-            <Button variant="outline" onClick={() => setTxDialogImport(null)}>
+            <Button variant="outline" onClick={() => setTxDialogTarget(null)}>
               {t('imports.reject.close')}
             </Button>
           </DialogFooter>

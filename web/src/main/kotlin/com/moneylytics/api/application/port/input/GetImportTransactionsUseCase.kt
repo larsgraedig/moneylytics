@@ -24,8 +24,17 @@ data class ImportTransactionItem(
     val groups: List<TransactionGroupSummary>,
     val parentId: Long?,
     val isVirtual: Boolean,
+    val category: String?,
+    val subcategory: String?,
+    val group: String?,
 )
 
 interface GetImportTransactionsUseCase {
     fun getImportTransactions(query: GetImportTransactionsQuery): List<ImportTransactionItem>
+
+    fun getImportFileTransactions(
+        fileId: Long,
+        importId: Long,
+        organizationId: Long,
+    ): List<ImportTransactionItem>
 }

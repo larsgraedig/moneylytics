@@ -32,6 +32,7 @@ export interface ImportTransactionDto {
   offsetGroups: (string | null)[]
   parentId: number | null
   isVirtual: boolean
+  categoryPath: string | null
 }
 
 export interface BlockedTransaction {
@@ -70,6 +71,12 @@ export async function rejectImport(
 
 export async function fetchImportTransactions(importId: number): Promise<ImportTransactionDto[]> {
   const res = await fetchWithUser(`/imports/${importId}/transactions`)
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  return res.json() as Promise<ImportTransactionDto[]>
+}
+
+export async function fetchImportFileTransactions(importId: number, fileId: number): Promise<ImportTransactionDto[]> {
+  const res = await fetchWithUser(`/imports/${importId}/files/${fileId}/transactions`)
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
   return res.json() as Promise<ImportTransactionDto[]>
 }

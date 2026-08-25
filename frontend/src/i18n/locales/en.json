@@ -876,11 +876,13 @@
       "button": "Transactions",
       "dialogTitle": "Import Transactions",
       "columns": {
+        "id": "ID",
         "date": "Date",
         "counterparty": "Counterparty",
         "purpose": "Purpose",
         "amount": "Amount",
-        "status": "Status"
+        "status": "Status",
+        "category": "Category"
       },
       "status": {
         "ACCEPTED": "Accepted",

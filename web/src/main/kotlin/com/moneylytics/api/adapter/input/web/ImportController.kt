@@ -72,6 +72,7 @@ data class ImportTransactionResponseDto(
     val offsetGroups: List<String?>,
     val parentId: Long?,
     val isVirtual: Boolean,
+    val categoryPath: String?,
 )
 
 @RestController
@@ -159,6 +160,21 @@ class ImportController(
         }
     }
 
+    @GetMapping("/{id}/files/{fileId}/transactions")
+    suspend fun listImportFileTransactions(
+        @PathVariable id: Long,
+        @PathVariable fileId: Long,
+        @AuthenticationPrincipal principal: UserDetails,
+        exchange: ServerWebExchange,
+    ): List<ImportTransactionResponseDto> {
+        val organizationId = resolveOrganizationUseCase.resolveOrganization(principal, exchange)
+        return withContext(Dispatchers.IO) {
+            getImportTransactionsUseCase
+                .getImportFileTransactions(fileId, id, organizationId)
+                .map { it.toDto() }
+        }
+    }
+
     private fun TransactionImport.toDto() =
         TransactionImportDto(
             id = requireNotNull(id),
@@ -192,5 +208,6 @@ class ImportController(
             offsetGroups = groups.map { it.name },
             parentId = parentId,
             isVirtual = isVirtual,
+            categoryPath = listOfNotNull(category, subcategory, group).joinToString(" / ").ifBlank { null },
         )
 }

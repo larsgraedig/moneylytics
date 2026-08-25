@@ -122,6 +122,16 @@ class ImportManagementService(
             }
             ?: emptyList()
 
+    override fun getImportFileTransactions(
+        fileId: Long,
+        importId: Long,
+        organizationId: Long,
+    ): List<ImportTransactionItem> {
+        transactionImportRepository.findByIdAndOrganizationId(importId, organizationId) ?: return emptyList()
+        importFileRepository.findByIdAndImportId(fileId, importId) ?: return emptyList()
+        return transactionRepository.findByImportFileId(fileId, organizationId).map { it.toImportTransactionItem() }
+    }
+
     private fun Transaction.toImportTransactionItem() =
         ImportTransactionItem(
             id = requireNotNull(id),
@@ -136,6 +146,9 @@ class ImportManagementService(
             groups = groups,
             parentId = parentId,
             isVirtual = isVirtual,
+            category = category,
+            subcategory = subcategory,
+            group = group,
         )
 
     private fun collectBlocked(txIds: List<Long>): List<BlockedTransaction> =

@@ -135,6 +135,14 @@ interface TransactionJpaRepository : JpaRepository<TransactionEntity, Long> {
         @Param("organizationId") organizationId: Long,
     ): List<TransactionEntity>
 
+    @Query(
+        "SELECT t FROM TransactionEntity t WHERE t.importFileId = :fileId AND t.organization.id = :organizationId ORDER BY t.bookingDate ASC",
+    )
+    fun findByImportFileIdAndOrganizationId(
+        @Param("fileId") fileId: Long,
+        @Param("organizationId") organizationId: Long,
+    ): List<TransactionEntity>
+
     fun existsByParentIdAndExcludedFalse(parentId: Long): Boolean
 
     @Query("SELECT t FROM TransactionEntity t WHERE t.id IN :ids AND t.organization.id = :organizationId")

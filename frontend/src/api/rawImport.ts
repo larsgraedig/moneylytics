@@ -25,6 +25,7 @@ export interface RawPreviewRow {
   unknownAccount: boolean
   counterpartyIban: string | null
   suggestedCategoryId: number | null
+  sourceFilename: string | null
 }
 
 export interface CategoryNode {

@@ -120,6 +120,7 @@ export default function CamtImportPage({ categories }: { categories: CategoryNod
           purpose: r.purpose || null,
           counterpartyName: r.counterparty ?? null,
           counterpartyIban: r.counterpartyIban ?? null,
+          sourceFilename: r.sourceFilename ?? null,
         }]
       })
 

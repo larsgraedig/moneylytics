@@ -32,6 +32,7 @@ export interface CamtTransactionImport {
   counterpartyName: string | null
   counterpartyIban: string | null
   subcategory: string | null
+  sourceFilename: string | null
 }
 
 export interface TransactionEnrichRequest {

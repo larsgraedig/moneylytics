@@ -46,6 +46,11 @@ interface TransactionRepository {
         organizationId: Long,
     ): List<Transaction>
 
+    fun findByImportFileId(
+        fileId: Long,
+        organizationId: Long,
+    ): List<Transaction>
+
     fun findByAccountingDateBetween(
         from: LocalDate,
         to: LocalDate,
