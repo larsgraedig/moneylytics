@@ -37,7 +37,7 @@ class TransactionPersistenceAdapter(
         val withFingerprints = assignFingerprints(transactions)
         val allExistingFingerprints =
             jpaRepository
-                .findExistingFingerprints(withFingerprints.map { it.second }, organizationId)
+                .findAllExistingFingerprints(withFingerprints.map { it.second }, organizationId)
                 .toHashSet()
 
         val reactivatedIds =

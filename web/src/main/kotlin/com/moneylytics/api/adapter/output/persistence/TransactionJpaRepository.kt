@@ -54,9 +54,17 @@ interface TransactionJpaRepository : JpaRepository<TransactionEntity, Long> {
     ): TransactionEntity?
 
     @Query(
-        "SELECT t.fingerprint FROM TransactionEntity t WHERE t.fingerprint IN :fingerprints AND t.organization.id = :organizationId",
+        "SELECT t.fingerprint FROM TransactionEntity t WHERE t.fingerprint IN :fingerprints AND t.organization.id = :organizationId AND t.excluded = false",
     )
     fun findExistingFingerprints(
+        @Param("fingerprints") fingerprints: Collection<String>,
+        @Param("organizationId") organizationId: Long,
+    ): List<String>
+
+    @Query(
+        "SELECT t.fingerprint FROM TransactionEntity t WHERE t.fingerprint IN :fingerprints AND t.organization.id = :organizationId",
+    )
+    fun findAllExistingFingerprints(
         @Param("fingerprints") fingerprints: Collection<String>,
         @Param("organizationId") organizationId: Long,
     ): List<String>

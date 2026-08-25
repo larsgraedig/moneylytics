@@ -59,7 +59,7 @@ class TransactionPersistenceAdapterTest {
         whenever(organizationJpaRepository.getReferenceById(organizationId)).thenReturn(organizationEntity)
         val fp1 = computeFingerprint(tx1)
         val fp2 = computeFingerprint(tx2)
-        whenever(jpaRepository.findExistingFingerprints(any(), any())).thenReturn(listOf(fp1))
+        whenever(jpaRepository.findAllExistingFingerprints(any(), any())).thenReturn(listOf(fp1))
         whenever(jpaRepository.findExcludedIdsByFingerprints(any(), any())).thenReturn(emptyList())
         whenever(jpaRepository.saveAll(any<List<TransactionEntity>>())).thenReturn(listOf(txEntity(100L, amount = BigDecimal("-200"))))
 
@@ -77,7 +77,7 @@ class TransactionPersistenceAdapterTest {
         val transactions = listOf(tx, tx)
         whenever(accountJpaRepository.findByIbanAndOrganizationId("DE00TEST", organizationId)).thenReturn(accountEntity)
         whenever(organizationJpaRepository.getReferenceById(organizationId)).thenReturn(organizationEntity)
-        whenever(jpaRepository.findExistingFingerprints(any(), any())).thenReturn(emptyList())
+        whenever(jpaRepository.findAllExistingFingerprints(any(), any())).thenReturn(emptyList())
         whenever(jpaRepository.saveAll(any<List<TransactionEntity>>())).thenReturn(listOf(txEntity(100L), txEntity(101L)))
 
         val result = adapter.saveAll(transactions, organizationId)
