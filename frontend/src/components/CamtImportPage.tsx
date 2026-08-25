@@ -234,7 +234,7 @@ export default function CamtImportPage() {
         <div className="ri-summary-bar">
           {nNew > 0 && (
             <button className={`ri-chip ri-chip--new${activeFilters.has('NEW') ? ' ri-chip--active' : ''}`} onClick={() => toggleFilter('NEW')}>
-              {t('camtImport.chips.new', { count: nNew })}
+              {t('import.chips.new', { count: nNew })}
             </button>
           )}
           {nIgn > 0 && (
@@ -244,7 +244,7 @@ export default function CamtImportPage() {
           )}
           {nDup > 0 && (
             <button className={`ri-chip ri-chip--dup${activeFilters.has('DUPLICATE') ? ' ri-chip--active' : ''}`} onClick={() => toggleFilter('DUPLICATE')}>
-              {t('camtImport.chips.duplicate', { count: nDup })}
+              {t('import.chips.duplicate', { count: nDup })}
             </button>
           )}
           {nInv > 0 && (
@@ -254,7 +254,7 @@ export default function CamtImportPage() {
           )}
           {nUnknown > 0 && (
             <button className={`ri-chip ri-chip--inv${activeFilters.has('UNKNOWN_ACCOUNT') ? ' ri-chip--active' : ''}`} onClick={() => toggleFilter('UNKNOWN_ACCOUNT')}>
-              {t('camtImport.chips.excluded', { count: nUnknown })}
+              {t('import.chips.excluded', { count: nUnknown })}
             </button>
           )}
           <span className="ri-summary-spacer" />

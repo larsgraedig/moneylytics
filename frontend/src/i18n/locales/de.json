@@ -376,10 +376,7 @@
       "previewTitle": "Vorschau ({{count}} Zeilen)"
     },
     "categorizing": {
-      "new": "{{count}} neu",
-      "duplicate": "{{count}} bereits importiert",
       "unknownAccount": "{{count}} unbekanntes Konto",
-      "excluded": "{{count}} ausgeschlossen",
       "skipped": "{{count}} übersprungen",
       "suggested": "{{count}} Kategorie vorgeschlagen",
       "suggested_plural": "{{count}} Kategorien vorgeschlagen",
@@ -428,12 +425,9 @@
       "unknownAccount": "Unbekanntes Konto"
     },
     "chips": {
-      "new": "{{count}} neu",
       "previouslyIgnored": "{{count}} früher ignoriert",
-      "duplicate": "{{count}} Duplikate",
       "invalid": "{{count}} ungültig",
-      "unknownAccount": "{{count}} unbekanntes Konto",
-      "excluded": "{{count}} ausgeschlossen"
+      "unknownAccount": "{{count}} unbekanntes Konto"
     },
     "columns": {
       "row": "Zeile",
@@ -907,6 +901,13 @@
       "blockedReasons": "Gründe",
       "blockedConfirm": "Verbleibende ablehnen",
       "close": "Abbrechen"
+    }
+  },
+  "import": {
+    "chips": {
+      "new": "{{count}} neu",
+      "duplicate": "{{count}} Duplikate",
+      "excluded": "{{count}} ausgeschlossen"
     }
   }
 }

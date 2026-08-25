@@ -376,10 +376,7 @@
       "previewTitle": "Preview ({{count}} rows)"
     },
     "categorizing": {
-      "new": "{{count}} new",
-      "duplicate": "{{count}} already imported",
       "unknownAccount": "{{count}} unknown account",
-      "excluded": "{{count}} excluded",
       "skipped": "{{count}} skipped",
       "suggested": "{{count}} category suggested",
       "suggested_plural": "{{count}} categories suggested",
@@ -428,12 +425,9 @@
       "unknownAccount": "unknown account"
     },
     "chips": {
-      "new": "{{count}} new",
       "previouslyIgnored": "{{count}} previously ignored",
-      "duplicate": "{{count}} duplicate",
       "invalid": "{{count}} invalid",
-      "unknownAccount": "{{count}} unknown account",
-      "excluded": "{{count}} excluded"
+      "unknownAccount": "{{count}} unknown account"
     },
     "columns": {
       "row": "#",
@@ -907,6 +901,13 @@
       "blockedReasons": "Reasons",
       "blockedConfirm": "Reject remaining",
       "close": "Cancel"
+    }
+  },
+  "import": {
+    "chips": {
+      "new": "{{count}} new",
+      "duplicate": "{{count}} duplicate",
+      "excluded": "{{count}} excluded"
     }
   }
 }
