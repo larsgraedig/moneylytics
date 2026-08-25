@@ -83,19 +83,16 @@ export function ImportPreviewTable({ rows, decisions, onDecide }: ImportPreviewT
 
               <div className="txn-card-body">
                 <span className="txn-card-counterparty">
-                  {isUnknown
-                    ? <span className="gcv-unknown-iban">{t('camtImport.unknownAccount')}</span>
-                    : (row.counterparty || '—')
-                  }
+                  {row.counterparty || '—'}
                 </span>
-                {!isUnknown && row.purpose && (
+                {row.purpose && (
                   <span className="txn-card-purpose">{row.purpose}</span>
                 )}
                 <span
                   className={`ri-card-account${isUnknown ? ' gcv-unknown-iban' : ''}`}
                   title={row.accountIban}
                 >
-                  {isUnknown ? row.accountIban : row.accountDisplay}
+                  {isUnknown ? t('camtImport.unknownAccount') : row.accountDisplay}
                 </span>
               </div>
 
