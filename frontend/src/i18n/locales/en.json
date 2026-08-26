@@ -374,7 +374,11 @@
       "importing": "importing…",
       "previewTitle": "Preview ({{count}} rows)",
       "fileProgress": "File {{current}} of {{total}}",
-      "sessionBadge": "Applied from previous file"
+      "sessionBadge": "Applied from previous file",
+      "savedPrompt": "This file's format matches a saved configuration.",
+      "savedPromptAccept": "Apply",
+      "savedPromptReject": "Configure manually",
+      "sessionPrompt": "This file's format matches one already configured in this session."
     },
     "categorizing": {
       "unknownAccount": "{{count}} unknown account",

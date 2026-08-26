@@ -95,11 +95,20 @@ export async function previewGenericCsv(files: File[], mapping: CsvMapping): Pro
   return res.json() as Promise<GenericCsvPreviewRow[]>
 }
 
-export async function importGenericRows(toImport: GenericRowToImport[], toEnrich: import('./camtImport').TransactionEnrichRequest[] = []): Promise<number> {
+export interface MappingToSave {
+  fingerprint: string
+  mapping: CsvMapping
+}
+
+export async function importGenericRows(
+  toImport: GenericRowToImport[],
+  toEnrich: import('./camtImport').TransactionEnrichRequest[] = [],
+  mappingsToSave: MappingToSave[] = [],
+): Promise<number> {
   const res = await fetch('/transactions/csv/import-rows', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ toImport, toEnrich }),
+    body: JSON.stringify({ toImport, toEnrich, mappingsToSave }),
   })
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
   const data = await res.json() as { importedCount: number }

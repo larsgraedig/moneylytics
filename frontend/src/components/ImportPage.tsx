@@ -17,6 +17,7 @@ import {
   type CsvMapping,
   type GenericCsvPreviewRow,
   type GenericRowToImport,
+  type MappingToSave,
 } from '../api/genericCsvImport'
 import { ImportPreviewTable, type ImportDecision, type ImportPreviewRow } from './ImportPreviewTable'
 
@@ -184,6 +185,7 @@ function MappingView({
   sessionSuggested?: boolean
 }) {
   const { t } = useTranslation()
+  const [savedMappingDecided, setSavedMappingDecided] = useState(false)
   const { headers, sampleRows } = detection
 
   const dateIdx = colIdx(headers, mapping.dateColumn)
@@ -207,10 +209,10 @@ function MappingView({
         <div>
           <div className="gcv-title">
             {t('csvImport.mapping.title')}
-            {detection.savedMapping && (
+            {detection.savedMapping && !savedMappingDecided && (
               <span className="gcv-saved-badge">{t('csvImport.mapping.savedBadge')}</span>
             )}
-            {sessionSuggested && !detection.savedMapping && (
+            {sessionSuggested && !detection.savedMapping && savedMappingDecided && (
               <span className="gcv-saved-badge">{t('csvImport.mapping.sessionBadge')}</span>
             )}
           </div>
@@ -229,6 +231,24 @@ function MappingView({
         </div>
       </div>
 
+      {(detection.savedMapping != null || sessionSuggested === true) && !savedMappingDecided ? (
+        <div className="gcv-body" style={{ alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ maxWidth: 480, textAlign: 'center', display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <p style={{ margin: 0 }}>
+              {detection.savedMapping
+                ? t('csvImport.mapping.savedPrompt')
+                : t('csvImport.mapping.sessionPrompt')}
+            </p>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
+              <button className="gcv-confirm-btn" onClick={onConfirm}>{t('csvImport.mapping.savedPromptAccept')}</button>
+              <button className="gcv-cancel-btn" onClick={() => {
+                onChange(buildInitialMapping({ ...detection, savedMapping: null }))
+                setSavedMappingDecided(true)
+              }}>{t('csvImport.mapping.savedPromptReject')}</button>
+            </div>
+          </div>
+        </div>
+      ) : (
       <div className="gcv-body">
         <div className="gcv-mapping-panel">
           <div className="gcv-section-title">{t('csvImport.mapping.requiredFields')}</div>
@@ -327,6 +347,7 @@ function MappingView({
           </div>
         </div>
       </div>
+      )}
     </div>
   )
 }
@@ -519,28 +540,16 @@ export default function ImportPage() {
     try {
       const detections = await Promise.all(files.map(f => detectCsvFormat(f)))
       const mappedFiles: MappedFile[] = []
-      const pendingFiles: PendingFile[] = []
-      for (let i = 0; i < files.length; i++) {
-        const detection = detections[i]
-        if (detection.savedMapping) {
-          mappedFiles.push({ file: files[i], mapping: detection.savedMapping, detection })
-        } else {
-          pendingFiles.push({ file: files[i], detection })
-        }
-      }
-      if (pendingFiles.length === 0) {
-        await startCsvPreview(mappedFiles)
-      } else {
-        const [first, ...rest] = pendingFiles
-        setState({
-          mode: 'csv-mapping',
-          detection: first.detection,
-          mapping: buildInitialMapping(first.detection),
-          file: first.file,
-          mappedFiles,
-          pendingFiles: rest,
-        })
-      }
+      const pendingFiles: PendingFile[] = detections.map((detection, i) => ({ file: files[i], detection }))
+      const [first, ...rest] = pendingFiles
+      setState({
+        mode: 'csv-mapping',
+        detection: first.detection,
+        mapping: buildInitialMapping(first.detection),
+        file: first.file,
+        mappedFiles,
+        pendingFiles: rest,
+      })
     } catch (e) {
       setState({ mode: 'idle' })
       setCsvError(e instanceof Error ? e.message : 'Detection failed')
@@ -605,9 +614,13 @@ export default function ImportPage() {
         counterpartyIban: r.counterpartyIban,
       }))
 
+    const mappingsToSave: MappingToSave[] = mappedFiles.map(({ mapping, detection }) => ({
+      fingerprint: detection.fingerprint,
+      mapping,
+    }))
     setState({ mode: 'csv-importing', rows, mappedFiles })
     try {
-      const count = await importGenericRows(toImport, [])
+      const count = await importGenericRows(toImport, [], mappingsToSave)
       setState({ mode: 'csv-success', count })
     } catch (e) {
       setState({ mode: 'idle' })

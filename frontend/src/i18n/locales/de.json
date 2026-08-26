@@ -374,7 +374,11 @@
       "importing": "Importiert…",
       "previewTitle": "Vorschau ({{count}} Zeilen)",
       "fileProgress": "Datei {{current}} von {{total}}",
-      "sessionBadge": "Von vorheriger Datei übernommen"
+      "sessionBadge": "Von vorheriger Datei übernommen",
+      "savedPrompt": "Das Format dieser Datei entspricht einer gespeicherten Konfiguration.",
+      "savedPromptAccept": "Übernehmen",
+      "savedPromptReject": "Neu konfigurieren",
+      "sessionPrompt": "Das Format dieser Datei entspricht dem einer bereits in dieser Sitzung konfigurierten Datei."
     },
     "categorizing": {
       "unknownAccount": "{{count}} unbekanntes Konto",

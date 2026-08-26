@@ -33,6 +33,7 @@ import java.time.LocalDate
 data class GenericCsvImportRequest(
     val toImport: List<GenericRowToImport>,
     val toEnrich: List<TransactionEnrichRequest> = emptyList(),
+    val mappingsToSave: List<MappingToSave> = emptyList(),
 )
 
 @RestController
@@ -233,6 +234,9 @@ class GenericCsvController(
                     e.counterpartyIban,
                 )
             }
+        }
+        request.mappingsToSave.forEach { (fingerprint, mapping) ->
+            withContext(Dispatchers.IO) { csvProfileAdapter.saveMapping(organizationId, fingerprint, mapping) }
         }
         return ResponseEntity.ok(ImportSuccessResponse(importedCount = importResult.importedCount, importId = importResult.importId))
     }

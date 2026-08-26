@@ -68,6 +68,11 @@ data class GenericCsvPreviewRow(
     val sourceFilename: String? = null,
 )
 
+data class MappingToSave(
+    val fingerprint: String,
+    val mapping: GenericCsvMapping,
+)
+
 data class GenericRowToImport(
     val date: String,
     val amount: Double,
