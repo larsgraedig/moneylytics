@@ -824,6 +824,7 @@ databaseChangeLog:
                   type: varchar(255)
                   constraints:
                     nullable: false
+                    checkConstraint: "period IN ('WEEKLY', 'MONTHLY', 'QUARTERLY', 'YEARLY')"
               - column:
                   name: subcategory
                   type: varchar(255)
@@ -850,10 +851,6 @@ databaseChangeLog:
                     foreignKeyName: fk_threshold_category
                     references: category(id)
 
-        - addCheckConstraint:
-            tableName: threshold
-            constraintName: thresholds_period_check
-            checkCondition: "period IN ('WEEKLY', 'MONTHLY', 'QUARTERLY', 'YEARLY')"
 
         - createTable:
             tableName: transaction
@@ -1342,16 +1339,12 @@ databaseChangeLog:
                   type: varchar(20)
                   constraints:
                     nullable: false
+                    checkConstraint: "role IN ('MEMBER', 'ADMIN', 'OWNER')"
 
         - addPrimaryKey:
             tableName: organization_member
             columnNames: organization_id, user_id
             constraintName: organization_members_pkey
-
-        - addCheckConstraint:
-            tableName: organization_member
-            constraintName: organization_members_role_check
-            checkCondition: "role IN ('MEMBER', 'ADMIN', 'OWNER')"
 
         - addForeignKeyConstraint:
             baseTableName: organization_member
