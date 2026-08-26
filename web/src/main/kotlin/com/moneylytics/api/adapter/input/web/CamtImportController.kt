@@ -1,9 +1,11 @@
 package com.moneylytics.api.adapter.input.web
 
+import com.moneylytics.api.adapter.output.persistence.ImportPreviewSessionPersistenceAdapter
 import com.moneylytics.api.application.port.input.CheckDuplicatesUseCase
 import com.moneylytics.api.application.port.input.EnrichTransactionUseCase
 import com.moneylytics.api.application.port.input.FindIgnoredFingerprintsUseCase
 import com.moneylytics.api.application.port.input.GetAccountsUseCase
+import com.moneylytics.api.application.port.input.ImportFileSpec
 import com.moneylytics.api.application.port.input.ImportTransactionsCommand
 import com.moneylytics.api.application.port.input.ImportTransactionsUseCase
 import com.moneylytics.api.application.port.input.ResolveOrganizationUseCase
@@ -11,6 +13,7 @@ import com.moneylytics.api.application.port.input.UpdateIgnoredTransactionsUseCa
 import com.moneylytics.api.application.port.output.CategoryClassifier
 import com.moneylytics.api.domain.AccountBalance
 import com.moneylytics.api.domain.CategoryClassifierFeatures
+import com.moneylytics.api.domain.ImportFileType
 import com.moneylytics.api.domain.Transaction
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.reactive.awaitSingle
@@ -27,6 +30,10 @@ import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.server.ServerWebExchange
 import java.time.LocalDate
+import java.time.LocalDateTime
+import java.util.UUID
+
+private const val CAMT_PREVIEW_SESSION_TTL_HOURS = 24L
 
 @RestController
 @RequestMapping("/transactions")
@@ -39,6 +46,7 @@ class CamtImportController(
     private val importTransactionsUseCase: ImportTransactionsUseCase,
     private val enrichTransactionUseCase: EnrichTransactionUseCase,
     private val resolveOrganizationUseCase: ResolveOrganizationUseCase,
+    private val importPreviewSessionAdapter: ImportPreviewSessionPersistenceAdapter,
     private val categoryClassifier: CategoryClassifier,
 ) {
     companion object {
@@ -60,6 +68,7 @@ class CamtImportController(
         }
 
         val allRows = mutableListOf<ParsedRawRow>()
+        val rowSourceFilename = mutableMapOf<Int, String>()
         val mergedBalances = mutableMapOf<String, CamtAccountBalance>()
         var nextRowNumber = 1
 
@@ -73,6 +82,7 @@ class CamtImportController(
 
                 is CamtParseResult.Success -> {
                     val renumbered = result.rows.mapIndexed { idx, row -> row.copy(rowNumber = nextRowNumber + idx) }
+                    renumbered.forEach { rowSourceFilename[it.rowNumber] = filePart.filename() }
                     allRows += renumbered
                     nextRowNumber += result.rows.size
                     result.accountBalances.forEach { (iban, balance) ->
@@ -120,6 +130,7 @@ class CamtImportController(
                     status = status,
                     fingerprint = fp,
                     unknownAccount = knownIbans.isNotEmpty() && row.accountIban !in knownIbans,
+                    sourceFilename = rowSourceFilename[row.rowNumber],
                 )
             }
 
@@ -140,12 +151,21 @@ class CamtImportController(
             previewRows.zip(suggestions).map { (row, catId) ->
                 if (row.status == RowStatus.NEW && !row.unknownAccount) row.copy(suggestedCategoryId = catId) else row
             }
+        val previewToken = UUID.randomUUID()
+        withContext(Dispatchers.IO) {
+            importPreviewSessionAdapter.save(
+                previewToken,
+                rowsWithSuggestions,
+                LocalDateTime.now().plusHours(CAMT_PREVIEW_SESSION_TTL_HOURS),
+            )
+        }
 
         val response =
             CamtPreviewResponse(
                 rows = rowsWithSuggestions,
                 accounts = accounts,
                 accountBalances = mergedBalances,
+                previewToken = previewToken,
             )
 
         return ResponseEntity.ok(response)
@@ -153,68 +173,87 @@ class CamtImportController(
 
     @PostMapping("/camt/import")
     suspend fun importCamt(
-        @RequestBody request: CamtImportRequest,
+        @RequestBody request: CamtImportByTokenRequest,
         @AuthenticationPrincipal principal: UserDetails,
         exchange: ServerWebExchange,
     ): ResponseEntity<out Any> {
+        val sessionRows =
+            withContext(Dispatchers.IO) { importPreviewSessionAdapter.load(request.previewToken, RawPreviewRow::class.java) }
+                ?: return ResponseEntity.notFound().build()
+
         val organizationId = resolveOrganizationUseCase.resolveOrganization(principal, exchange)
         val knownIbans =
             withContext(Dispatchers.IO) { getAccountsUseCase.getAccounts(organizationId) }
                 .map { it.iban }
                 .toSet()
 
-        val safeToImport =
-            if (knownIbans.isEmpty()) {
-                request.toImport
-            } else {
-                request.toImport.filter { it.accountIban in knownIbans }
-            }
-        val safeRequest = request.copy(toImport = safeToImport)
+        val excludedSet = request.excludedRowIndices.toSet()
+        val selectedRows = sessionRows.filter { it.rowNumber !in excludedSet }
+        val safeRows =
+            if (knownIbans.isEmpty()) selectedRows else selectedRows.filter { it.accountIban in knownIbans }
 
         withContext(Dispatchers.IO) {
             updateIgnoredTransactionsUseCase.update(
-                toIgnore = safeRequest.toIgnore,
-                toUnignore = safeRequest.toImport.map { it.fingerprint },
+                toIgnore = request.toIgnore,
+                toUnignore = safeRows.mapNotNull { it.fingerprint },
                 organizationId = organizationId,
             )
         }
 
         val transactions =
-            safeRequest.toImport.map { row ->
+            safeRows.map { row ->
                 Transaction(
-                    category = row.category,
-                    subcategory = row.subcategory,
-                    group = row.group,
+                    category = "",
+                    subcategory = null,
+                    group = "",
                     bookingDate = LocalDate.parse(row.bookingDate),
                     valueDate = LocalDate.parse(row.valueDate),
                     accountingDate = LocalDate.parse(row.bookingDate),
-                    amount = row.amount,
+                    amount = row.amount!!,
                     currency = row.currency,
                     accountIban = row.accountIban,
-                    purpose = row.purpose,
-                    counterpartyName = row.counterpartyName,
+                    purpose = row.purpose.ifBlank { null },
+                    counterpartyName = row.counterparty.ifBlank { null },
                     counterpartyIban = row.counterpartyIban,
                 )
             }
 
         val accountBalances =
-            safeRequest.accountBalances.mapValues { (_, b) ->
+            request.accountBalances.mapValues { (_, b) ->
                 AccountBalance(amount = b.amount, date = LocalDate.parse(b.date))
             }
 
-        val importedCount =
+        val fileSpecs =
+            safeRows
+                .groupBy { it.sourceFilename ?: "camt-import" }
+                .map { (filename, rows) ->
+                    val fingerprints = rows.mapNotNull { it.fingerprint }
+                    val checksum =
+                        sha256(
+                            fingerprints.sorted().joinToString(",").toByteArray(Charsets.UTF_8),
+                        )
+                    ImportFileSpec(
+                        filename = filename,
+                        checksum = checksum,
+                        fileType = ImportFileType.CAMT,
+                        fingerprints = fingerprints,
+                    )
+                }
+
+        val importResult =
             withContext(Dispatchers.IO) {
                 importTransactionsUseCase.importTransactions(
                     ImportTransactionsCommand(
                         transactions = transactions,
-                        accountNames = safeRequest.accountNames,
+                        accountNames = request.accountNames,
                         accountBalances = accountBalances,
                         organizationId = organizationId,
+                        files = fileSpecs,
                     ),
                 )
             }
 
-        safeRequest.toEnrich.forEach { e ->
+        request.toEnrich.forEach { e ->
             withContext(Dispatchers.IO) {
                 enrichTransactionUseCase.enrichByFingerprint(
                     e.fingerprint,
@@ -226,13 +265,16 @@ class CamtImportController(
             }
         }
 
-        return ResponseEntity.ok(ImportSuccessResponse(importedCount = importedCount))
+        withContext(Dispatchers.IO) { importPreviewSessionAdapter.delete(request.previewToken) }
+
+        return ResponseEntity.ok(ImportSuccessResponse(importedCount = importResult.importedCount, importId = importResult.importId))
     }
 
     private fun ParsedRawRow.toPreviewRow(
         status: RowStatus,
         fingerprint: String?,
         unknownAccount: Boolean = false,
+        sourceFilename: String? = null,
     ) = RawPreviewRow(
         rowNumber = rowNumber,
         status = status,
@@ -249,6 +291,7 @@ class CamtImportController(
         errors = errors.map { RawPreviewError(column = it.column, value = it.value, message = it.message) },
         unknownAccount = unknownAccount,
         counterpartyIban = counterpartyIban,
+        sourceFilename = sourceFilename,
     )
 
     private suspend fun FilePart.readBytes(): ByteArray =

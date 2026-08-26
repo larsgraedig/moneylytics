@@ -1,8 +1,10 @@
 package com.moneylytics.api.adapter.input.web
 
+import com.moneylytics.api.application.port.input.ImportFileSpec
 import com.moneylytics.api.application.port.input.ImportTransactionsCommand
 import com.moneylytics.api.application.port.input.ImportTransactionsUseCase
 import com.moneylytics.api.application.port.input.ResolveOrganizationUseCase
+import com.moneylytics.api.domain.ImportFileType
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.reactive.awaitSingle
 import kotlinx.coroutines.withContext
@@ -52,7 +54,7 @@ class TransactionImportController(
 
             is CsvParseResult.Valid -> {
                 val organizationId = resolveOrganizationUseCase.resolveOrganization(principal, exchange)
-                val importedCount =
+                val importResult =
                     withContext(Dispatchers.IO) {
                         importTransactionsUseCase.importTransactions(
                             ImportTransactionsCommand(
@@ -60,10 +62,19 @@ class TransactionImportController(
                                 accountNames = result.accountNames,
                                 accountBalances = result.accountBalances,
                                 organizationId = organizationId,
+                                files =
+                                    listOf(
+                                        ImportFileSpec(
+                                            filename = filePart.filename(),
+                                            checksum = sha256(bytes),
+                                            fileType = ImportFileType.CSV,
+                                            fingerprints = emptyList(),
+                                        ),
+                                    ),
                             ),
                         )
                     }
-                ResponseEntity.ok(ImportSuccessResponse(importedCount = importedCount))
+                ResponseEntity.ok(ImportSuccessResponse(importedCount = importResult.importedCount, importId = importResult.importId))
             }
         }
     }

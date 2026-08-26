@@ -10,6 +10,7 @@ import com.moneylytics.api.application.port.input.CreateUserUseCase
 import com.moneylytics.api.application.port.input.DetectRecurringSeriesUseCase
 import com.moneylytics.api.application.port.input.GetTransactionsQuery
 import com.moneylytics.api.application.port.input.GetTransactionsUseCase
+import com.moneylytics.api.application.port.input.ImportFileSpec
 import com.moneylytics.api.application.port.input.ImportTransactionsCommand
 import com.moneylytics.api.application.port.input.ImportTransactionsUseCase
 import com.moneylytics.api.application.port.input.LinkTransactionsCommand
@@ -23,6 +24,7 @@ import com.moneylytics.api.application.port.output.StripeCustomerRepository
 import com.moneylytics.api.application.port.output.UserRepository
 import com.moneylytics.api.domain.Budget
 import com.moneylytics.api.domain.Collection
+import com.moneylytics.api.domain.ImportFileType
 import com.moneylytics.api.domain.Invoice
 import com.moneylytics.api.domain.StripeCustomer
 import com.moneylytics.api.domain.SubscriptionStatus
@@ -182,6 +184,10 @@ class LocalDataInitializer(
                         savingsIban to savingsName,
                     ),
                 organizationId = orgId,
+                files =
+                    listOf(
+                        ImportFileSpec(filename = "seed", checksum = "seed", fileType = ImportFileType.CSV, fingerprints = emptyList()),
+                    ),
             ),
         )
         setupOffsetLinks(orgId)

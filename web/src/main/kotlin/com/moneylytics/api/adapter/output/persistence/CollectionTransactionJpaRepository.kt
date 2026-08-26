@@ -24,4 +24,6 @@ interface CollectionTransactionJpaRepository : JpaRepository<CollectionTransacti
         collectionId: Long,
         transactionId: Long,
     ): Boolean
+
+    fun existsByTransactionId(transactionId: Long): Boolean
 }

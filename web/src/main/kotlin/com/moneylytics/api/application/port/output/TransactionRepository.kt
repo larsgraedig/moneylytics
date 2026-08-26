@@ -12,7 +12,44 @@ interface TransactionRepository {
     fun saveAll(
         transactions: List<Transaction>,
         organizationId: Long,
-    ): Int
+    ): Pair<Int, List<Long>>
+
+    fun linkToImport(
+        importId: Long,
+        transactionIds: List<Long>,
+    )
+
+    fun excludeByImportId(
+        importId: Long,
+        organizationId: Long,
+    )
+
+    fun excludeByIds(
+        ids: List<Long>,
+        organizationId: Long,
+    )
+
+    fun findIdsByFingerprints(
+        fingerprints: List<String>,
+        organizationId: Long,
+    ): List<Long>
+
+    fun linkToImportFile(
+        importFileId: Long,
+        transactionIds: List<Long>,
+    )
+
+    fun findIdsByImportId(importId: Long): List<Long>
+
+    fun findByImportId(
+        importId: Long,
+        organizationId: Long,
+    ): List<Transaction>
+
+    fun findByImportFileId(
+        fileId: Long,
+        organizationId: Long,
+    ): List<Transaction>
 
     fun findByAccountingDateBetween(
         from: LocalDate,

@@ -5,6 +5,7 @@ import com.moneylytics.api.application.port.output.CategoryClassifier
 import com.moneylytics.api.application.port.output.CategoryRepository
 import com.moneylytics.api.application.port.output.IgnoredTransactionRepository
 import com.moneylytics.api.application.port.output.ThresholdRepository
+import com.moneylytics.api.application.port.output.TransactionImportRepository
 import com.moneylytics.api.application.port.output.TransactionRepository
 import com.moneylytics.api.application.service.CategoryService
 import com.moneylytics.api.application.service.IgnoredTransactionService
@@ -72,16 +73,43 @@ class ServiceLayerTestConfig {
     }
 
     @Bean
+    fun transactionImportRepository(
+        jpaRepository: TransactionImportJpaRepository,
+        importFileJpaRepository: ImportFileJpaRepository,
+        organizationJpaRepository: OrganizationJpaRepository,
+    ): TransactionImportPersistenceAdapter =
+        TransactionImportPersistenceAdapter(jpaRepository, importFileJpaRepository, organizationJpaRepository)
+
+    @Bean
+    fun importFileRepository(
+        jpaRepository: ImportFileJpaRepository,
+        transactionImportJpaRepository: TransactionImportJpaRepository,
+    ): ImportFilePersistenceAdapter = ImportFilePersistenceAdapter(jpaRepository, transactionImportJpaRepository)
+
+    @Bean
     fun transactionImportService(
         transactionRepository: TransactionRepository,
         accountRepository: AccountRepository,
         categoryRepository: CategoryRepository,
         categoryClassifier: CategoryClassifier,
-    ): TransactionImportService = TransactionImportService(transactionRepository, accountRepository, categoryRepository, categoryClassifier)
+        transactionImportRepository: TransactionImportRepository,
+        importFileRepository: com.moneylytics.api.application.port.output.ImportFileRepository,
+    ): TransactionImportService =
+        TransactionImportService(
+            transactionRepository,
+            accountRepository,
+            categoryRepository,
+            categoryClassifier,
+            transactionImportRepository,
+            importFileRepository,
+        )
 
     @Bean
     fun ignoredTransactionService(repository: IgnoredTransactionRepository): IgnoredTransactionService =
         IgnoredTransactionService(repository)
+
+    @Bean
+    fun thresholdRepository(): ThresholdRepository = mock()
 
     @Bean
     fun categoryService(

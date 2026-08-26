@@ -17,21 +17,7 @@ export interface CamtPreviewResponse {
   rows: RawPreviewRow[]
   accounts: CamtAccountInfo[]
   accountBalances: Record<string, CamtAccountBalance>
-}
-
-export interface CamtTransactionImport {
-  fingerprint: string
-  bookingDate: string
-  valueDate: string
-  amount: number
-  currency: string
-  category: string
-  group: string
-  accountIban: string
-  purpose: string | null
-  counterpartyName: string | null
-  counterpartyIban: string | null
-  subcategory: string | null
+  previewToken: string
 }
 
 export interface TransactionEnrichRequest {
@@ -42,10 +28,11 @@ export interface TransactionEnrichRequest {
 }
 
 export interface CamtImportRequest {
-  accountNames: Record<string, string>
-  toImport: CamtTransactionImport[]
+  previewToken: string
+  excludedRowIndices: number[]
   toIgnore: string[]
   toEnrich: TransactionEnrichRequest[]
+  accountNames: Record<string, string>
   accountBalances: Record<string, CamtAccountBalance>
 }
 

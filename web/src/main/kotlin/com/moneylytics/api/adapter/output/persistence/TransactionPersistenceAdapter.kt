@@ -30,24 +30,92 @@ class TransactionPersistenceAdapter(
     override fun saveAll(
         transactions: List<Transaction>,
         organizationId: Long,
-    ): Int {
-        if (transactions.isEmpty()) return 0
+    ): Pair<Int, List<Long>> {
+        if (transactions.isEmpty()) return 0 to emptyList()
 
         val categoryMap = buildCategoryMap(transactions, organizationId)
         val withFingerprints = assignFingerprints(transactions)
-        val existing =
+        val allExistingFingerprints =
             jpaRepository
-                .findExistingFingerprints(withFingerprints.map { it.second }, organizationId)
+                .findAllExistingFingerprints(withFingerprints.map { it.second }, organizationId)
                 .toHashSet()
+
+        val reactivatedIds =
+            if (allExistingFingerprints.isNotEmpty()) {
+                jpaRepository
+                    .findExcludedIdsByFingerprints(allExistingFingerprints, organizationId)
+                    .also { ids -> if (ids.isNotEmpty()) jpaRepository.reactivateByIds(ids) }
+            } else {
+                emptyList()
+            }
 
         val newEntities =
             withFingerprints
-                .filter { (_, fp) -> fp !in existing }
+                .filter { (_, fp) -> fp !in allExistingFingerprints }
                 .map { (tx, fp) -> tx.toEntity(fp, organizationId, categoryMap) }
 
-        jpaRepository.saveAll(newEntities)
-        return newEntities.size
+        val newIds = jpaRepository.saveAll(newEntities).mapNotNull { it.id }
+        val allAffectedIds = newIds + reactivatedIds
+        return allAffectedIds.size to allAffectedIds
     }
+
+    @Transactional
+    override fun linkToImport(
+        importId: Long,
+        transactionIds: List<Long>,
+    ) {
+        if (transactionIds.isEmpty()) return
+        jpaRepository.setImportId(importId, transactionIds)
+    }
+
+    @Transactional
+    override fun excludeByImportId(
+        importId: Long,
+        organizationId: Long,
+    ) {
+        jpaRepository.excludeByImportId(importId, organizationId)
+    }
+
+    @Transactional
+    override fun excludeByIds(
+        ids: List<Long>,
+        organizationId: Long,
+    ) {
+        if (ids.isNotEmpty()) jpaRepository.excludeByIds(ids, organizationId)
+    }
+
+    @Transactional(readOnly = true)
+    override fun findIdsByFingerprints(
+        fingerprints: List<String>,
+        organizationId: Long,
+    ): List<Long> {
+        if (fingerprints.isEmpty()) return emptyList()
+        return jpaRepository.findIdsByFingerprints(fingerprints, organizationId)
+    }
+
+    @Transactional
+    override fun linkToImportFile(
+        importFileId: Long,
+        transactionIds: List<Long>,
+    ) {
+        if (transactionIds.isEmpty()) return
+        jpaRepository.setImportFileId(importFileId, transactionIds)
+    }
+
+    @Transactional(readOnly = true)
+    override fun findIdsByImportId(importId: Long): List<Long> = jpaRepository.findIdsByImportId(importId)
+
+    @Transactional(readOnly = true)
+    override fun findByImportId(
+        importId: Long,
+        organizationId: Long,
+    ): List<Transaction> = enrichWithOffsetLinks(jpaRepository.findByImportIdAndOrganizationId(importId, organizationId))
+
+    @Transactional(readOnly = true)
+    override fun findByImportFileId(
+        fileId: Long,
+        organizationId: Long,
+    ): List<Transaction> = enrichWithOffsetLinks(jpaRepository.findByImportFileIdAndOrganizationId(fileId, organizationId))
 
     private fun buildCategoryMap(
         transactions: List<Transaction>,

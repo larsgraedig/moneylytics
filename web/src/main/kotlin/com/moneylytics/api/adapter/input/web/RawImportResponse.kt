@@ -1,6 +1,7 @@
 package com.moneylytics.api.adapter.input.web
 
 import java.math.BigDecimal
+import java.util.UUID
 
 enum class RowStatus { NEW, DUPLICATE, INVALID, PREVIOUSLY_IGNORED }
 
@@ -21,6 +22,7 @@ data class RawPreviewRow(
     val unknownAccount: Boolean = false,
     val counterpartyIban: String? = null,
     val suggestedCategoryId: Long? = null,
+    val sourceFilename: String? = null,
 )
 
 data class RawPreviewError(
@@ -33,6 +35,7 @@ data class CamtPreviewResponse(
     val rows: List<RawPreviewRow>,
     val accounts: List<CamtAccountInfo>,
     val accountBalances: Map<String, CamtAccountBalance> = emptyMap(),
+    val previewToken: UUID,
 )
 
 data class CamtAccountBalance(
@@ -52,27 +55,13 @@ data class TransactionEnrichRequest(
     val counterpartyIban: String?,
 )
 
-data class CamtImportRequest(
-    val accountNames: Map<String, String>,
-    val toImport: List<CamtTransactionImport>,
-    val toIgnore: List<String>,
+data class CamtImportByTokenRequest(
+    val previewToken: UUID,
+    val excludedRowIndices: List<Int> = emptyList(),
+    val toIgnore: List<String> = emptyList(),
     val toEnrich: List<TransactionEnrichRequest> = emptyList(),
+    val accountNames: Map<String, String>,
     val accountBalances: Map<String, CamtAccountBalance> = emptyMap(),
-)
-
-data class CamtTransactionImport(
-    val fingerprint: String,
-    val bookingDate: String,
-    val valueDate: String,
-    val amount: java.math.BigDecimal,
-    val currency: String,
-    val category: String,
-    val group: String,
-    val accountIban: String,
-    val purpose: String?,
-    val counterpartyName: String? = null,
-    val counterpartyIban: String? = null,
-    val subcategory: String? = null,
 )
 
 data class CategoriesResponse(

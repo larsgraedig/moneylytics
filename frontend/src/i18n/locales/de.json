@@ -17,8 +17,8 @@
     "konten": "Konten",
     "budgets": "Budgets",
     "limits": "Limits",
-    "csv": "CSV",
-    "camt": "CAMT",
+    "import": "Importieren",
+    "importe": "Import-Verlauf",
     "wiederkehrer": "Wiederkehrend",
     "kategorien": "Kategorien",
     "admin": "Technisches",
@@ -341,7 +341,7 @@
   "csvImport": {
     "dropzone": {
       "label": "Beliebige CSV hochladen oder hierher ziehen",
-      "hint": "Trennzeichen und Formate werden automatisch erkannt",
+      "hint": "Mehrere Dateien möglich – Trennzeichen und Formate werden automatisch erkannt",
       "analyzing": "Analysiere Datei…",
       "analyzingHint": "Trennzeichen, Spalten und Formate werden erkannt"
     },
@@ -372,11 +372,15 @@
       "cancel": "Abbrechen",
       "import": "Importieren",
       "importing": "Importiert…",
-      "previewTitle": "Vorschau ({{count}} Zeilen)"
+      "previewTitle": "Vorschau ({{count}} Zeilen)",
+      "fileProgress": "Datei {{current}} von {{total}}",
+      "sessionBadge": "Von vorheriger Datei übernommen",
+      "savedPrompt": "Das Format dieser Datei entspricht einer gespeicherten Konfiguration.",
+      "savedPromptAccept": "Übernehmen",
+      "savedPromptReject": "Neu konfigurieren",
+      "sessionPrompt": "Das Format dieser Datei entspricht dem einer bereits in dieser Sitzung konfigurierten Datei."
     },
     "categorizing": {
-      "new": "{{count}} neu",
-      "duplicate": "{{count}} bereits importiert",
       "unknownAccount": "{{count}} unbekanntes Konto",
       "skipped": "{{count}} übersprungen",
       "suggested": "{{count}} Kategorie vorgeschlagen",
@@ -394,6 +398,8 @@
         "currency": "Währung",
         "account": "Konto",
         "purpose": "Verwendungszweck",
+        "counterpartyName": "Zahlungsbeteiligte",
+        "counterpartyIban": "Zahlungsbeteiligte IBAN",
         "category": "Kategorie",
         "group": "Gruppe",
         "subcategory": "Unterkategorie"
@@ -421,12 +427,11 @@
       "importing": "Wird importiert",
       "enriching": "Wird ergänzt",
       "excluded": "Ausgeschlossen",
-      "unknownAccount": "Unbekanntes Konto"
+      "unknownAccount": "Unbekanntes Konto",
+      "crossFileDuplicate": "Datei-Duplikat"
     },
     "chips": {
-      "new": "{{count}} neu",
       "previouslyIgnored": "{{count}} früher ignoriert",
-      "duplicate": "{{count}} Duplikate",
       "invalid": "{{count}} ungültig",
       "unknownAccount": "{{count}} unbekanntes Konto"
     },
@@ -448,6 +453,8 @@
     "skipAgain": "Nochmals überspringen",
     "importAnyway": "Trotzdem importieren",
     "skip": "Überspringen",
+    "ignore": "Ignorieren",
+    "ignoreAgain": "Nochmals ignorieren",
     "undo": "Rückgängig",
     "alreadyImported": "Bereits importiert",
     "willEnrich": "Felder werden ergänzt",
@@ -725,12 +732,13 @@
       "remove": "Entfernen"
     },
     "invite": {
-      "title": "Mitglied einladen",
-      "emailPlaceholder": "E-Mail",
-      "passwordPlaceholder": "Passwort",
-      "button": "Anlegen",
-      "success": "Mitglied erfolgreich eingeladen.",
-      "error": "Einladen fehlgeschlagen."
+      "generateTitle": "Einladungslink generieren",
+      "emailPlaceholder": "E-Mail des Eingeladenen",
+      "generate": "Link generieren",
+      "copy": "Kopieren",
+      "expires": "Läuft ab",
+      "linkGenerated": "Einladungslink wurde erstellt.",
+      "error": "Einladung fehlgeschlagen."
     },
     "create": {
       "title": "Neue Organisation anlegen",
@@ -743,15 +751,6 @@
       "loadMembers": "Mitglieder konnten nicht geladen werden.",
       "removeMember": "Entfernen fehlgeschlagen.",
       "updateRole": "Rolle konnte nicht aktualisiert werden."
-    },
-    "invite": {
-      "generateTitle": "Einladungslink generieren",
-      "emailPlaceholder": "E-Mail des Eingeladenen",
-      "generate": "Link generieren",
-      "copy": "Kopieren",
-      "expires": "Läuft ab",
-      "linkGenerated": "Einladungslink wurde erstellt.",
-      "error": "Einladung fehlgeschlagen."
     },
     "logo": {
       "title": "Organisationslogo",
@@ -849,5 +848,77 @@
     "errorNoDate": "Kein Datum angegeben.",
     "errorNoAmount": "Bitte einen gültigen Betrag eingeben.",
     "errorSave": "Fehler beim Anlegen der Buchung."
+  },
+  "imports": {
+    "title": "Import-Verlauf",
+    "empty": "Noch keine Importe vorhanden.",
+    "loadError": "Importe konnten nicht geladen werden.",
+    "columns": {
+      "date": "Datum",
+      "count": "Transaktionen",
+      "status": "Status"
+    },
+    "files": {
+      "filename": "Dateiname",
+      "count": "Transaktionen",
+      "status": "Status"
+    },
+    "status": {
+      "ACTIVE": "Aktiv",
+      "REJECTED": "Abgelehnt",
+      "PARTIALLY_REJECTED": "Teilweise abgelehnt"
+    },
+    "transactions": {
+      "button": "Transaktionen",
+      "dialogTitle": "Transaktionen des Imports",
+      "columns": {
+        "id": "ID",
+        "date": "Datum",
+        "counterparty": "Empfänger",
+        "purpose": "Verwendungszweck",
+        "amount": "Betrag",
+        "status": "Status",
+        "category": "Kategorie"
+      },
+      "status": {
+        "ACCEPTED": "Angenommen",
+        "REJECTED": "Abgelehnt"
+      },
+      "empty": "Keine Transaktionen gefunden.",
+      "loadError": "Transaktionen konnten nicht geladen werden."
+    },
+    "reject": {
+      "button": "Ablehnen",
+      "confirmTitle": "Import ablehnen?",
+      "confirmBody": "Alle {{count}} Transaktionen aus «{{filename}}» werden als ausgeschlossen markiert. Dies kann nicht rückgängig gemacht werden.",
+      "confirm": "Ablehnen",
+      "cancel": "Abbrechen",
+      "blockedTitle": "Teilweise ablehnen?",
+      "blockedBody": "Die folgenden Transaktionen haben Referenzen und können nicht abgelehnt werden. Möchtest du trotzdem alle anderen Transaktionen dieses Imports ablehnen?",
+      "blockedTransaction": "Transaktion",
+      "blockedReasons": "Gründe",
+      "blockedConfirm": "Verbleibende ablehnen",
+      "close": "Abbrechen"
+    }
+  },
+  "import": {
+    "dropzone": {
+      "label": "Dateien hier ablegen oder klicken",
+      "hint": "CAMT (.xml) und CSV (.csv, .txt) — auch gemischt",
+      "errorType": "Nur .xml, .csv und .txt Dateien erlaubt"
+    },
+    "chips": {
+      "new": "{{count}} neu",
+      "duplicate": "{{count}} Duplikate",
+      "excluded": "{{count}} ausgeschlossen",
+      "crossFileDuplicate": "{{count}} Datei-Duplikate"
+    },
+    "success": {
+      "imported_one": "{{count}} Transaktion importiert",
+      "imported_other": "{{count}} Transaktionen importiert",
+      "importMore": "Weitere Dateien importieren"
+    },
+    "errorCamtType": "Nur XML-Dateien für CAMT erlaubt",
+    "errorCsvType": "Nur CSV- oder TXT-Dateien erlaubt"
   }
 }

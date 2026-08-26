@@ -36,6 +36,17 @@ interface TransactionOffsetJpaRepository : JpaRepository<TransactionOffsetEntity
         """
         SELECT CASE WHEN COUNT(o) > 0 THEN true ELSE false END
         FROM TransactionOffsetEntity o
+        WHERE o.transactionA.id = :txId OR o.transactionB.id = :txId
+        """,
+    )
+    fun existsByTransactionId(
+        @Param("txId") txId: Long,
+    ): Boolean
+
+    @Query(
+        """
+        SELECT CASE WHEN COUNT(o) > 0 THEN true ELSE false END
+        FROM TransactionOffsetEntity o
         WHERE o.transactionA.id = :aId AND o.transactionB.id = :bId
         """,
     )

@@ -176,7 +176,8 @@ export default function TransactionListPanel({ from, to, accountId, onClose, ...
                   {state.transactions.map((tx, i) => (
                     <TableRow key={i}>
                       <TableCell className="text-muted-foreground tabular-nums text-xs whitespace-nowrap">
-                        {formatDate(tx.accountingDate)}
+                        <div>{formatDate(tx.accountingDate)}</div>
+                        <div className="text-[10px] opacity-40">#{tx.id}</div>
                       </TableCell>
                       {showGroupCol && <TableCell className="text-muted-foreground text-xs">{tx.subcategory}</TableCell>}
                       {showSubcategoryCol && <TableCell className="text-muted-foreground text-xs">{tx.group}</TableCell>}

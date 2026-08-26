@@ -540,23 +540,51 @@ body {
   padding: 3px 10px;
   border-radius: 100px;
   border: 1px solid transparent;
+  cursor: pointer;
+}
+
+button.ri-chip {
+  background: none;
+  font: inherit;
+}
+
+.ri-chip--active {
+  box-shadow: 0 0 0 1.5px currentColor;
+}
+
+.ri-chip--dup.ri-chip--active {
+  color: #f59e0b;
+  border-color: rgba(245, 158, 11, 0.4);
+  background: rgba(245, 158, 11, 0.06);
 }
 
 .ri-chip--new {
+  color: var(--accent);
+  border-color: var(--accent-dim);
+  background: var(--accent-glow);
+}
+
+.ri-chip--new.ri-chip--active {
   color: #4ade80;
   border-color: rgba(74, 222, 128, 0.3);
   background: rgba(74, 222, 128, 0.06);
 }
 
 .ri-chip--dup {
-  color: var(--accent);
-  border-color: var(--accent-dim);
-  background: var(--accent-glow);
+  color: rgba(245, 158, 11, 0.5);
+  border-color: rgba(245, 158, 11, 0.2);
+  background: rgba(245, 158, 11, 0.03);
 }
 
 .ri-chip--inv {
+  color: rgba(248, 113, 113, 0.5);
+  border-color: rgba(248, 113, 113, 0.2);
+  background: rgba(248, 113, 113, 0.03);
+}
+
+.ri-chip--inv.ri-chip--active {
   color: var(--error);
-  border-color: rgba(248, 113, 113, 0.3);
+  border-color: rgba(248, 113, 113, 0.4);
   background: rgba(248, 113, 113, 0.06);
 }
 
@@ -645,7 +673,7 @@ body {
 }
 
 .ri-badge--new          { color: #4ade80; border-color: rgba(74,222,128,0.3); }
-.ri-badge--duplicate    { color: var(--accent); border-color: var(--accent-dim); }
+.ri-badge--duplicate    { color: #f59e0b; border-color: rgba(245,158,11,0.3); }
 .ri-badge--invalid      { color: var(--error); border-color: rgba(248,113,113,0.3); }
 .ri-badge--prev-ignored { color: #a78bfa; border-color: rgba(167,139,250,0.3); }
 .ri-badge--will-ignore  { color: var(--text-muted); border-color: var(--border-hi); }
@@ -823,6 +851,38 @@ body {
 .ri-action-btn--import:hover {
   border-color: #4ade80;
   background: rgba(74, 222, 128, 0.08);
+}
+
+/* ── import preview card list ─────────────────────────── */
+
+.ri-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 16px;
+}
+
+.ri-card--new               { background: rgba(74, 222, 128, 0.05); }
+.ri-card--will-ignore       { background: rgba(100, 116, 139, 0.06); opacity: 0.7; }
+.ri-card--duplicate         { background: rgba(245, 158, 11, 0.06); }
+.ri-card--invalid           { background: rgba(248, 113, 113, 0.06); }
+.ri-card--prev-ignored      { background: rgba(167, 139, 250, 0.05); }
+.ri-card--prev-ignored-importing { background: rgba(74, 222, 128, 0.05); }
+
+.ri-card-account {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ri-card-errors {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding-top: 2px;
 }
 
 /* ── dropzone hint ───────────────────────── */

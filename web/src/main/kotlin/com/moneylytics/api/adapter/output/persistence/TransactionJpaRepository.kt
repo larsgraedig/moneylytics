@@ -54,12 +54,96 @@ interface TransactionJpaRepository : JpaRepository<TransactionEntity, Long> {
     ): TransactionEntity?
 
     @Query(
-        "SELECT t.fingerprint FROM TransactionEntity t WHERE t.fingerprint IN :fingerprints AND t.organization.id = :organizationId",
+        "SELECT t.fingerprint FROM TransactionEntity t WHERE t.fingerprint IN :fingerprints AND t.organization.id = :organizationId AND t.excluded = false",
     )
     fun findExistingFingerprints(
         @Param("fingerprints") fingerprints: Collection<String>,
         @Param("organizationId") organizationId: Long,
     ): List<String>
+
+    @Query(
+        "SELECT t.fingerprint FROM TransactionEntity t WHERE t.fingerprint IN :fingerprints AND t.organization.id = :organizationId",
+    )
+    fun findAllExistingFingerprints(
+        @Param("fingerprints") fingerprints: Collection<String>,
+        @Param("organizationId") organizationId: Long,
+    ): List<String>
+
+    @Modifying
+    @Query("UPDATE TransactionEntity t SET t.importId = :importId WHERE t.id IN :ids")
+    fun setImportId(
+        @Param("importId") importId: Long,
+        @Param("ids") ids: Collection<Long>,
+    )
+
+    @Query(
+        "SELECT t.id FROM TransactionEntity t WHERE t.fingerprint IN :fingerprints AND t.organization.id = :organizationId AND t.excluded = true",
+    )
+    fun findExcludedIdsByFingerprints(
+        @Param("fingerprints") fingerprints: Collection<String>,
+        @Param("organizationId") organizationId: Long,
+    ): List<Long>
+
+    @Modifying
+    @Query("UPDATE TransactionEntity t SET t.excluded = false WHERE t.id IN :ids")
+    fun reactivateByIds(
+        @Param("ids") ids: Collection<Long>,
+    )
+
+    @Modifying
+    @Query("UPDATE TransactionEntity t SET t.excluded = true WHERE t.importId = :importId AND t.organization.id = :orgId")
+    fun excludeByImportId(
+        @Param("importId") importId: Long,
+        @Param("orgId") orgId: Long,
+    )
+
+    @Modifying
+    @Query("UPDATE TransactionEntity t SET t.excluded = true WHERE t.id IN :ids AND t.organization.id = :orgId")
+    fun excludeByIds(
+        @Param("ids") ids: Collection<Long>,
+        @Param("orgId") orgId: Long,
+    )
+
+    @Modifying
+    @Query("UPDATE TransactionEntity t SET t.importFileId = :fileId WHERE t.id IN :ids")
+    fun setImportFileId(
+        @Param("fileId") fileId: Long,
+        @Param("ids") ids: Collection<Long>,
+    )
+
+    @Query("SELECT t.id FROM TransactionEntity t WHERE t.fingerprint IN :fps AND t.organization.id = :orgId")
+    fun findIdsByFingerprints(
+        @Param("fps") fps: Collection<String>,
+        @Param("orgId") orgId: Long,
+    ): List<Long>
+
+    @Query("SELECT t.id FROM TransactionEntity t WHERE t.importFileId = :importFileId")
+    fun findIdsByImportFileId(
+        @Param("importFileId") importFileId: Long,
+    ): List<Long>
+
+    @Query("SELECT t.id FROM TransactionEntity t WHERE t.importId = :importId")
+    fun findIdsByImportId(
+        @Param("importId") importId: Long,
+    ): List<Long>
+
+    @Query(
+        "SELECT t FROM TransactionEntity t WHERE t.importId = :importId AND t.organization.id = :organizationId ORDER BY t.bookingDate ASC",
+    )
+    fun findByImportIdAndOrganizationId(
+        @Param("importId") importId: Long,
+        @Param("organizationId") organizationId: Long,
+    ): List<TransactionEntity>
+
+    @Query(
+        "SELECT t FROM TransactionEntity t WHERE t.importFileId = :fileId AND t.organization.id = :organizationId ORDER BY t.bookingDate ASC",
+    )
+    fun findByImportFileIdAndOrganizationId(
+        @Param("fileId") fileId: Long,
+        @Param("organizationId") organizationId: Long,
+    ): List<TransactionEntity>
+
+    fun existsByParentIdAndExcludedFalse(parentId: Long): Boolean
 
     @Query("SELECT t FROM TransactionEntity t WHERE t.id IN :ids AND t.organization.id = :organizationId")
     fun findByIdsAndOrganizationId(
