@@ -1,0 +1,13 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="Moneylytics (local)" type="SpringBootApplicationConfigurationType" factoryName="Spring Boot">
+    <module name="core.web.main" />
+    <option name="PROGRAM_PARAMETERS" value="--spring.profiles.active=local" />
+    <option name="SPRING_BOOT_MAIN_CLASS" value="com.moneylytics.api.MoneylyticsApiApplicationKt" />
+    <method v="2">
+      <option name="ExternalTool" enabled="true">
+        <ExternalToolReference toolID="External Tools" toolName="Start Postgres (Docker Compose)" />
+      </option>
+      <option name="Make" enabled="true" />
+    </method>
+  </configuration>
+</component>

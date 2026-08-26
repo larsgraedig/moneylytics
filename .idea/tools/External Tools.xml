@@ -1,0 +1,15 @@
+<toolSet name="External Tools">
+  <tool name="Start Postgres (Docker Compose)"
+        description="Start postgres service via docker-compose"
+        showInMainMenu="false" showInEditor="false"
+        showInProject="false" showInSearchPopup="false"
+        disabled="false" useConsole="true"
+        showConsoleOnStdOut="false" showConsoleOnStdErr="false"
+        synchronizeAfterRun="true">
+    <exec>
+      <option name="COMMAND" value="docker" />
+      <option name="PARAMETERS" value="compose up -d postgres" />
+      <option name="WORKING_DIRECTORY" value="$ProjectFileDir$" />
+    </exec>
+  </tool>
+</toolSet>
