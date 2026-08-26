@@ -1,7 +1,7 @@
 databaseChangeLog:
   - changeSet:
       id: "0001"
-      author: "initial"
+      author: "lgraedig"
       dbms: postgresql
       preConditions:
         - onFail: MARK_RAN
