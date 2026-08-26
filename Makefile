@@ -1,4 +1,4 @@
-.PHONY: publish release deploy reset-db run compose docker-build
+.PHONY: publish release deploy reset-db run compose docker-build demo
 
 publish:
 	./gradlew :web:jib
@@ -43,3 +43,6 @@ reset-db:
 	@echo "Postgres reset — waiting for it to be ready..."
 	@until docker compose exec -e PGPASSWORD=moneylytics postgres psql -h 127.0.0.1 -U moneylytics -d moneylyticsdb -c '\q' 2>/dev/null; do sleep 1; done
 	@echo "Postgres is ready."
+
+demo:
+	./scripts/demo.sh

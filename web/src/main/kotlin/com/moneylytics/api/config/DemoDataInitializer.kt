@@ -1,0 +1,698 @@
+package com.moneylytics.api.config
+
+import com.moneylytics.api.application.port.input.AssignTierToUserUseCase
+import com.moneylytics.api.application.port.input.AssignTransactionToBudgetUseCase
+import com.moneylytics.api.application.port.input.CreateBudgetUseCase
+import com.moneylytics.api.application.port.input.CreateCollectionUseCase
+import com.moneylytics.api.application.port.input.CreateOrganizationUseCase
+import com.moneylytics.api.application.port.input.CreateTierUseCase
+import com.moneylytics.api.application.port.input.CreateUserUseCase
+import com.moneylytics.api.application.port.input.DetectRecurringSeriesUseCase
+import com.moneylytics.api.application.port.input.GetTransactionsQuery
+import com.moneylytics.api.application.port.input.GetTransactionsUseCase
+import com.moneylytics.api.application.port.input.ImportFileSpec
+import com.moneylytics.api.application.port.input.ImportTransactionsCommand
+import com.moneylytics.api.application.port.input.ImportTransactionsUseCase
+import com.moneylytics.api.application.port.input.LinkTransactionsCommand
+import com.moneylytics.api.application.port.input.ManageCollectionMembersUseCase
+import com.moneylytics.api.application.port.input.ManageTransactionOffsetUseCase
+import com.moneylytics.api.application.port.input.RefreshRecurringSeriesCommand
+import com.moneylytics.api.application.port.input.SaveThresholdUseCase
+import com.moneylytics.api.application.port.output.CategoryRepository
+import com.moneylytics.api.application.port.output.InvoiceRepository
+import com.moneylytics.api.application.port.output.StripeCustomerRepository
+import com.moneylytics.api.application.port.output.UserRepository
+import com.moneylytics.api.domain.Budget
+import com.moneylytics.api.domain.Collection
+import com.moneylytics.api.domain.ImportFileType
+import com.moneylytics.api.domain.Invoice
+import com.moneylytics.api.domain.StripeCustomer
+import com.moneylytics.api.domain.SubscriptionStatus
+import com.moneylytics.api.domain.Threshold
+import com.moneylytics.api.domain.ThresholdPeriod
+import com.moneylytics.api.domain.Transaction
+import org.springframework.boot.ApplicationArguments
+import org.springframework.boot.ApplicationRunner
+import org.springframework.context.annotation.Profile
+import org.springframework.stereotype.Component
+import java.math.BigDecimal
+import java.math.RoundingMode
+import java.time.LocalDate
+import java.time.ZoneOffset
+import java.util.Random
+
+@Profile("demo")
+@Component
+class DemoDataInitializer(
+    private val importTransactionsUseCase: ImportTransactionsUseCase,
+    private val createUserUseCase: CreateUserUseCase,
+    private val createOrganizationUseCase: CreateOrganizationUseCase,
+    private val userRepository: UserRepository,
+    private val getTransactionsUseCase: GetTransactionsUseCase,
+    private val manageTransactionOffsetUseCase: ManageTransactionOffsetUseCase,
+    private val saveThresholdUseCase: SaveThresholdUseCase,
+    private val categoryRepository: CategoryRepository,
+    private val createBudgetUseCase: CreateBudgetUseCase,
+    private val assignTransactionToBudgetUseCase: AssignTransactionToBudgetUseCase,
+    private val createCollectionUseCase: CreateCollectionUseCase,
+    private val manageCollectionMembersUseCase: ManageCollectionMembersUseCase,
+    private val detectRecurringSeriesUseCase: DetectRecurringSeriesUseCase,
+    private val assignTierToUserUseCase: AssignTierToUserUseCase,
+    private val createTierUseCase: CreateTierUseCase,
+    private val stripeCustomerRepository: StripeCustomerRepository,
+    private val invoiceRepository: InvoiceRepository,
+) : ApplicationRunner {
+    companion object {
+        private const val MAIN_RNG_SEED = 42L
+        private const val SAVINGS_RNG_SEED = 99L
+
+        private const val SALARY_DAY = 28
+        private const val INTERNET_DAY = 15
+        private const val STREAMING_DAY = 10
+        private const val OPNV_DAY = 3
+        private const val SPAREINZAHLUNG_DAY = 5
+        private const val INSURANCE_DAY = 2
+        private const val GYM_DAY = 1
+        private const val MUSIC_DAY = 12
+
+        private const val SALARY_MIN = 2700.0
+        private const val SALARY_MAX = 3100.0
+        private const val RENT_AMOUNT = 950.0
+
+        private const val SUPERMARKT_MAX_REPEAT = 4
+        private const val RESTAURANT_MAX_REPEAT = 3
+        private const val SOMMER_RESTAURANT_LIMIT = 3
+
+        private const val SUPERMARKT_MIN = 20.0
+        private const val SUPERMARKT_MAX = 120.0
+        private const val RESTAURANT_MIN = 14.0
+        private const val RESTAURANT_MAX = 65.0
+        private const val APOTHEKE_MIN = 7.0
+        private const val APOTHEKE_MAX = 52.0
+        private const val TANKSTELLE_MIN = 40.0
+        private const val TANKSTELLE_MAX = 78.0
+        private const val KLEIDUNG_MIN = 29.0
+        private const val KLEIDUNG_MAX = 210.0
+        private const val SPORT_MIN = 18.0
+        private const val SPORT_MAX = 85.0
+        private const val ARZT_MIN = 25.0
+        private const val ARZT_MAX = 120.0
+        private const val ELEKTRONIK_MIN = 50.0
+        private const val ELEKTRONIK_MAX = 500.0
+
+        private const val APOTHEKE_PROBABILITY = 0.5
+        private const val TANKSTELLE_PROBABILITY = 0.4
+        private const val KLEIDUNG_PROBABILITY = 0.3
+        private const val SPORT_PROBABILITY = 0.25
+        private const val ARZT_PROBABILITY = 0.15
+        private const val ELEKTRONIK_PROBABILITY = 0.1
+
+        private const val ZINSEN_MAX = 12.0
+        private const val SPAREINZAHLUNG_MIN = 200.0
+        private const val SPAREINZAHLUNG_MAX = 500.0
+        private const val ENTNAHME_MIN = 100.0
+        private const val ENTNAHME_MAX = 300.0
+        private const val JAHRESBEITRAG_MIN = 80.0
+        private const val JAHRESBEITRAG_MAX = 250.0
+
+        private const val ENTNAHME_PROBABILITY = 0.3
+        private const val JAHRESBEITRAG_PROBABILITY = 0.15
+    }
+
+    private val mainIban = "DE00LOCAL000000000000"
+    private val mainName = "Girokonto"
+
+    private val savingsIban = "DE00LOCAL111111111111"
+    private val savingsName = "Sparkonto"
+
+    private val today = LocalDate.now()
+
+    // Generated range: 2 years back from today's month start through today
+    private val generatedStart = today.minusYears(2).withDayOfMonth(1)
+    private val generatedEnd = today
+
+    // Fixed special transactions — all relative to today
+    private val arztDate = today.minusMonths(5).withDayOfMonth(15)
+    private val erstattungDate = today.minusMonths(5).withDayOfMonth(18)
+    private val restaurantDate = today.minusMonths(2).withDayOfMonth(20)
+    private val ueberweisungDate = today.minusMonths(2).withDayOfMonth(21)
+    private val reiseFlugDate = today.minusMonths(4).withDayOfMonth(10)
+    private val reiseHotelDate = today.minusMonths(3).withDayOfMonth(22)
+    private val reiseAktivDate = today.minusMonths(1).withDayOfMonth(1)
+    private val wohnenEinrichtungDate = today.minusMonths(7).withDayOfMonth(5)
+    private val einnahmenExtra1Date = today.minusMonths(19).withDayOfMonth(20)
+    private val einnahmenExtra2Date = today.minusMonths(17).withDayOfMonth(5)
+    private val gesundheitDate = today.minusMonths(16).withDayOfMonth(18)
+    private val einnahmenExtra3Date = today.minusMonths(14).withDayOfMonth(10)
+    private val einnahmenExtra4Date = today.minusMonths(11).withDayOfMonth(15)
+
+    // Relative date ranges for budgets and collections
+    private val sommerFrom = sommerStart()
+    private val sommerTo = sommerFrom.plusMonths(2).withDayOfMonth(sommerFrom.plusMonths(2).lengthOfMonth())
+    private val prevQuarterFrom = prevQuarterStart()
+    private val prevQuarterTo = prevQuarterFrom.plusMonths(2).withDayOfMonth(prevQuarterFrom.plusMonths(2).lengthOfMonth())
+
+    override fun run(args: ApplicationArguments) {
+        createTierUseCase.createTier("Standard", "Standard Tier", isDefault = true)
+        val proTier = createTierUseCase.createTier("Pro", "Pro Tier", isDefault = false)
+
+        val adminId = createUserUseCase.createUser("admin@local.dev", "admin")
+        userRepository.promoteToSystemAdmin(adminId)
+        createOrganizationUseCase.createOrganization("Admin Org", adminId)
+        createUserUseCase.createUser("admin-no-org@local.dev", "admin").also { userRepository.promoteToSystemAdmin(it) }
+
+        val devUserId = createUserUseCase.createUser("dev@local.dev", "local")
+        assignTierToUserUseCase.assignTierToUser(devUserId, proTier.id)
+        val orgId = createOrganizationUseCase.createOrganization("Persönlich", devUserId).id
+
+        val devNoOrgUserId = createUserUseCase.createUser("dev-no-org@local.dev", "local")
+        assignTierToUserUseCase.assignTierToUser(devNoOrgUserId, proTier.id)
+
+        createUserUseCase.createUser("standard@local.dev", "local")
+        createUserUseCase.createUser("standard-no-org@local.dev", "local")
+
+        val pastDueUserId = createUserUseCase.createUser("pastdue@local.dev", "local")
+        assignTierToUserUseCase.assignTierToUser(pastDueUserId, proTier.id)
+
+        val pastDueNoOrgUserId = createUserUseCase.createUser("pastdue-no-org@local.dev", "local")
+        assignTierToUserUseCase.assignTierToUser(pastDueNoOrgUserId, proTier.id)
+
+        val canceledUserId = createUserUseCase.createUser("canceled@local.dev", "local")
+        val canceledNoOrgUserId = createUserUseCase.createUser("canceled-no-org@local.dev", "local")
+
+        importTransactionsUseCase.importTransactions(
+            ImportTransactionsCommand(
+                transactions = generateMainTransactions() + generateSavingsTransactions() + generateFixedTransactions(),
+                accountNames =
+                    mapOf(
+                        mainIban to mainName,
+                        savingsIban to savingsName,
+                    ),
+                organizationId = orgId,
+                files =
+                    listOf(
+                        ImportFileSpec(filename = "seed", checksum = "seed", fileType = ImportFileType.CSV, fingerprints = emptyList()),
+                    ),
+            ),
+        )
+        setupOffsetLinks(orgId)
+        setupThresholds(orgId)
+        setupBudgets(orgId)
+        setupCollections(orgId)
+        detectRecurringSeriesUseCase.detect(RefreshRecurringSeriesCommand(organizationId = orgId))
+
+        setupActiveStripeUser(devUserId, idPrefix = "dev", invoicePrefix = "DEV")
+        setupActiveStripeUser(devNoOrgUserId, idPrefix = "dev-no-org", invoicePrefix = "DEV-NO-ORG")
+        setupPastDueStripeUser(pastDueUserId, idPrefix = "pdu", invoicePrefix = "PDU")
+        setupPastDueStripeUser(pastDueNoOrgUserId, idPrefix = "pdu-no-org", invoicePrefix = "PDU-NO-ORG")
+        setupCanceledStripeUser(canceledUserId, idPrefix = "can", invoicePrefix = "CAN")
+        setupCanceledStripeUser(canceledNoOrgUserId, idPrefix = "can-no-org", invoicePrefix = "CAN-NO-ORG")
+    }
+
+    private fun setupActiveStripeUser(
+        userId: Long,
+        idPrefix: String,
+        invoicePrefix: String,
+    ) {
+        val periodStart = today.withDayOfMonth(1).atStartOfDay().toEpochSecond(ZoneOffset.UTC)
+        val periodEnd =
+            today
+                .plusMonths(1)
+                .withDayOfMonth(1)
+                .atStartOfDay()
+                .toEpochSecond(ZoneOffset.UTC)
+        stripeCustomerRepository.save(
+            StripeCustomer(
+                id = 0,
+                userId = userId,
+                stripeCustomerId = "cus_$idPrefix",
+                stripeSubscriptionId = "sub_$idPrefix",
+                subscriptionStatus = SubscriptionStatus.ACTIVE,
+                currentPeriodStart = periodStart,
+                currentPeriodEnd = periodEnd,
+                priceId = "price_local_pro",
+            ),
+        )
+        (1..6).forEach { i ->
+            val start = today.minusMonths((6 - i).toLong()).withDayOfMonth(1).atStartOfDay()
+            invoiceRepository.save(
+                Invoice(
+                    id = 0,
+                    userId = userId,
+                    stripeInvoiceId = "in_${idPrefix}_%03d".format(i),
+                    invoiceNumber = "INV-$invoicePrefix-%03d".format(i),
+                    amountCents = 999,
+                    currency = "eur",
+                    status = "paid",
+                    periodStart = start,
+                    periodEnd = start.plusMonths(1),
+                    hasPdf = false,
+                    issuedAt = start.plusMonths(1),
+                ),
+                pdfData = null,
+            )
+        }
+    }
+
+    private fun setupPastDueStripeUser(
+        userId: Long,
+        idPrefix: String,
+        invoicePrefix: String,
+    ) {
+        val periodStart =
+            today
+                .minusMonths(1)
+                .withDayOfMonth(1)
+                .atStartOfDay()
+                .toEpochSecond(ZoneOffset.UTC)
+        val periodEnd = today.withDayOfMonth(1).atStartOfDay().toEpochSecond(ZoneOffset.UTC)
+        stripeCustomerRepository.save(
+            StripeCustomer(
+                id = 0,
+                userId = userId,
+                stripeCustomerId = "cus_$idPrefix",
+                stripeSubscriptionId = "sub_$idPrefix",
+                subscriptionStatus = SubscriptionStatus.PAST_DUE,
+                currentPeriodStart = periodStart,
+                currentPeriodEnd = periodEnd,
+                priceId = "price_local_pro",
+            ),
+        )
+        (1..3).forEach { i ->
+            val start = today.minusMonths((4 - i).toLong()).withDayOfMonth(1).atStartOfDay()
+            invoiceRepository.save(
+                Invoice(
+                    id = 0,
+                    userId = userId,
+                    stripeInvoiceId = "in_${idPrefix}_%03d".format(i),
+                    invoiceNumber = "INV-$invoicePrefix-%03d".format(i),
+                    amountCents = 999,
+                    currency = "eur",
+                    status = "paid",
+                    periodStart = start,
+                    periodEnd = start.plusMonths(1),
+                    hasPdf = false,
+                    issuedAt = start.plusMonths(1),
+                ),
+                pdfData = null,
+            )
+        }
+        val overdueStart = today.minusMonths(1).withDayOfMonth(1).atStartOfDay()
+        invoiceRepository.save(
+            Invoice(
+                id = 0,
+                userId = userId,
+                stripeInvoiceId = "in_${idPrefix}_004",
+                invoiceNumber = "INV-$invoicePrefix-004",
+                amountCents = 999,
+                currency = "eur",
+                status = "open",
+                periodStart = overdueStart,
+                periodEnd = overdueStart.plusMonths(1),
+                hasPdf = false,
+                issuedAt = overdueStart,
+            ),
+            pdfData = null,
+        )
+    }
+
+    private fun setupCanceledStripeUser(
+        userId: Long,
+        idPrefix: String,
+        invoicePrefix: String,
+    ) {
+        stripeCustomerRepository.save(
+            StripeCustomer(
+                id = 0,
+                userId = userId,
+                stripeCustomerId = "cus_$idPrefix",
+                stripeSubscriptionId = "sub_$idPrefix",
+                subscriptionStatus = SubscriptionStatus.CANCELED,
+                currentPeriodStart = null,
+                currentPeriodEnd = null,
+                priceId = null,
+            ),
+        )
+        (1..2).forEach { i ->
+            val start = today.minusMonths((3 - i).toLong()).withDayOfMonth(1).atStartOfDay()
+            invoiceRepository.save(
+                Invoice(
+                    id = 0,
+                    userId = userId,
+                    stripeInvoiceId = "in_${idPrefix}_%03d".format(i),
+                    invoiceNumber = "INV-$invoicePrefix-%03d".format(i),
+                    amountCents = 999,
+                    currency = "eur",
+                    status = "paid",
+                    periodStart = start,
+                    periodEnd = start.plusMonths(1),
+                    hasPdf = false,
+                    issuedAt = start.plusMonths(1),
+                ),
+                pdfData = null,
+            )
+        }
+    }
+
+    private fun setupOffsetLinks(orgId: Long) {
+        val arztTx = findTx(orgId, arztDate, "Gesundheit", BigDecimal("-180.00"))
+        val erstattungTx = findTx(orgId, erstattungDate, "Einnahmen", BigDecimal("120.00"))
+        if (arztTx != null && erstattungTx != null) {
+            manageTransactionOffsetUseCase.linkTransactions(
+                LinkTransactionsCommand(
+                    transactionId = arztTx.id!!,
+                    otherTransactionId = erstattungTx.id!!,
+                    myAmount = BigDecimal("120"),
+                    otherAmount = BigDecimal("120"),
+                    organizationId = orgId,
+                ),
+            )
+        }
+
+        val restaurantTx = findTx(orgId, restaurantDate, "Lebensmittel", BigDecimal("-95.00"))
+        val ueberweisungTx = findTx(orgId, ueberweisungDate, "Einnahmen", BigDecimal("47.50"))
+        if (restaurantTx != null && ueberweisungTx != null) {
+            manageTransactionOffsetUseCase.linkTransactions(
+                LinkTransactionsCommand(
+                    transactionId = restaurantTx.id!!,
+                    otherTransactionId = ueberweisungTx.id!!,
+                    myAmount = BigDecimal("47.50"),
+                    otherAmount = BigDecimal("47.50"),
+                    organizationId = orgId,
+                ),
+            )
+        }
+    }
+
+    private fun setupThresholds(orgId: Long) {
+        val lebensmittelId = categoryRepository.findOrCreate(listOf("Lebensmittel"), orgId).id!!
+        val transportId = categoryRepository.findOrCreate(listOf("Transport"), orgId).id!!
+        val freizeitId = categoryRepository.findOrCreate(listOf("Freizeit"), orgId).id!!
+
+        saveThresholdUseCase.saveThreshold(
+            Threshold(
+                id = 0,
+                categoryId = lebensmittelId,
+                categoryPath = listOf("Lebensmittel"),
+                period = ThresholdPeriod.MONTHLY,
+                notice = BigDecimal("400"),
+                warning = BigDecimal("600"),
+                critical = BigDecimal("800"),
+            ),
+            orgId,
+        )
+        saveThresholdUseCase.saveThreshold(
+            Threshold(
+                id = 0,
+                categoryId = transportId,
+                categoryPath = listOf("Transport"),
+                period = ThresholdPeriod.MONTHLY,
+                notice = BigDecimal("150"),
+                warning = BigDecimal("250"),
+                critical = null,
+            ),
+            orgId,
+        )
+        saveThresholdUseCase.saveThreshold(
+            Threshold(
+                id = 0,
+                categoryId = freizeitId,
+                categoryPath = listOf("Freizeit"),
+                period = ThresholdPeriod.MONTHLY,
+                notice = BigDecimal("80"),
+                warning = null,
+                critical = null,
+            ),
+            orgId,
+        )
+    }
+
+    private fun setupBudgets(orgId: Long) {
+        val urlaubYear = if (today.monthValue >= 9) today.year else today.year - 1
+        val urlaub =
+            createBudgetUseCase.createBudget(
+                Budget(name = "Urlaub $urlaubYear", targetAmount = BigDecimal("1200")),
+                orgId,
+            )
+        listOf(
+            reiseFlugDate to BigDecimal("-380.00"),
+            reiseHotelDate to BigDecimal("-490.00"),
+            reiseAktivDate to BigDecimal("-200.00"),
+        ).forEach { (date, amount) ->
+            findTx(orgId, date, "Reise", amount)?.id?.let { txId ->
+                assignTransactionToBudgetUseCase.assignTransaction(urlaub.id!!, txId, null, orgId)
+            }
+        }
+
+        val kueche =
+            createBudgetUseCase.createBudget(
+                Budget(name = "Neue Küche", targetAmount = BigDecimal("3500")),
+                orgId,
+            )
+        findTx(orgId, wohnenEinrichtungDate, "Wohnen", BigDecimal("-800.00"))?.id?.let { txId ->
+            assignTransactionToBudgetUseCase.assignTransaction(kueche.id!!, txId, BigDecimal("500"), orgId)
+        }
+
+        val notfall = createBudgetUseCase.createBudget(Budget(name = "Notfallfonds"), orgId)
+        listOf(
+            Triple(einnahmenExtra1Date, "Einnahmen", BigDecimal("500.00")),
+            Triple(einnahmenExtra2Date, "Einnahmen", BigDecimal("400.00")),
+            Triple(gesundheitDate, "Gesundheit", BigDecimal("-2300.00")),
+            Triple(einnahmenExtra3Date, "Einnahmen", BigDecimal("700.00")),
+            Triple(einnahmenExtra4Date, "Einnahmen", BigDecimal("900.00")),
+        ).forEach { (date, category, amount) ->
+            findTx(orgId, date, category, amount)?.id?.let { txId ->
+                assignTransactionToBudgetUseCase.assignTransaction(notfall.id!!, txId, null, orgId)
+            }
+        }
+    }
+
+    private fun setupCollections(orgId: Long) {
+        val sommerLabel = "Sommer ${sommerFrom.year}"
+        val sommer = createCollectionUseCase.createCollection(Collection(name = sommerLabel), orgId)
+        val restaurantTxs = queryTxs(orgId, sommerFrom, sommerTo, "Lebensmittel", "Restaurant").take(SOMMER_RESTAURANT_LIMIT)
+        val sportTxs = queryTxs(orgId, sommerFrom, sommerTo, "Freizeit", "Sport").take(2)
+        (restaurantTxs + sportTxs).forEach { tx ->
+            tx.id?.let { manageCollectionMembersUseCase.addTransaction(sommer.id!!, it, orgId) }
+        }
+
+        val quartalLabel = "Haushalt Q${quarterNumber(prevQuarterFrom)} ${prevQuarterFrom.year}"
+        val haushalt = createCollectionUseCase.createCollection(Collection(name = quartalLabel), orgId)
+        val mieteTxs = queryTxs(orgId, prevQuarterFrom, prevQuarterTo, "Wohnen", "Miete").take(2)
+        val internetTxs = queryTxs(orgId, prevQuarterFrom, prevQuarterTo, "Wohnen", "Internet").take(2)
+        (mieteTxs + internetTxs).forEach { tx ->
+            tx.id?.let { manageCollectionMembersUseCase.addTransaction(haushalt.id!!, it, orgId) }
+        }
+    }
+
+    private fun findTx(
+        orgId: Long,
+        date: LocalDate,
+        category: String,
+        amount: BigDecimal,
+    ): Transaction? =
+        getTransactionsUseCase
+            .getTransactions(GetTransactionsQuery(from = date, to = date, organizationId = orgId, category = category))
+            .find { it.amount.compareTo(amount) == 0 }
+
+    private fun queryTxs(
+        orgId: Long,
+        from: LocalDate,
+        to: LocalDate,
+        category: String,
+        subcategory: String,
+    ): List<Transaction> =
+        getTransactionsUseCase.getTransactions(
+            GetTransactionsQuery(from = from, to = to, organizationId = orgId, category = category, subcategory = subcategory),
+        )
+
+    private fun generateFixedTransactions(): List<Transaction> =
+        listOf(
+            tx("Gesundheit", "Arzt", arztDate, BigDecimal("-180.00")),
+            tx("Einnahmen", "Erstattung", erstattungDate, BigDecimal("120.00")),
+            tx("Lebensmittel", "Restaurant", restaurantDate, BigDecimal("-95.00")),
+            tx("Einnahmen", "Überweisung", ueberweisungDate, BigDecimal("47.50")),
+            tx("Reise", "Flug", reiseFlugDate, BigDecimal("-380.00")),
+            tx("Reise", "Hotel", reiseHotelDate, BigDecimal("-490.00")),
+            tx("Reise", "Aktivitäten", reiseAktivDate, BigDecimal("-200.00")),
+            tx("Wohnen", "Einrichtung", wohnenEinrichtungDate, BigDecimal("-800.00")),
+            tx("Einnahmen", "Sonstiges", einnahmenExtra1Date, BigDecimal("500.00")),
+            tx("Einnahmen", "Sonstiges", einnahmenExtra2Date, BigDecimal("400.00")),
+            tx("Gesundheit", "Behandlung", gesundheitDate, BigDecimal("-2300.00")),
+            tx("Einnahmen", "Sonstiges", einnahmenExtra3Date, BigDecimal("700.00")),
+            tx("Einnahmen", "Sonstiges", einnahmenExtra4Date, BigDecimal("900.00")),
+        )
+
+    private fun tx(
+        category: String,
+        subcategory: String,
+        date: LocalDate,
+        amount: BigDecimal,
+    ) = Transaction(
+        category = category,
+        subcategory = subcategory,
+        group = null,
+        bookingDate = date,
+        valueDate = date,
+        accountingDate = date,
+        amount = amount,
+        currency = "EUR",
+        accountIban = mainIban,
+    )
+
+    private fun generateMainTransactions(): List<Transaction> {
+        val rng = Random(MAIN_RNG_SEED)
+        val transactions = mutableListOf<Transaction>()
+
+        val months =
+            generateSequence(generatedStart) { it.plusMonths(1) }
+                .takeWhile { !it.isAfter(generatedEnd) }
+                .toList()
+
+        for (month in months) {
+            val daysInMonth = month.lengthOfMonth()
+
+            fun day(d: Int) = month.withDayOfMonth(d.coerceIn(1, daysInMonth))
+
+            fun randomDay() = day(rng.nextInt(daysInMonth) + 1)
+
+            fun euros(
+                from: Double,
+                to: Double,
+            ) = BigDecimal
+                .valueOf(from + rng.nextDouble() * (to - from))
+                .setScale(2, RoundingMode.HALF_UP)
+
+            fun tx(
+                category: String,
+                subcategory: String,
+                date: LocalDate,
+                amount: BigDecimal,
+                counterpartyName: String? = null,
+            ) = Transaction(
+                category = category,
+                subcategory = subcategory,
+                group = null,
+                bookingDate = date,
+                valueDate = date,
+                accountingDate = date,
+                amount = amount,
+                currency = "EUR",
+                accountIban = mainIban,
+                counterpartyName = counterpartyName,
+            )
+
+            transactions += tx("Einnahmen", "Gehalt", day(SALARY_DAY), euros(SALARY_MIN, SALARY_MAX), counterpartyName = "Arbeitgeber GmbH")
+            transactions += tx("Wohnen", "Miete", day(1), -euros(RENT_AMOUNT, RENT_AMOUNT), counterpartyName = "Vermieter")
+            transactions += tx("Wohnen", "Internet", day(INTERNET_DAY), BigDecimal("-39.99"), counterpartyName = "Telekom")
+            transactions += tx("Freizeit", "Streaming", day(STREAMING_DAY), BigDecimal("-17.99"), counterpartyName = "Netflix")
+            transactions += tx("Transport", "ÖPNV", day(OPNV_DAY), BigDecimal("-86.00"), counterpartyName = "MVG")
+            transactions +=
+                tx("Versicherung", "Krankenversicherung", day(INSURANCE_DAY), BigDecimal("-189.50"), counterpartyName = "Allianz")
+            transactions += tx("Freizeit", "Sport", day(GYM_DAY), BigDecimal("-29.90"), counterpartyName = "FitnessFabrik")
+            transactions += tx("Freizeit", "Streaming", day(MUSIC_DAY), BigDecimal("-10.99"), counterpartyName = "Spotify")
+
+            repeat(rng.nextInt(SUPERMARKT_MAX_REPEAT) + 2) {
+                transactions += tx("Lebensmittel", "Supermarkt", randomDay(), -euros(SUPERMARKT_MIN, SUPERMARKT_MAX))
+            }
+            repeat(rng.nextInt(RESTAURANT_MAX_REPEAT) + 1) {
+                transactions += tx("Lebensmittel", "Restaurant", randomDay(), -euros(RESTAURANT_MIN, RESTAURANT_MAX))
+            }
+
+            if (rng.nextDouble() < APOTHEKE_PROBABILITY) {
+                transactions += tx("Gesundheit", "Apotheke", randomDay(), -euros(APOTHEKE_MIN, APOTHEKE_MAX))
+            }
+            if (rng.nextDouble() < TANKSTELLE_PROBABILITY) {
+                transactions += tx("Transport", "Tankstelle", randomDay(), -euros(TANKSTELLE_MIN, TANKSTELLE_MAX))
+            }
+            if (rng.nextDouble() < KLEIDUNG_PROBABILITY) {
+                transactions += tx("Shopping", "Kleidung", randomDay(), -euros(KLEIDUNG_MIN, KLEIDUNG_MAX))
+            }
+            if (rng.nextDouble() < SPORT_PROBABILITY) {
+                transactions += tx("Freizeit", "Sport", randomDay(), -euros(SPORT_MIN, SPORT_MAX))
+            }
+            if (rng.nextDouble() < ARZT_PROBABILITY) {
+                transactions += tx("Gesundheit", "Arzt", randomDay(), -euros(ARZT_MIN, ARZT_MAX))
+            }
+            if (rng.nextDouble() < ELEKTRONIK_PROBABILITY) {
+                transactions += tx("Shopping", "Elektronik", randomDay(), -euros(ELEKTRONIK_MIN, ELEKTRONIK_MAX))
+            }
+        }
+
+        return transactions.sortedBy { it.bookingDate }
+    }
+
+    private fun generateSavingsTransactions(): List<Transaction> {
+        val rng = Random(SAVINGS_RNG_SEED)
+        val transactions = mutableListOf<Transaction>()
+
+        val months =
+            generateSequence(generatedStart) { it.plusMonths(1) }
+                .takeWhile { !it.isAfter(generatedEnd) }
+                .toList()
+
+        for (month in months) {
+            val daysInMonth = month.lengthOfMonth()
+
+            fun day(d: Int) = month.withDayOfMonth(d.coerceIn(1, daysInMonth))
+
+            fun randomDay() = day(rng.nextInt(daysInMonth) + 1)
+
+            fun euros(
+                from: Double,
+                to: Double,
+            ) = BigDecimal
+                .valueOf(from + rng.nextDouble() * (to - from))
+                .setScale(2, RoundingMode.HALF_UP)
+
+            fun tx(
+                category: String,
+                subcategory: String,
+                date: LocalDate,
+                amount: BigDecimal,
+            ) = Transaction(
+                category = category,
+                subcategory = subcategory,
+                group = null,
+                bookingDate = date,
+                valueDate = date,
+                accountingDate = date,
+                amount = amount,
+                currency = "EUR",
+                accountIban = savingsIban,
+            )
+
+            transactions += tx("Einnahmen", "Zinsen", day(1), euros(2.0, ZINSEN_MAX))
+            transactions += tx("Sparen", "Einzahlung", day(SPAREINZAHLUNG_DAY), -euros(SPAREINZAHLUNG_MIN, SPAREINZAHLUNG_MAX))
+
+            if (rng.nextDouble() < ENTNAHME_PROBABILITY) {
+                transactions += tx("Sparen", "Entnahme", randomDay(), euros(ENTNAHME_MIN, ENTNAHME_MAX))
+            }
+            if (rng.nextDouble() < JAHRESBEITRAG_PROBABILITY) {
+                transactions +=
+                    tx("Versicherung", "Jahresbeitrag", randomDay(), -euros(JAHRESBEITRAG_MIN, JAHRESBEITRAG_MAX))
+            }
+        }
+
+        return transactions.sortedBy { it.bookingDate }
+    }
+
+    // Returns the start of the most recent summer (June 1) that is at least 2 months in the past
+    private fun sommerStart(): LocalDate {
+        val thisYearSommerStart = today.withMonth(6).withDayOfMonth(1)
+        return if (today >= thisYearSommerStart.plusMonths(2)) {
+            thisYearSommerStart
+        } else {
+            thisYearSommerStart.minusYears(1)
+        }
+    }
+
+    // Returns the start of the previous completed calendar quarter
+    private fun prevQuarterStart(): LocalDate {
+        val currentQuarterMonth = ((today.monthValue - 1) / 3) * 3 + 1
+        val currentQuarterStart = today.withMonth(currentQuarterMonth).withDayOfMonth(1)
+        return currentQuarterStart.minusMonths(3)
+    }
+
+    private fun quarterNumber(date: LocalDate): Int = (date.monthValue - 1) / 3 + 1
+}

@@ -14,18 +14,16 @@ spring:
       client:
         registration:
           google:
-            client-id: local-dummy
-            client-secret: local-dummy
-  liquibase:
-    enabled: false
+            client-id: demo-dummy
+            client-secret: demo-dummy
   datasource:
-    url: jdbc:postgresql://localhost:5433/moneylyticsdb
+    url: jdbc:postgresql://localhost:5434/moneylyticsdb
     username: moneylytics
     password: moneylytics
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
-      ddl-auto: create-drop
+      ddl-auto: none
   session:
     jdbc:
       initialize-schema: always

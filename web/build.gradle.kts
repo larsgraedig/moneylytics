@@ -35,7 +35,7 @@ dependencies {
     implementation(libs.jackson.module.kotlin)
     implementation(libs.commons.csv)
     implementation(libs.kotlin.logging)
-    implementation(libs.h2)
+    testRuntimeOnly(libs.h2)
     runtimeOnly(libs.postgresql)
     implementation(libs.spring.session.jdbc)
     implementation(libs.springdoc.openapi.webflux.ui)

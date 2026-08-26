@@ -3,6 +3,8 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 
+const backendUrl = process.env.BACKEND_URL ?? 'http://localhost:8080'
+
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   resolve: {
@@ -12,22 +14,22 @@ export default defineConfig({
   },
   server: {
     proxy: {
-      '/auth': 'http://localhost:8080',
-      '/oauth2': { target: 'http://localhost:8080', changeOrigin: true },
-      '/transactions': 'http://localhost:8080',
-      '/accounts': 'http://localhost:8080',
-      '/categories': 'http://localhost:8080',
-      '/users': 'http://localhost:8080',
-      '/thresholds': 'http://localhost:8080',
-      '/budgets': 'http://localhost:8080',
-      '/collections': 'http://localhost:8080',
-      '/admin': 'http://localhost:8080',
-      '/organizations': 'http://localhost:8080',
-      '/invitations': 'http://localhost:8080',
-      '/subscriptions': 'http://localhost:8080',
-      '/imports': 'http://localhost:8080',
-      '/invoices': 'http://localhost:8080',
-      '/webhooks': 'http://localhost:8080',
+      '/auth': backendUrl,
+      '/oauth2': { target: backendUrl, changeOrigin: true },
+      '/transactions': backendUrl,
+      '/accounts': backendUrl,
+      '/categories': backendUrl,
+      '/users': backendUrl,
+      '/thresholds': backendUrl,
+      '/budgets': backendUrl,
+      '/collections': backendUrl,
+      '/admin': backendUrl,
+      '/organizations': backendUrl,
+      '/invitations': backendUrl,
+      '/subscriptions': backendUrl,
+      '/imports': backendUrl,
+      '/invoices': backendUrl,
+      '/webhooks': backendUrl,
     },
   },
 })
