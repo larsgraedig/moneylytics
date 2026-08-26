@@ -1,8 +1,8 @@
 package com.moneylytics.api.adapter.input.web
 
 import com.moneylytics.api.adapter.output.persistence.CsvProfilePersistenceAdapter
+import com.moneylytics.api.adapter.output.persistence.ImportPreviewSessionPersistenceAdapter
 import com.moneylytics.api.application.port.input.CheckDuplicatesUseCase
-import com.moneylytics.api.application.port.input.EnrichTransactionUseCase
 import com.moneylytics.api.application.port.input.GetAccountsUseCase
 import com.moneylytics.api.application.port.input.ImportFileSpec
 import com.moneylytics.api.application.port.input.ImportTransactionsCommand
@@ -29,12 +29,10 @@ import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.server.ServerWebExchange
 import java.math.BigDecimal
 import java.time.LocalDate
+import java.time.LocalDateTime
+import java.util.UUID
 
-data class GenericCsvImportRequest(
-    val toImport: List<GenericRowToImport>,
-    val toEnrich: List<TransactionEnrichRequest> = emptyList(),
-    val mappingsToSave: List<MappingToSave> = emptyList(),
-)
+private const val PREVIEW_SESSION_TTL_HOURS = 24L
 
 @RestController
 @RequestMapping("/transactions/csv")
@@ -44,9 +42,9 @@ class GenericCsvController(
     private val importTransactionsUseCase: ImportTransactionsUseCase,
     private val checkDuplicatesUseCase: CheckDuplicatesUseCase,
     private val getAccountsUseCase: GetAccountsUseCase,
-    private val enrichTransactionUseCase: EnrichTransactionUseCase,
     private val resolveOrganizationUseCase: ResolveOrganizationUseCase,
     private val csvProfileAdapter: CsvProfilePersistenceAdapter,
+    private val importPreviewSessionAdapter: ImportPreviewSessionPersistenceAdapter,
     private val categoryClassifier: CategoryClassifier,
 ) {
     @PostMapping("/detect", consumes = [MediaType.MULTIPART_FORM_DATA_VALUE])
@@ -120,10 +118,16 @@ class GenericCsvController(
         @RequestPart("mapping") mapping: GenericCsvMapping,
         @AuthenticationPrincipal principal: UserDetails,
         exchange: ServerWebExchange,
-    ): List<GenericCsvPreviewRow> {
+    ): GenericCsvPreviewResponse {
         val parts = exchange.multipartData.awaitSingle()
         val fileParts = parts["files"]?.filterIsInstance<FilePart>() ?: emptyList()
-        if (fileParts.isEmpty()) return emptyList()
+        if (fileParts.isEmpty()) {
+            val token = UUID.randomUUID()
+            withContext(Dispatchers.IO) {
+                importPreviewSessionAdapter.save(token, emptyList(), LocalDateTime.now().plusHours(PREVIEW_SESSION_TTL_HOURS))
+            }
+            return GenericCsvPreviewResponse(rows = emptyList(), previewToken = token)
+        }
 
         val allRows = mutableListOf<GenericCsvPreviewRow>()
         var nextRowIndex = 0
@@ -135,8 +139,6 @@ class GenericCsvController(
             }
             nextRowIndex += rows.size
         }
-
-        if (allRows.isEmpty()) return allRows
 
         val organizationId = resolveOrganizationUseCase.resolveOrganization(principal, exchange)
         val allFingerprints = allRows.map { it.fingerprint }.toSet()
@@ -156,35 +158,49 @@ class GenericCsvController(
                 val suggested = categoryClassifier.suggestAll(organizationId, features)
                 Triple(fingerprints, ibans, allRows.zip(suggested).associate { (row, catId) -> row.fingerprint to catId })
             }
-        return allRows.map { row ->
-            val isDuplicate = row.fingerprint in existingFingerprints
-            row.copy(
-                status = if (isDuplicate) RowStatus.DUPLICATE else row.status,
-                unknownAccount = knownIbans.isNotEmpty() && row.accountIban !in knownIbans,
-                suggestedCategoryId = if (!isDuplicate) suggestions[row.fingerprint] else null,
-            )
+        val finalRows =
+            allRows.map { row ->
+                val isDuplicate = row.fingerprint in existingFingerprints
+                row.copy(
+                    status = if (isDuplicate) RowStatus.DUPLICATE else row.status,
+                    unknownAccount = knownIbans.isNotEmpty() && row.accountIban !in knownIbans,
+                    suggestedCategoryId = if (!isDuplicate) suggestions[row.fingerprint] else null,
+                )
+            }
+
+        val previewToken = UUID.randomUUID()
+        withContext(Dispatchers.IO) {
+            importPreviewSessionAdapter.save(previewToken, finalRows, LocalDateTime.now().plusHours(PREVIEW_SESSION_TTL_HOURS))
         }
+        return GenericCsvPreviewResponse(rows = finalRows, previewToken = previewToken)
     }
 
     @PostMapping("/import-rows")
     suspend fun importRows(
-        @RequestBody request: GenericCsvImportRequest,
+        @RequestBody request: GenericCsvImportByTokenRequest,
         @AuthenticationPrincipal principal: UserDetails,
         exchange: ServerWebExchange,
     ): ResponseEntity<ImportSuccessResponse> {
+        val sessionRows =
+            withContext(Dispatchers.IO) { importPreviewSessionAdapter.load(request.previewToken, GenericCsvPreviewRow::class.java) }
+                ?: return ResponseEntity.notFound().build()
+
         val organizationId = resolveOrganizationUseCase.resolveOrganization(principal, exchange)
         val knownIbans =
             withContext(Dispatchers.IO) { getAccountsUseCase.getAccounts(organizationId) }
                 .map { it.iban }
                 .toSet()
-        val rows = request.toImport
-        val safeRows = if (knownIbans.isEmpty()) rows else rows.filter { it.accountIban in knownIbans }
+
+        val excludedSet = request.excludedRowIndices.toSet()
+        val selectedRows = sessionRows.filter { it.rowIndex !in excludedSet }
+        val safeRows = if (knownIbans.isEmpty()) selectedRows else selectedRows.filter { it.accountIban in knownIbans }
+
         val transactions =
             safeRows.map { row ->
                 Transaction(
-                    category = row.category,
-                    subcategory = row.subcategory,
-                    group = row.group,
+                    category = row.mappedCategory ?: "",
+                    subcategory = row.mappedSubcategory,
+                    group = row.mappedGroup ?: "",
                     bookingDate = LocalDate.parse(row.date),
                     valueDate = LocalDate.parse(row.date),
                     accountingDate = LocalDate.parse(row.date),
@@ -224,20 +240,10 @@ class GenericCsvController(
                     ),
                 )
             }
-        request.toEnrich.forEach { e ->
-            withContext(Dispatchers.IO) {
-                enrichTransactionUseCase.enrichByFingerprint(
-                    e.fingerprint,
-                    organizationId,
-                    e.purpose,
-                    e.counterpartyName,
-                    e.counterpartyIban,
-                )
-            }
-        }
         request.mappingsToSave.forEach { (fingerprint, mapping) ->
             withContext(Dispatchers.IO) { csvProfileAdapter.saveMapping(organizationId, fingerprint, mapping) }
         }
+        withContext(Dispatchers.IO) { importPreviewSessionAdapter.delete(request.previewToken) }
         return ResponseEntity.ok(ImportSuccessResponse(importedCount = importResult.importedCount, importId = importResult.importId))
     }
 

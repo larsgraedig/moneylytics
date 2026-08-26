@@ -16,7 +16,6 @@ import {
   type CsvDetectionResult,
   type CsvMapping,
   type GenericCsvPreviewRow,
-  type GenericRowToImport,
   type MappingToSave,
 } from '../api/genericCsvImport'
 import { ImportPreviewTable, type ImportDecision, type ImportPreviewRow } from './ImportPreviewTable'
@@ -38,6 +37,7 @@ type PendingFile = { file: File; detection: CsvDetectionResult }
 type CamtState = {
   accounts: CamtAccountInfo[]
   accountBalances: Record<string, CamtAccountBalance>
+  previewToken: string
 }
 
 type PageState =
@@ -45,7 +45,7 @@ type PageState =
   | { mode: 'detecting' }
   | { mode: 'csv-mapping'; detection: CsvDetectionResult; mapping: CsvMapping; file: File; mappedFiles: MappedFile[]; pendingFiles: PendingFile[]; camtFiles: File[] }
   | { mode: 'combined-previewing' }
-  | { mode: 'combined-preview'; rows: CombinedPreviewRow[]; camtState: CamtState | null; mappedFiles: MappedFile[] }
+  | { mode: 'combined-preview'; rows: CombinedPreviewRow[]; camtState: CamtState | null; mappedFiles: MappedFile[]; csvPreviewGroups: { previewToken: string; rowIndices: number[]; rowIndexToKey: Record<number, number> }[] }
   | { mode: 'combined-success'; importedCount: number }
 
 // ── CSV helpers ────────────────────────────────────────────────────────────────
@@ -453,10 +453,16 @@ export default function ImportPage() {
         }
       }
 
-      for (const csvRows of csvResults) {
-        for (const csvRow of csvRows) {
+      const csvPreviewGroups: { previewToken: string; rowIndices: number[]; rowIndexToKey: Record<number, number> }[] = []
+      for (const csvResponse of csvResults) {
+        const rowIndices: number[] = []
+        const rowIndexToKey: Record<number, number> = {}
+        for (const csvRow of csvResponse.rows) {
+          const key = nextKey++
+          rowIndices.push(csvRow.rowIndex)
+          rowIndexToKey[csvRow.rowIndex] = key
           combinedRows.push({
-            key: nextKey++,
+            key,
             status: csvRow.status === 'DUPLICATE' ? 'DUPLICATE' : 'NEW',
             unknownAccount: csvRow.unknownAccount,
             date: csvRow.date,
@@ -472,6 +478,7 @@ export default function ImportPage() {
             sourceFilename: csvRow.sourceFilename,
           })
         }
+        csvPreviewGroups.push({ previewToken: csvResponse.previewToken, rowIndices, rowIndexToKey })
       }
 
       const markedRows = markCrossFileDuplicates(combinedRows)
@@ -488,9 +495,10 @@ export default function ImportPage() {
         mode: 'combined-preview',
         rows: markedRows,
         camtState: camtResult
-          ? { accounts: camtResult.accounts, accountBalances: camtResult.accountBalances }
+          ? { accounts: camtResult.accounts, accountBalances: camtResult.accountBalances, previewToken: camtResult.previewToken }
           : null,
         mappedFiles,
+        csvPreviewGroups,
       })
     } catch (e) {
       setState({ mode: 'idle' })
@@ -572,76 +580,49 @@ export default function ImportPage() {
 
   const handleCombinedImport = async () => {
     if (state.mode !== 'combined-preview') return
-    const { rows, camtState, mappedFiles } = state
+    const { rows, camtState, mappedFiles, csvPreviewGroups } = state
 
     setSubmitting(true)
     try {
       let totalImported = 0
 
-      const csvRowsToImport: GenericRowToImport[] = rows
-        .filter(r =>
-          r.source.type === 'csv' &&
-          !r.unknownAccount &&
-          r.status !== 'DUPLICATE' &&
-          r.status !== 'CROSS_FILE_DUPLICATE' &&
-          decisions[r.key]?.action === 'import',
-        )
-        .map(r => {
-          const { csvRow } = r.source as Extract<CombinedSource, { type: 'csv' }>
-          return {
-            date: csvRow.date,
-            amount: csvRow.amount,
-            currency: csvRow.currency,
-            accountIban: csvRow.accountIban,
-            purpose: csvRow.purpose,
-            category: '',
-            subcategory: null,
-            group: '',
-            counterpartyName: csvRow.counterpartyName,
-            counterpartyIban: csvRow.counterpartyIban,
-          }
-        })
-
-      if (csvRowsToImport.length > 0 || mappedFiles.length > 0) {
+      if (csvPreviewGroups.length > 0) {
         const mappingsToSave: MappingToSave[] = mappedFiles.map(({ mapping, detection }) => ({
           fingerprint: detection.fingerprint,
           mapping,
         }))
-        const csvCount = await importGenericRows(csvRowsToImport, [], mappingsToSave)
-        totalImported += csvCount
+        for (let i = 0; i < csvPreviewGroups.length; i++) {
+          const { previewToken, rowIndices, rowIndexToKey } = csvPreviewGroups[i]
+          const excluded = rowIndices.filter(idx => {
+            const key = rowIndexToKey[idx]
+            const row = rows.find(r => r.key === key)
+            if (!row) return true
+            return row.unknownAccount ||
+              row.status === 'DUPLICATE' ||
+              row.status === 'CROSS_FILE_DUPLICATE' ||
+              decisions[row.key]?.action !== 'import'
+          })
+          const groupMappings = i === 0 ? mappingsToSave : []
+          if (excluded.length < rowIndices.length || groupMappings.length > 0) {
+            const csvCount = await importGenericRows(previewToken, excluded, groupMappings)
+            totalImported += csvCount
+          }
+        }
       }
 
       if (camtState) {
         const camtRows = rows.filter(r => r.source.type === 'camt')
 
-        const toImport = camtRows
+        const excludedCamtRowIndices = camtRows
           .filter(r => {
             const { camtRow } = r.source as Extract<CombinedSource, { type: 'camt' }>
             return (
-              !r.unknownAccount &&
-              (r.status === 'NEW' || r.status === 'PREVIOUSLY_IGNORED') &&
-              decisions[r.key]?.action === 'import' &&
-              (camtRow.status === 'NEW' || camtRow.status === 'PREVIOUSLY_IGNORED')
+              r.unknownAccount ||
+              !(camtRow.status === 'NEW' || camtRow.status === 'PREVIOUSLY_IGNORED') ||
+              decisions[r.key]?.action !== 'import'
             )
           })
-          .map(r => {
-            const { camtRow } = r.source as Extract<CombinedSource, { type: 'camt' }>
-            return {
-              fingerprint: camtRow.fingerprint!,
-              bookingDate: camtRow.bookingDate!,
-              valueDate: camtRow.valueDate!,
-              amount: camtRow.amount!,
-              currency: camtRow.currency,
-              category: '',
-              subcategory: null,
-              group: '',
-              accountIban: camtRow.accountIban,
-              purpose: camtRow.purpose || null,
-              counterpartyName: camtRow.counterparty ?? null,
-              counterpartyIban: camtRow.counterpartyIban ?? null,
-              sourceFilename: camtRow.sourceFilename ?? null,
-            }
-          })
+          .map(r => (r.source as Extract<CombinedSource, { type: 'camt' }>).camtRow.rowNumber)
 
         const toIgnore = camtRows
           .filter(r => {
@@ -655,12 +636,13 @@ export default function ImportPage() {
           })
           .map(r => (r.source as Extract<CombinedSource, { type: 'camt' }>).camtRow.fingerprint!)
 
-        if (toImport.length > 0 || toIgnore.length > 0) {
+        if (excludedCamtRowIndices.length < camtRows.length || toIgnore.length > 0) {
           const camtResult = await importCamt({
-            accountNames,
-            toImport,
+            previewToken: camtState.previewToken,
+            excludedRowIndices: excludedCamtRowIndices,
             toIgnore,
             toEnrich: [],
+            accountNames,
             accountBalances: camtState.accountBalances,
           })
           totalImported += camtResult.importedCount

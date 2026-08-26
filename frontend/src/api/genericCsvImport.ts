@@ -63,17 +63,9 @@ export interface GenericCsvPreviewRow {
   sourceFilename: string | null
 }
 
-export interface GenericRowToImport {
-  date: string
-  amount: number
-  currency: string
-  accountIban: string
-  purpose: string | null
-  category: string
-  subcategory: string | null
-  group: string
-  counterpartyName: string | null
-  counterpartyIban: string | null
+export interface GenericCsvPreviewResponse {
+  rows: GenericCsvPreviewRow[]
+  previewToken: string
 }
 
 export async function detectCsvFormat(file: File): Promise<CsvDetectionResult> {
@@ -84,7 +76,7 @@ export async function detectCsvFormat(file: File): Promise<CsvDetectionResult> {
   return res.json() as Promise<CsvDetectionResult>
 }
 
-export async function previewGenericCsv(files: File[], mapping: CsvMapping): Promise<GenericCsvPreviewRow[]> {
+export async function previewGenericCsv(files: File[], mapping: CsvMapping): Promise<GenericCsvPreviewResponse> {
   const form = new FormData()
   for (const file of files) {
     form.append('files', file)
@@ -92,7 +84,7 @@ export async function previewGenericCsv(files: File[], mapping: CsvMapping): Pro
   form.append('mapping', new Blob([JSON.stringify(mapping)], { type: 'application/json' }))
   const res = await fetch('/transactions/csv/preview', { method: 'POST', body: form })
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
-  return res.json() as Promise<GenericCsvPreviewRow[]>
+  return res.json() as Promise<GenericCsvPreviewResponse>
 }
 
 export interface MappingToSave {
@@ -101,14 +93,14 @@ export interface MappingToSave {
 }
 
 export async function importGenericRows(
-  toImport: GenericRowToImport[],
-  toEnrich: import('./camtImport').TransactionEnrichRequest[] = [],
+  previewToken: string,
+  excludedRowIndices: number[],
   mappingsToSave: MappingToSave[] = [],
 ): Promise<number> {
   const res = await fetch('/transactions/csv/import-rows', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ toImport, toEnrich, mappingsToSave }),
+    body: JSON.stringify({ previewToken, excludedRowIndices, mappingsToSave }),
   })
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
   const data = await res.json() as { importedCount: number }

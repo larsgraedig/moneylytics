@@ -1,5 +1,7 @@
 package com.moneylytics.api.adapter.input.web
 
+import java.util.UUID
+
 enum class AmountFormat { GERMAN, ENGLISH }
 
 data class DetectionData(
@@ -73,15 +75,13 @@ data class MappingToSave(
     val mapping: GenericCsvMapping,
 )
 
-data class GenericRowToImport(
-    val date: String,
-    val amount: Double,
-    val currency: String,
-    val accountIban: String,
-    val purpose: String?,
-    val category: String,
-    val group: String,
-    val subcategory: String? = null,
-    val counterpartyName: String? = null,
-    val counterpartyIban: String? = null,
+data class GenericCsvPreviewResponse(
+    val rows: List<GenericCsvPreviewRow>,
+    val previewToken: UUID,
+)
+
+data class GenericCsvImportByTokenRequest(
+    val previewToken: UUID,
+    val excludedRowIndices: List<Int> = emptyList(),
+    val mappingsToSave: List<MappingToSave> = emptyList(),
 )
