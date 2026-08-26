@@ -427,7 +427,8 @@
       "importing": "Wird importiert",
       "enriching": "Wird ergänzt",
       "excluded": "Ausgeschlossen",
-      "unknownAccount": "Unbekanntes Konto"
+      "unknownAccount": "Unbekanntes Konto",
+      "crossFileDuplicate": "Datei-Duplikat"
     },
     "chips": {
       "previouslyIgnored": "{{count}} früher ignoriert",
@@ -901,10 +902,21 @@
     }
   },
   "import": {
+    "dropzone": {
+      "label": "Dateien hier ablegen oder klicken",
+      "hint": "CAMT (.xml) und CSV (.csv, .txt) — auch gemischt",
+      "errorType": "Nur .xml, .csv und .txt Dateien erlaubt"
+    },
     "chips": {
       "new": "{{count}} neu",
       "duplicate": "{{count}} Duplikate",
-      "excluded": "{{count}} ausgeschlossen"
+      "excluded": "{{count}} ausgeschlossen",
+      "crossFileDuplicate": "{{count}} Datei-Duplikate"
+    },
+    "success": {
+      "imported_one": "{{count}} Transaktion importiert",
+      "imported_other": "{{count}} Transaktionen importiert",
+      "importMore": "Weitere Dateien importieren"
     },
     "errorCamtType": "Nur XML-Dateien für CAMT erlaubt",
     "errorCsvType": "Nur CSV- oder TXT-Dateien erlaubt"

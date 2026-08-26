@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { FileCode, FileSpreadsheet } from 'lucide-react'
+import { Upload } from 'lucide-react'
 import {
   importCamt,
   previewCamtImport,
@@ -20,6 +20,33 @@ import {
   type MappingToSave,
 } from '../api/genericCsvImport'
 import { ImportPreviewTable, type ImportDecision, type ImportPreviewRow } from './ImportPreviewTable'
+
+// ── Types ──────────────────────────────────────────────────────────────────────
+
+type CombinedSource =
+  | { type: 'csv'; csvRow: GenericCsvPreviewRow }
+  | { type: 'camt'; camtRow: RawPreviewRow }
+
+type CombinedPreviewRow = ImportPreviewRow & {
+  source: CombinedSource
+  sourceFilename: string | null
+}
+
+type MappedFile = { file: File; mapping: CsvMapping; detection: CsvDetectionResult }
+type PendingFile = { file: File; detection: CsvDetectionResult }
+
+type CamtState = {
+  accounts: CamtAccountInfo[]
+  accountBalances: Record<string, CamtAccountBalance>
+}
+
+type PageState =
+  | { mode: 'idle' }
+  | { mode: 'detecting' }
+  | { mode: 'csv-mapping'; detection: CsvDetectionResult; mapping: CsvMapping; file: File; mappedFiles: MappedFile[]; pendingFiles: PendingFile[]; camtFiles: File[] }
+  | { mode: 'combined-previewing' }
+  | { mode: 'combined-preview'; rows: CombinedPreviewRow[]; camtState: CamtState | null; mappedFiles: MappedFile[] }
+  | { mode: 'combined-success'; importedCount: number }
 
 // ── CSV helpers ────────────────────────────────────────────────────────────────
 
@@ -102,29 +129,37 @@ function adaptCamtRow(row: RawPreviewRow, accountNames: Record<string, string>):
   }
 }
 
-function defaultCamtFilters(rows: RawPreviewRow[]): Set<string> {
+// ── Combined preview helpers ───────────────────────────────────────────────────
+
+function markCrossFileDuplicates(rows: CombinedPreviewRow[]): CombinedPreviewRow[] {
+  const seen = new Set<string>()
+  return rows.map(row => {
+    if (!row.fingerprint || row.status !== 'NEW') return row
+    if (seen.has(row.fingerprint)) return { ...row, status: 'CROSS_FILE_DUPLICATE' as const }
+    seen.add(row.fingerprint)
+    return row
+  })
+}
+
+function defaultCombinedFilters(rows: CombinedPreviewRow[]): Set<string> {
   if (rows.some(r => r.status === 'NEW' && !r.unknownAccount)) return new Set(['NEW'])
+  if (rows.some(r => r.status === 'PREVIOUSLY_IGNORED')) return new Set(['PREVIOUSLY_IGNORED'])
   if (rows.some(r => r.status === 'DUPLICATE')) return new Set(['DUPLICATE'])
   return new Set(['UNKNOWN_ACCOUNT'])
 }
 
-function initCamtDecisions(rows: RawPreviewRow[]): Record<number, ImportDecision> {
-  const out: Record<number, ImportDecision> = {}
-  for (const row of rows) {
-    if (row.unknownAccount) continue
-    if (row.status === 'NEW') {
-      out[row.rowNumber] = { action: 'import' }
-    } else if (row.status === 'PREVIOUSLY_IGNORED') {
-      out[row.rowNumber] = { action: 'ignore' }
-    }
-  }
-  return out
-}
-
-function defaultCsvFilters(rows: GenericCsvPreviewRow[]): Set<string> {
-  if (rows.some(r => r.status !== 'DUPLICATE' && !r.unknownAccount)) return new Set(['NEW'])
-  if (rows.some(r => r.status === 'DUPLICATE')) return new Set(['DUPLICATE'])
-  return new Set(['UNKNOWN_ACCOUNT'])
+function rowMatchesFilter(
+  row: CombinedPreviewRow,
+  filters: Set<string>,
+  decisions: Record<number, ImportDecision>,
+): boolean {
+  if (row.unknownAccount && row.status !== 'DUPLICATE') return filters.has('UNKNOWN_ACCOUNT')
+  if (row.status === 'INVALID') return filters.has('INVALID')
+  if (row.status === 'DUPLICATE') return filters.has('DUPLICATE')
+  if (row.status === 'CROSS_FILE_DUPLICATE') return filters.has('CROSS_FILE_DUPLICATE')
+  if (row.status === 'PREVIOUSLY_IGNORED') return filters.has('PREVIOUSLY_IGNORED')
+  if (decisions[row.key]?.action === 'ignore') return filters.has('IGNORED')
+  return filters.has('NEW')
 }
 
 // ── MappingRow sub-component ───────────────────────────────────────────────────
@@ -352,222 +387,159 @@ function MappingView({
   )
 }
 
-// ── Page state ─────────────────────────────────────────────────────────────────
-
-type MappedFile = { file: File; mapping: CsvMapping; detection: CsvDetectionResult }
-type PendingFile = { file: File; detection: CsvDetectionResult }
-
-type PageState =
-  | { mode: 'idle' }
-  | { mode: 'camt-loading' }
-  | { mode: 'camt-preview'; rows: RawPreviewRow[]; accounts: CamtAccountInfo[]; accountBalances: Record<string, CamtAccountBalance> }
-  | { mode: 'camt-imported'; importedCount: number; ignoredCount: number }
-  | { mode: 'csv-detecting' }
-  | { mode: 'csv-mapping'; detection: CsvDetectionResult; mapping: CsvMapping; file: File; mappedFiles: MappedFile[]; pendingFiles: PendingFile[] }
-  | { mode: 'csv-previewing'; mappedFiles: MappedFile[] }
-  | { mode: 'csv-categorizing'; rows: GenericCsvPreviewRow[]; mappedFiles: MappedFile[] }
-  | { mode: 'csv-importing'; rows: GenericCsvPreviewRow[]; mappedFiles: MappedFile[] }
-  | { mode: 'csv-success'; count: number }
+// ── Main component ─────────────────────────────────────────────────────────────
 
 export default function ImportPage() {
   const { t } = useTranslation()
   const [state, setState] = useState<PageState>({ mode: 'idle' })
 
-  const [camtDragging, setCamtDragging] = useState(false)
-  const [csvDragging, setCsvDragging] = useState(false)
-  const [camtError, setCamtError] = useState<string | null>(null)
-  const [csvError, setCsvError] = useState<string | null>(null)
-
-  const [camtDecisions, setCamtDecisions] = useState<Record<number, ImportDecision>>({})
+  const [dragging, setDragging] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [decisions, setDecisions] = useState<Record<number, ImportDecision>>({})
+  const [filters, setFilters] = useState<Set<string>>(
+    () => new Set(['NEW', 'PREVIOUSLY_IGNORED', 'DUPLICATE', 'CROSS_FILE_DUPLICATE', 'INVALID', 'UNKNOWN_ACCOUNT', 'IGNORED']),
+  )
   const [accountNames, setAccountNames] = useState<Record<string, string>>({})
-  const [camtImporting, setCamtImporting] = useState(false)
-  const [camtFilters, setCamtFilters] = useState<Set<string>>(
-    () => new Set(['NEW', 'PREVIOUSLY_IGNORED', 'DUPLICATE', 'INVALID', 'UNKNOWN_ACCOUNT']),
-  )
+  const [submitting, setSubmitting] = useState(false)
 
-  const [csvDecisions, setCsvDecisions] = useState<Record<number, ImportDecision>>({})
-  const [csvFilters, setCsvFilters] = useState<Set<string>>(
-    () => new Set(['NEW', 'DUPLICATE', 'UNKNOWN_ACCOUNT', 'IGNORED']),
-  )
-
-  const camtInputRef = useRef<HTMLInputElement>(null)
-  const csvInputRef = useRef<HTMLInputElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
   const sessionMappings = useRef(new Map<string, CsvMapping>())
 
   const resetToIdle = () => {
     setState({ mode: 'idle' })
-    setCamtError(null)
-    setCsvError(null)
+    setError(null)
+    setSubmitting(false)
   }
 
-  // ── CAMT handlers ────────────────────────────────────────────────────────────
+  // ── Combined preview assembly ─────────────────────────────────────────────────
 
-  const handleCamtFiles = useCallback(async (files: File[]) => {
-    if (files.length === 0) return
-    setCamtError(null)
-    setState({ mode: 'camt-loading' })
+  const startCombinedPreview = useCallback(async (mappedFiles: MappedFile[], camtFiles: File[]) => {
+    setState({ mode: 'combined-previewing' })
     try {
-      const result = await previewCamtImport(files)
-      const { rows, accounts, accountBalances } = result
-      if (rows.length === 0) {
-        setState({ mode: 'idle' })
-        setCamtError(t('camtImport.noRows'))
-        return
-      }
-      const names: Record<string, string> = {}
-      for (const acc of accounts) {
-        names[acc.iban] = acc.suggestedName
-      }
-      setState({ mode: 'camt-preview', rows, accounts, accountBalances })
-      setCamtDecisions(initCamtDecisions(rows))
-      setAccountNames(names)
-      setCamtFilters(defaultCamtFilters(rows))
-    } catch (e) {
-      setState({ mode: 'idle' })
-      setCamtError(e instanceof Error ? e.message : 'Preview failed')
-    }
-  }, [t])
-
-  const handleCamtDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault()
-    setCamtDragging(false)
-    const all = Array.from(e.dataTransfer.files)
-    if (all.some(f => !f.name.toLowerCase().endsWith('.xml'))) {
-      setCamtError(t('import.errorCamtType'))
-      return
-    }
-    setCamtError(null)
-    if (all.length > 0) handleCamtFiles(all)
-  }, [handleCamtFiles, t])
-
-  const handleCamtImport = async () => {
-    if (state.mode !== 'camt-preview') return
-    const { rows, accountBalances } = state
-
-    const toImport = rows
-      .filter(r => r.status === 'NEW' || r.status === 'PREVIOUSLY_IGNORED')
-      .flatMap(r => {
-        const d = camtDecisions[r.rowNumber]
-        if (d?.action !== 'import') return []
-        return [{
-          fingerprint: r.fingerprint!,
-          bookingDate: r.bookingDate!,
-          valueDate: r.valueDate!,
-          amount: r.amount!,
-          currency: r.currency,
-          category: '',
-          subcategory: null,
-          group: '',
-          accountIban: r.accountIban,
-          purpose: r.purpose || null,
-          counterpartyName: r.counterparty ?? null,
-          counterpartyIban: r.counterpartyIban ?? null,
-          sourceFilename: r.sourceFilename ?? null,
-        }]
-      })
-
-    const toIgnore = rows
-      .filter(r => r.status === 'NEW' && camtDecisions[r.rowNumber]?.action === 'ignore')
-      .map(r => r.fingerprint!)
-
-    setCamtImporting(true)
-    try {
-      const result = await importCamt({ accountNames, toImport, toIgnore, toEnrich: [], accountBalances })
-      setState({ mode: 'camt-imported', importedCount: result.importedCount, ignoredCount: toIgnore.length })
-    } catch (e) {
-      setState({ mode: 'idle' })
-      setCamtError(e instanceof Error ? e.message : 'Import failed')
-    } finally {
-      setCamtImporting(false)
-    }
-  }
-
-  const camtCanImport = (rows: RawPreviewRow[]) => {
-    const readyToImport = rows.filter(r =>
-      (r.status === 'NEW' || r.status === 'PREVIOUSLY_IGNORED') && camtDecisions[r.rowNumber]?.action === 'import',
-    )
-    const toIgnore = rows.filter(r => r.status === 'NEW' && camtDecisions[r.rowNumber]?.action === 'ignore')
-    return readyToImport.length > 0 || toIgnore.length > 0
-  }
-
-  const toggleCamtFilter = (key: string) => {
-    setCamtFilters(prev => {
-      if (prev.has(key) && prev.size === 1) return prev
-      const next = new Set(prev)
-      if (next.has(key)) next.delete(key); else next.add(key)
-      return next
-    })
-  }
-
-  // ── CSV handlers ─────────────────────────────────────────────────────────────
-
-  const startCsvPreview = useCallback(async (mappedFiles: MappedFile[]) => {
-    setState({ mode: 'csv-previewing', mappedFiles })
-    try {
-      const groups = new Map<string, { files: File[]; mapping: CsvMapping }>()
+      const groups: { files: File[]; mapping: CsvMapping }[] = []
+      const mappingKeyToGroupIdx = new Map<string, number>()
       for (const { file, mapping } of mappedFiles) {
         const key = JSON.stringify(mapping)
-        if (!groups.has(key)) groups.set(key, { files: [], mapping })
-        groups.get(key)!.files.push(file)
+        let idx = mappingKeyToGroupIdx.get(key)
+        if (idx === undefined) {
+          idx = groups.length
+          mappingKeyToGroupIdx.set(key, idx)
+          groups.push({ files: [], mapping })
+        }
+        groups[idx].files.push(file)
       }
 
-      const allRows: GenericCsvPreviewRow[] = []
-      let nextRowIndex = 0
-      for (const { files, mapping } of groups.values()) {
-        const rows = await previewGenericCsv(files, mapping)
-        for (const row of rows) {
-          allRows.push({ ...row, rowIndex: nextRowIndex++ })
+      const [camtResult, ...csvResults] = await Promise.all([
+        camtFiles.length > 0 ? previewCamtImport(camtFiles) : Promise.resolve(null),
+        ...groups.map(g => previewGenericCsv(g.files, g.mapping)),
+      ])
+
+      const combinedRows: CombinedPreviewRow[] = []
+      let nextKey = 0
+
+      if (camtResult) {
+        const names: Record<string, string> = {}
+        for (const acc of camtResult.accounts) {
+          names[acc.iban] = acc.suggestedName
+        }
+        setAccountNames(names)
+        for (const camtRow of camtResult.rows) {
+          combinedRows.push({
+            ...adaptCamtRow(camtRow, names),
+            key: nextKey++,
+            source: { type: 'camt', camtRow },
+            sourceFilename: camtRow.sourceFilename,
+          })
         }
       }
 
+      for (const csvRows of csvResults) {
+        for (const csvRow of csvRows) {
+          combinedRows.push({
+            key: nextKey++,
+            status: csvRow.status === 'DUPLICATE' ? 'DUPLICATE' : 'NEW',
+            unknownAccount: csvRow.unknownAccount,
+            date: csvRow.date,
+            accountDisplay: csvRow.accountIban,
+            accountIban: csvRow.accountIban,
+            counterparty: csvRow.counterpartyName || null,
+            purpose: csvRow.purpose || null,
+            amount: csvRow.amount,
+            currency: csvRow.currency,
+            errors: [],
+            fingerprint: csvRow.fingerprint,
+            source: { type: 'csv', csvRow },
+            sourceFilename: csvRow.sourceFilename,
+          })
+        }
+      }
+
+      const markedRows = markCrossFileDuplicates(combinedRows)
+
       const initialDecisions: Record<number, ImportDecision> = {}
-      allRows.forEach(r => {
-        initialDecisions[r.rowIndex] = r.status === 'DUPLICATE' ? { action: 'ignore' } : { action: 'import' }
+      for (const row of markedRows) {
+        if (row.unknownAccount || row.status === 'INVALID' || row.status === 'DUPLICATE' || row.status === 'CROSS_FILE_DUPLICATE') continue
+        if (row.status === 'NEW') initialDecisions[row.key] = { action: 'import' }
+        else if (row.status === 'PREVIOUSLY_IGNORED') initialDecisions[row.key] = { action: 'ignore' }
+      }
+      setDecisions(initialDecisions)
+      setFilters(defaultCombinedFilters(markedRows))
+      setState({
+        mode: 'combined-preview',
+        rows: markedRows,
+        camtState: camtResult
+          ? { accounts: camtResult.accounts, accountBalances: camtResult.accountBalances }
+          : null,
+        mappedFiles,
       })
-      setCsvDecisions(initialDecisions)
-      setState({ mode: 'csv-categorizing', rows: allRows, mappedFiles })
-      setCsvFilters(defaultCsvFilters(allRows))
     } catch (e) {
       setState({ mode: 'idle' })
-      setCsvError(e instanceof Error ? e.message : 'Preview failed')
+      setError(e instanceof Error ? e.message : 'Preview failed')
     }
   }, [])
 
-  const handleCsvFiles = useCallback(async (files: File[]) => {
+  // ── File dispatch ─────────────────────────────────────────────────────────────
+
+  const handleFiles = useCallback(async (files: File[]) => {
     if (files.length === 0) return
-    setCsvError(null)
-    setState({ mode: 'csv-detecting' })
+    setError(null)
+
+    const invalid = files.filter(f => {
+      const n = f.name.toLowerCase()
+      return !n.endsWith('.xml') && !n.endsWith('.csv') && !n.endsWith('.txt')
+    })
+    if (invalid.length > 0) {
+      setError(t('import.dropzone.errorType'))
+      return
+    }
+
+    const camtFiles = files.filter(f => f.name.toLowerCase().endsWith('.xml'))
+    const csvFiles = files.filter(f => !f.name.toLowerCase().endsWith('.xml'))
+
+    if (csvFiles.length === 0) {
+      await startCombinedPreview([], camtFiles)
+      return
+    }
+
+    setState({ mode: 'detecting' })
     try {
-      const detections = await Promise.all(files.map(f => detectCsvFormat(f)))
-      const mappedFiles: MappedFile[] = []
-      const pendingFiles: PendingFile[] = detections.map((detection, i) => ({ file: files[i], detection }))
+      const detections = await Promise.all(csvFiles.map(f => detectCsvFormat(f)))
+      const pendingFiles: PendingFile[] = detections.map((detection, i) => ({ file: csvFiles[i], detection }))
       const [first, ...rest] = pendingFiles
       setState({
         mode: 'csv-mapping',
         detection: first.detection,
         mapping: buildInitialMapping(first.detection),
         file: first.file,
-        mappedFiles,
+        mappedFiles: [],
         pendingFiles: rest,
+        camtFiles,
       })
     } catch (e) {
       setState({ mode: 'idle' })
-      setCsvError(e instanceof Error ? e.message : 'Detection failed')
+      setError(e instanceof Error ? e.message : 'Detection failed')
     }
-  }, [startCsvPreview])
-
-  const handleCsvDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault()
-    setCsvDragging(false)
-    const all = Array.from(e.dataTransfer.files)
-    if (all.length === 0) return
-    if (all.some(f => !f.name.toLowerCase().endsWith('.csv') && !f.name.toLowerCase().endsWith('.txt'))) {
-      setCsvError(t('import.errorCsvType'))
-      return
-    }
-    setCsvError(null)
-    void handleCsvFiles(all)
-  }, [handleCsvFiles, t])
+  }, [t, startCombinedPreview])
 
   const handleCsvConfirm = async (
     detection: CsvDetectionResult,
@@ -575,61 +547,137 @@ export default function ImportPage() {
     file: File,
     mappedFiles: MappedFile[],
     pendingFiles: PendingFile[],
+    camtFiles: File[],
   ) => {
     sessionMappings.current.set(detection.fingerprint, mapping)
     const newMappedFiles = [...mappedFiles, { file, mapping, detection }]
     if (pendingFiles.length === 0) {
-      await startCsvPreview(newMappedFiles)
+      await startCombinedPreview(newMappedFiles, camtFiles)
     } else {
       const [first, ...rest] = pendingFiles
       const sessionMapping = sessionMappings.current.get(first.detection.fingerprint)
-      const initialMapping = sessionMapping ?? buildInitialMapping(first.detection)
       setState({
         mode: 'csv-mapping',
         detection: first.detection,
-        mapping: initialMapping,
+        mapping: sessionMapping ?? buildInitialMapping(first.detection),
         file: first.file,
         mappedFiles: newMappedFiles,
         pendingFiles: rest,
+        camtFiles,
       })
     }
   }
 
-  const handleCsvImportRows = async (rows: GenericCsvPreviewRow[], mappedFiles: MappedFile[]) => {
-    const toImport: GenericRowToImport[] = rows
-      .filter(r => {
-        if (r.status === 'DUPLICATE' || r.unknownAccount) return false
-        return csvDecisions[r.rowIndex]?.action === 'import'
-      })
-      .map(r => ({
-        date: r.date,
-        amount: r.amount,
-        currency: r.currency,
-        accountIban: r.accountIban,
-        purpose: r.purpose,
-        category: '',
-        subcategory: null,
-        group: '',
-        counterpartyName: r.counterpartyName,
-        counterpartyIban: r.counterpartyIban,
-      }))
+  // ── Import ────────────────────────────────────────────────────────────────────
 
-    const mappingsToSave: MappingToSave[] = mappedFiles.map(({ mapping, detection }) => ({
-      fingerprint: detection.fingerprint,
-      mapping,
-    }))
-    setState({ mode: 'csv-importing', rows, mappedFiles })
+  const handleCombinedImport = async () => {
+    if (state.mode !== 'combined-preview') return
+    const { rows, camtState, mappedFiles } = state
+
+    setSubmitting(true)
     try {
-      const count = await importGenericRows(toImport, [], mappingsToSave)
-      setState({ mode: 'csv-success', count })
+      let totalImported = 0
+
+      const csvRowsToImport: GenericRowToImport[] = rows
+        .filter(r =>
+          r.source.type === 'csv' &&
+          !r.unknownAccount &&
+          r.status !== 'DUPLICATE' &&
+          r.status !== 'CROSS_FILE_DUPLICATE' &&
+          decisions[r.key]?.action === 'import',
+        )
+        .map(r => {
+          const { csvRow } = r.source as Extract<CombinedSource, { type: 'csv' }>
+          return {
+            date: csvRow.date,
+            amount: csvRow.amount,
+            currency: csvRow.currency,
+            accountIban: csvRow.accountIban,
+            purpose: csvRow.purpose,
+            category: '',
+            subcategory: null,
+            group: '',
+            counterpartyName: csvRow.counterpartyName,
+            counterpartyIban: csvRow.counterpartyIban,
+          }
+        })
+
+      if (csvRowsToImport.length > 0 || mappedFiles.length > 0) {
+        const mappingsToSave: MappingToSave[] = mappedFiles.map(({ mapping, detection }) => ({
+          fingerprint: detection.fingerprint,
+          mapping,
+        }))
+        const csvCount = await importGenericRows(csvRowsToImport, [], mappingsToSave)
+        totalImported += csvCount
+      }
+
+      if (camtState) {
+        const camtRows = rows.filter(r => r.source.type === 'camt')
+
+        const toImport = camtRows
+          .filter(r => {
+            const { camtRow } = r.source as Extract<CombinedSource, { type: 'camt' }>
+            return (
+              !r.unknownAccount &&
+              (r.status === 'NEW' || r.status === 'PREVIOUSLY_IGNORED') &&
+              decisions[r.key]?.action === 'import' &&
+              (camtRow.status === 'NEW' || camtRow.status === 'PREVIOUSLY_IGNORED')
+            )
+          })
+          .map(r => {
+            const { camtRow } = r.source as Extract<CombinedSource, { type: 'camt' }>
+            return {
+              fingerprint: camtRow.fingerprint!,
+              bookingDate: camtRow.bookingDate!,
+              valueDate: camtRow.valueDate!,
+              amount: camtRow.amount!,
+              currency: camtRow.currency,
+              category: '',
+              subcategory: null,
+              group: '',
+              accountIban: camtRow.accountIban,
+              purpose: camtRow.purpose || null,
+              counterpartyName: camtRow.counterparty ?? null,
+              counterpartyIban: camtRow.counterpartyIban ?? null,
+              sourceFilename: camtRow.sourceFilename ?? null,
+            }
+          })
+
+        const toIgnore = camtRows
+          .filter(r => {
+            const { camtRow } = r.source as Extract<CombinedSource, { type: 'camt' }>
+            return (
+              r.status === 'NEW' &&
+              decisions[r.key]?.action === 'ignore' &&
+              camtRow.status === 'NEW' &&
+              !r.unknownAccount
+            )
+          })
+          .map(r => (r.source as Extract<CombinedSource, { type: 'camt' }>).camtRow.fingerprint!)
+
+        if (toImport.length > 0 || toIgnore.length > 0) {
+          const camtResult = await importCamt({
+            accountNames,
+            toImport,
+            toIgnore,
+            toEnrich: [],
+            accountBalances: camtState.accountBalances,
+          })
+          totalImported += camtResult.importedCount
+        }
+      }
+
+      setState({ mode: 'combined-success', importedCount: totalImported })
     } catch (e) {
       setState({ mode: 'idle' })
-      setCsvError(e instanceof Error ? e.message : 'Import failed')
+      setError(e instanceof Error ? e.message : 'Import failed')
+    } finally {
+      setSubmitting(false)
     }
   }
 
-  const toggleCsvFilter = (key: string) => {
-    setCsvFilters(prev => {
+  const toggleFilter = (key: string) => {
+    setFilters(prev => {
       if (prev.has(key) && prev.size === 1) return prev
       const next = new Set(prev)
       if (next.has(key)) next.delete(key); else next.add(key)
@@ -637,304 +685,205 @@ export default function ImportPage() {
     })
   }
 
-  // ── Success screens ──────────────────────────────────────────────────────────
+  // ── Success screen ────────────────────────────────────────────────────────────
 
-  if (state.mode === 'camt-imported') {
-    const parts: string[] = []
-    if (state.importedCount > 0) parts.push(t('camtImport.success.imported', { count: state.importedCount }))
-    if (state.ignoredCount > 0) parts.push(t('camtImport.success.ignored', { count: state.ignoredCount }))
-    return (
-      <div className="flex flex-col h-full items-center justify-center gap-4 text-center p-8">
-        <p className="text-green-500 font-medium text-lg">{parts.join(' · ')}</p>
-        <button className="rounded-lg border border-input bg-input/30 px-4 py-2 text-sm hover:bg-input/50" onClick={resetToIdle}>{t('camtImport.success.importMore')}</button>
-      </div>
-    )
-  }
-
-  if (state.mode === 'csv-success') {
+  if (state.mode === 'combined-success') {
     return (
       <div className="flex flex-col h-full items-center justify-center gap-4 text-center p-8">
         <p className="text-green-500 font-medium text-lg">
-          {state.count > 0
-            ? t('csvImport.success.imported', { count: state.count })
+          {state.importedCount > 0
+            ? t('import.success.imported', { count: state.importedCount })
             : t('csvImport.success.none')}
         </p>
-        <button className="rounded-lg border border-input bg-input/30 px-4 py-2 text-sm hover:bg-input/50" onClick={resetToIdle}>{t('csvImport.success.importMore')}</button>
+        <button
+          className="rounded-lg border border-input bg-input/30 px-4 py-2 text-sm hover:bg-input/50"
+          onClick={resetToIdle}
+        >
+          {t('import.success.importMore')}
+        </button>
       </div>
     )
   }
 
-  // ── CSV mapping ──────────────────────────────────────────────────────────────
+  // ── CSV mapping wizard ────────────────────────────────────────────────────────
 
-  if (state.mode === 'csv-mapping' || state.mode === 'csv-previewing') {
-    if (state.mode === 'csv-mapping') {
-      const { detection, mapping, file, mappedFiles, pendingFiles } = state
-      const totalFiles = mappedFiles.length + pendingFiles.length + 1
-      return (
-        <MappingView
-          detection={detection}
-          mapping={mapping}
-          file={file}
-          onChange={m => setState({ mode: 'csv-mapping', detection, mapping: m, file, mappedFiles, pendingFiles })}
-          onConfirm={() => void handleCsvConfirm(detection, mapping, file, mappedFiles, pendingFiles)}
-          onCancel={resetToIdle}
-          importing={false}
-          fileProgress={totalFiles > 1 ? { current: mappedFiles.length + 1, total: totalFiles } : undefined}
-          sessionSuggested={sessionMappings.current.has(detection.fingerprint)}
-        />
-      )
-    }
-    // csv-previewing: loading state while fetching preview
+  if (state.mode === 'csv-mapping') {
+    const { detection, mapping, file, mappedFiles, pendingFiles, camtFiles } = state
+    const totalFiles = mappedFiles.length + pendingFiles.length + 1
+    return (
+      <MappingView
+        detection={detection}
+        mapping={mapping}
+        file={file}
+        onChange={m => setState({ mode: 'csv-mapping', detection, mapping: m, file, mappedFiles, pendingFiles, camtFiles })}
+        onConfirm={() => void handleCsvConfirm(detection, mapping, file, mappedFiles, pendingFiles, camtFiles)}
+        onCancel={resetToIdle}
+        importing={false}
+        fileProgress={totalFiles > 1 ? { current: mappedFiles.length + 1, total: totalFiles } : undefined}
+        sessionSuggested={sessionMappings.current.has(detection.fingerprint)}
+      />
+    )
+  }
+
+  // ── Loading ───────────────────────────────────────────────────────────────────
+
+  if (state.mode === 'detecting' || state.mode === 'combined-previewing') {
     return (
       <div className="flex h-full items-center justify-center p-8">
         <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-border p-16 text-center w-full max-w-lg">
-          <FileSpreadsheet className="h-10 w-10 text-muted-foreground" />
-          <span className="text-base font-medium">{t('csvImport.dropzone.analyzing')}</span>
-          <span className="text-sm text-muted-foreground">{t('csvImport.dropzone.analyzingHint')}</span>
+          <Upload className="h-10 w-10 text-muted-foreground" />
+          <span className="text-base font-medium">{t('camtImport.parsing')}</span>
         </div>
       </div>
     )
   }
 
-  // ── CSV categorizing ─────────────────────────────────────────────────────────
+  // ── Combined preview ──────────────────────────────────────────────────────────
 
-  if (state.mode === 'csv-categorizing' || state.mode === 'csv-importing') {
-    const { rows, mappedFiles } = state
-    const importing = state.mode === 'csv-importing'
-
-    const duplicateCount = rows.filter(r => r.status === 'DUPLICATE').length
-    const unknownAccountCount = rows.filter(r => r.status !== 'DUPLICATE' && r.unknownAccount).length
-    const readyCount = rows.filter(r => {
-      if (r.status === 'DUPLICATE' || r.unknownAccount) return false
-      return csvDecisions[r.rowIndex]?.action === 'import'
-    }).length
-    const ignoredCount = rows.filter(r => r.status !== 'DUPLICATE' && !r.unknownAccount && csvDecisions[r.rowIndex]?.action === 'ignore').length
-
-    const previewRows: ImportPreviewRow[] = rows.map(r => ({
-      key: r.rowIndex,
-      status: r.status === 'DUPLICATE' ? 'DUPLICATE' : 'NEW',
-      unknownAccount: r.unknownAccount,
-      date: r.date,
-      accountDisplay: r.accountIban,
-      accountIban: r.accountIban,
-      counterparty: r.counterpartyName || null,
-      purpose: r.purpose || null,
-      amount: r.amount,
-      currency: r.currency,
-      errors: [],
-      fingerprint: r.fingerprint,
-    }))
-
-    const filteredPreviewRows = previewRows.filter(r => {
-      if (r.unknownAccount && r.status !== 'DUPLICATE') return csvFilters.has('UNKNOWN_ACCOUNT')
-      if (r.status === 'DUPLICATE') return csvFilters.has('DUPLICATE')
-      if (csvDecisions[r.key]?.action === 'ignore') return csvFilters.has('IGNORED')
-      return csvFilters.has('NEW')
-    })
-
-    return (
-      <div className="ri-page">
-        <div className="ri-preview">
-          <div className="ri-summary-bar">
-            <button
-              className={`ri-chip ri-chip--new${csvFilters.has('NEW') ? ' ri-chip--active' : ''}`}
-              onClick={() => toggleCsvFilter('NEW')}
-            >
-              {t('import.chips.new', { count: rows.length - duplicateCount - unknownAccountCount })}
-            </button>
-            {duplicateCount > 0 && (
-              <button
-                className={`ri-chip ri-chip--dup${csvFilters.has('DUPLICATE') ? ' ri-chip--active' : ''}`}
-                onClick={() => toggleCsvFilter('DUPLICATE')}
-              >
-                {t('import.chips.duplicate', { count: duplicateCount })}
-              </button>
-            )}
-            {unknownAccountCount > 0 && (
-              <button
-                className={`ri-chip ri-chip--inv${csvFilters.has('UNKNOWN_ACCOUNT') ? ' ri-chip--active' : ''}`}
-                onClick={() => toggleCsvFilter('UNKNOWN_ACCOUNT')}
-              >
-                {t('import.chips.excluded', { count: unknownAccountCount })}
-              </button>
-            )}
-            {ignoredCount > 0 && (
-              <button
-                className={`ri-chip ri-chip--prev-ignored${csvFilters.has('IGNORED') ? ' ri-chip--active' : ''}`}
-                onClick={() => toggleCsvFilter('IGNORED')}
-              >
-                {t('csvImport.categorizing.skipped', { count: ignoredCount })}
-              </button>
-            )}
-            <span className="ri-summary-spacer" />
-            <button className="load-btn" onClick={() => {
-              if (mappedFiles.length === 1) {
-                const { file, mapping, detection } = mappedFiles[0]
-                setState({ mode: 'csv-mapping', detection, mapping, file, mappedFiles: [], pendingFiles: [] })
-              } else {
-                resetToIdle()
-              }
-            }} disabled={importing}>{t('csvImport.categorizing.back')}</button>
-            <button
-              className="load-btn ri-import-btn"
-              disabled={readyCount === 0 || importing}
-              onClick={() => void handleCsvImportRows(rows, mappedFiles)}
-            >
-              {importing ? '…' : t('csvImport.categorizing.importCount', { count: readyCount })}
-            </button>
-          </div>
-          <ImportPreviewTable
-            rows={filteredPreviewRows}
-            decisions={csvDecisions}
-            onDecide={(key, d) => setCsvDecisions(prev => ({ ...prev, [key]: d }))}
-          />
-        </div>
-      </div>
-    )
-  }
-
-  // ── CAMT preview ─────────────────────────────────────────────────────────────
-
-  if (state.mode === 'camt-preview') {
+  if (state.mode === 'combined-preview') {
     const { rows } = state
-    const nNew = rows.filter(r => r.status === 'NEW' && !r.unknownAccount).length
-    const nDup = rows.filter(r => r.status === 'DUPLICATE').length
-    const nInv = rows.filter(r => r.status === 'INVALID').length
-    const nIgn = rows.filter(r => r.status === 'PREVIOUSLY_IGNORED').length
-    const nUnknown = rows.filter(r => r.unknownAccount && r.status !== 'DUPLICATE').length
+    const imp = submitting
 
-    const adaptedRows = rows.map(r => adaptCamtRow(r, accountNames))
-    const filteredRows = adaptedRows.filter(r => {
-      if (r.unknownAccount && r.status !== 'DUPLICATE') return camtFilters.has('UNKNOWN_ACCOUNT')
-      if (r.status === 'NEW') return camtFilters.has('NEW')
-      return camtFilters.has(r.status)
-    })
+    const nNew = rows.filter(r => r.status === 'NEW' && !r.unknownAccount).length
+    const nPrevIgnored = rows.filter(r => r.status === 'PREVIOUSLY_IGNORED').length
+    const nDup = rows.filter(r => r.status === 'DUPLICATE').length
+    const nCrossFileDup = rows.filter(r => r.status === 'CROSS_FILE_DUPLICATE').length
+    const nInvalid = rows.filter(r => r.status === 'INVALID').length
+    const nUnknown = rows.filter(r => r.unknownAccount && r.status !== 'DUPLICATE').length
+    const nIgnored = rows.filter(r =>
+      r.status === 'NEW' && !r.unknownAccount && decisions[r.key]?.action === 'ignore',
+    ).length
+
+    const readyCount = rows.filter(r =>
+      !r.unknownAccount &&
+      (r.status === 'NEW' || r.status === 'PREVIOUSLY_IGNORED') &&
+      decisions[r.key]?.action === 'import',
+    ).length
+
+    const camtHasIgnores = rows.some(r =>
+      r.source.type === 'camt' &&
+      r.status === 'NEW' &&
+      decisions[r.key]?.action === 'ignore' &&
+      !r.unknownAccount,
+    )
+
+    const filteredRows = rows.filter(r => rowMatchesFilter(r, filters, decisions))
 
     return (
       <div className="ri-page">
         <div className="ri-preview">
           <div className="ri-summary-bar">
             {nNew > 0 && (
-              <button className={`ri-chip ri-chip--new${camtFilters.has('NEW') ? ' ri-chip--active' : ''}`} onClick={() => toggleCamtFilter('NEW')}>
+              <button
+                className={`ri-chip ri-chip--new${filters.has('NEW') ? ' ri-chip--active' : ''}`}
+                onClick={() => toggleFilter('NEW')}
+              >
                 {t('import.chips.new', { count: nNew })}
               </button>
             )}
-            {nIgn > 0 && (
-              <button className={`ri-chip ri-chip--prev-ignored${camtFilters.has('PREVIOUSLY_IGNORED') ? ' ri-chip--active' : ''}`} onClick={() => toggleCamtFilter('PREVIOUSLY_IGNORED')}>
-                {t('camtImport.chips.previouslyIgnored', { count: nIgn })}
+            {nPrevIgnored > 0 && (
+              <button
+                className={`ri-chip ri-chip--prev-ignored${filters.has('PREVIOUSLY_IGNORED') ? ' ri-chip--active' : ''}`}
+                onClick={() => toggleFilter('PREVIOUSLY_IGNORED')}
+              >
+                {t('camtImport.chips.previouslyIgnored', { count: nPrevIgnored })}
               </button>
             )}
             {nDup > 0 && (
-              <button className={`ri-chip ri-chip--dup${camtFilters.has('DUPLICATE') ? ' ri-chip--active' : ''}`} onClick={() => toggleCamtFilter('DUPLICATE')}>
+              <button
+                className={`ri-chip ri-chip--dup${filters.has('DUPLICATE') ? ' ri-chip--active' : ''}`}
+                onClick={() => toggleFilter('DUPLICATE')}
+              >
                 {t('import.chips.duplicate', { count: nDup })}
               </button>
             )}
-            {nInv > 0 && (
-              <button className={`ri-chip ri-chip--inv${camtFilters.has('INVALID') ? ' ri-chip--active' : ''}`} onClick={() => toggleCamtFilter('INVALID')}>
-                {t('camtImport.chips.invalid', { count: nInv })}
+            {nCrossFileDup > 0 && (
+              <button
+                className={`ri-chip ri-chip--dup${filters.has('CROSS_FILE_DUPLICATE') ? ' ri-chip--active' : ''}`}
+                onClick={() => toggleFilter('CROSS_FILE_DUPLICATE')}
+              >
+                {t('import.chips.crossFileDuplicate', { count: nCrossFileDup })}
+              </button>
+            )}
+            {nInvalid > 0 && (
+              <button
+                className={`ri-chip ri-chip--inv${filters.has('INVALID') ? ' ri-chip--active' : ''}`}
+                onClick={() => toggleFilter('INVALID')}
+              >
+                {t('camtImport.chips.invalid', { count: nInvalid })}
               </button>
             )}
             {nUnknown > 0 && (
-              <button className={`ri-chip ri-chip--inv${camtFilters.has('UNKNOWN_ACCOUNT') ? ' ri-chip--active' : ''}`} onClick={() => toggleCamtFilter('UNKNOWN_ACCOUNT')}>
+              <button
+                className={`ri-chip ri-chip--inv${filters.has('UNKNOWN_ACCOUNT') ? ' ri-chip--active' : ''}`}
+                onClick={() => toggleFilter('UNKNOWN_ACCOUNT')}
+              >
                 {t('import.chips.excluded', { count: nUnknown })}
               </button>
             )}
+            {nIgnored > 0 && (
+              <button
+                className={`ri-chip ri-chip--prev-ignored${filters.has('IGNORED') ? ' ri-chip--active' : ''}`}
+                onClick={() => toggleFilter('IGNORED')}
+              >
+                {t('csvImport.categorizing.skipped', { count: nIgnored })}
+              </button>
+            )}
             <span className="ri-summary-spacer" />
-            <button className="load-btn" onClick={resetToIdle}>{t('camtImport.back')}</button>
+            <button className="load-btn" onClick={resetToIdle} disabled={imp}>
+              {t('camtImport.back')}
+            </button>
             <button
               className="load-btn ri-import-btn"
-              onClick={handleCamtImport}
-              disabled={!camtCanImport(rows) || camtImporting}
+              disabled={readyCount === 0 && !camtHasIgnores || imp}
+              onClick={() => void handleCombinedImport()}
             >
-              {camtImporting ? '…' : t('camtImport.confirm')}
+              {imp ? '…' : t('csvImport.categorizing.importCount', { count: readyCount })}
             </button>
           </div>
           <ImportPreviewTable
             rows={filteredRows}
-            decisions={camtDecisions}
-            onDecide={(key, d) => setCamtDecisions(prev => ({ ...prev, [key]: d }))}
+            decisions={decisions}
+            onDecide={(key, d) => setDecisions(prev => ({ ...prev, [key]: d }))}
           />
         </div>
       </div>
     )
   }
 
-  // ── Loading states ───────────────────────────────────────────────────────────
-
-  if (state.mode === 'camt-loading') {
-    return <p className="hint loading">{t('camtImport.parsing')}</p>
-  }
-
-  if (state.mode === 'csv-detecting') {
-    return (
-      <div className="flex h-full items-center justify-center p-8">
-        <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-border p-16 text-center w-full max-w-lg">
-          <FileSpreadsheet className="h-10 w-10 text-muted-foreground" />
-          <span className="text-base font-medium">{t('csvImport.dropzone.analyzing')}</span>
-          <span className="text-sm text-muted-foreground">{t('csvImport.dropzone.analyzingHint')}</span>
-        </div>
-      </div>
-    )
-  }
-
-
-  // ── Idle: two drop zones ─────────────────────────────────────────────────────
+  // ── Idle: unified dropzone ────────────────────────────────────────────────────
 
   return (
-    <div className="flex h-full items-center justify-center p-8 gap-6">
-      <div className="flex-1 max-w-md">
+    <div className="flex h-full items-center justify-center p-8">
+      <div className="w-full max-w-lg">
         <div
-          className={`flex flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed p-16 text-center cursor-pointer transition-colors ${camtDragging ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50'}`}
-          onDragOver={e => { e.preventDefault(); setCamtDragging(true) }}
-          onDragLeave={() => setCamtDragging(false)}
-          onDrop={handleCamtDrop}
-          onClick={() => camtInputRef.current?.click()}
+          className={`flex flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed p-16 text-center cursor-pointer transition-colors ${dragging ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50'}`}
+          onDragOver={e => { e.preventDefault(); setDragging(true) }}
+          onDragLeave={() => setDragging(false)}
+          onDrop={e => {
+            e.preventDefault()
+            setDragging(false)
+            const files = Array.from(e.dataTransfer.files)
+            if (files.length > 0) void handleFiles(files)
+          }}
+          onClick={() => inputRef.current?.click()}
         >
           <input
-            ref={camtInputRef}
+            ref={inputRef}
             type="file"
-            accept=".xml"
+            accept=".xml,.csv,.txt"
             multiple
             style={{ display: 'none' }}
             onChange={e => {
               const files = Array.from(e.target.files ?? [])
-              if (files.length > 0) handleCamtFiles(files)
+              if (files.length > 0) void handleFiles(files)
               e.target.value = ''
             }}
           />
-          <FileCode className="h-10 w-10 text-muted-foreground" />
-          <span className="text-base font-medium">{t('camtImport.dropzone.label')}</span>
-          <span className="text-sm text-muted-foreground">{t('camtImport.dropzone.hint')}</span>
-          {camtError && <span className="text-sm text-destructive">{camtError}</span>}
-        </div>
-      </div>
-
-      <div className="self-stretch w-px bg-border" />
-
-      <div className="flex-1 max-w-md">
-        <div
-          className={`flex flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed p-16 text-center cursor-pointer transition-colors ${csvDragging ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50'}`}
-          onDragOver={e => { e.preventDefault(); setCsvDragging(true) }}
-          onDragLeave={() => setCsvDragging(false)}
-          onDrop={handleCsvDrop}
-          onClick={() => csvInputRef.current?.click()}
-        >
-          <input
-            ref={csvInputRef}
-            type="file"
-            accept=".csv,.txt"
-            multiple
-            style={{ display: 'none' }}
-            onChange={e => {
-              const files = Array.from(e.target.files ?? [])
-              if (files.length > 0) void handleCsvFiles(files)
-              e.target.value = ''
-            }}
-          />
-          <FileSpreadsheet className="h-10 w-10 text-muted-foreground" />
-          <span className="text-base font-medium">{t('csvImport.dropzone.label')}</span>
-          <span className="text-sm text-muted-foreground">{t('csvImport.dropzone.hint')}</span>
-          {csvError && <span className="text-sm text-destructive">{csvError}</span>}
+          <Upload className="h-10 w-10 text-muted-foreground" />
+          <span className="text-base font-medium">{t('import.dropzone.label')}</span>
+          <span className="text-sm text-muted-foreground">{t('import.dropzone.hint')}</span>
+          {error && <span className="text-sm text-destructive">{error}</span>}
         </div>
       </div>
     </div>

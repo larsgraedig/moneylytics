@@ -2,7 +2,7 @@ import { useTranslation } from 'react-i18next'
 
 export type ImportPreviewRow = {
   key: number
-  status: 'NEW' | 'DUPLICATE' | 'INVALID' | 'PREVIOUSLY_IGNORED'
+  status: 'NEW' | 'DUPLICATE' | 'INVALID' | 'PREVIOUSLY_IGNORED' | 'CROSS_FILE_DUPLICATE'
   unknownAccount: boolean
   date: string | null
   accountDisplay: string
@@ -14,6 +14,7 @@ export type ImportPreviewRow = {
   currency: string
   errors: Array<{ column: string; message: string; value: string }>
   fingerprint: string | null
+  sourceFilename?: string | null
 }
 
 export type ImportDecision =
@@ -55,19 +56,20 @@ export function ImportPreviewTable({ rows, decisions, onDecide }: ImportPreviewT
           const d = decisions[row.key]
           const isImporting = d?.action === 'import'
           const isUnknown = row.unknownAccount && row.status !== 'DUPLICATE'
-          const isActionable = !isUnknown && row.status !== 'INVALID' && row.status !== 'DUPLICATE'
+          const isActionable = !isUnknown && row.status !== 'INVALID' && row.status !== 'DUPLICATE' && row.status !== 'CROSS_FILE_DUPLICATE'
 
           const cardStatusClass = (() => {
             if (isUnknown) return 'ri-card--duplicate'
             if (row.status === 'INVALID') return 'ri-card--invalid'
             if (row.status === 'DUPLICATE') return 'ri-card--duplicate'
+            if (row.status === 'CROSS_FILE_DUPLICATE') return 'ri-card--duplicate'
             if (row.status === 'PREVIOUSLY_IGNORED') {
               return isImporting ? 'ri-card--prev-ignored-importing' : 'ri-card--prev-ignored'
             }
             return isImporting ? 'ri-card--new' : 'ri-card--will-ignore'
           })()
 
-          const ghostClass = (row.status === 'DUPLICATE' || isUnknown) ? ' txn-card--ghost' : ''
+          const ghostClass = (row.status === 'DUPLICATE' || row.status === 'CROSS_FILE_DUPLICATE' || isUnknown) ? ' txn-card--ghost' : ''
 
           return (
             <div key={row.key} className={`txn-card ${cardStatusClass}${ghostClass}`}>
@@ -94,6 +96,15 @@ export function ImportPreviewTable({ rows, decisions, onDecide }: ImportPreviewT
                 >
                   {isUnknown ? t('camtImport.unknownAccount') : row.accountDisplay}
                 </span>
+                {row.sourceFilename && (
+                  <span
+                    className="truncate opacity-40"
+                    style={{ fontSize: '0.65rem' }}
+                    title={row.sourceFilename}
+                  >
+                    {row.sourceFilename}
+                  </span>
+                )}
               </div>
 
               <ErrorTags row={row} />
@@ -117,6 +128,7 @@ function StatusBadge({ row, decision }: { row: ImportPreviewRow; decision: Impor
   if (isUnknown) return <span className="ri-badge ri-badge--invalid">{t('camtImport.status.excluded')}</span>
   if (row.status === 'INVALID') return <span className="ri-badge ri-badge--invalid">{t('camtImport.status.invalid')}</span>
   if (row.status === 'DUPLICATE') return <span className="ri-badge ri-badge--duplicate">{t('camtImport.status.duplicate')}</span>
+  if (row.status === 'CROSS_FILE_DUPLICATE') return <span className="ri-badge ri-badge--duplicate">{t('camtImport.status.crossFileDuplicate')}</span>
   if (row.status === 'PREVIOUSLY_IGNORED') {
     return decision?.action === 'import'
       ? <span className="ri-badge ri-badge--new">{t('camtImport.status.importing')}</span>
@@ -149,7 +161,7 @@ function ActionToggle({
 }) {
   const { t } = useTranslation()
   const isUnknown = row.unknownAccount && row.status !== 'DUPLICATE'
-  if (isUnknown || row.status === 'INVALID' || row.status === 'DUPLICATE') return null
+  if (isUnknown || row.status === 'INVALID' || row.status === 'DUPLICATE' || row.status === 'CROSS_FILE_DUPLICATE') return null
 
   if (row.status === 'PREVIOUSLY_IGNORED') {
     return decision?.action === 'import' ? (
