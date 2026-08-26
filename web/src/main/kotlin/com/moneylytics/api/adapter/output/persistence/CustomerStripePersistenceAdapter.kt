@@ -6,7 +6,7 @@ import com.moneylytics.api.domain.SubscriptionStatus
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
 
-internal fun StripeCustomerEntity.toDomain() =
+internal fun CustomerStripeEntity.toDomain() =
     StripeCustomer(
         id = id!!,
         userId = userId,
@@ -19,8 +19,8 @@ internal fun StripeCustomerEntity.toDomain() =
     )
 
 @Component
-class StripeCustomerPersistenceAdapter(
-    private val jpaRepository: StripeCustomerJpaRepository,
+class CustomerStripePersistenceAdapter(
+    private val jpaRepository: CustomerStripeJpaRepository,
 ) : StripeCustomerRepository {
     override fun findByUserId(userId: Long): StripeCustomer? = jpaRepository.findByUserId(userId)?.toDomain()
 
@@ -29,7 +29,7 @@ class StripeCustomerPersistenceAdapter(
 
     override fun save(stripeCustomer: StripeCustomer): StripeCustomer {
         val entity =
-            StripeCustomerEntity(
+            CustomerStripeEntity(
                 userId = stripeCustomer.userId,
                 stripeCustomerId = stripeCustomer.stripeCustomerId,
                 stripeSubscriptionId = stripeCustomer.stripeSubscriptionId,

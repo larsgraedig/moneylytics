@@ -11,7 +11,7 @@ import org.springframework.transaction.annotation.Transactional
 class UserPersistenceAdapter(
     private val jpaRepository: UserJpaRepository,
     private val accountJpaRepository: AccountJpaRepository,
-    private val tierJpaRepository: TierJpaRepository,
+    private val tierJpaRepository: CustomerTierJpaRepository,
 ) : UserRepository {
     override fun findByExternalId(externalId: String): User? = jpaRepository.findByExternalId(externalId)?.toDomain()
 

@@ -9,8 +9,8 @@ import jakarta.persistence.Table
 import java.time.LocalDateTime
 
 @Entity
-@Table(name = "invoice")
-class InvoiceEntity(
+@Table(name = "customer_invoice")
+class CustomerInvoiceEntity(
     @Column(name = "user_id", nullable = false)
     val userId: Long,
     @Column(name = "stripe_invoice_id", nullable = true, unique = true, length = 255)

@@ -1,0 +1,15 @@
+databaseChangeLog:
+  - changeSet:
+      id: "0004"
+      author: "lgraedig"
+      dbms: postgresql
+      changes:
+        - renameTable:
+            oldTableName: invoice
+            newTableName: customer_invoice
+        - renameTable:
+            oldTableName: stripe_customer
+            newTableName: customer_stripe
+        - renameTable:
+            oldTableName: tier
+            newTableName: customer_tier

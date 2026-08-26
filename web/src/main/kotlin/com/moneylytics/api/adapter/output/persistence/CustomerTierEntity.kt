@@ -8,8 +8,8 @@ import jakarta.persistence.Id
 import jakarta.persistence.Table
 
 @Entity
-@Table(name = "tier")
-class TierEntity(
+@Table(name = "customer_tier")
+class CustomerTierEntity(
     @Column(nullable = false, unique = true, length = 100)
     val name: String,
     @Column(nullable = true, length = 500)

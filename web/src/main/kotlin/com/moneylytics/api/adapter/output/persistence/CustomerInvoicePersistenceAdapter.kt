@@ -4,7 +4,7 @@ import com.moneylytics.api.application.port.output.InvoiceRepository
 import com.moneylytics.api.domain.Invoice
 import org.springframework.stereotype.Component
 
-internal fun InvoiceEntity.toDomain() =
+internal fun CustomerInvoiceEntity.toDomain() =
     Invoice(
         id = id!!,
         userId = userId,
@@ -20,8 +20,8 @@ internal fun InvoiceEntity.toDomain() =
     )
 
 @Component
-class InvoicePersistenceAdapter(
-    private val jpaRepository: InvoiceJpaRepository,
+class CustomerInvoicePersistenceAdapter(
+    private val jpaRepository: CustomerInvoiceJpaRepository,
 ) : InvoiceRepository {
     override fun findByUserId(userId: Long): List<Invoice> = jpaRepository.findByUserIdOrderByIssuedAtDesc(userId).map { it.toDomain() }
 
@@ -57,7 +57,7 @@ class InvoicePersistenceAdapter(
         pdfData: ByteArray?,
     ): Invoice {
         val entity =
-            InvoiceEntity(
+            CustomerInvoiceEntity(
                 userId = invoice.userId,
                 stripeInvoiceId = invoice.stripeInvoiceId,
                 invoiceNumber = invoice.invoiceNumber,

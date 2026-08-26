@@ -3,10 +3,10 @@ package com.moneylytics.api.adapter.output.persistence
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 
-class TierJpaRepositoryIT : AbstractJpaRepositoryIT() {
+class CustomerTierJpaRepositoryIT : AbstractJpaRepositoryIT() {
     @Test
     fun `should persist and find a tier`() {
-        val saved = tierRepo.save(TierEntity(name = "Pro", isDefault = false))
+        val saved = tierRepo.save(CustomerTierEntity(name = "Pro", isDefault = false))
 
         val found = tierRepo.findById(saved.id!!).orElse(null)
 

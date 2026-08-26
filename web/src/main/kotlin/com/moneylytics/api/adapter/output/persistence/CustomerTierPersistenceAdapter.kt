@@ -5,7 +5,7 @@ import com.moneylytics.api.domain.Tier
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
 
-internal fun TierEntity.toDomain() =
+internal fun CustomerTierEntity.toDomain() =
     Tier(
         id = id!!,
         name = name,
@@ -16,8 +16,8 @@ internal fun TierEntity.toDomain() =
     )
 
 @Component
-class TierPersistenceAdapter(
-    private val jpaRepository: TierJpaRepository,
+class CustomerTierPersistenceAdapter(
+    private val jpaRepository: CustomerTierJpaRepository,
     private val userJpaRepository: UserJpaRepository,
 ) : TierRepository {
     override fun findAll(): List<Tier> = jpaRepository.findAll().map { it.toDomain() }
@@ -30,7 +30,7 @@ class TierPersistenceAdapter(
 
     override fun save(tier: Tier): Tier {
         val entity =
-            TierEntity(
+            CustomerTierEntity(
                 name = tier.name,
                 description = tier.description,
                 active = tier.active,

@@ -13,11 +13,11 @@ import org.mockito.kotlin.whenever
 class UserPersistenceAdapterTest {
     private val jpaRepository: UserJpaRepository = mock()
     private val accountJpaRepository: AccountJpaRepository = mock()
-    private val tierJpaRepository: TierJpaRepository = mock()
+    private val tierJpaRepository: CustomerTierJpaRepository = mock()
     private val adapter = UserPersistenceAdapter(jpaRepository, accountJpaRepository, tierJpaRepository)
 
     private val userId = 1L
-    private val tierEntity = TierEntity(name = "Standard", isDefault = true, id = 10L)
+    private val tierEntity = CustomerTierEntity(name = "Standard", isDefault = true, id = 10L)
     private val tier = Tier(id = 10L, name = "Standard", description = null, active = true, isDefault = true)
     private val userEntity = UserEntity(externalId = "test@test.de", tier = tierEntity, id = userId)
 

@@ -8,8 +8,8 @@ import jakarta.persistence.Id
 import jakarta.persistence.Table
 
 @Entity
-@Table(name = "stripe_customer")
-class StripeCustomerEntity(
+@Table(name = "customer_stripe")
+class CustomerStripeEntity(
     @Column(name = "user_id", nullable = false, unique = true)
     val userId: Long,
     @Column(name = "stripe_customer_id", nullable = false, unique = true, length = 255)
