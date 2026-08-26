@@ -1,0 +1,147 @@
+databaseChangeLog:
+  - changeSet:
+      id: "0002"
+      author: "lgraedig"
+      dbms: postgresql
+      changes:
+        - createTable:
+            tableName: transaction_import
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: organization_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_transaction_import_organization
+                    references: organization(id)
+                    deleteCascade: true
+              - column:
+                  name: imported_at
+                  type: timestamp
+                  defaultValueComputed: CURRENT_TIMESTAMP
+                  constraints:
+                    nullable: false
+              - column:
+                  name: status
+                  type: varchar(10)
+                  defaultValue: ACTIVE
+                  constraints:
+                    nullable: false
+        - createIndex:
+            tableName: transaction_import
+            indexName: idx_transaction_import_org
+            columns:
+              - column:
+                  name: organization_id
+        - createTable:
+            tableName: import_file
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: import_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_import_file_transaction_import
+                    references: transaction_import(id)
+                    deleteCascade: true
+              - column:
+                  name: filename
+                  type: varchar(500)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: checksum
+                  type: varchar(64)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: file_type
+                  type: varchar(10)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: transaction_count
+                  type: int
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+              - column:
+                  name: status
+                  type: varchar(10)
+                  defaultValue: ACTIVE
+                  constraints:
+                    nullable: false
+        - createIndex:
+            tableName: import_file
+            indexName: idx_import_file_import_id
+            columns:
+              - column:
+                  name: import_id
+        - createTable:
+            tableName: import_preview_session
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: rows_json
+                  type: text
+                  constraints:
+                    nullable: false
+              - column:
+                  name: expires_at
+                  type: timestamp
+                  constraints:
+                    nullable: false
+        - addColumn:
+            tableName: transaction
+            columns:
+              - column:
+                  name: import_id
+                  type: bigint
+              - column:
+                  name: import_file_id
+                  type: bigint
+        - addForeignKeyConstraint:
+            baseTableName: transaction
+            baseColumnNames: import_id
+            constraintName: fk_transaction_import_id
+            referencedTableName: transaction_import
+            referencedColumnNames: id
+            onDelete: SET NULL
+        - addForeignKeyConstraint:
+            baseTableName: transaction
+            baseColumnNames: import_file_id
+            constraintName: fk_transaction_import_file_id
+            referencedTableName: import_file
+            referencedColumnNames: id
+            onDelete: SET NULL
+        - createIndex:
+            tableName: transaction
+            indexName: idx_transaction_import_id
+            columns:
+              - column:
+                  name: import_id
+        - createIndex:
+            tableName: transaction
+            indexName: idx_transaction_import_file_id
+            columns:
+              - column:
+                  name: import_file_id

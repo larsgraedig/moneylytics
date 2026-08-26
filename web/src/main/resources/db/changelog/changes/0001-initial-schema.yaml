@@ -1,7 +1,8 @@
 databaseChangeLog:
+  - objectQuotingStrategy: QUOTE_ONLY_RESERVED_WORDS
   - changeSet:
       id: "0001"
-      author: "initial"
+      author: "lgraedig"
       dbms: postgresql
       preConditions:
         - onFail: MARK_RAN
@@ -9,8 +10,1488 @@ databaseChangeLog:
             - tableExists:
                 tableName: organization
       changes:
-        - sqlFile:
-            path: scripts/0001-initial-schema.sql
-            relativeToChangelogFile: true
-            splitStatements: true
-            stripComments: false
+        # Sequences
+        - createSequence:
+            sequenceName: collections_id_seq
+        - createSequence:
+            sequenceName: transaction_groups_id_seq
+        - createSequence:
+            sequenceName: transaction_offsets_id_seq
+        - createSequence:
+            sequenceName: recurring_classifier_class_counts_id_seq
+        - createSequence:
+            sequenceName: recurring_classifier_token_counts_id_seq
+
+        # Tables (dependency order)
+        - createTable:
+            tableName: organization
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: organizations_pkey
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: "timestamp(6) with time zone"
+                  constraints:
+                    nullable: false
+              - column:
+                  name: name
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: logo_data
+                  type: bytea
+              - column:
+                  name: logo_content_type
+                  type: varchar(100)
+
+        - createTable:
+            tableName: csv_profile
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: csv_profiles_pkey
+                    nullable: false
+              - column:
+                  name: fingerprint
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: mapping_json
+                  type: text
+                  constraints:
+                    nullable: false
+              - column:
+                  name: organization_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+
+        - createTable:
+            tableName: account
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: accounts_pkey
+                    nullable: false
+              - column:
+                  name: iban
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: name
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: balance
+                  type: numeric(19, 4)
+              - column:
+                  name: balance_date
+                  type: date
+              - column:
+                  name: organization_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+                    foreignKeyName: accounts_organization_id_fkey
+                    references: organization(id)
+
+        - addUniqueConstraint:
+            tableName: account
+            columnNames: iban, organization_id
+            constraintName: accounts_iban_organization_id_key
+        - addUniqueConstraint:
+            tableName: account
+            columnNames: iban, organization_id
+            constraintName: ukaic8rybpygomla3bha46uj9x6
+        - addUniqueConstraint:
+            tableName: account
+            columnNames: iban, organization_id
+            constraintName: uknut0kwlddxigmk8knb4nlhvi6
+
+        - createTable:
+            tableName: budget
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: budgets_pkey
+                    nullable: false
+              - column:
+                  name: name
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: note
+                  type: text
+              - column:
+                  name: target_amount
+                  type: numeric(19, 2)
+              - column:
+                  name: organization_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+                    foreignKeyName: budgets_organization_id_fkey
+                    references: organization(id)
+
+        - createTable:
+            tableName: tier
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: name
+                  type: varchar(100)
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: description
+                  type: varchar(500)
+              - column:
+                  name: active
+                  type: boolean
+                  defaultValueBoolean: true
+                  constraints:
+                    nullable: false
+              - column:
+                  name: is_default
+                  type: boolean
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+              - column:
+                  name: stripe_price_id
+                  type: varchar(255)
+                  constraints:
+                    unique: true
+
+        - createTable:
+            tableName: category
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: categories_pkey
+                    nullable: false
+              - column:
+                  name: name
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: category_group
+                  type: varchar(255)
+              - column:
+                  name: organization_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+                    foreignKeyName: categories_organization_id_fkey
+                    references: organization(id)
+              - column:
+                  name: parent_id
+                  type: bigint
+                  constraints:
+                    foreignKeyName: fk_category_parent
+                    references: category(id)
+
+        - createTable:
+            tableName: user
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: users_pkey
+                    nullable: false
+              - column:
+                  name: external_id
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+                    unique: true
+                    uniqueConstraintName: ukcup9hom3h5cte4btcq935d0uu
+              - column:
+                  name: password_hash
+                  type: varchar(255)
+              - column:
+                  name: default_account_id
+                  type: bigint
+              - column:
+                  name: language
+                  type: varchar(10)
+              - column:
+                  name: transactions_column_order
+                  type: varchar(500)
+              - column:
+                  name: role
+                  type: varchar(20)
+                  defaultValue: USER
+                  constraints:
+                    nullable: false
+              - column:
+                  name: tier_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_user_tier
+                    references: tier(id)
+
+        - addForeignKeyConstraint:
+            baseTableName: user
+            baseColumnNames: default_account_id
+            constraintName: users_default_account_id_fkey
+            referencedTableName: account
+            referencedColumnNames: id
+            onDelete: SET NULL
+
+        - createTable:
+            tableName: category_classifier_class_count
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: organization_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_cat_clf_class_org
+                    references: organization(id)
+              - column:
+                  name: category_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_cat_clf_class_cat
+                    references: category(id)
+                    deleteCascade: true
+              - column:
+                  name: count
+                  type: bigint
+                  defaultValueNumeric: 1
+                  constraints:
+                    nullable: false
+
+        - addUniqueConstraint:
+            tableName: category_classifier_class_count
+            columnNames: organization_id, category_id
+            constraintName: uq_cat_clf_class
+
+        - createTable:
+            tableName: category_classifier_token_count
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: organization_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_cat_clf_token_org
+                    references: organization(id)
+              - column:
+                  name: category_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_cat_clf_token_cat
+                    references: category(id)
+                    deleteCascade: true
+              - column:
+                  name: token
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: count
+                  type: bigint
+                  defaultValueNumeric: 1
+                  constraints:
+                    nullable: false
+
+        - addUniqueConstraint:
+            tableName: category_classifier_token_count
+            columnNames: organization_id, category_id, token
+            constraintName: uq_cat_clf_token
+
+        - createTable:
+            tableName: category_merge
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: source_category_id
+                  type: bigint
+              - column:
+                  name: source_name
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: source_parent_id
+                  type: bigint
+              - column:
+                  name: target_category_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_cat_merge_target_cat
+                    references: category(id)
+              - column:
+                  name: organization_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_cat_merge_org
+                    references: organization(id)
+              - column:
+                  name: merged_at
+                  type: timestamp
+                  defaultValueComputed: now()
+                  constraints:
+                    nullable: false
+              - column:
+                  name: reverted_at
+                  type: timestamp
+
+        - createTable:
+            tableName: category_merge_child
+            columns:
+              - column:
+                  name: merge_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_cat_merge_child_merge
+                    references: category_merge(id)
+              - column:
+                  name: child_category_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+
+        - addPrimaryKey:
+            tableName: category_merge_child
+            columnNames: merge_id, child_category_id
+
+        - createTable:
+            tableName: category_merge_transaction
+            columns:
+              - column:
+                  name: merge_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_cat_merge_tx_merge
+                    references: category_merge(id)
+              - column:
+                  name: transaction_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+
+        - addPrimaryKey:
+            tableName: category_merge_transaction
+            columnNames: merge_id, transaction_id
+
+        - createTable:
+            tableName: collection
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  defaultValueSequenceNext: collections_id_seq
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: collections_pkey
+                    nullable: false
+              - column:
+                  name: name
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: note
+                  type: text
+              - column:
+                  name: organization_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+                    foreignKeyName: collections_organization_id_fkey
+                    references: organization(id)
+              - column:
+                  name: archived
+                  type: boolean
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+
+        - createTable:
+            tableName: ignored_transaction
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: ignored_transactions_pkey
+                    nullable: false
+              - column:
+                  name: fingerprint
+                  type: varchar(64)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: organization_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fkg4i2pkc4sw7yfn6ru0re6mtux
+                    references: organization(id)
+
+        - addUniqueConstraint:
+            tableName: ignored_transaction
+            columnNames: fingerprint, organization_id
+            constraintName: ignored_transactions_fingerprint_organization_id_key
+        - addUniqueConstraint:
+            tableName: ignored_transaction
+            columnNames: fingerprint, organization_id
+            constraintName: uk6qcc86r74gvsgeuwcww9g5n4t
+        - addUniqueConstraint:
+            tableName: ignored_transaction
+            columnNames: fingerprint, organization_id
+            constraintName: uksg9mw6i0glt76atjkjbv7mml8
+
+        - createTable:
+            tableName: recurring_classifier_class_count
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  defaultValueSequenceNext: recurring_classifier_class_counts_id_seq
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: recurring_classifier_class_counts_pkey
+                    nullable: false
+              - column:
+                  name: type
+                  type: varchar(50)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: count
+                  type: integer
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+              - column:
+                  name: organization_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+
+        - createTable:
+            tableName: recurring_classifier_token_count
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  defaultValueSequenceNext: recurring_classifier_token_counts_id_seq
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: recurring_classifier_token_counts_pkey
+                    nullable: false
+              - column:
+                  name: type
+                  type: varchar(50)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: token
+                  type: varchar(100)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: count
+                  type: integer
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+              - column:
+                  name: organization_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+
+        - createTable:
+            tableName: recurring_false_positive
+            columns:
+              - column:
+                  name: id
+                  type: bigserial
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: fingerprint
+                  type: varchar(512)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: date
+                  constraints:
+                    nullable: false
+              - column:
+                  name: organization_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fktfhn01157fqs8xfpe318rq4g2
+                    references: organization(id)
+
+        - createTable:
+            tableName: recurring_series
+            columns:
+              - column:
+                  name: id
+                  type: bigserial
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: label
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: type
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: direction
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: cadence
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: interval_days
+                  type: integer
+                  constraints:
+                    nullable: false
+              - column:
+                  name: expected_amount
+                  type: numeric(19, 4)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: amount_variable
+                  type: boolean
+                  constraints:
+                    nullable: false
+              - column:
+                  name: currency
+                  type: varchar(3)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: account_iban
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: first_seen
+                  type: date
+                  constraints:
+                    nullable: false
+              - column:
+                  name: last_seen
+                  type: date
+                  constraints:
+                    nullable: false
+              - column:
+                  name: occurrence_count
+                  type: integer
+                  constraints:
+                    nullable: false
+              - column:
+                  name: next_expected_date
+                  type: date
+                  constraints:
+                    nullable: false
+              - column:
+                  name: status
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: fingerprint
+                  type: varchar(512)
+                  defaultValue: ""
+                  constraints:
+                    nullable: false
+              - column:
+                  name: organization_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fkj2bk1qnhaws1kiab5c33njvgw
+                    references: organization(id)
+
+        - createTable:
+            tableName: recurring_sync_log
+            columns:
+              - column:
+                  name: id
+                  type: bigserial
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: ran_at
+                  type: timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: series_updated_count
+                  type: integer
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+              - column:
+                  name: transactions_linked_count
+                  type: integer
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+              - column:
+                  name: triggered_by
+                  type: varchar(255)
+                  defaultValue: SCHEDULED
+                  constraints:
+                    nullable: false
+              - column:
+                  name: organization_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fkt8qxk0kls55irhmpp4oncpd2t
+                    references: organization(id)
+
+        - createTable:
+            tableName: spring_session
+            columns:
+              - column:
+                  name: primary_id
+                  type: char(36)
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: spring_session_pk
+                    nullable: false
+              - column:
+                  name: session_id
+                  type: char(36)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: creation_time
+                  type: bigint
+                  constraints:
+                    nullable: false
+              - column:
+                  name: last_access_time
+                  type: bigint
+                  constraints:
+                    nullable: false
+              - column:
+                  name: max_inactive_interval
+                  type: integer
+                  constraints:
+                    nullable: false
+              - column:
+                  name: expiry_time
+                  type: bigint
+                  constraints:
+                    nullable: false
+              - column:
+                  name: principal_name
+                  type: varchar(100)
+
+        - createTable:
+            tableName: spring_session_attributes
+            columns:
+              - column:
+                  name: session_primary_id
+                  type: char(36)
+                  constraints:
+                    nullable: false
+                    foreignKeyName: spring_session_attributes_fk
+                    references: spring_session(primary_id)
+                    deleteCascade: true
+              - column:
+                  name: attribute_name
+                  type: varchar(200)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: attribute_bytes
+                  type: bytea
+                  constraints:
+                    nullable: false
+
+        - addPrimaryKey:
+            tableName: spring_session_attributes
+            columnNames: session_primary_id, attribute_name
+            constraintName: spring_session_attributes_pk
+
+        - createTable:
+            tableName: threshold
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: thresholds_pkey
+                    nullable: false
+              - column:
+                  name: category
+                  type: varchar(255)
+              - column:
+                  name: critical
+                  type: numeric(19, 2)
+              - column:
+                  name: notice
+                  type: numeric(19, 2)
+              - column:
+                  name: period
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+                    checkConstraint: "period IN ('WEEKLY', 'MONTHLY', 'QUARTERLY', 'YEARLY')"
+              - column:
+                  name: subcategory
+                  type: varchar(255)
+              - column:
+                  name: warning
+                  type: numeric(19, 2)
+              - column:
+                  name: category_group
+                  type: varchar(255)
+              - column:
+                  name: organization_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+                    foreignKeyName: thresholds_organization_id_fkey
+                    references: organization(id)
+              - column:
+                  name: group_name
+                  type: varchar(255)
+              - column:
+                  name: category_id
+                  type: bigint
+                  constraints:
+                    foreignKeyName: fk_threshold_category
+                    references: category(id)
+
+
+        - createTable:
+            tableName: transaction
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: transactions_pkey
+                    nullable: false
+              - column:
+                  name: amount
+                  type: numeric(19, 4)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: booking_date
+                  type: date
+                  constraints:
+                    nullable: false
+              - column:
+                  name: currency
+                  type: varchar(3)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: fingerprint
+                  type: varchar(64)
+              - column:
+                  name: value_date
+                  type: date
+                  constraints:
+                    nullable: false
+              - column:
+                  name: account_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk20w7wsg13u9srbq3bd7chfxdh
+                    references: account(id)
+              - column:
+                  name: comment
+                  type: varchar(1000)
+              - column:
+                  name: purpose
+                  type: varchar(2000)
+              - column:
+                  name: accounting_date
+                  type: date
+                  constraints:
+                    nullable: false
+              - column:
+                  name: counterparty_name
+                  type: varchar(255)
+              - column:
+                  name: counterparty_iban
+                  type: varchar(34)
+              - column:
+                  name: organization_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+                    foreignKeyName: transactions_organization_id_fkey
+                    references: organization(id)
+              - column:
+                  name: parent_id
+                  type: bigint
+                  constraints:
+                    foreignKeyName: fk_transaction_parent
+                    references: transaction(id)
+              - column:
+                  name: is_virtual
+                  type: boolean
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+              - column:
+                  name: excluded
+                  type: boolean
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+              - column:
+                  name: category_id
+                  type: bigint
+                  constraints:
+                    foreignKeyName: fkgik7ruym8r1n4xngrclc6kiih
+                    references: category(id)
+
+        - addUniqueConstraint:
+            tableName: transaction
+            columnNames: fingerprint, account_id
+            constraintName: uktlko6dnlc3ds2jcop242s59da
+
+        - createTable:
+            tableName: budget_transaction
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: budget_transactions_pkey
+                    nullable: false
+              - column:
+                  name: amount
+                  type: numeric(19, 2)
+              - column:
+                  name: budget_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fktaxcwbfp5j7i1fgkmdalxhqi6
+                    references: budget(id)
+                    deleteCascade: true
+              - column:
+                  name: transaction_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fkplp74sn4k7dj24nseg4jvwc2s
+                    references: transaction(id)
+                    deleteCascade: true
+
+        - addUniqueConstraint:
+            tableName: budget_transaction
+            columnNames: budget_id, transaction_id
+            constraintName: uk5lh02hxaa618t60hcytmjq0h3
+        - addUniqueConstraint:
+            tableName: budget_transaction
+            columnNames: budget_id, transaction_id
+            constraintName: ukpvqdpkyv764djk746o95hdoq5
+
+        - createTable:
+            tableName: collection_transaction
+            columns:
+              - column:
+                  name: collection_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+                    foreignKeyName: collection_transactions_collection_id_fkey
+                    references: collection(id)
+                    deleteCascade: true
+              - column:
+                  name: transaction_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+                    foreignKeyName: collection_transactions_transaction_id_fkey
+                    references: transaction(id)
+                    deleteCascade: true
+
+        - addPrimaryKey:
+            tableName: collection_transaction
+            columnNames: collection_id, transaction_id
+            constraintName: collection_transactions_pkey
+
+        - createTable:
+            tableName: recurring_series_member
+            columns:
+              - column:
+                  name: id
+                  type: bigserial
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: series_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_rsm_series
+                    references: recurring_series(id)
+              - column:
+                  name: transaction_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_rsm_transaction
+                    references: transaction(id)
+
+        - createTable:
+            tableName: recurring_sync_log_entry
+            columns:
+              - column:
+                  name: id
+                  type: bigserial
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: log_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_rsle_log
+                    references: recurring_sync_log(id)
+              - column:
+                  name: series_id
+                  type: bigint
+              - column:
+                  name: series_label
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: transaction_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_rsle_transaction
+                    references: transaction(id)
+              - column:
+                  name: booking_date
+                  type: date
+                  constraints:
+                    nullable: false
+              - column:
+                  name: amount
+                  type: numeric(19, 4)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: counterparty_name
+                  type: varchar(255)
+
+        - createTable:
+            tableName: transaction_group
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  defaultValueSequenceNext: transaction_groups_id_seq
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: transaction_groups_pkey
+                    nullable: false
+              - column:
+                  name: name
+                  type: varchar(255)
+              - column:
+                  name: comment
+                  type: text
+              - column:
+                  name: organization_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+                    foreignKeyName: transaction_groups_organization_id_fkey
+                    references: organization(id)
+
+        - createTable:
+            tableName: transaction_group_member
+            columns:
+              - column:
+                  name: group_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+              - column:
+                  name: transaction_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+
+        - addPrimaryKey:
+            tableName: transaction_group_member
+            columnNames: group_id, transaction_id
+            constraintName: transaction_group_members_pkey
+
+        - createTable:
+            tableName: transaction_offset
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  defaultValueSequenceNext: transaction_offsets_id_seq
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: transaction_offsets_pkey
+                    nullable: false
+              - column:
+                  name: transaction_a_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+                    foreignKeyName: transaction_offsets_transaction_a_id_fkey
+                    references: transaction(id)
+                    deleteCascade: true
+              - column:
+                  name: transaction_b_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+                    foreignKeyName: transaction_offsets_transaction_b_id_fkey
+                    references: transaction(id)
+                    deleteCascade: true
+              - column:
+                  name: amount_a
+                  type: numeric(19, 4)
+              - column:
+                  name: group_id
+                  type: bigint
+              - column:
+                  name: amount_b
+                  type: numeric(19, 4)
+              - column:
+                  name: comment
+                  type: text
+
+        - addUniqueConstraint:
+            tableName: transaction_offset
+            columnNames: transaction_a_id, transaction_b_id
+            constraintName: uk7d8c63dh20msfyrwcqx4aq39s
+        - addUniqueConstraint:
+            tableName: transaction_offset
+            columnNames: transaction_a_id, transaction_b_id
+            constraintName: uk8gdnftytdaxhxh6wep1eoyv3v
+        - addUniqueConstraint:
+            tableName: transaction_offset
+            columnNames: transaction_a_id, transaction_b_id
+            constraintName: uq_transaction_offsets
+
+        - createTable:
+            tableName: invoice
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+              - column:
+                  name: stripe_invoice_id
+                  type: varchar(255)
+                  constraints:
+                    unique: true
+              - column:
+                  name: amount_cents
+                  type: integer
+                  constraints:
+                    nullable: false
+              - column:
+                  name: currency
+                  type: varchar(3)
+                  defaultValue: eur
+                  constraints:
+                    nullable: false
+              - column:
+                  name: status
+                  type: varchar(50)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: period_start
+                  type: timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: period_end
+                  type: timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: pdf_data
+                  type: bytea
+              - column:
+                  name: issued_at
+                  type: timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: invoice_number
+                  type: varchar(100)
+
+        - addForeignKeyConstraint:
+            baseTableName: invoice
+            baseColumnNames: user_id
+            constraintName: fk_invoice_user
+            referencedTableName: user
+            referencedColumnNames: id
+
+        - createTable:
+            tableName: organization_invitation
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: organization_invitations_pkey
+                    nullable: false
+              - column:
+                  name: organization_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+                    foreignKeyName: organization_invitations_organization_id_fkey
+                    references: organization(id)
+                    deleteCascade: true
+              - column:
+                  name: email
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: token
+                  type: varchar(64)
+                  constraints:
+                    nullable: false
+                    unique: true
+                    uniqueConstraintName: organization_invitations_token_key
+              - column:
+                  name: role
+                  type: varchar(20)
+                  defaultValue: MEMBER
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_by_user_id
+                  type: bigint
+              - column:
+                  name: created_at
+                  type: timestamp
+                  defaultValueComputed: CURRENT_TIMESTAMP
+                  constraints:
+                    nullable: false
+              - column:
+                  name: expires_at
+                  type: timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: accepted_at
+                  type: timestamp
+              - column:
+                  name: accepted_by_user_id
+                  type: bigint
+
+        - addForeignKeyConstraint:
+            baseTableName: organization_invitation
+            baseColumnNames: created_by_user_id
+            constraintName: organization_invitations_created_by_user_id_fkey
+            referencedTableName: user
+            referencedColumnNames: id
+        - addForeignKeyConstraint:
+            baseTableName: organization_invitation
+            baseColumnNames: accepted_by_user_id
+            constraintName: organization_invitations_accepted_by_user_id_fkey
+            referencedTableName: user
+            referencedColumnNames: id
+
+        - createTable:
+            tableName: organization_member
+            columns:
+              - column:
+                  name: organization_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk7vpc2vd3jlfahlombjdc32mhe
+                    references: organization(id)
+              - column:
+                  name: user_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+              - column:
+                  name: joined_at
+                  type: "timestamp(6) with time zone"
+                  constraints:
+                    nullable: false
+              - column:
+                  name: role
+                  type: varchar(20)
+                  constraints:
+                    nullable: false
+                    checkConstraint: "role IN ('MEMBER', 'ADMIN', 'OWNER')"
+
+        - addPrimaryKey:
+            tableName: organization_member
+            columnNames: organization_id, user_id
+            constraintName: organization_members_pkey
+
+        - addForeignKeyConstraint:
+            baseTableName: organization_member
+            baseColumnNames: user_id
+            constraintName: fk67edx4b35ogkpk3ghbhwand9i
+            referencedTableName: user
+            referencedColumnNames: id
+
+        - createTable:
+            tableName: stripe_customer
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: stripe_customer_id
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: stripe_subscription_id
+                  type: varchar(255)
+              - column:
+                  name: subscription_status
+                  type: varchar(50)
+              - column:
+                  name: current_period_end
+                  type: bigint
+              - column:
+                  name: price_id
+                  type: varchar(255)
+              - column:
+                  name: current_period_start
+                  type: bigint
+
+        - addForeignKeyConstraint:
+            baseTableName: stripe_customer
+            baseColumnNames: user_id
+            constraintName: fk_stripe_customer_user
+            referencedTableName: user
+            referencedColumnNames: id
+
+        - createTable:
+            tableName: transaction_labels
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: amount
+                  type: numeric(38, 2)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: booking_date
+                  type: date
+                  constraints:
+                    nullable: false
+              - column:
+                  name: category
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: "timestamp(6) with time zone"
+                  constraints:
+                    nullable: false
+              - column:
+                  name: purpose
+                  type: varchar(2000)
+              - column:
+                  name: source
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: subcategory
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+
+        - addForeignKeyConstraint:
+            baseTableName: transaction_labels
+            baseColumnNames: user_id
+            constraintName: fk74fyplm188n92utqucsjjml4p
+            referencedTableName: user
+            referencedColumnNames: id
+
+        # Indexes (categories_unique_idx uses COALESCE expression — not natively representable in Liquibase createIndex)
+        - sql:
+            sql: "create unique index categories_unique_idx on public.category (organization_id, COALESCE(parent_id, '-1'::integer::bigint), name);"
+
+        - createIndex:
+            tableName: spring_session
+            indexName: spring_session_ix1
+            unique: true
+            columns:
+              - column:
+                  name: session_id
+
+        - createIndex:
+            tableName: spring_session
+            indexName: spring_session_ix2
+            columns:
+              - column:
+                  name: expiry_time
+
+        - createIndex:
+            tableName: spring_session
+            indexName: spring_session_ix3
+            columns:
+              - column:
+                  name: principal_name
+
+        - createIndex:
+            tableName: transaction
+            indexName: idx_transaction_parent_id
+            columns:
+              - column:
+                  name: parent_id
+
+        - createIndex:
+            tableName: tier
+            indexName: uq_tier_is_default
+            unique: true
+            where: "is_default = true"
+            columns:
+              - column:
+                  name: is_default

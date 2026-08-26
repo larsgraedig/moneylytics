@@ -1,7 +1,7 @@
 databaseChangeLog:
   - changeSet:
-      id: "0002"
-      author: "initial"
+      id: "0003"
+      author: "lgraedig"
       dbms: postgresql
       changes:
         - renameTable:
