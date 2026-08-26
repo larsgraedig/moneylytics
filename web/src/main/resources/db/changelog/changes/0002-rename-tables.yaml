@@ -1,0 +1,18 @@
+databaseChangeLog:
+  - changeSet:
+      id: "0002"
+      author: "initial"
+      dbms: postgresql
+      changes:
+        - renameTable:
+            oldTableName: import_file
+            newTableName: transaction_import_file
+        - renameTable:
+            oldTableName: import_preview_session
+            newTableName: transaction_import_preview_session
+        - renameTable:
+            oldTableName: ignored_transaction
+            newTableName: transaction_import_ignored_transaction
+        - renameTable:
+            oldTableName: csv_profile
+            newTableName: transaction_import_csv_profile

@@ -74,5 +74,6 @@ The CSV uses German locale. Non-obvious details for `CsvTransactionParser`:
 ## Procedure
 
 - Always run `ktlintFormat` after adding new Kotlin files, then verify with `ktlintCheck` and `detekt` before finishing any code changes.
-- Flyway migrations are versioned sequentially (`V1`, `V2`, …). Check the highest existing version in `web/src/main/resources/db/migration/` before creating a new one to avoid conflicts.
+- Liquibase changesets are numbered sequentially (`0001`, `0002`, …). Check the highest existing number in `web/src/main/resources/db/changelog/changes/` before creating a new one.
+- New changesets are individual YAML files (`changes/XXXX-name.yaml`), referenced from `db.changelog-master.yaml` via `include`. Prefer native Liquibase change types (e.g. `renameTable`, `addColumn`) over raw `sql` blocks — they auto-generate rollback. When raw SQL is unavoidable, use a single `sql` block with `splitStatements: true` and a YAML block scalar (`|`) for multiple statements; add an explicit `rollback` block. Raw SQL scripts referenced by YAML changelogs live in `changes/scripts/`.
 - **Database table names are singular** (e.g. `account`, `transaction`, `organization`). Use `@Table(name = "singular_name")` in JPA entities. Note: `user` is a reserved word in PostgreSQL — quote it with backticks in the annotation: `@Table(name = "\`user\`")`.
