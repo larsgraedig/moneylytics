@@ -40,6 +40,7 @@ dependencies {
     implementation(libs.spring.session.jdbc)
     implementation(libs.springdoc.openapi.webflux.ui)
     implementation(libs.stripe.java)
+    implementation(libs.liquibase.core)
     testImplementation(libs.spring.boot.starter.webflux.test)
     testImplementation(libs.kotlin.test.junit5)
     testImplementation(libs.kotlinx.coroutines.test)

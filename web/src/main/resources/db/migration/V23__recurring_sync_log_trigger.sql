@@ -1,2 +1,0 @@
-ALTER TABLE recurring_sync_log
-    ADD COLUMN triggered_by VARCHAR(20) NOT NULL DEFAULT 'SCHEDULED';

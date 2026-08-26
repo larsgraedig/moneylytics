@@ -1,2 +1,0 @@
-ALTER TABLE transactions ALTER COLUMN category DROP NOT NULL;
-ALTER TABLE transactions ALTER COLUMN subcategory DROP NOT NULL;

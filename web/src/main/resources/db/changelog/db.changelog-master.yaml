@@ -1,0 +1,16 @@
+databaseChangeLog:
+  - changeSet:
+      id: "0001"
+      author: "initial"
+      dbms: postgresql
+      preConditions:
+        - onFail: MARK_RAN
+          not:
+            - tableExists:
+                tableName: organization
+      changes:
+        - sqlFile:
+            path: changes/0001-initial-schema.sql
+            relativeToChangelogFile: true
+            splitStatements: true
+            stripComments: false

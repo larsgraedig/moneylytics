@@ -11,6 +11,10 @@ spring:
   jpa:
     hibernate:
       ddl-auto: none
+  liquibase:
+    change-log: classpath:db/changelog/db.changelog-master.yaml
+  flyway:
+    enabled: false
 
   security:
     oauth2:

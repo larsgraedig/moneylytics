@@ -35,6 +35,7 @@ mockito-kotlin = { group = "org.mockito.kotlin", name = "mockito-kotlin", versio
 kotlin-logging = { group = "io.github.oshai", name = "kotlin-logging-jvm", version.ref = "kotlin-logging" }
 springdoc-openapi-webflux-ui = { group = "org.springdoc", name = "springdoc-openapi-starter-webflux-ui", version.ref = "springdoc-openapi" }
 stripe-java = { group = "com.stripe", name = "stripe-java", version.ref = "stripe" }
+liquibase-core = { group = "org.liquibase", name = "liquibase-core" }
 
 [plugins]
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
