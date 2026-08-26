@@ -1,7 +1,7 @@
 package com.moneylytics.api.adapter.input.web
 
-import com.moneylytics.api.adapter.output.persistence.CsvProfilePersistenceAdapter
-import com.moneylytics.api.adapter.output.persistence.ImportPreviewSessionPersistenceAdapter
+import com.moneylytics.api.adapter.output.persistence.TransactionImportCsvProfilePersistenceAdapter
+import com.moneylytics.api.adapter.output.persistence.TransactionImportPreviewSessionPersistenceAdapter
 import com.moneylytics.api.application.port.input.CheckDuplicatesUseCase
 import com.moneylytics.api.application.port.input.GetAccountsUseCase
 import com.moneylytics.api.application.port.input.ImportTransactionsResult
@@ -36,8 +36,8 @@ class GenericCsvControllerTest {
     private val importTransactionsUseCase: ImportTransactionsUseCase = mock()
     private val checkDuplicatesUseCase: CheckDuplicatesUseCase = mock()
     private val getAccountsUseCase: GetAccountsUseCase = mock()
-    private val csvProfileAdapter: CsvProfilePersistenceAdapter = mock()
-    private val importPreviewSessionAdapter: ImportPreviewSessionPersistenceAdapter = mock()
+    private val csvProfileAdapter: TransactionImportCsvProfilePersistenceAdapter = mock()
+    private val importPreviewSessionAdapter: TransactionImportPreviewSessionPersistenceAdapter = mock()
     private val categoryClassifier: CategoryClassifier = mock()
     private val controller =
         GenericCsvController(

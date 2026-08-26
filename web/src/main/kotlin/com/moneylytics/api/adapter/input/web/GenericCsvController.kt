@@ -1,7 +1,7 @@
 package com.moneylytics.api.adapter.input.web
 
-import com.moneylytics.api.adapter.output.persistence.CsvProfilePersistenceAdapter
-import com.moneylytics.api.adapter.output.persistence.ImportPreviewSessionPersistenceAdapter
+import com.moneylytics.api.adapter.output.persistence.TransactionImportCsvProfilePersistenceAdapter
+import com.moneylytics.api.adapter.output.persistence.TransactionImportPreviewSessionPersistenceAdapter
 import com.moneylytics.api.application.port.input.CheckDuplicatesUseCase
 import com.moneylytics.api.application.port.input.GetAccountsUseCase
 import com.moneylytics.api.application.port.input.ImportFileSpec
@@ -43,8 +43,8 @@ class GenericCsvController(
     private val checkDuplicatesUseCase: CheckDuplicatesUseCase,
     private val getAccountsUseCase: GetAccountsUseCase,
     private val resolveOrganizationUseCase: ResolveOrganizationUseCase,
-    private val csvProfileAdapter: CsvProfilePersistenceAdapter,
-    private val importPreviewSessionAdapter: ImportPreviewSessionPersistenceAdapter,
+    private val csvProfileAdapter: TransactionImportCsvProfilePersistenceAdapter,
+    private val importPreviewSessionAdapter: TransactionImportPreviewSessionPersistenceAdapter,
     private val categoryClassifier: CategoryClassifier,
 ) {
     @PostMapping("/detect", consumes = [MediaType.MULTIPART_FORM_DATA_VALUE])

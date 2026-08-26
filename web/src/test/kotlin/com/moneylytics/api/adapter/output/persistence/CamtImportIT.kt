@@ -1,17 +1,17 @@
 package com.moneylytics.api.adapter.output.persistence
 
 import com.moneylytics.api.application.service.CategoryService
-import com.moneylytics.api.application.service.IgnoredTransactionService
+import com.moneylytics.api.application.service.TransactionImportIgnoredTransactionService
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 
 class CamtImportIT : AbstractServiceIT() {
-    @Autowired private lateinit var ignoredTransactionService: IgnoredTransactionService
+    @Autowired private lateinit var ignoredTransactionService: TransactionImportIgnoredTransactionService
 
     @Autowired private lateinit var categoryService: CategoryService
 
-    @Autowired private lateinit var ignoredRepo: IgnoredTransactionJpaRepository
+    @Autowired private lateinit var ignoredRepo: TransactionImportIgnoredTransactionJpaRepository
 
     @Autowired private lateinit var categoryRepo: CategoryJpaRepository
 

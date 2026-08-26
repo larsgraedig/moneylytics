@@ -11,8 +11,8 @@ import jakarta.persistence.ManyToOne
 import jakarta.persistence.Table
 
 @Entity
-@Table(name = "import_file")
-class ImportFileEntity(
+@Table(name = "transaction_import_file")
+class TransactionImportFileEntity(
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "import_id", nullable = false)
     val import: TransactionImportEntity,

@@ -1,6 +1,6 @@
 package com.moneylytics.api.application.port.output
 
-interface IgnoredTransactionRepository {
+interface TransactionImportIgnoredTransactionRepository {
     fun findExistingFingerprints(
         fingerprints: Collection<String>,
         organizationId: Long,

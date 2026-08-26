@@ -8,8 +8,8 @@ import java.time.LocalDateTime
 import java.util.UUID
 
 @Entity
-@Table(name = "import_preview_session")
-class ImportPreviewSessionEntity(
+@Table(name = "transaction_import_preview_session")
+class TransactionImportPreviewSessionEntity(
     @Id
     val id: UUID,
     @Column(nullable = false, columnDefinition = "TEXT")

@@ -1,21 +1,21 @@
 package com.moneylytics.api.adapter.output.persistence
 
-import com.moneylytics.api.application.port.output.ImportFileRepository
-import com.moneylytics.api.domain.ImportFile
+import com.moneylytics.api.application.port.output.TransactionImportFileRepository
 import com.moneylytics.api.domain.ImportFileType
 import com.moneylytics.api.domain.ImportStatus
+import com.moneylytics.api.domain.TransactionImportFile
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
 
 @Component
-class ImportFilePersistenceAdapter(
-    private val jpaRepository: ImportFileJpaRepository,
+class TransactionImportFilePersistenceAdapter(
+    private val jpaRepository: TransactionImportFileJpaRepository,
     private val transactionImportJpaRepository: TransactionImportJpaRepository,
-) : ImportFileRepository {
+) : TransactionImportFileRepository {
     @Transactional
-    override fun save(file: ImportFile): ImportFile {
+    override fun save(file: TransactionImportFile): TransactionImportFile {
         val entity =
-            ImportFileEntity(
+            TransactionImportFileEntity(
                 import = transactionImportJpaRepository.getReferenceById(file.importId),
                 filename = file.filename,
                 checksum = file.checksum,
@@ -27,13 +27,14 @@ class ImportFilePersistenceAdapter(
     }
 
     @Transactional(readOnly = true)
-    override fun findAllByImportId(importId: Long): List<ImportFile> = jpaRepository.findByImportId(importId).map { it.toDomain() }
+    override fun findAllByImportId(importId: Long): List<TransactionImportFile> =
+        jpaRepository.findByImportId(importId).map { it.toDomain() }
 
     @Transactional(readOnly = true)
     override fun findByIdAndImportId(
         fileId: Long,
         importId: Long,
-    ): ImportFile? = jpaRepository.findByIdAndImportId(fileId, importId)?.toDomain()
+    ): TransactionImportFile? = jpaRepository.findByIdAndImportId(fileId, importId)?.toDomain()
 
     @Transactional
     override fun updateStatus(
@@ -52,8 +53,8 @@ class ImportFilePersistenceAdapter(
     @Transactional(readOnly = true)
     override fun findTransactionIdsByFileId(fileId: Long): List<Long> = jpaRepository.findTransactionIdsByImportFileId(fileId)
 
-    private fun ImportFileEntity.toDomain() =
-        ImportFile(
+    private fun TransactionImportFileEntity.toDomain() =
+        TransactionImportFile(
             id = id,
             importId = import.id!!,
             filename = filename,

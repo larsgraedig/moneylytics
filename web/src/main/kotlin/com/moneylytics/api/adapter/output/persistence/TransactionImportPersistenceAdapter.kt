@@ -1,17 +1,17 @@
 package com.moneylytics.api.adapter.output.persistence
 
 import com.moneylytics.api.application.port.output.TransactionImportRepository
-import com.moneylytics.api.domain.ImportFile
 import com.moneylytics.api.domain.ImportFileType
 import com.moneylytics.api.domain.ImportStatus
 import com.moneylytics.api.domain.TransactionImport
+import com.moneylytics.api.domain.TransactionImportFile
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
 
 @Component
 class TransactionImportPersistenceAdapter(
     private val jpaRepository: TransactionImportJpaRepository,
-    private val importFileJpaRepository: ImportFileJpaRepository,
+    private val importFileJpaRepository: TransactionImportFileJpaRepository,
     private val organizationJpaRepository: OrganizationJpaRepository,
 ) : TransactionImportRepository {
     @Transactional
@@ -58,7 +58,7 @@ class TransactionImportPersistenceAdapter(
         jpaRepository.save(entity)
     }
 
-    private fun TransactionImportEntity.toDomain(files: List<ImportFileEntity> = emptyList()) =
+    private fun TransactionImportEntity.toDomain(files: List<TransactionImportFileEntity> = emptyList()) =
         TransactionImport(
             id = id,
             organizationId = organization.id!!,
@@ -66,7 +66,7 @@ class TransactionImportPersistenceAdapter(
             status = ImportStatus.valueOf(status),
             files =
                 files.map { f ->
-                    ImportFile(
+                    TransactionImportFile(
                         id = f.id,
                         importId = id!!,
                         filename = f.filename,

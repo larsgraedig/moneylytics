@@ -1,14 +1,14 @@
 package com.moneylytics.api.adapter.output.persistence
 
-import com.moneylytics.api.application.port.output.IgnoredTransactionRepository
+import com.moneylytics.api.application.port.output.TransactionImportIgnoredTransactionRepository
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
 
 @Component
-class IgnoredTransactionPersistenceAdapter(
-    private val jpaRepository: IgnoredTransactionJpaRepository,
+class TransactionImportIgnoredTransactionPersistenceAdapter(
+    private val jpaRepository: TransactionImportIgnoredTransactionJpaRepository,
     private val organizationJpaRepository: OrganizationJpaRepository,
-) : IgnoredTransactionRepository {
+) : TransactionImportIgnoredTransactionRepository {
     @Transactional(readOnly = true)
     override fun findExistingFingerprints(
         fingerprints: Collection<String>,
@@ -25,7 +25,7 @@ class IgnoredTransactionPersistenceAdapter(
         val toSave =
             fingerprints
                 .filter { it !in existing }
-                .map { IgnoredTransactionEntity(fingerprint = it, organization = organization) }
+                .map { TransactionImportIgnoredTransactionEntity(fingerprint = it, organization = organization) }
         if (toSave.isNotEmpty()) jpaRepository.saveAll(toSave)
     }
 

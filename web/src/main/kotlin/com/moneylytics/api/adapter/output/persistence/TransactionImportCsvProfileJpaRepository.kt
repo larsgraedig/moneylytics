@@ -2,9 +2,9 @@ package com.moneylytics.api.adapter.output.persistence
 
 import org.springframework.data.jpa.repository.JpaRepository
 
-interface CsvProfileJpaRepository : JpaRepository<CsvProfileEntity, Long> {
+interface TransactionImportCsvProfileJpaRepository : JpaRepository<TransactionImportCsvProfileEntity, Long> {
     fun findByOrganizationIdAndFingerprint(
         organizationId: Long,
         fingerprint: String,
-    ): CsvProfileEntity?
+    ): TransactionImportCsvProfileEntity?
 }

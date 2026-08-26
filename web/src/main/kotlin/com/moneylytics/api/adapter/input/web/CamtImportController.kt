@@ -1,6 +1,6 @@
 package com.moneylytics.api.adapter.input.web
 
-import com.moneylytics.api.adapter.output.persistence.ImportPreviewSessionPersistenceAdapter
+import com.moneylytics.api.adapter.output.persistence.TransactionImportPreviewSessionPersistenceAdapter
 import com.moneylytics.api.application.port.input.CheckDuplicatesUseCase
 import com.moneylytics.api.application.port.input.EnrichTransactionUseCase
 import com.moneylytics.api.application.port.input.FindIgnoredFingerprintsUseCase
@@ -46,7 +46,7 @@ class CamtImportController(
     private val importTransactionsUseCase: ImportTransactionsUseCase,
     private val enrichTransactionUseCase: EnrichTransactionUseCase,
     private val resolveOrganizationUseCase: ResolveOrganizationUseCase,
-    private val importPreviewSessionAdapter: ImportPreviewSessionPersistenceAdapter,
+    private val importPreviewSessionAdapter: TransactionImportPreviewSessionPersistenceAdapter,
     private val categoryClassifier: CategoryClassifier,
 ) {
     companion object {

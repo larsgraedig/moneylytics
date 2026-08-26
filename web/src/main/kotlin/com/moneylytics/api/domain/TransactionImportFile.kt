@@ -1,6 +1,6 @@
 package com.moneylytics.api.domain
 
-data class ImportFile(
+data class TransactionImportFile(
     val id: Long? = null,
     val importId: Long,
     val filename: String,

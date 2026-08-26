@@ -9,8 +9,8 @@ import com.moneylytics.api.application.port.input.RejectImportFileUseCase
 import com.moneylytics.api.application.port.input.RejectImportResult
 import com.moneylytics.api.application.port.input.RejectImportUseCase
 import com.moneylytics.api.application.port.input.ResolveOrganizationUseCase
-import com.moneylytics.api.domain.ImportFile
 import com.moneylytics.api.domain.TransactionImport
+import com.moneylytics.api.domain.TransactionImportFile
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.springframework.http.ResponseEntity
@@ -184,7 +184,7 @@ class ImportController(
             files = files.map { it.toDto() },
         )
 
-    private fun ImportFile.toDto() =
+    private fun TransactionImportFile.toDto() =
         ImportFileDto(
             id = requireNotNull(id),
             filename = filename,

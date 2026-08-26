@@ -7,8 +7,8 @@ import java.time.LocalDateTime
 import java.util.UUID
 
 @Component
-class ImportPreviewSessionPersistenceAdapter(
-    private val jpaRepository: ImportPreviewSessionJpaRepository,
+class TransactionImportPreviewSessionPersistenceAdapter(
+    private val jpaRepository: TransactionImportPreviewSessionJpaRepository,
 ) {
     private val objectMapper = jacksonObjectMapper()
 
@@ -18,7 +18,7 @@ class ImportPreviewSessionPersistenceAdapter(
         expiresAt: LocalDateTime,
     ) {
         val json = objectMapper.writeValueAsString(rows)
-        jpaRepository.save(ImportPreviewSessionEntity(id = id, rowsJson = json, expiresAt = expiresAt))
+        jpaRepository.save(TransactionImportPreviewSessionEntity(id = id, rowsJson = json, expiresAt = expiresAt))
     }
 
     fun <T> load(

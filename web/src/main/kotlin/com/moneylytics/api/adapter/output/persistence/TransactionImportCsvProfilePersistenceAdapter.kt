@@ -7,8 +7,8 @@ import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
 
 @Component
-class CsvProfilePersistenceAdapter(
-    private val jpaRepository: CsvProfileJpaRepository,
+class TransactionImportCsvProfilePersistenceAdapter(
+    private val jpaRepository: TransactionImportCsvProfileJpaRepository,
 ) {
     private val objectMapper =
         jacksonObjectMapper()
@@ -34,7 +34,13 @@ class CsvProfilePersistenceAdapter(
             existing.mappingJson = json
             jpaRepository.save(existing)
         } else {
-            jpaRepository.save(CsvProfileEntity(organizationId = organizationId, fingerprint = fingerprint, mappingJson = json))
+            jpaRepository.save(
+                TransactionImportCsvProfileEntity(
+                    organizationId = organizationId,
+                    fingerprint = fingerprint,
+                    mappingJson = json,
+                ),
+            )
         }
     }
 }

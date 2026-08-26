@@ -13,7 +13,7 @@ import com.moneylytics.api.application.port.input.RejectImportFileResult
 import com.moneylytics.api.application.port.input.RejectImportFileUseCase
 import com.moneylytics.api.application.port.input.RejectImportResult
 import com.moneylytics.api.application.port.input.RejectImportUseCase
-import com.moneylytics.api.application.port.output.ImportFileRepository
+import com.moneylytics.api.application.port.output.TransactionImportFileRepository
 import com.moneylytics.api.application.port.output.TransactionImportRepository
 import com.moneylytics.api.application.port.output.TransactionRepository
 import com.moneylytics.api.domain.ImportStatus
@@ -30,7 +30,7 @@ class ImportManagementService(
     private val collectionTransactionJpaRepository: CollectionTransactionJpaRepository,
     private val budgetTransactionJpaRepository: BudgetTransactionJpaRepository,
     private val offsetJpaRepository: TransactionOffsetJpaRepository,
-    private val importFileRepository: ImportFileRepository,
+    private val importFileRepository: TransactionImportFileRepository,
 ) : GetImportsUseCase,
     RejectImportUseCase,
     RejectImportFileUseCase,

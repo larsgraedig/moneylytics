@@ -3,12 +3,12 @@ package com.moneylytics.api.adapter.output.persistence
 import com.moneylytics.api.application.port.output.AccountRepository
 import com.moneylytics.api.application.port.output.CategoryClassifier
 import com.moneylytics.api.application.port.output.CategoryRepository
-import com.moneylytics.api.application.port.output.IgnoredTransactionRepository
 import com.moneylytics.api.application.port.output.ThresholdRepository
+import com.moneylytics.api.application.port.output.TransactionImportIgnoredTransactionRepository
 import com.moneylytics.api.application.port.output.TransactionImportRepository
 import com.moneylytics.api.application.port.output.TransactionRepository
 import com.moneylytics.api.application.service.CategoryService
-import com.moneylytics.api.application.service.IgnoredTransactionService
+import com.moneylytics.api.application.service.TransactionImportIgnoredTransactionService
 import com.moneylytics.api.application.service.TransactionImportService
 import com.moneylytics.api.domain.CategoryClassifierFeatures
 import org.mockito.kotlin.any
@@ -54,10 +54,11 @@ class ServiceLayerTestConfig {
         )
 
     @Bean
-    fun ignoredTransactionPersistenceAdapter(
-        jpaRepository: IgnoredTransactionJpaRepository,
+    fun transactionImportIgnoredTransactionPersistenceAdapter(
+        jpaRepository: TransactionImportIgnoredTransactionJpaRepository,
         organizationJpaRepository: OrganizationJpaRepository,
-    ): IgnoredTransactionPersistenceAdapter = IgnoredTransactionPersistenceAdapter(jpaRepository, organizationJpaRepository)
+    ): TransactionImportIgnoredTransactionPersistenceAdapter =
+        TransactionImportIgnoredTransactionPersistenceAdapter(jpaRepository, organizationJpaRepository)
 
     @Bean
     fun categoryPersistenceAdapter(
@@ -75,16 +76,16 @@ class ServiceLayerTestConfig {
     @Bean
     fun transactionImportRepository(
         jpaRepository: TransactionImportJpaRepository,
-        importFileJpaRepository: ImportFileJpaRepository,
+        importFileJpaRepository: TransactionImportFileJpaRepository,
         organizationJpaRepository: OrganizationJpaRepository,
     ): TransactionImportPersistenceAdapter =
         TransactionImportPersistenceAdapter(jpaRepository, importFileJpaRepository, organizationJpaRepository)
 
     @Bean
-    fun importFileRepository(
-        jpaRepository: ImportFileJpaRepository,
+    fun transactionImportFileRepository(
+        jpaRepository: TransactionImportFileJpaRepository,
         transactionImportJpaRepository: TransactionImportJpaRepository,
-    ): ImportFilePersistenceAdapter = ImportFilePersistenceAdapter(jpaRepository, transactionImportJpaRepository)
+    ): TransactionImportFilePersistenceAdapter = TransactionImportFilePersistenceAdapter(jpaRepository, transactionImportJpaRepository)
 
     @Bean
     fun transactionImportService(
@@ -93,7 +94,7 @@ class ServiceLayerTestConfig {
         categoryRepository: CategoryRepository,
         categoryClassifier: CategoryClassifier,
         transactionImportRepository: TransactionImportRepository,
-        importFileRepository: com.moneylytics.api.application.port.output.ImportFileRepository,
+        importFileRepository: com.moneylytics.api.application.port.output.TransactionImportFileRepository,
     ): TransactionImportService =
         TransactionImportService(
             transactionRepository,
@@ -105,8 +106,9 @@ class ServiceLayerTestConfig {
         )
 
     @Bean
-    fun ignoredTransactionService(repository: IgnoredTransactionRepository): IgnoredTransactionService =
-        IgnoredTransactionService(repository)
+    fun transactionImportIgnoredTransactionService(
+        repository: TransactionImportIgnoredTransactionRepository,
+    ): TransactionImportIgnoredTransactionService = TransactionImportIgnoredTransactionService(repository)
 
     @Bean
     fun thresholdRepository(): ThresholdRepository = mock()

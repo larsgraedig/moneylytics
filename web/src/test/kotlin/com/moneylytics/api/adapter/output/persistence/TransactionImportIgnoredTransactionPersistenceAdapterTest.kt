@@ -9,10 +9,10 @@ import org.mockito.kotlin.never
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 
-class IgnoredTransactionPersistenceAdapterTest {
-    private val jpaRepository: IgnoredTransactionJpaRepository = mock()
+class TransactionImportIgnoredTransactionPersistenceAdapterTest {
+    private val jpaRepository: TransactionImportIgnoredTransactionJpaRepository = mock()
     private val organizationJpaRepository: OrganizationJpaRepository = mock()
-    private val adapter = IgnoredTransactionPersistenceAdapter(jpaRepository, organizationJpaRepository)
+    private val adapter = TransactionImportIgnoredTransactionPersistenceAdapter(jpaRepository, organizationJpaRepository)
 
     private val organizationId = 1L
     private val organizationEntity = OrganizationEntity(name = "Test Org", id = organizationId)
@@ -33,7 +33,7 @@ class IgnoredTransactionPersistenceAdapterTest {
 
         adapter.saveAll(listOf("fp1", "fp2"), organizationId)
 
-        val captor = argumentCaptor<List<IgnoredTransactionEntity>>()
+        val captor = argumentCaptor<List<TransactionImportIgnoredTransactionEntity>>()
         verify(jpaRepository).saveAll(captor.capture())
         assertThat(captor.firstValue).hasSize(1)
         assertThat(captor.firstValue[0].fingerprint).isEqualTo("fp2")
@@ -46,7 +46,7 @@ class IgnoredTransactionPersistenceAdapterTest {
 
         adapter.saveAll(listOf("fp1"), organizationId)
 
-        verify(jpaRepository, never()).saveAll(any<List<IgnoredTransactionEntity>>())
+        verify(jpaRepository, never()).saveAll(any<List<TransactionImportIgnoredTransactionEntity>>())
     }
 
     @Test
@@ -56,7 +56,7 @@ class IgnoredTransactionPersistenceAdapterTest {
 
         adapter.saveAll(listOf("fp1", "fp2"), organizationId)
 
-        val captor = argumentCaptor<List<IgnoredTransactionEntity>>()
+        val captor = argumentCaptor<List<TransactionImportIgnoredTransactionEntity>>()
         verify(jpaRepository).saveAll(captor.capture())
         assertThat(captor.firstValue).hasSize(2)
     }

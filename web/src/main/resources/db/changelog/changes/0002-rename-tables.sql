@@ -1,0 +1,4 @@
+alter table import_file rename to transaction_import_file;
+alter table import_preview_session rename to transaction_import_preview_session;
+alter table ignored_transaction rename to transaction_import_ignored_transaction;
+alter table csv_profile rename to transaction_import_csv_profile;

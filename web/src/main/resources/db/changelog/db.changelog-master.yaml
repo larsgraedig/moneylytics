@@ -14,3 +14,13 @@ databaseChangeLog:
             relativeToChangelogFile: true
             splitStatements: true
             stripComments: false
+  - changeSet:
+      id: "0002"
+      author: "initial"
+      dbms: postgresql
+      changes:
+        - sqlFile:
+            path: changes/0002-rename-tables.sql
+            relativeToChangelogFile: true
+            splitStatements: true
+            stripComments: false

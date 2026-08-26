@@ -13,10 +13,10 @@ import jakarta.persistence.UniqueConstraint
 
 @Entity
 @Table(
-    name = "ignored_transaction",
+    name = "transaction_import_ignored_transaction",
     uniqueConstraints = [UniqueConstraint(columnNames = ["fingerprint", "organization_id"])],
 )
-class IgnoredTransactionEntity(
+class TransactionImportIgnoredTransactionEntity(
     @Column(nullable = false, length = 64)
     val fingerprint: String,
     @ManyToOne(fetch = FetchType.LAZY, optional = false)

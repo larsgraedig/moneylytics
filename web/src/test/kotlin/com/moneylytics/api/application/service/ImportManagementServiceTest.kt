@@ -6,13 +6,13 @@ import com.moneylytics.api.adapter.output.persistence.TransactionJpaRepository
 import com.moneylytics.api.adapter.output.persistence.TransactionOffsetJpaRepository
 import com.moneylytics.api.application.port.input.RejectImportFileResult
 import com.moneylytics.api.application.port.input.RejectImportResult
-import com.moneylytics.api.application.port.output.ImportFileRepository
+import com.moneylytics.api.application.port.output.TransactionImportFileRepository
 import com.moneylytics.api.application.port.output.TransactionImportRepository
 import com.moneylytics.api.application.port.output.TransactionRepository
-import com.moneylytics.api.domain.ImportFile
 import com.moneylytics.api.domain.ImportFileType
 import com.moneylytics.api.domain.ImportStatus
 import com.moneylytics.api.domain.TransactionImport
+import com.moneylytics.api.domain.TransactionImportFile
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.any
@@ -30,7 +30,7 @@ class ImportManagementServiceTest {
     private val collectionTransactionJpaRepository: CollectionTransactionJpaRepository = mock()
     private val budgetTransactionJpaRepository: BudgetTransactionJpaRepository = mock()
     private val offsetJpaRepository: TransactionOffsetJpaRepository = mock()
-    private val importFileRepository: ImportFileRepository = mock()
+    private val importFileRepository: TransactionImportFileRepository = mock()
 
     private val service =
         ImportManagementService(
@@ -54,7 +54,7 @@ class ImportManagementServiceTest {
             importedAt = Instant.now(),
         )
     private val activeFile =
-        ImportFile(
+        TransactionImportFile(
             id = fileId,
             importId = importId,
             filename = "test.csv",

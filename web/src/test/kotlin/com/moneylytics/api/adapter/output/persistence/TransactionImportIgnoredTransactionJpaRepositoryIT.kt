@@ -4,13 +4,13 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 
-class IgnoredTransactionJpaRepositoryIT : AbstractJpaRepositoryIT() {
-    @Autowired private lateinit var ignoredRepo: IgnoredTransactionJpaRepository
+class TransactionImportIgnoredTransactionJpaRepositoryIT : AbstractJpaRepositoryIT() {
+    @Autowired private lateinit var ignoredRepo: TransactionImportIgnoredTransactionJpaRepository
 
     @Test
     fun `should return fingerprints that exist for user`() {
-        ignoredRepo.save(IgnoredTransactionEntity(fingerprint = "fp-a", organization = organization))
-        ignoredRepo.save(IgnoredTransactionEntity(fingerprint = "fp-b", organization = organization))
+        ignoredRepo.save(TransactionImportIgnoredTransactionEntity(fingerprint = "fp-a", organization = organization))
+        ignoredRepo.save(TransactionImportIgnoredTransactionEntity(fingerprint = "fp-b", organization = organization))
 
         val result =
             ignoredRepo.findExistingFingerprints(
@@ -23,8 +23,8 @@ class IgnoredTransactionJpaRepositoryIT : AbstractJpaRepositoryIT() {
 
     @Test
     fun `should not return fingerprints belonging to other user`() {
-        ignoredRepo.save(IgnoredTransactionEntity(fingerprint = "fp-mine", organization = organization))
-        ignoredRepo.save(IgnoredTransactionEntity(fingerprint = "fp-theirs", organization = otherOrganization))
+        ignoredRepo.save(TransactionImportIgnoredTransactionEntity(fingerprint = "fp-mine", organization = organization))
+        ignoredRepo.save(TransactionImportIgnoredTransactionEntity(fingerprint = "fp-theirs", organization = otherOrganization))
 
         val result =
             ignoredRepo.findExistingFingerprints(
@@ -37,7 +37,7 @@ class IgnoredTransactionJpaRepositoryIT : AbstractJpaRepositoryIT() {
 
     @Test
     fun `should return empty list when no fingerprints match`() {
-        ignoredRepo.save(IgnoredTransactionEntity(fingerprint = "fp-stored", organization = organization))
+        ignoredRepo.save(TransactionImportIgnoredTransactionEntity(fingerprint = "fp-stored", organization = organization))
 
         val result =
             ignoredRepo.findExistingFingerprints(
@@ -50,8 +50,8 @@ class IgnoredTransactionJpaRepositoryIT : AbstractJpaRepositoryIT() {
 
     @Test
     fun `should delete ignored transactions by fingerprints and user id`() {
-        ignoredRepo.save(IgnoredTransactionEntity(fingerprint = "fp-delete", organization = organization))
-        ignoredRepo.save(IgnoredTransactionEntity(fingerprint = "fp-keep", organization = organization))
+        ignoredRepo.save(TransactionImportIgnoredTransactionEntity(fingerprint = "fp-delete", organization = organization))
+        ignoredRepo.save(TransactionImportIgnoredTransactionEntity(fingerprint = "fp-keep", organization = organization))
         flushAndClear()
 
         ignoredRepo.deleteByFingerprintInAndOrganizationId(listOf("fp-delete"), organizationId)
@@ -63,7 +63,7 @@ class IgnoredTransactionJpaRepositoryIT : AbstractJpaRepositoryIT() {
 
     @Test
     fun `should not delete ignored transactions belonging to other user`() {
-        ignoredRepo.save(IgnoredTransactionEntity(fingerprint = "fp-theirs", organization = otherOrganization))
+        ignoredRepo.save(TransactionImportIgnoredTransactionEntity(fingerprint = "fp-theirs", organization = otherOrganization))
         flushAndClear()
 
         ignoredRepo.deleteByFingerprintInAndOrganizationId(listOf("fp-theirs"), organizationId)

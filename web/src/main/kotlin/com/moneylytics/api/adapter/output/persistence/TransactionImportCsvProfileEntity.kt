@@ -8,8 +8,8 @@ import jakarta.persistence.Id
 import jakarta.persistence.Table
 
 @Entity
-@Table(name = "csv_profile")
-class CsvProfileEntity(
+@Table(name = "transaction_import_csv_profile")
+class TransactionImportCsvProfileEntity(
     @Column(nullable = false)
     val organizationId: Long,
     @Column(nullable = false)

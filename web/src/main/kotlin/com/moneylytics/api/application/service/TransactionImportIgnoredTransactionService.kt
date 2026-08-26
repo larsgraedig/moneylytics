@@ -2,12 +2,12 @@ package com.moneylytics.api.application.service
 
 import com.moneylytics.api.application.port.input.FindIgnoredFingerprintsUseCase
 import com.moneylytics.api.application.port.input.UpdateIgnoredTransactionsUseCase
-import com.moneylytics.api.application.port.output.IgnoredTransactionRepository
+import com.moneylytics.api.application.port.output.TransactionImportIgnoredTransactionRepository
 import org.springframework.stereotype.Service
 
 @Service
-class IgnoredTransactionService(
-    private val repository: IgnoredTransactionRepository,
+class TransactionImportIgnoredTransactionService(
+    private val repository: TransactionImportIgnoredTransactionRepository,
 ) : FindIgnoredFingerprintsUseCase,
     UpdateIgnoredTransactionsUseCase {
     override fun findIgnoredFingerprints(

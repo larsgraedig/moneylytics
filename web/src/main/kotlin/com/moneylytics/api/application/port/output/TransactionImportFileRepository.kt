@@ -1,17 +1,17 @@
 package com.moneylytics.api.application.port.output
 
-import com.moneylytics.api.domain.ImportFile
 import com.moneylytics.api.domain.ImportStatus
+import com.moneylytics.api.domain.TransactionImportFile
 
-interface ImportFileRepository {
-    fun save(file: ImportFile): ImportFile
+interface TransactionImportFileRepository {
+    fun save(file: TransactionImportFile): TransactionImportFile
 
-    fun findAllByImportId(importId: Long): List<ImportFile>
+    fun findAllByImportId(importId: Long): List<TransactionImportFile>
 
     fun findByIdAndImportId(
         fileId: Long,
         importId: Long,
-    ): ImportFile?
+    ): TransactionImportFile?
 
     fun updateStatus(
         fileId: Long,

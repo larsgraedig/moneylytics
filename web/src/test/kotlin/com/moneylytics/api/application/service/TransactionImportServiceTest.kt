@@ -9,11 +9,11 @@ import com.moneylytics.api.application.port.output.TransactionImportRepository
 import com.moneylytics.api.application.port.output.TransactionRepository
 import com.moneylytics.api.domain.Account
 import com.moneylytics.api.domain.AccountBalance
-import com.moneylytics.api.domain.ImportFile
 import com.moneylytics.api.domain.ImportFileType
 import com.moneylytics.api.domain.ImportStatus
 import com.moneylytics.api.domain.Transaction
 import com.moneylytics.api.domain.TransactionImport
+import com.moneylytics.api.domain.TransactionImportFile
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -31,7 +31,7 @@ class TransactionImportServiceTest {
     private val categoryRepository: CategoryRepository = mock()
     private val categoryClassifier: CategoryClassifier = mock()
     private val transactionImportRepository: TransactionImportRepository = mock()
-    private val importFileRepository: com.moneylytics.api.application.port.output.ImportFileRepository = mock()
+    private val importFileRepository: com.moneylytics.api.application.port.output.TransactionImportFileRepository = mock()
     private val service =
         TransactionImportService(
             transactionRepository,
@@ -52,7 +52,7 @@ class TransactionImportServiceTest {
         )
 
     private val savedFile =
-        ImportFile(
+        TransactionImportFile(
             id = 1L,
             importId = 42L,
             filename = "test.csv",

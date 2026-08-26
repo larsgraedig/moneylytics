@@ -4,14 +4,14 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 
-class CsvProfileJpaRepositoryIT : AbstractJpaRepositoryIT() {
-    @Autowired private lateinit var csvProfileRepo: CsvProfileJpaRepository
+class TransactionImportCsvProfileJpaRepositoryIT : AbstractJpaRepositoryIT() {
+    @Autowired private lateinit var csvProfileRepo: TransactionImportCsvProfileJpaRepository
 
     @Test
     fun `should find csv profile by user id and fingerprint`() {
         val profile =
             csvProfileRepo.save(
-                CsvProfileEntity(
+                TransactionImportCsvProfileEntity(
                     organizationId = organizationId,
                     fingerprint = "csv-fp-abc123",
                     mappingJson = """{"dateColumn":"Datum"}""",
@@ -28,7 +28,7 @@ class CsvProfileJpaRepositoryIT : AbstractJpaRepositoryIT() {
     @Test
     fun `should return null when fingerprint does not exist`() {
         csvProfileRepo.save(
-            CsvProfileEntity(organizationId = organizationId, fingerprint = "csv-fp-abc123", mappingJson = "{}"),
+            TransactionImportCsvProfileEntity(organizationId = organizationId, fingerprint = "csv-fp-abc123", mappingJson = "{}"),
         )
 
         val result = csvProfileRepo.findByOrganizationIdAndFingerprint(organizationId, "csv-fp-unknown")
@@ -39,7 +39,11 @@ class CsvProfileJpaRepositoryIT : AbstractJpaRepositoryIT() {
     @Test
     fun `should return null when profile belongs to different user`() {
         csvProfileRepo.save(
-            CsvProfileEntity(organizationId = otherOrganizationId, fingerprint = "csv-fp-abc123", mappingJson = "{}"),
+            TransactionImportCsvProfileEntity(
+                organizationId = otherOrganizationId,
+                fingerprint = "csv-fp-abc123",
+                mappingJson = "{}",
+            ),
         )
 
         val result = csvProfileRepo.findByOrganizationIdAndFingerprint(organizationId, "csv-fp-abc123")
@@ -50,10 +54,18 @@ class CsvProfileJpaRepositoryIT : AbstractJpaRepositoryIT() {
     @Test
     fun `should allow same fingerprint for different users`() {
         csvProfileRepo.save(
-            CsvProfileEntity(organizationId = organizationId, fingerprint = "csv-fp-shared", mappingJson = """{"dateColumn":"A"}"""),
+            TransactionImportCsvProfileEntity(
+                organizationId = organizationId,
+                fingerprint = "csv-fp-shared",
+                mappingJson = """{"dateColumn":"A"}""",
+            ),
         )
         csvProfileRepo.save(
-            CsvProfileEntity(organizationId = otherOrganizationId, fingerprint = "csv-fp-shared", mappingJson = """{"dateColumn":"B"}"""),
+            TransactionImportCsvProfileEntity(
+                organizationId = otherOrganizationId,
+                fingerprint = "csv-fp-shared",
+                mappingJson = """{"dateColumn":"B"}""",
+            ),
         )
 
         val result = csvProfileRepo.findByOrganizationIdAndFingerprint(organizationId, "csv-fp-shared")

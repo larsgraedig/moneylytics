@@ -1,6 +1,6 @@
 package com.moneylytics.api.application.service
 
-import com.moneylytics.api.application.port.output.IgnoredTransactionRepository
+import com.moneylytics.api.application.port.output.TransactionImportIgnoredTransactionRepository
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.any
@@ -9,9 +9,9 @@ import org.mockito.kotlin.never
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 
-class IgnoredTransactionServiceTest {
-    private val repository: IgnoredTransactionRepository = mock()
-    private val service = IgnoredTransactionService(repository)
+class TransactionImportIgnoredTransactionServiceTest {
+    private val repository: TransactionImportIgnoredTransactionRepository = mock()
+    private val service = TransactionImportIgnoredTransactionService(repository)
 
     private val organizationId = 1L
 

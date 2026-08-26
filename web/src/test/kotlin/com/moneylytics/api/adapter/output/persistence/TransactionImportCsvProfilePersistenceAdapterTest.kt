@@ -10,9 +10,9 @@ import org.mockito.kotlin.mock
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 
-class CsvProfilePersistenceAdapterTest {
-    private val jpaRepository: CsvProfileJpaRepository = mock()
-    private val adapter = CsvProfilePersistenceAdapter(jpaRepository)
+class TransactionImportCsvProfilePersistenceAdapterTest {
+    private val jpaRepository: TransactionImportCsvProfileJpaRepository = mock()
+    private val adapter = TransactionImportCsvProfilePersistenceAdapter(jpaRepository)
 
     private val organizationId = 1L
     private val fingerprint = "abc123"
@@ -44,7 +44,13 @@ class CsvProfilePersistenceAdapterTest {
 
     @Test
     fun `should return null on JSON parse error`() {
-        val entity = CsvProfileEntity(organizationId = organizationId, fingerprint = fingerprint, mappingJson = "not-valid-json", id = 1L)
+        val entity =
+            TransactionImportCsvProfileEntity(
+                organizationId = organizationId,
+                fingerprint = fingerprint,
+                mappingJson = "not-valid-json",
+                id = 1L,
+            )
         whenever(jpaRepository.findByOrganizationIdAndFingerprint(organizationId, fingerprint)).thenReturn(entity)
 
         val result = adapter.findMapping(organizationId, fingerprint)
@@ -54,7 +60,13 @@ class CsvProfilePersistenceAdapterTest {
 
     @Test
     fun `should return parsed GenericCsvMapping when found`() {
-        val entity = CsvProfileEntity(organizationId = organizationId, fingerprint = fingerprint, mappingJson = mappingJson, id = 1L)
+        val entity =
+            TransactionImportCsvProfileEntity(
+                organizationId = organizationId,
+                fingerprint = fingerprint,
+                mappingJson = mappingJson,
+                id = 1L,
+            )
         whenever(jpaRepository.findByOrganizationIdAndFingerprint(organizationId, fingerprint)).thenReturn(entity)
 
         val result = adapter.findMapping(organizationId, fingerprint)
@@ -71,12 +83,18 @@ class CsvProfilePersistenceAdapterTest {
 
         adapter.saveMapping(organizationId, fingerprint, mapping)
 
-        verify(jpaRepository).save(any<CsvProfileEntity>())
+        verify(jpaRepository).save(any<TransactionImportCsvProfileEntity>())
     }
 
     @Test
     fun `should update existing profile JSON in saveMapping`() {
-        val existing = CsvProfileEntity(organizationId = organizationId, fingerprint = fingerprint, mappingJson = "{}", id = 1L)
+        val existing =
+            TransactionImportCsvProfileEntity(
+                organizationId = organizationId,
+                fingerprint = fingerprint,
+                mappingJson = "{}",
+                id = 1L,
+            )
         whenever(jpaRepository.findByOrganizationIdAndFingerprint(organizationId, fingerprint)).thenReturn(existing)
 
         val updatedMapping = mapping.copy(delimiter = ",")

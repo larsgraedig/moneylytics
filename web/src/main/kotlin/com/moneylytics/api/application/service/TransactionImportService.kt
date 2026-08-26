@@ -6,15 +6,15 @@ import com.moneylytics.api.application.port.input.ImportTransactionsUseCase
 import com.moneylytics.api.application.port.output.AccountRepository
 import com.moneylytics.api.application.port.output.CategoryClassifier
 import com.moneylytics.api.application.port.output.CategoryRepository
-import com.moneylytics.api.application.port.output.ImportFileRepository
+import com.moneylytics.api.application.port.output.TransactionImportFileRepository
 import com.moneylytics.api.application.port.output.TransactionImportRepository
 import com.moneylytics.api.application.port.output.TransactionRepository
 import com.moneylytics.api.domain.Account
 import com.moneylytics.api.domain.Category
 import com.moneylytics.api.domain.CategoryClassifierFeatures
-import com.moneylytics.api.domain.ImportFile
 import com.moneylytics.api.domain.Transaction
 import com.moneylytics.api.domain.TransactionImport
+import com.moneylytics.api.domain.TransactionImportFile
 import org.springframework.stereotype.Service
 
 @Service
@@ -24,7 +24,7 @@ class TransactionImportService(
     private val categoryRepository: CategoryRepository,
     private val categoryClassifier: CategoryClassifier,
     private val transactionImportRepository: TransactionImportRepository,
-    private val importFileRepository: ImportFileRepository,
+    private val importFileRepository: TransactionImportFileRepository,
 ) : ImportTransactionsUseCase {
     override fun importTransactions(command: ImportTransactionsCommand): ImportTransactionsResult {
         command.accountNames.forEach { (iban, name) ->
@@ -50,7 +50,7 @@ class TransactionImportService(
                 }
             val importFile =
                 importFileRepository.save(
-                    ImportFile(
+                    TransactionImportFile(
                         importId = importId,
                         filename = spec.filename,
                         checksum = spec.checksum,

@@ -1,6 +1,6 @@
 package com.moneylytics.api.adapter.input.web
 
-import com.moneylytics.api.adapter.output.persistence.ImportPreviewSessionPersistenceAdapter
+import com.moneylytics.api.adapter.output.persistence.TransactionImportPreviewSessionPersistenceAdapter
 import com.moneylytics.api.application.port.input.CheckDuplicatesUseCase
 import com.moneylytics.api.application.port.input.EnrichTransactionUseCase
 import com.moneylytics.api.application.port.input.FindIgnoredFingerprintsUseCase
@@ -36,7 +36,7 @@ class CamtImportControllerTest {
     private val updateIgnoredTransactionsUseCase: UpdateIgnoredTransactionsUseCase = mock()
     private val importTransactionsUseCase: ImportTransactionsUseCase = mock()
     private val enrichTransactionUseCase: EnrichTransactionUseCase = mock()
-    private val importPreviewSessionAdapter: ImportPreviewSessionPersistenceAdapter = mock()
+    private val importPreviewSessionAdapter: TransactionImportPreviewSessionPersistenceAdapter = mock()
     private val categoryClassifier: CategoryClassifier = mock()
     private val controller =
         CamtImportController(
