@@ -112,11 +112,11 @@
       "gridPos": { "x": 16, "y": 8, "w": 8, "h": 4 },
       "fieldConfig": {
         "defaults": {
-          "color": { "mode": "fixed", "fixedColor": "blue" },
+          "color": { "mode": "fixed", "fixedColor": "green" },
           "noValue": "-",
           "thresholds": {
             "mode": "absolute",
-            "steps": [{ "color": "blue", "value": null }]
+            "steps": [{ "color": "green", "value": null }]
           }
         }
       },
@@ -145,7 +145,7 @@
         {
           "id": "filterFieldsByName",
           "options": {
-            "include": { "names": ["Time", "log_level", "message"] }
+            "include": { "pattern": "Time|log_level|message" }
           }
         },
         {
@@ -161,7 +161,7 @@
       "targets": [
         {
           "datasource": { "type": "loki" },
-          "expr": "{namespace=~\"$namespace\", service_name=\"api\", container=\"moneylytics\"} | json",
+          "expr": "{namespace=~\"$namespace\", service_name=\"api\", container=\"moneylytics\"} | json message, log_level=\"log.level\"",
           "legendFormat": ""
         }
       ]
