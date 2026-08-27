@@ -36,6 +36,9 @@ kotlin-logging = { group = "io.github.oshai", name = "kotlin-logging-jvm", versi
 springdoc-openapi-webflux-ui = { group = "org.springdoc", name = "springdoc-openapi-starter-webflux-ui", version.ref = "springdoc-openapi" }
 stripe-java = { group = "com.stripe", name = "stripe-java", version.ref = "stripe" }
 liquibase-core = { group = "org.liquibase", name = "liquibase-core" }
+spring-boot-starter-actuator = { group = "org.springframework.boot", name = "spring-boot-starter-actuator" }
+micrometer-tracing-bridge-otel = { group = "io.micrometer", name = "micrometer-tracing-bridge-otel" }
+opentelemetry-exporter-otlp = { group = "io.opentelemetry", name = "opentelemetry-exporter-otlp" }
 
 [plugins]
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }

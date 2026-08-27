@@ -1,0 +1,13 @@
+{{- range $path, $bytes := .Files.Glob "files/*.json" }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ base $path | trimSuffix ".json" | replace "_" "-" }}
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+data:
+  {{ base $path }}: |
+{{ $bytes | toString | indent 4 }}
+{{- end }}

@@ -1,0 +1,91 @@
+grafana:
+  admin:
+    existingSecret: grafana-admin
+    userKey: admin-user
+    passwordKey: admin-password
+
+  persistence:
+    enabled: true
+    size: 2Gi
+
+  sidecar:
+    dashboards:
+      enabled: true
+      label: grafana_dashboard
+      labelValue: "1"
+      searchNamespace: monitoring
+
+  additionalDataSources:
+    - name: Loki
+      type: loki
+      url: http://loki-gateway.monitoring.svc.cluster.local
+      jsonData:
+        maxLines: 1000
+        derivedFields:
+          - name: TraceID
+            matcherRegex: '"trace\.id":"([^"]+)"'
+            url: "$${__value.raw}"
+            datasourceUid: tempo
+    - name: Tempo
+      type: tempo
+      uid: tempo
+      url: http://tempo.monitoring.svc.cluster.local:3100
+      jsonData:
+        tracesToLogsV2:
+          datasourceUid: loki
+          tags:
+            - key: namespace
+            - key: pod
+          filterByTraceID: true
+
+  ingress:
+    enabled: true
+    ingressClassName: traefik
+    annotations:
+      cert-manager.io/cluster-issuer: letsencrypt-prod
+      traefik.ingress.kubernetes.io/router.entrypoints: websecure
+      traefik.ingress.kubernetes.io/router.tls: "true"
+    hosts:
+      - grafana.moneylytics.io
+    tls:
+      - secretName: grafana-tls
+        hosts:
+          - grafana.moneylytics.io
+
+prometheus:
+  prometheusSpec:
+    retention: 7d
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          resources:
+            requests:
+              storage: 20Gi
+    podMonitorSelectorNilUsesHelmValues: false
+    serviceMonitorSelectorNilUsesHelmValues: false
+    additionalScrapeConfigs:
+      - job_name: kubernetes-pods-annotated
+        kubernetes_sd_configs:
+          - role: pod
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+            action: keep
+            regex: "true"
+          - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
+            action: replace
+            target_label: __metrics_path__
+            regex: (.+)
+          - source_labels: [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
+            action: replace
+            target_label: __address__
+            regex: ([^:]+)(?::\d+)?;(\d+)
+            replacement: $1:$2
+          - source_labels: [__meta_kubernetes_namespace]
+            action: replace
+            target_label: namespace
+          - source_labels: [__meta_kubernetes_pod_name]
+            action: replace
+            target_label: pod
+
+alertmanager:
+  enabled: true

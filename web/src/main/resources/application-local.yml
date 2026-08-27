@@ -3,6 +3,10 @@ logging:
     format:
       console: ""
 
+management:
+  tracing:
+    enabled: false
+
 app:
   oauth2-success-redirect: http://localhost:5173
 

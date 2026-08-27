@@ -1,0 +1,4 @@
+apiVersion: v2
+name: moneylytics-dashboards
+description: Grafana dashboards for Moneylytics
+version: 0.1.0

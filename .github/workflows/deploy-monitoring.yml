@@ -1,0 +1,79 @@
+name: Deploy Monitoring Stack
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Deploy Monitoring to Cluster
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Write kubeconfig
+        run: |
+          mkdir -p ~/.kube
+          echo "${{ secrets.KUBE_CONFIG_PROD }}" | base64 --decode > ~/.kube/config
+          chmod 600 ~/.kube/config
+
+      - name: Install Helm
+        uses: azure/setup-helm@v4
+
+      - name: Add Helm repos
+        run: |
+          helm repo add grafana https://grafana.github.io/helm-charts
+          helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+          helm repo update
+
+      - name: Ensure monitoring namespace
+        run: kubectl create namespace monitoring --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Ensure grafana-admin secret
+        run: |
+          kubectl create secret generic grafana-admin \
+            -n monitoring \
+            --context moneylytics \
+            --from-literal=admin-user=admin \
+            --from-literal=admin-password='${{ secrets.GRAFANA_ADMIN_PASSWORD }}' \
+            --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Deploy kube-prometheus-stack
+        run: |
+          helm upgrade --install kube-prometheus-stack prometheus-community/kube-prometheus-stack \
+            -n monitoring \
+            --kube-context moneylytics \
+            -f deployment/monitoring/kube-prometheus-stack-values.yaml \
+            --timeout 10m
+
+      - name: Deploy Loki
+        run: |
+          helm upgrade --install loki grafana/loki \
+            -n monitoring \
+            --kube-context moneylytics \
+            -f deployment/monitoring/loki-values.yaml
+
+      - name: Deploy Promtail
+        run: |
+          helm upgrade --install promtail grafana/promtail \
+            -n monitoring \
+            --kube-context moneylytics \
+            -f deployment/monitoring/promtail-values.yaml
+
+      - name: Deploy Tempo
+        run: |
+          helm upgrade --install tempo grafana/tempo \
+            -n monitoring \
+            --kube-context moneylytics \
+            -f deployment/monitoring/tempo-values.yaml
+
+      - name: Deploy Dashboards
+        run: |
+          helm upgrade --install moneylytics-dashboards ./deployment/monitoring/dashboards \
+            -n monitoring \
+            --kube-context moneylytics
+
+      - name: Apply Alert Rules
+        run: kubectl apply -f deployment/monitoring/alerts/ --context moneylytics

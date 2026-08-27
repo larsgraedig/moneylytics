@@ -40,6 +40,18 @@ springdoc:
   swagger-ui:
     enabled: false  # springdoc's UI router uses a Spring Framework 6 API removed in 7; we serve the UI manually
 
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  tracing:
+    sampling:
+      probability: 0.1
+  otlp:
+    tracing:
+      endpoint: http://tempo.monitoring.svc.cluster.local:4318/v1/traces
+
 stripe:
   secret-key: ${STRIPE_SECRET_KEY}
   webhook-secret: ${STRIPE_WEBHOOK_SECRET}

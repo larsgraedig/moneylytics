@@ -1,0 +1,27 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: moneylytics-backend-alerts
+  namespace: monitoring
+  labels:
+    release: kube-prometheus-stack
+spec:
+  groups:
+    - name: moneylytics.backend
+      rules:
+        - alert: HighHttpErrorRate
+          expr: |
+            sum(rate(http_server_requests_seconds_count{
+              namespace=~"moneylytics.*",
+              status=~"5.."
+            }[5m]))
+            /
+            sum(rate(http_server_requests_seconds_count{
+              namespace=~"moneylytics.*"
+            }[5m])) > 0.05
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "High HTTP 5xx error rate in {{ $labels.namespace }}"
+            description: "More than 5% of requests are failing with 5xx for 5 minutes. Current rate: {{ $value | humanizePercentage }}"
