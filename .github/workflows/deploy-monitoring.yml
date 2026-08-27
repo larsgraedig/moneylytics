@@ -76,14 +76,16 @@ jobs:
             -f deployment/monitoring/promtail-values.yaml \
             --cleanup-on-fail
 
-      - name: Deploy Tempo
-        if: false  # disabled until Tempo is re-enabled
-        run: |
-          helm upgrade --install tempo grafana/tempo \
-            -n monitoring \
-            --kube-context moneylytics \
-            -f deployment/monitoring/tempo-values.yaml \
-            --cleanup-on-fail
+      # To re-enable Tempo: replace this step with the deploy step below
+      # - name: Deploy Tempo
+      #   run: |
+      #     helm upgrade --install tempo grafana/tempo \
+      #       -n monitoring \
+      #       --kube-context moneylytics \
+      #       -f deployment/monitoring/tempo-values.yaml \
+      #       --cleanup-on-fail
+      - name: Uninstall Tempo (currently disabled)
+        run: helm uninstall tempo -n monitoring --kube-context moneylytics 2>/dev/null || true
 
       - name: Deploy Dashboards
         run: |
