@@ -2,6 +2,10 @@ name: Deploy Monitoring Stack
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'deployment/monitoring/**'
 
 jobs:
   deploy:
