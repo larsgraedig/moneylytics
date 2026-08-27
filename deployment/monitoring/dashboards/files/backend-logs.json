@@ -135,33 +135,22 @@
     {
       "id": 3,
       "title": "Log Stream",
-      "type": "table",
+      "type": "logs",
       "gridPos": { "x": 0, "y": 12, "w": 24, "h": 20 },
       "options": {
-        "showHeader": true,
-        "sortBy": [{ "displayName": "Time", "desc": true }]
+        "showTime": true,
+        "showLabels": false,
+        "showCommonLabels": false,
+        "wrapLogMessage": false,
+        "prettifyLogMessage": false,
+        "enableLogDetails": true,
+        "sortOrder": "Descending",
+        "dedupStrategy": "none"
       },
-      "transformations": [
-        {
-          "id": "filterFieldsByName",
-          "options": {
-            "include": { "pattern": "Time|log_level|message" }
-          }
-        },
-        {
-          "id": "organize",
-          "options": {
-            "renameByName": {
-              "log_level": "Level",
-              "message": "Message"
-            }
-          }
-        }
-      ],
       "targets": [
         {
           "datasource": { "type": "loki" },
-          "expr": "{namespace=~\"$namespace\", service_name=\"api\", container=\"moneylytics\"} | json message, log_level=\"log.level\"",
+          "expr": "{namespace=~\"$namespace\", service_name=\"api\", container=\"moneylytics\"} | json",
           "legendFormat": ""
         }
       ]
