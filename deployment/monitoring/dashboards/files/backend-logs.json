@@ -137,6 +137,23 @@
         "showHeader": true,
         "sortBy": [{ "displayName": "Time", "desc": true }]
       },
+      "transformations": [
+        {
+          "id": "filterFieldsByName",
+          "options": {
+            "include": { "names": ["Time", "log_level", "message"] }
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "renameByName": {
+              "log_level": "Level",
+              "message": "Message"
+            }
+          }
+        }
+      ],
       "targets": [
         {
           "datasource": { "type": "loki" },
