@@ -39,7 +39,12 @@ class AccountController(
             }
         return AccountsResponse(
             accounts.map {
-                AccountResponse(id = it.id!!, iban = it.iban, name = it.name, lastTransactionDate = it.latestTransactionDate?.toString())
+                AccountResponse(
+                    id = requireNotNull(it.id),
+                    iban = it.iban,
+                    name = it.name,
+                    lastTransactionDate = it.latestTransactionDate?.toString(),
+                )
             },
         )
     }
@@ -56,7 +61,7 @@ class AccountController(
             withContext(Dispatchers.IO) {
                 saveAccountUseCase.saveAccount(request.iban.trim(), request.name.trim(), organizationId)
             }
-        return ResponseEntity.ok(AccountResponse(id = account.id!!, iban = account.iban, name = account.name))
+        return ResponseEntity.ok(AccountResponse(id = requireNotNull(account.id), iban = account.iban, name = account.name))
     }
 
     @PutMapping("/{iban}")
@@ -71,7 +76,7 @@ class AccountController(
             withContext(Dispatchers.IO) {
                 saveAccountUseCase.saveAccount(iban, request.name.trim(), organizationId)
             }
-        return ResponseEntity.ok(AccountResponse(id = account.id!!, iban = account.iban, name = account.name))
+        return ResponseEntity.ok(AccountResponse(id = requireNotNull(account.id), iban = account.iban, name = account.name))
     }
 
     @DeleteMapping("/{iban}")

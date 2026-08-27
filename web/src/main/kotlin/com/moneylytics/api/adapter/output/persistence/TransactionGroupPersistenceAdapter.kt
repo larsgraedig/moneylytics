@@ -85,7 +85,7 @@ class TransactionGroupPersistenceAdapter(
     private fun TransactionGroupEntity.toDomain() =
         TransactionGroup(
             id = requireNotNull(id),
-            organizationId = organization.id!!,
+            organizationId = requireNotNull(organization.id),
             name = name,
             comment = comment,
         )

@@ -53,7 +53,7 @@ class TransactionOffsetPersistenceAdapter(
 
     @Transactional(readOnly = true)
     override fun findLinksForGroup(groupId: Long): List<Pair<Long, Long>> =
-        offsetJpaRepository.findByGroupId(groupId).map { it.transactionA.id!! to it.transactionB.id!! }
+        offsetJpaRepository.findByGroupId(groupId).map { requireNotNull(it.transactionA.id) to requireNotNull(it.transactionB.id) }
 
     @Transactional
     override fun updateLinksGroupId(

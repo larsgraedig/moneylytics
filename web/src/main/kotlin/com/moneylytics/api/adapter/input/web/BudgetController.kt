@@ -128,7 +128,7 @@ class BudgetController(
 
     private fun com.moneylytics.api.application.service.BudgetWithBalance.toDto() =
         BudgetDto(
-            id = budget.id!!,
+            id = requireNotNull(budget.id),
             name = budget.name,
             targetAmount = budget.targetAmount,
             note = budget.note,
@@ -140,7 +140,7 @@ class BudgetController(
 
     private fun Budget.toDto() =
         BudgetDto(
-            id = id!!,
+            id = requireNotNull(id),
             name = name,
             targetAmount = targetAmount,
             note = note,

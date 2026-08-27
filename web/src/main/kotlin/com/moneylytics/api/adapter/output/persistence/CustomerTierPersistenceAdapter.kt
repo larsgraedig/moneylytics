@@ -7,7 +7,7 @@ import org.springframework.transaction.annotation.Transactional
 
 internal fun CustomerTierEntity.toDomain() =
     Tier(
-        id = id!!,
+        id = requireNotNull(id),
         name = name,
         description = description,
         active = active,

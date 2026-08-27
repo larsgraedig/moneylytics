@@ -171,6 +171,6 @@ class SubscriptionServiceTest {
         val result = service.getSubscriptionStatus(userId)
 
         assertThat(result).isNotNull
-        assertThat(result!!.subscriptionStatus).isEqualTo(SubscriptionStatus.ACTIVE)
+        assertThat(requireNotNull(result).subscriptionStatus).isEqualTo(SubscriptionStatus.ACTIVE)
     }
 }

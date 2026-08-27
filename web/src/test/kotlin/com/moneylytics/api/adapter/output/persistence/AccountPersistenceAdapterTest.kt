@@ -32,7 +32,7 @@ class AccountPersistenceAdapterTest {
         val result = adapter.findByIban("DE01", organizationId)
 
         assertThat(result).isNotNull
-        assertThat(result!!.iban).isEqualTo("DE01")
+        assertThat(requireNotNull(result).iban).isEqualTo("DE01")
         assertThat(result.name).isEqualTo("Giro")
     }
 

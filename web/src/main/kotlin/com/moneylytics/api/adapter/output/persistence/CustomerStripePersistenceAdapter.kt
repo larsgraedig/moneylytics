@@ -8,7 +8,7 @@ import org.springframework.transaction.annotation.Transactional
 
 internal fun CustomerStripeEntity.toDomain() =
     StripeCustomer(
-        id = id!!,
+        id = requireNotNull(id),
         userId = userId,
         stripeCustomerId = stripeCustomerId,
         stripeSubscriptionId = stripeSubscriptionId,

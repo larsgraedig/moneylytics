@@ -124,7 +124,7 @@ class TransactionPersistenceAdapter(
         val keys =
             transactions
                 .filter { !it.category.isNullOrBlank() }
-                .map { Triple(it.category!!, it.subcategory, it.group) }
+                .map { Triple(requireNotNull(it.category), it.subcategory, it.group) }
                 .toSet()
         if (keys.isEmpty()) return emptyMap()
 
@@ -160,7 +160,7 @@ class TransactionPersistenceAdapter(
         val counts = mutableMapOf<String, Int>()
         return transactions.map { tx ->
             val raw = tx.fingerprintRaw()
-            val n = counts.merge(raw, 1, Int::plus)!!
+            val n = (counts.getOrDefault(raw, 0) + 1).also { counts[raw] = it }
             tx to sha256(if (n == 1) raw else "$raw:${n - 1}")
         }
     }

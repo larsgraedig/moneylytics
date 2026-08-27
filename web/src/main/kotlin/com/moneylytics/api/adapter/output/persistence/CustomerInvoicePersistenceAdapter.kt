@@ -6,7 +6,7 @@ import org.springframework.stereotype.Component
 
 internal fun CustomerInvoiceEntity.toDomain() =
     Invoice(
-        id = id!!,
+        id = requireNotNull(id),
         userId = userId,
         stripeInvoiceId = stripeInvoiceId,
         invoiceNumber = invoiceNumber,

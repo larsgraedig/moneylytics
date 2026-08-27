@@ -40,7 +40,7 @@ class TransactionOffsetPersistenceAdapterTest {
         val result = adapter.delete(5L, organizationId)
 
         assertThat(result).isNotNull
-        assertThat(result!!.groupId).isEqualTo(10L)
+        assertThat(requireNotNull(result).groupId).isEqualTo(10L)
         verify(offsetJpaRepository).delete(offsetEntity)
     }
 
@@ -53,7 +53,7 @@ class TransactionOffsetPersistenceAdapterTest {
 
         val result = adapter.delete(5L, organizationId)
 
-        assertThat(result!!.groupId).isNull()
+        assertThat(requireNotNull(result).groupId).isNull()
     }
 
     @Test

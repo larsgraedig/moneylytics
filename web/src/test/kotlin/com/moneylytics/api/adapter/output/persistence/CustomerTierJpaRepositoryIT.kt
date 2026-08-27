@@ -8,7 +8,7 @@ class CustomerTierJpaRepositoryIT : AbstractJpaRepositoryIT() {
     fun `should persist and find a tier`() {
         val saved = tierRepo.save(CustomerTierEntity(name = "Pro", isDefault = false))
 
-        val found = tierRepo.findById(saved.id!!).orElse(null)
+        val found = tierRepo.findById(requireNotNull(saved.id)).orElse(null)
 
         assertThat(found).isNotNull
         assertThat(found.name).isEqualTo("Pro")
@@ -21,7 +21,7 @@ class CustomerTierJpaRepositoryIT : AbstractJpaRepositoryIT() {
         val found = tierRepo.findByIsDefaultTrue()
 
         assertThat(found).isNotNull
-        assertThat(found!!.name).isEqualTo("Standard")
+        assertThat(requireNotNull(found).name).isEqualTo("Standard")
         assertThat(found.isDefault).isTrue()
     }
 

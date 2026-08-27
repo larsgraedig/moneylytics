@@ -120,9 +120,9 @@ class BudgetPersistenceAdapter(
 
     private fun BudgetTransactionEntity.toDomain() =
         BudgetTransactionLink(
-            id = id!!,
-            budgetId = budget.id!!,
-            transactionId = transaction.id!!,
+            id = requireNotNull(id),
+            budgetId = requireNotNull(budget.id),
+            transactionId = requireNotNull(transaction.id),
             amount = amount,
             transactionAmount = transaction.amount,
             transactionDate = transaction.accountingDate,

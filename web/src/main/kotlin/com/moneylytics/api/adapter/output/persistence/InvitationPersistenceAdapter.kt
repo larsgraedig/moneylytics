@@ -61,8 +61,8 @@ class InvitationPersistenceAdapter(
 
     private fun InvitationEntity.toDomain() =
         Invitation(
-            id = id!!,
-            organizationId = organization.id!!,
+            id = requireNotNull(id),
+            organizationId = requireNotNull(organization.id),
             organizationName = organization.name,
             email = email,
             role = role,

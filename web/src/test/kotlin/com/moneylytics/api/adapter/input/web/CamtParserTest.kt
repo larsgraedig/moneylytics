@@ -220,7 +220,7 @@ class CamtParserTest {
         val success = parser.parse(xml.toByteArray()) as CamtParseResult.Success
 
         assertThat(success.accountBalances).containsKey("DE00TEST")
-        val balance = success.accountBalances["DE00TEST"]!!
+        val balance = requireNotNull(success.accountBalances["DE00TEST"])
         assertThat(balance.amount).isEqualByComparingTo(BigDecimal("3500.00"))
         assertThat(balance.date).isEqualTo(LocalDate.of(2025, 1, 31))
     }
@@ -241,7 +241,7 @@ class CamtParserTest {
 
         val success = parser.parse(xml.toByteArray()) as CamtParseResult.Success
 
-        assertThat(success.accountBalances["DE00TEST"]!!.amount).isEqualByComparingTo(BigDecimal("-200.00"))
+        assertThat(requireNotNull(success.accountBalances["DE00TEST"]).amount).isEqualByComparingTo(BigDecimal("-200.00"))
     }
 
     @Test

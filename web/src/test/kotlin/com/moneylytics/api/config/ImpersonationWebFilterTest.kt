@@ -63,7 +63,7 @@ class ImpersonationWebFilterTest {
     @Test
     fun `should replace security context with impersonated user when system admin has active impersonation`() {
         val exchange = buildExchange()
-        exchange.session.block()!!.attributes[IMPERSONATED_USER_ID_KEY] = "target@test.de"
+        requireNotNull(exchange.session.block()).attributes[IMPERSONATED_USER_ID_KEY] = "target@test.de"
 
         val targetDetails: UserDetails =
             User
@@ -89,7 +89,7 @@ class ImpersonationWebFilterTest {
     @Test
     fun `should not impersonate when caller is not a system admin`() {
         val exchange = buildExchange()
-        exchange.session.block()!!.attributes[IMPERSONATED_USER_ID_KEY] = "target@test.de"
+        requireNotNull(exchange.session.block()).attributes[IMPERSONATED_USER_ID_KEY] = "target@test.de"
 
         val captured = mutableListOf<String>()
         val chain = buildChain(captured)
@@ -115,7 +115,7 @@ class ImpersonationWebFilterTest {
     @Test
     fun `should skip impersonation for admin paths`() {
         val exchange = buildExchange(path = "/admin/something")
-        exchange.session.block()!!.attributes[IMPERSONATED_USER_ID_KEY] = "target@test.de"
+        requireNotNull(exchange.session.block()).attributes[IMPERSONATED_USER_ID_KEY] = "target@test.de"
 
         val captured = mutableListOf<String>()
         val chain = buildChain(captured)

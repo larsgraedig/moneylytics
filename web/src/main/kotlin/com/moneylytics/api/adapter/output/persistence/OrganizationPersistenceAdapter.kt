@@ -87,7 +87,7 @@ class OrganizationPersistenceAdapter(
 
     private fun OrganizationEntity.toDomain() =
         Organization(
-            id = id!!,
+            id = requireNotNull(id),
             name = name,
             logoUrl = if (logoData != null) "/organizations/$id/logo" else null,
         )
@@ -95,7 +95,7 @@ class OrganizationPersistenceAdapter(
     private fun OrganizationMemberEntity.toMembership() =
         OrganizationMembership(
             organization = organization.toDomain(),
-            userId = user.id!!,
+            userId = requireNotNull(user.id),
             email = user.externalId,
             role = role,
         )

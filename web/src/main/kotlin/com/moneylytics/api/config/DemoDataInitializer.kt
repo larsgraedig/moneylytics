@@ -360,8 +360,8 @@ class DemoDataInitializer(
         if (arztTx != null && erstattungTx != null) {
             manageTransactionOffsetUseCase.linkTransactions(
                 LinkTransactionsCommand(
-                    transactionId = arztTx.id!!,
-                    otherTransactionId = erstattungTx.id!!,
+                    transactionId = requireNotNull(arztTx.id),
+                    otherTransactionId = requireNotNull(erstattungTx.id),
                     myAmount = BigDecimal("120"),
                     otherAmount = BigDecimal("120"),
                     organizationId = orgId,
@@ -374,8 +374,8 @@ class DemoDataInitializer(
         if (restaurantTx != null && ueberweisungTx != null) {
             manageTransactionOffsetUseCase.linkTransactions(
                 LinkTransactionsCommand(
-                    transactionId = restaurantTx.id!!,
-                    otherTransactionId = ueberweisungTx.id!!,
+                    transactionId = requireNotNull(restaurantTx.id),
+                    otherTransactionId = requireNotNull(ueberweisungTx.id),
                     myAmount = BigDecimal("47.50"),
                     otherAmount = BigDecimal("47.50"),
                     organizationId = orgId,
@@ -385,9 +385,9 @@ class DemoDataInitializer(
     }
 
     private fun setupThresholds(orgId: Long) {
-        val lebensmittelId = categoryRepository.findOrCreate(listOf("Lebensmittel"), orgId).id!!
-        val transportId = categoryRepository.findOrCreate(listOf("Transport"), orgId).id!!
-        val freizeitId = categoryRepository.findOrCreate(listOf("Freizeit"), orgId).id!!
+        val lebensmittelId = requireNotNull(categoryRepository.findOrCreate(listOf("Lebensmittel"), orgId).id)
+        val transportId = requireNotNull(categoryRepository.findOrCreate(listOf("Transport"), orgId).id)
+        val freizeitId = requireNotNull(categoryRepository.findOrCreate(listOf("Freizeit"), orgId).id)
 
         saveThresholdUseCase.saveThreshold(
             Threshold(
@@ -440,7 +440,7 @@ class DemoDataInitializer(
             reiseAktivDate to BigDecimal("-200.00"),
         ).forEach { (date, amount) ->
             findTx(orgId, date, "Reise", amount)?.id?.let { txId ->
-                assignTransactionToBudgetUseCase.assignTransaction(urlaub.id!!, txId, null, orgId)
+                assignTransactionToBudgetUseCase.assignTransaction(requireNotNull(urlaub.id), txId, null, orgId)
             }
         }
 
@@ -450,7 +450,7 @@ class DemoDataInitializer(
                 orgId,
             )
         findTx(orgId, wohnenEinrichtungDate, "Wohnen", BigDecimal("-800.00"))?.id?.let { txId ->
-            assignTransactionToBudgetUseCase.assignTransaction(kueche.id!!, txId, BigDecimal("500"), orgId)
+            assignTransactionToBudgetUseCase.assignTransaction(requireNotNull(kueche.id), txId, BigDecimal("500"), orgId)
         }
 
         val notfall = createBudgetUseCase.createBudget(Budget(name = "Notfallfonds"), orgId)
@@ -462,7 +462,7 @@ class DemoDataInitializer(
             Triple(einnahmenExtra4Date, "Einnahmen", BigDecimal("900.00")),
         ).forEach { (date, category, amount) ->
             findTx(orgId, date, category, amount)?.id?.let { txId ->
-                assignTransactionToBudgetUseCase.assignTransaction(notfall.id!!, txId, null, orgId)
+                assignTransactionToBudgetUseCase.assignTransaction(requireNotNull(notfall.id), txId, null, orgId)
             }
         }
     }
@@ -473,7 +473,7 @@ class DemoDataInitializer(
         val restaurantTxs = queryTxs(orgId, sommerFrom, sommerTo, "Lebensmittel", "Restaurant").take(SOMMER_RESTAURANT_LIMIT)
         val sportTxs = queryTxs(orgId, sommerFrom, sommerTo, "Freizeit", "Sport").take(2)
         (restaurantTxs + sportTxs).forEach { tx ->
-            tx.id?.let { manageCollectionMembersUseCase.addTransaction(sommer.id!!, it, orgId) }
+            tx.id?.let { manageCollectionMembersUseCase.addTransaction(requireNotNull(sommer.id), it, orgId) }
         }
 
         val quartalLabel = "Haushalt Q${quarterNumber(prevQuarterFrom)} ${prevQuarterFrom.year}"
@@ -481,7 +481,7 @@ class DemoDataInitializer(
         val mieteTxs = queryTxs(orgId, prevQuarterFrom, prevQuarterTo, "Wohnen", "Miete").take(2)
         val internetTxs = queryTxs(orgId, prevQuarterFrom, prevQuarterTo, "Wohnen", "Internet").take(2)
         (mieteTxs + internetTxs).forEach { tx ->
-            tx.id?.let { manageCollectionMembersUseCase.addTransaction(haushalt.id!!, it, orgId) }
+            tx.id?.let { manageCollectionMembersUseCase.addTransaction(requireNotNull(haushalt.id), it, orgId) }
         }
     }
 

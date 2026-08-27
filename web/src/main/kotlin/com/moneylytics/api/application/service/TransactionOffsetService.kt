@@ -56,8 +56,8 @@ class TransactionOffsetService(
         val amountB = if (noOffset) null else rawAmountB?.let { normalizeSign(it, txB.amount) } ?: txB.amount
 
         if (!noOffset) {
-            validateAllocation(txA, amountA!!, txB.amount)
-            validateAllocation(txB, amountB!!, txA.amount)
+            validateAllocation(txA, requireNotNull(amountA), txB.amount)
+            validateAllocation(txB, requireNotNull(amountB), txA.amount)
         }
 
         val groupId =
@@ -96,7 +96,7 @@ class TransactionOffsetService(
         val allTxIds = groupMemberIds.values.flatten().toSet()
         if (allTxIds.isEmpty()) return emptyList()
 
-        val txById = transactionRepository.findByIdsAndOrganizationId(allTxIds, organizationId).associateBy { it.id!! }
+        val txById = transactionRepository.findByIdsAndOrganizationId(allTxIds, organizationId).associateBy { requireNotNull(it.id) }
 
         return groups
             .mapNotNull { group ->
@@ -124,7 +124,12 @@ class TransactionOffsetService(
         val group = groupRepository.findById(groupId, organizationId) ?: return null
         val memberIds = groupRepository.findMemberIds(groupId)
         if (memberIds.isEmpty()) return null
-        val txById = transactionRepository.findByIdsAndOrganizationId(memberIds.toSet(), organizationId).associateBy { it.id!! }
+        val txById =
+            transactionRepository
+                .findByIdsAndOrganizationId(
+                    memberIds.toSet(),
+                    organizationId,
+                ).associateBy { requireNotNull(it.id) }
         val transactions =
             memberIds
                 .mapNotNull { txById[it] }
@@ -308,8 +313,9 @@ class TransactionOffsetService(
         val parent = nodeIds.associateWith { it }.toMutableMap()
 
         fun find(x: Long): Long {
-            if (parent[x] != x) parent[x] = find(parent[x]!!)
-            return parent[x]!!
+            val px = requireNotNull(parent[x])
+            if (px != x) parent[x] = find(px)
+            return requireNotNull(parent[x])
         }
 
         fun union(

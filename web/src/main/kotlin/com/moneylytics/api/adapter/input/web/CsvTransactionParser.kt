@@ -63,11 +63,11 @@ class CsvTransactionParser {
         val transactions = mutableListOf<Transaction>()
         val accountNames = mutableMapOf<String, String>()
         val errors = mutableListOf<CsvValidationError>()
-        val hasAccountNameColumn = config.accountName != null && config.accountName in headers
-        val hasPurposeColumn = config.purpose != null && config.purpose in headers
-        val hasCategoryColumn = config.category != null && config.category in headers
-        val hasSubcategoryColumn = config.subcategory != null && config.subcategory in headers
-        val hasAccountBalanceColumn = config.accountBalance != null && config.accountBalance in headers
+        val accountNameCol = config.accountName?.takeIf { it in headers }
+        val purposeCol = config.purpose?.takeIf { it in headers }
+        val categoryCol = config.category?.takeIf { it in headers }
+        val subcategoryCol = config.subcategory?.takeIf { it in headers }
+        val accountBalanceCol = config.accountBalance?.takeIf { it in headers }
         // tracks the latest balance seen per IBAN: iban → (bookingDate, balance)
         val latestBalanceByIban = mutableMapOf<String, Pair<LocalDate, BigDecimal>>()
 
@@ -81,13 +81,13 @@ class CsvTransactionParser {
 
             if (bookingDate != null && valueDate != null && amount != null) {
                 val accountIban = record[config.accountIban]
-                val accountName = if (hasAccountNameColumn) record[config.accountName!!] else accountIban
+                val accountName = accountNameCol?.let { record[it] } ?: accountIban
                 accountNames[accountIban] = accountName
-                val purpose = if (hasPurposeColumn) record[config.purpose!!].takeIf { it.isNotBlank() } else null
+                val purpose = purposeCol?.let { record[it].takeIf { v -> v.isNotBlank() } }
                 transactions.add(
                     Transaction(
-                        category = if (hasCategoryColumn) record[config.category!!].takeIf { it.isNotBlank() } else null,
-                        subcategory = if (hasSubcategoryColumn) record[config.subcategory!!].takeIf { it.isNotBlank() } else null,
+                        category = categoryCol?.let { record[it].takeIf { v -> v.isNotBlank() } },
+                        subcategory = subcategoryCol?.let { record[it].takeIf { v -> v.isNotBlank() } },
                         group = null,
                         bookingDate = bookingDate,
                         valueDate = valueDate,
@@ -99,8 +99,8 @@ class CsvTransactionParser {
                     ),
                 )
 
-                if (hasAccountBalanceColumn) {
-                    updateLatestBalance(accountIban, bookingDate, record[config.accountBalance!!], latestBalanceByIban)
+                if (accountBalanceCol != null) {
+                    updateLatestBalance(accountIban, bookingDate, record[accountBalanceCol], latestBalanceByIban)
                 }
             }
         }

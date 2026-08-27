@@ -61,7 +61,7 @@ class UserPersistenceAdapter(
     }
 
     private fun UserEntity.toDomain() =
-        User(id = id!!, externalId = externalId, passwordHash = passwordHash, role = role, tier = tier.toDomain())
+        User(id = requireNotNull(id), externalId = externalId, passwordHash = passwordHash, role = role, tier = tier.toDomain())
 
     private fun UserEntity.toSettings() =
         UserSettings(

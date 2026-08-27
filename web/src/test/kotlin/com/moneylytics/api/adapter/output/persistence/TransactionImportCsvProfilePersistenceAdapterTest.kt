@@ -72,7 +72,7 @@ class TransactionImportCsvProfilePersistenceAdapterTest {
         val result = adapter.findMapping(organizationId, fingerprint)
 
         assertThat(result).isNotNull
-        assertThat(result!!.delimiter).isEqualTo(";")
+        assertThat(requireNotNull(result).delimiter).isEqualTo(";")
         assertThat(result.dateColumn).isEqualTo("Datum")
         assertThat(result.fixedAccountIban).isEqualTo("DE00TEST")
     }

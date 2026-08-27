@@ -105,7 +105,7 @@ class RecurringMatcherServiceTest {
 
         whenever(recurringSeriesRepository.findAllOrganizationIds()).thenReturn(setOf(organizationId))
         whenever(recurringSeriesRepository.findByOrganizationId(organizationId)).thenReturn(listOf(s))
-        whenever(recurringSeriesRepository.findMemberTransactionIds(s.id!!)).thenReturn(emptySet())
+        whenever(recurringSeriesRepository.findMemberTransactionIds(requireNotNull(s.id))).thenReturn(emptySet())
         whenever(
             transactionRepository.findByAccountingDateBetween(any(), any(), eq(organizationId), anyOrNull()),
         ).thenReturn(listOf(newTx))
@@ -113,7 +113,7 @@ class RecurringMatcherServiceTest {
         service.syncForAllOrganizations()
 
         val idsCaptor = argumentCaptor<List<Long>>()
-        verify(recurringSeriesRepository).addMembers(eq(s.id!!), idsCaptor.capture())
+        verify(recurringSeriesRepository).addMembers(eq(requireNotNull(s.id)), idsCaptor.capture())
         assertThat(idsCaptor.firstValue).containsExactly(99L)
     }
 
@@ -124,7 +124,7 @@ class RecurringMatcherServiceTest {
 
         whenever(recurringSeriesRepository.findAllOrganizationIds()).thenReturn(setOf(organizationId))
         whenever(recurringSeriesRepository.findByOrganizationId(organizationId)).thenReturn(listOf(s))
-        whenever(recurringSeriesRepository.findMemberTransactionIds(s.id!!)).thenReturn(setOf(50L))
+        whenever(recurringSeriesRepository.findMemberTransactionIds(requireNotNull(s.id))).thenReturn(setOf(50L))
         whenever(
             transactionRepository.findByAccountingDateBetween(any(), any(), any(), anyOrNull()),
         ).thenReturn(listOf(existingTx))
@@ -141,7 +141,7 @@ class RecurringMatcherServiceTest {
 
         whenever(recurringSeriesRepository.findAllOrganizationIds()).thenReturn(setOf(organizationId))
         whenever(recurringSeriesRepository.findByOrganizationId(organizationId)).thenReturn(listOf(s))
-        whenever(recurringSeriesRepository.findMemberTransactionIds(s.id!!)).thenReturn(emptySet())
+        whenever(recurringSeriesRepository.findMemberTransactionIds(requireNotNull(s.id))).thenReturn(emptySet())
         whenever(
             transactionRepository.findByAccountingDateBetween(any(), any(), any(), anyOrNull()),
         ).thenReturn(listOf(oldTx))
@@ -158,7 +158,7 @@ class RecurringMatcherServiceTest {
 
         whenever(recurringSeriesRepository.findAllOrganizationIds()).thenReturn(setOf(organizationId))
         whenever(recurringSeriesRepository.findByOrganizationId(organizationId)).thenReturn(listOf(s))
-        whenever(recurringSeriesRepository.findMemberTransactionIds(s.id!!)).thenReturn(emptySet())
+        whenever(recurringSeriesRepository.findMemberTransactionIds(requireNotNull(s.id))).thenReturn(emptySet())
         whenever(
             transactionRepository.findByAccountingDateBetween(any(), any(), any(), anyOrNull()),
         ).thenReturn(listOf(nonMatchingTx))
@@ -176,7 +176,7 @@ class RecurringMatcherServiceTest {
 
         whenever(recurringSeriesRepository.findAllOrganizationIds()).thenReturn(setOf(organizationId))
         whenever(recurringSeriesRepository.findByOrganizationId(organizationId)).thenReturn(listOf(s))
-        whenever(recurringSeriesRepository.findMemberTransactionIds(s.id!!)).thenReturn(emptySet())
+        whenever(recurringSeriesRepository.findMemberTransactionIds(requireNotNull(s.id))).thenReturn(emptySet())
         whenever(
             transactionRepository.findByAccountingDateBetween(any(), any(), any(), anyOrNull()),
         ).thenReturn(listOf(newTx))
@@ -184,7 +184,7 @@ class RecurringMatcherServiceTest {
         service.syncForAllOrganizations()
 
         verify(recurringSeriesRepository).updateSeriesMetadata(
-            seriesId = s.id!!,
+            seriesId = requireNotNull(s.id),
             lastSeen = newDate,
             nextExpectedDate = newDate.plusDays(30),
             occurrenceCount = 4,

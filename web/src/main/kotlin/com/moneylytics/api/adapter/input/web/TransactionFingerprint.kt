@@ -7,8 +7,8 @@ fun assignFingerprints(rows: List<ParsedRawRow>): Map<Int, String> {
     return rows.associate { row ->
         val raw =
             "${row.accountIban}|${row.bookingDate}|${row.valueDate}|" +
-                "${row.amount!!.stripTrailingZeros().toPlainString()}|${row.currency}"
-        val n = counts.merge(raw, 1, Int::plus)!!
+                "${requireNotNull(row.amount).stripTrailingZeros().toPlainString()}|${row.currency}"
+        val n = (counts.getOrDefault(raw, 0) + 1).also { counts[raw] = it }
         val fp = sha256(if (n == 1) raw else "$raw:${n - 1}")
         row.rowNumber to fp
     }

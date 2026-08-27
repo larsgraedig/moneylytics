@@ -65,7 +65,7 @@ class ThresholdService(
 
         // Build parent map for ancestor-walk: categoryId → parentId
         val allCategories = categoryRepository.findAll(query.organizationId)
-        val parentMap: Map<Long, Long?> = allCategories.associate { it.id!! to it.parentId }
+        val parentMap: Map<Long, Long?> = allCategories.associate { requireNotNull(it.id) to it.parentId }
 
         // Accumulate spending into each category and all its ancestors
         val spendingByCategory = mutableMapOf<Long, BigDecimal>()

@@ -33,7 +33,7 @@ class TransactionImportPersistenceAdapter(
             if (importIds.isEmpty()) {
                 emptyMap()
             } else {
-                importFileJpaRepository.findByImportIdIn(importIds).groupBy { it.import.id!! }
+                importFileJpaRepository.findByImportIdIn(importIds).groupBy { requireNotNull(it.import.id) }
             }
         return imports.map { it.toDomain(filesByImportId[it.id] ?: emptyList()) }
     }
@@ -61,14 +61,14 @@ class TransactionImportPersistenceAdapter(
     private fun TransactionImportEntity.toDomain(files: List<TransactionImportFileEntity> = emptyList()) =
         TransactionImport(
             id = id,
-            organizationId = organization.id!!,
+            organizationId = requireNotNull(organization.id),
             importedAt = importedAt,
             status = ImportStatus.valueOf(status),
             files =
                 files.map { f ->
                     TransactionImportFile(
                         id = f.id,
-                        importId = id!!,
+                        importId = requireNotNull(id),
                         filename = f.filename,
                         checksum = f.checksum,
                         fileType = ImportFileType.valueOf(f.fileType),

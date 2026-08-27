@@ -209,7 +209,7 @@ class CamtImportController(
                     bookingDate = LocalDate.parse(row.bookingDate),
                     valueDate = LocalDate.parse(row.valueDate),
                     accountingDate = LocalDate.parse(row.bookingDate),
-                    amount = row.amount!!,
+                    amount = requireNotNull(row.amount),
                     currency = row.currency,
                     accountIban = row.accountIban,
                     purpose = row.purpose.ifBlank { null },

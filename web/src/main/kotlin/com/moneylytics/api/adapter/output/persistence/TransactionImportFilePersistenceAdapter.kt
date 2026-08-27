@@ -56,7 +56,7 @@ class TransactionImportFilePersistenceAdapter(
     private fun TransactionImportFileEntity.toDomain() =
         TransactionImportFile(
             id = id,
-            importId = import.id!!,
+            importId = requireNotNull(import.id),
             filename = filename,
             checksum = checksum,
             fileType = ImportFileType.valueOf(fileType),

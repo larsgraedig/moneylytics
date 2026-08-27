@@ -207,7 +207,7 @@ class CsvTransactionParserTest {
         assertThat(result).isInstanceOf(CsvParseResult.Valid::class.java)
         val valid = result as CsvParseResult.Valid
         assertThat(valid.accountBalances).containsKey("DE33000000000000000000")
-        val balance = valid.accountBalances["DE33000000000000000000"]!!
+        val balance = requireNotNull(valid.accountBalances["DE33000000000000000000"])
         assertThat(balance.amount).isEqualByComparingTo(BigDecimal("950.00"))
         assertThat(balance.date).isEqualTo(java.time.LocalDate.of(2025, 1, 15))
     }

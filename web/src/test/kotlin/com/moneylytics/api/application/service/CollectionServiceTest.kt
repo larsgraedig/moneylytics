@@ -68,7 +68,7 @@ class CollectionServiceTest {
         val result = service.getCollection(1L, organizationId)
 
         assertThat(result).isNotNull
-        assertThat(result!!.name).isEqualTo("Urlaub")
+        assertThat(requireNotNull(result).name).isEqualTo("Urlaub")
         assertThat(result.transactions).containsExactly(tx)
     }
 

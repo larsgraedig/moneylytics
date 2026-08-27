@@ -31,7 +31,7 @@ class ThresholdPersistenceAdapter(
             existing.notice = threshold.notice
             existing.warning = threshold.warning
             existing.critical = threshold.critical
-            jpaRepository.save(existing).toDomain()!!
+            requireNotNull(jpaRepository.save(existing).toDomain())
         } else {
             val categoryEntity = categoryJpaRepository.getReferenceById(threshold.categoryId)
             jpaRepository
@@ -44,7 +44,7 @@ class ThresholdPersistenceAdapter(
                         warning = threshold.warning,
                         critical = threshold.critical,
                     ),
-                ).toDomain()!!
+                ).let { requireNotNull(it.toDomain()) }
         }
     }
 
@@ -62,8 +62,8 @@ class ThresholdPersistenceAdapter(
     private fun ThresholdEntity.toDomain(): Threshold? {
         val cat = categoryEntity ?: return null
         return Threshold(
-            id = id!!,
-            categoryId = cat.id!!,
+            id = requireNotNull(id),
+            categoryId = requireNotNull(cat.id),
             categoryPath = cat.buildPath(),
             period = period,
             notice = notice,
