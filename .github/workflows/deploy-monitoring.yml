@@ -47,34 +47,39 @@ jobs:
             -n monitoring \
             --kube-context moneylytics \
             -f deployment/monitoring/kube-prometheus-stack-values.yaml \
-            --timeout 10m
+            --timeout 10m \
+            --cleanup-on-fail
 
       - name: Deploy Loki
         run: |
           helm upgrade --install loki grafana/loki \
             -n monitoring \
             --kube-context moneylytics \
-            -f deployment/monitoring/loki-values.yaml
+            -f deployment/monitoring/loki-values.yaml \
+            --cleanup-on-fail
 
       - name: Deploy Promtail
         run: |
           helm upgrade --install promtail grafana/promtail \
             -n monitoring \
             --kube-context moneylytics \
-            -f deployment/monitoring/promtail-values.yaml
+            -f deployment/monitoring/promtail-values.yaml \
+            --cleanup-on-fail
 
       - name: Deploy Tempo
         run: |
           helm upgrade --install tempo grafana/tempo \
             -n monitoring \
             --kube-context moneylytics \
-            -f deployment/monitoring/tempo-values.yaml
+            -f deployment/monitoring/tempo-values.yaml \
+            --cleanup-on-fail
 
       - name: Deploy Dashboards
         run: |
           helm upgrade --install moneylytics-dashboards ./deployment/monitoring/dashboards \
             -n monitoring \
-            --kube-context moneylytics
+            --kube-context moneylytics \
+            --cleanup-on-fail
 
       - name: Apply Alert Rules
         run: kubectl apply -f deployment/monitoring/alerts/ --context moneylytics
