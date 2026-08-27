@@ -77,6 +77,7 @@ jobs:
             --cleanup-on-fail
 
       - name: Deploy Tempo
+        if: false  # disabled until Tempo is re-enabled
         run: |
           helm upgrade --install tempo grafana/tempo \
             -n monitoring \
@@ -92,4 +93,5 @@ jobs:
             --cleanup-on-fail
 
       - name: Apply Alert Rules
+        if: false  # disabled until Prometheus is re-enabled
         run: kubectl apply -f deployment/monitoring/alerts/ --context moneylytics
