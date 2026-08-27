@@ -46,6 +46,35 @@ Via GitHub Actions: trigger **Deploy Monitoring Stack** workflow manually.
 2. Place JSON file in `deployment/monitoring/dashboards/files/`
 3. Run `helm upgrade --install moneylytics-dashboards ./deployment/monitoring/dashboards -n monitoring`
 
+## Alert testen (Probe)
+
+Fake-ERROR-Log direkt in Loki pushen, ohne einen echten Fehler zu provozieren:
+
+```bash
+# Terminal 1 — Port-Forward offen lassen
+kubectl port-forward -n monitoring svc/loki-gateway 3100:80 --context moneylytics
+
+# Terminal 2 — Fake-Error pushen
+curl -X POST http://localhost:3100/loki/api/v1/push \
+  -H "Content-Type: application/json" \
+  -d "{
+    \"streams\": [{
+      \"stream\": {
+        \"service_name\": \"api\",
+        \"container\": \"moneylytics\",
+        \"log_level\": \"ERROR\",
+        \"namespace\": \"moneylytics\"
+      },
+      \"values\": [[
+        \"$(python3 -c 'import time; print(int(time.time() * 1e9))')\",
+        \"{\\\"message\\\":\\\"Probe-Alert: simulierter Fehler\\\",\\\"log\\\":{\\\"level\\\":\\\"ERROR\\\"}}\"
+      ]]
+    }]
+  }"
+```
+
+Der Log ist sofort in Grafana → Explore → Loki sichtbar. Der Alert **Backend Error Log** wechselt innerhalb von 5 Minuten auf **Firing** und nach weiteren 5 Minuten ohne neue Errors zurück auf **Normal**.
+
 ## DNS
 
 `grafana.moneylytics.io` must point to the same IP as `app.moneylytics.io` (Traefik LoadBalancer).
