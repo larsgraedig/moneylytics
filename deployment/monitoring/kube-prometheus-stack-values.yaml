@@ -5,8 +5,7 @@ grafana:
     passwordKey: admin-password
 
   persistence:
-    enabled: true
-    size: 2Gi
+    enabled: false
 
   sidecar:
     dashboards:
