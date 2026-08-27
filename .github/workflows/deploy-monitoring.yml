@@ -41,6 +41,16 @@ jobs:
             --from-literal=admin-password='${{ secrets.GRAFANA_ADMIN_PASSWORD }}' \
             --dry-run=client -o yaml | kubectl apply -f -
 
+      - name: Reset stuck Helm releases
+        run: |
+          for release in kube-prometheus-stack loki promtail tempo moneylytics-dashboards; do
+            STATUS=$(helm status "$release" -n monitoring --kube-context moneylytics -o json 2>/dev/null | jq -r '.info.status' || echo "not-found")
+            if [[ "$STATUS" == "pending-install" || "$STATUS" == "pending-upgrade" || "$STATUS" == "pending-rollback" ]]; then
+              echo "Resetting stuck release: $release (status: $STATUS)"
+              helm uninstall "$release" -n monitoring --kube-context moneylytics || true
+            fi
+          done
+
       - name: Deploy kube-prometheus-stack
         run: |
           helm upgrade --install kube-prometheus-stack prometheus-community/kube-prometheus-stack \
