@@ -10,6 +10,7 @@ import com.stripe.param.InvoiceRetrieveParams
 import com.stripe.param.SubscriptionCreateParams
 import com.stripe.param.SubscriptionUpdateParams
 import io.github.oshai.kotlinlogging.KotlinLogging
+import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Component
 import java.net.URI
 import java.net.http.HttpClient
@@ -95,7 +96,7 @@ class StripeAdapter(
     override fun downloadInvoicePdf(pdfUrl: String): ByteArray {
         val request = HttpRequest.newBuilder(URI.create(pdfUrl)).GET().build()
         val response = httpClient.send(request, HttpResponse.BodyHandlers.ofByteArray())
-        if (response.statusCode() != 200) {
+        if (response.statusCode() != HttpStatus.OK.value()) {
             logger.warn { "Failed to download invoice PDF from $pdfUrl — HTTP ${response.statusCode()}" }
             error("PDF download failed with status ${response.statusCode()}")
         }

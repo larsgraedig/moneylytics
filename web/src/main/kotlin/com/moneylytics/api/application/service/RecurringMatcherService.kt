@@ -22,6 +22,10 @@ class RecurringMatcherService(
     private val accountRepository: AccountRepository,
 ) : SyncRecurringSeriesUseCase,
     GetRecurringSyncLogUseCase {
+    companion object {
+        private const val FINGERPRINT_PART_COUNT = 3
+    }
+
     private data class SeriesMatchResult(
         val seriesId: Long,
         val seriesLabel: String,
@@ -80,7 +84,7 @@ class RecurringMatcherService(
             .forEach { series ->
                 val seriesId = series.id ?: return@forEach
                 val parts = series.fingerprint.split("|")
-                if (parts.size != 3) return@forEach
+                if (parts.size != FINGERPRINT_PART_COUNT) return@forEach
                 val accountIban = parts[0]
                 val accountId = accountRepository.findByIban(accountIban, organizationId)?.id
 

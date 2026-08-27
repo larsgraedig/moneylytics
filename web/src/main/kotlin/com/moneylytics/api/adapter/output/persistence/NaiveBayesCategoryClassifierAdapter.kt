@@ -134,7 +134,7 @@ class NaiveBayesCategoryClassifierAdapter(
         val tokenCounts = mutableMapOf<Long, MutableMap<String, Int>>()
 
         txns.forEach { row ->
-            val categoryId = (row[3] as? Long) ?: return@forEach
+            val categoryId = (row[BOOTSTRAP_CATEGORY_ID_INDEX] as? Long) ?: return@forEach
             val features =
                 CategoryClassifierFeatures(
                     purpose = row[0] as? String,
@@ -241,5 +241,6 @@ class NaiveBayesCategoryClassifierAdapter(
     companion object {
         private const val CONFIDENCE_THRESHOLD = 0.65
         private const val MIN_TOKEN_LENGTH = 3
+        private const val BOOTSTRAP_CATEGORY_ID_INDEX = 3
     }
 }

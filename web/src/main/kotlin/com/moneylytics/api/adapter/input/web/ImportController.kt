@@ -13,6 +13,7 @@ import com.moneylytics.api.domain.TransactionImport
 import com.moneylytics.api.domain.TransactionImportFile
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.security.core.userdetails.UserDetails
@@ -110,7 +111,7 @@ class ImportController(
 
                 is RejectImportResult.Failure ->
                     ResponseEntity
-                        .status(422)
+                        .status(HttpStatus.UNPROCESSABLE_ENTITY)
                         .body(
                             RejectImportFailureResponse(
                                 blocked = result.blockedTransactions.map { BlockedTransactionDto(it.transactionId, it.reasons) },
@@ -136,7 +137,7 @@ class ImportController(
 
                 is RejectImportFileResult.Failure ->
                     ResponseEntity
-                        .status(422)
+                        .status(HttpStatus.UNPROCESSABLE_ENTITY)
                         .body(
                             RejectImportFailureResponse(
                                 blocked = result.blockedTransactions.map { BlockedTransactionDto(it.transactionId, it.reasons) },

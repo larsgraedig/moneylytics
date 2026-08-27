@@ -220,120 +220,154 @@ class TransactionQueryController(
         val organizationId = resolveOrganizationUseCase.resolveOrganization(principal, exchange)
         val buckets = generateBuckets(from, to, granularity)
 
-        fun bucketSums(txns: List<Transaction>): List<BigDecimal> {
-            val byBucket = txns.groupBy { bucketKey(it.accountingDate, granularity) }
-            return buckets.map { bucket -> byBucket[bucket]?.sumOf { it.effectiveAmount().abs() } ?: BigDecimal.ZERO }
-        }
-
         val groups =
             effectiveSeries.map { spec ->
                 if (spec.startsWith("id:")) {
-                    val categoryId = spec.removePrefix("id:").toLong()
-                    val allCategories = withContext(Dispatchers.IO) { getCategoriesUseCase.getCategories(organizationId) }
-                    val allTransactions =
-                        withContext(Dispatchers.IO) {
-                            getTransactionsUseCase.getTransactions(
-                                GetTransactionsQuery(
-                                    from = from,
-                                    to = to,
-                                    organizationId = organizationId,
-                                    type = TransactionType.EXPENSES,
-                                    accountId = accountId,
-                                    categoryId = categoryId,
-                                ),
-                            )
-                        }
-
-                    val categoryName = allCategories.find { it.id == categoryId }?.name ?: "?"
-                    val directChildren = allCategories.filter { it.parentId == categoryId }
-
-                    val mainEntry =
-                        TrendSeriesEntry(
-                            label = categoryName,
-                            data = bucketSums(allTransactions),
-                            role = SeriesRole.MAIN_SELECTED,
-                            categoryId = categoryId,
-                        )
-
-                    val subEntries =
-                        directChildren.mapNotNull { child ->
-                            val childId = child.id ?: return@mapNotNull null
-                            val childSubtreeIds = collectSubtreeIds(childId, allCategories)
-                            val childTxns = allTransactions.filter { it.categoryId in childSubtreeIds }
-                            val sums = bucketSums(childTxns)
-                            if (sums.all { it == BigDecimal.ZERO }) return@mapNotNull null
-                            TrendSeriesEntry(
-                                label = child.name,
-                                data = sums,
-                                role = SeriesRole.SUB_CONTEXT,
-                                categoryId = childId,
-                            )
-                        }
-
-                    TrendSeriesGroup(main = mainEntry, subs = subEntries)
+                    buildIdBasedTrendGroup(
+                        categoryId = spec.removePrefix("id:").toLong(),
+                        from = from,
+                        to = to,
+                        organizationId = organizationId,
+                        accountId = accountId,
+                        buckets = buckets,
+                        granularity = granularity,
+                    )
                 } else {
-                    val parts = spec.split(":")
-                    val category = parts[0]
-                    val selectedSub: String?
-                    val selectedGroup: String?
-                    when (parts.size) {
-                        SERIES_SPEC_PARTS_WITH_SUB -> {
-                            selectedSub = parts[1].ifEmpty { null }
-                            selectedGroup = parts[2].ifEmpty { null }
-                        }
-                        2 -> {
-                            selectedSub = null
-                            selectedGroup = parts[1].ifEmpty { null }
-                        }
-                        else -> {
-                            selectedSub = null
-                            selectedGroup = null
-                        }
-                    }
-
-                    val allTransactions =
-                        withContext(Dispatchers.IO) {
-                            getTransactionsUseCase.getTransactions(
-                                GetTransactionsQuery(
-                                    from = from,
-                                    to = to,
-                                    organizationId = organizationId,
-                                    type = TransactionType.EXPENSES,
-                                    accountId = accountId,
-                                    category = category,
-                                    subcategory = selectedSub,
-                                ),
-                            )
-                        }
-
-                    val mainLabel = if (selectedSub != null) selectedSub else category
-                    val hasGroupSelection = selectedGroup != null
-
-                    val mainEntry =
-                        TrendSeriesEntry(
-                            label = mainLabel,
-                            data = bucketSums(allTransactions),
-                            role = if (hasGroupSelection) SeriesRole.MAIN_CONTEXT else SeriesRole.MAIN_SELECTED,
-                        )
-
-                    val subEntries =
-                        allTransactions
-                            .groupBy { it.group }
-                            .entries
-                            .sortedBy { it.key }
-                            .map { (groupName, txns) ->
-                                TrendSeriesEntry(
-                                    label = groupName,
-                                    data = bucketSums(txns),
-                                    role = if (groupName == selectedGroup) SeriesRole.SUB_SELECTED else SeriesRole.SUB_CONTEXT,
-                                )
-                            }
-
-                    TrendSeriesGroup(main = mainEntry, subs = subEntries)
+                    buildStringBasedTrendGroup(
+                        spec = spec,
+                        from = from,
+                        to = to,
+                        organizationId = organizationId,
+                        accountId = accountId,
+                        buckets = buckets,
+                        granularity = granularity,
+                    )
                 }
             }
 
         return TrendsResponse(granularity = granularity, buckets = buckets, groups = groups)
+    }
+
+    private fun bucketSums(
+        txns: List<Transaction>,
+        buckets: List<String>,
+        granularity: Granularity,
+    ): List<BigDecimal> {
+        val byBucket = txns.groupBy { bucketKey(it.accountingDate, granularity) }
+        return buckets.map { bucket -> byBucket[bucket]?.sumOf { it.effectiveAmount().abs() } ?: BigDecimal.ZERO }
+    }
+
+    private suspend fun buildIdBasedTrendGroup(
+        categoryId: Long,
+        from: LocalDate,
+        to: LocalDate,
+        organizationId: Long,
+        accountId: Long?,
+        buckets: List<String>,
+        granularity: Granularity,
+    ): TrendSeriesGroup {
+        val allCategories = withContext(Dispatchers.IO) { getCategoriesUseCase.getCategories(organizationId) }
+        val allTransactions =
+            withContext(Dispatchers.IO) {
+                getTransactionsUseCase.getTransactions(
+                    GetTransactionsQuery(
+                        from = from,
+                        to = to,
+                        organizationId = organizationId,
+                        type = TransactionType.EXPENSES,
+                        accountId = accountId,
+                        categoryId = categoryId,
+                    ),
+                )
+            }
+        val categoryName = allCategories.find { it.id == categoryId }?.name ?: "?"
+        val directChildren = allCategories.filter { it.parentId == categoryId }
+        val mainEntry =
+            TrendSeriesEntry(
+                label = categoryName,
+                data = bucketSums(allTransactions, buckets, granularity),
+                role = SeriesRole.MAIN_SELECTED,
+                categoryId = categoryId,
+            )
+        val subEntries =
+            directChildren.mapNotNull { child ->
+                val childId = child.id ?: return@mapNotNull null
+                val childSubtreeIds = collectSubtreeIds(childId, allCategories)
+                val childTxns = allTransactions.filter { it.categoryId in childSubtreeIds }
+                val sums = bucketSums(childTxns, buckets, granularity)
+                if (sums.all { it == BigDecimal.ZERO }) return@mapNotNull null
+                TrendSeriesEntry(
+                    label = child.name,
+                    data = sums,
+                    role = SeriesRole.SUB_CONTEXT,
+                    categoryId = childId,
+                )
+            }
+        return TrendSeriesGroup(main = mainEntry, subs = subEntries)
+    }
+
+    private suspend fun buildStringBasedTrendGroup(
+        spec: String,
+        from: LocalDate,
+        to: LocalDate,
+        organizationId: Long,
+        accountId: Long?,
+        buckets: List<String>,
+        granularity: Granularity,
+    ): TrendSeriesGroup {
+        val parts = spec.split(":")
+        val category = parts[0]
+        val selectedSub: String?
+        val selectedGroup: String?
+        when (parts.size) {
+            SERIES_SPEC_PARTS_WITH_SUB -> {
+                selectedSub = parts[1].ifEmpty { null }
+                selectedGroup = parts[2].ifEmpty { null }
+            }
+            2 -> {
+                selectedSub = null
+                selectedGroup = parts[1].ifEmpty { null }
+            }
+            else -> {
+                selectedSub = null
+                selectedGroup = null
+            }
+        }
+        val allTransactions =
+            withContext(Dispatchers.IO) {
+                getTransactionsUseCase.getTransactions(
+                    GetTransactionsQuery(
+                        from = from,
+                        to = to,
+                        organizationId = organizationId,
+                        type = TransactionType.EXPENSES,
+                        accountId = accountId,
+                        category = category,
+                        subcategory = selectedSub,
+                    ),
+                )
+            }
+        val mainLabel = if (selectedSub != null) selectedSub else category
+        val hasGroupSelection = selectedGroup != null
+        val mainEntry =
+            TrendSeriesEntry(
+                label = mainLabel,
+                data = bucketSums(allTransactions, buckets, granularity),
+                role = if (hasGroupSelection) SeriesRole.MAIN_CONTEXT else SeriesRole.MAIN_SELECTED,
+            )
+        val subEntries =
+            allTransactions
+                .groupBy { it.group }
+                .entries
+                .sortedBy { it.key }
+                .map { (groupName, txns) ->
+                    TrendSeriesEntry(
+                        label = groupName,
+                        data = bucketSums(txns, buckets, granularity),
+                        role = if (groupName == selectedGroup) SeriesRole.SUB_SELECTED else SeriesRole.SUB_CONTEXT,
+                    )
+                }
+        return TrendSeriesGroup(main = mainEntry, subs = subEntries)
     }
 
     private fun collectSubtreeIds(

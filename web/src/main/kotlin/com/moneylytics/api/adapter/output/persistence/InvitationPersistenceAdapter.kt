@@ -15,6 +15,10 @@ class InvitationPersistenceAdapter(
     private val organizationJpaRepository: OrganizationJpaRepository,
     private val userJpaRepository: UserJpaRepository,
 ) : InvitationRepository {
+    companion object {
+        private const val INVITATION_EXPIRY_DAYS = 7L
+    }
+
     @Transactional
     override fun create(
         organizationId: Long,
@@ -33,7 +37,7 @@ class InvitationPersistenceAdapter(
                     token = token,
                     role = role,
                     createdBy = creator,
-                    expiresAt = Instant.now().plus(7, ChronoUnit.DAYS),
+                    expiresAt = Instant.now().plus(INVITATION_EXPIRY_DAYS, ChronoUnit.DAYS),
                 ),
             )
         return entity.toDomain()

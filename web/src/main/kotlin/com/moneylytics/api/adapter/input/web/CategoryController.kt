@@ -14,6 +14,7 @@ import com.moneylytics.api.domain.Category
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.springframework.dao.DataIntegrityViolationException
+import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.security.core.userdetails.UserDetails
@@ -127,12 +128,12 @@ class CategoryController(
                 )
             }
             ResponseEntity.noContent().build()
-        } catch (e: NoSuchElementException) {
+        } catch (_: NoSuchElementException) {
             ResponseEntity.notFound().build()
         } catch (e: IllegalArgumentException) {
-            ResponseEntity.status(409).body(DeleteCategoryErrorResponse(reason = e.message ?: "UNKNOWN"))
-        } catch (e: DataIntegrityViolationException) {
-            ResponseEntity.status(409).body(DeleteCategoryErrorResponse(reason = "CONSTRAINT_VIOLATION"))
+            ResponseEntity.status(HttpStatus.CONFLICT).body(DeleteCategoryErrorResponse(reason = e.message ?: "UNKNOWN"))
+        } catch (_: DataIntegrityViolationException) {
+            ResponseEntity.status(HttpStatus.CONFLICT).body(DeleteCategoryErrorResponse(reason = "CONSTRAINT_VIOLATION"))
         }
     }
 
@@ -155,12 +156,12 @@ class CategoryController(
                 )
             }
             ResponseEntity.noContent().build()
-        } catch (e: NoSuchElementException) {
+        } catch (_: NoSuchElementException) {
             ResponseEntity.notFound().build()
         } catch (e: IllegalArgumentException) {
-            ResponseEntity.status(409).body(DeleteCategoryErrorResponse(reason = e.message ?: "UNKNOWN"))
-        } catch (e: DataIntegrityViolationException) {
-            ResponseEntity.status(409).body(DeleteCategoryErrorResponse(reason = "CONSTRAINT_VIOLATION"))
+            ResponseEntity.status(HttpStatus.CONFLICT).body(DeleteCategoryErrorResponse(reason = e.message ?: "UNKNOWN"))
+        } catch (_: DataIntegrityViolationException) {
+            ResponseEntity.status(HttpStatus.CONFLICT).body(DeleteCategoryErrorResponse(reason = "CONSTRAINT_VIOLATION"))
         }
     }
 
@@ -174,12 +175,12 @@ class CategoryController(
         return try {
             withContext(Dispatchers.IO) { deleteCategoryUseCase.deleteCategory(id, organizationId) }
             ResponseEntity.noContent().build()
-        } catch (e: NoSuchElementException) {
+        } catch (_: NoSuchElementException) {
             ResponseEntity.notFound().build()
         } catch (e: IllegalStateException) {
-            ResponseEntity.status(409).body(DeleteCategoryErrorResponse(reason = e.message ?: "UNKNOWN"))
-        } catch (e: DataIntegrityViolationException) {
-            ResponseEntity.status(409).body(DeleteCategoryErrorResponse(reason = "CONSTRAINT_VIOLATION"))
+            ResponseEntity.status(HttpStatus.CONFLICT).body(DeleteCategoryErrorResponse(reason = e.message ?: "UNKNOWN"))
+        } catch (_: DataIntegrityViolationException) {
+            ResponseEntity.status(HttpStatus.CONFLICT).body(DeleteCategoryErrorResponse(reason = "CONSTRAINT_VIOLATION"))
         }
     }
 

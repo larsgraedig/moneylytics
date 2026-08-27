@@ -11,6 +11,7 @@ import com.moneylytics.api.domain.CategoryMerge
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.springframework.dao.DataIntegrityViolationException
+import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.security.core.userdetails.UserDetails
@@ -74,13 +75,13 @@ class CategoryMergeController(
                     val names = getCategoriesUseCase.getCategories(organizationId).associate { it.id to it.name }
                     m to names
                 }
-            ResponseEntity.status(201).body(merge.toResponse(nameById))
-        } catch (e: NoSuchElementException) {
+            ResponseEntity.status(HttpStatus.CREATED).body(merge.toResponse(nameById))
+        } catch (_: NoSuchElementException) {
             ResponseEntity.notFound().build()
         } catch (e: IllegalArgumentException) {
-            ResponseEntity.status(409).body(MergeErrorResponse(reason = e.message ?: "UNKNOWN"))
-        } catch (e: DataIntegrityViolationException) {
-            ResponseEntity.status(409).body(MergeErrorResponse(reason = "CONSTRAINT_VIOLATION"))
+            ResponseEntity.status(HttpStatus.CONFLICT).body(MergeErrorResponse(reason = e.message ?: "UNKNOWN"))
+        } catch (_: DataIntegrityViolationException) {
+            ResponseEntity.status(HttpStatus.CONFLICT).body(MergeErrorResponse(reason = "CONSTRAINT_VIOLATION"))
         }
     }
 
@@ -108,12 +109,12 @@ class CategoryMergeController(
                 revertMergeUseCase.revertMerge(RevertMergeCommand(mergeId = id, organizationId = organizationId))
             }
             ResponseEntity.noContent().build()
-        } catch (e: NoSuchElementException) {
+        } catch (_: NoSuchElementException) {
             ResponseEntity.notFound().build()
         } catch (e: IllegalStateException) {
-            ResponseEntity.status(409).body(MergeErrorResponse(reason = e.message ?: "UNKNOWN"))
-        } catch (e: DataIntegrityViolationException) {
-            ResponseEntity.status(409).body(MergeErrorResponse(reason = "CONSTRAINT_VIOLATION"))
+            ResponseEntity.status(HttpStatus.CONFLICT).body(MergeErrorResponse(reason = e.message ?: "UNKNOWN"))
+        } catch (_: DataIntegrityViolationException) {
+            ResponseEntity.status(HttpStatus.CONFLICT).body(MergeErrorResponse(reason = "CONSTRAINT_VIOLATION"))
         }
     }
 

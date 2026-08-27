@@ -8,6 +8,7 @@ data class CategoryUpdateEntry(
     val categoryId: Long?,
 )
 
+@Suppress("TooManyFunctions")
 interface TransactionRepository {
     fun saveAll(
         transactions: List<Transaction>,

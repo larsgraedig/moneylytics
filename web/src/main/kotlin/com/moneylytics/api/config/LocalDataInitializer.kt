@@ -41,6 +41,7 @@ import java.time.LocalDate
 import java.time.ZoneOffset
 import java.util.Random
 
+@Suppress("MagicNumber")
 @Profile("local")
 @Component
 class LocalDataInitializer(
@@ -223,7 +224,7 @@ class LocalDataInitializer(
                 priceId = "price_local_pro",
             ),
         )
-        (1..6).forEach { i ->
+        for (i in 1..6) {
             val start = LocalDate.of(2025, i, 1).atStartOfDay()
             invoiceRepository.save(
                 Invoice(
@@ -263,7 +264,7 @@ class LocalDataInitializer(
                 priceId = "price_local_pro",
             ),
         )
-        (1..3).forEach { i ->
+        for (i in 1..3) {
             val start = LocalDate.of(2025, i, 1).atStartOfDay()
             invoiceRepository.save(
                 Invoice(
@@ -317,7 +318,7 @@ class LocalDataInitializer(
                 priceId = null,
             ),
         )
-        (1..2).forEach { i ->
+        for (i in 1..2) {
             val start = LocalDate.of(2025, i, 1).atStartOfDay()
             invoiceRepository.save(
                 Invoice(

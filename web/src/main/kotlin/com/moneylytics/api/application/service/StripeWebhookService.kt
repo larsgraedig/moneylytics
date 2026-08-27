@@ -33,6 +33,7 @@ class StripeWebhookService(
     private val tierRepository: TierRepository,
     private val assignTierToUserUseCase: AssignTierToUserUseCase,
 ) : HandleStripeWebhookUseCase {
+    @Suppress("TooGenericExceptionCaught")
     @Transactional
     override fun handle(
         payload: String,

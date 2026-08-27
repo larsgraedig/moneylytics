@@ -13,6 +13,7 @@ import java.math.BigDecimal
 import java.security.MessageDigest
 import java.time.LocalDate
 
+@Suppress("TooManyFunctions")
 @Component
 class TransactionPersistenceAdapter(
     private val jpaRepository: TransactionJpaRepository,

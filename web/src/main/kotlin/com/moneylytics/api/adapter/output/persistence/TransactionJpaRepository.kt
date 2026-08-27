@@ -7,6 +7,7 @@ import org.springframework.data.repository.query.Param
 import java.math.BigDecimal
 import java.time.LocalDate
 
+@Suppress("TooManyFunctions")
 interface TransactionJpaRepository : JpaRepository<TransactionEntity, Long> {
     fun findByOrganizationIdAndAccountingDateBetweenAndExcludedFalse(
         organizationId: Long,

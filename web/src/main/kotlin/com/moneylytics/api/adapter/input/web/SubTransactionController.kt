@@ -195,7 +195,6 @@ class SubTransactionController(
 
     @DeleteMapping("/{parentId}/merge/{transactionId}")
     suspend fun removeFromMerge(
-        @PathVariable parentId: Long,
         @PathVariable transactionId: Long,
         @AuthenticationPrincipal principal: UserDetails,
         exchange: ServerWebExchange,

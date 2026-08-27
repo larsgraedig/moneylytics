@@ -212,7 +212,7 @@ class OrganizationController(
                 )
             }
         } catch (e: IllegalStateException) {
-            throw ResponseStatusException(HttpStatus.FORBIDDEN, e.message)
+            throw ResponseStatusException(HttpStatus.FORBIDDEN, e.message, e)
         }
     }
 
@@ -235,7 +235,7 @@ class OrganizationController(
                 )
             }
         } catch (e: IllegalStateException) {
-            throw ResponseStatusException(HttpStatus.FORBIDDEN, e.message)
+            throw ResponseStatusException(HttpStatus.FORBIDDEN, e.message, e)
         }
     }
 }

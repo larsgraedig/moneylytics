@@ -134,23 +134,7 @@ class CamtImportController(
                 )
             }
 
-        val features =
-            previewRows.map { row ->
-                CategoryClassifierFeatures(
-                    purpose = row.purpose.ifBlank { null },
-                    counterpartyName = row.counterparty.ifBlank { null },
-                    counterpartyIban = row.counterpartyIban,
-                    amount = row.amount,
-                )
-            }
-        val suggestions =
-            withContext(Dispatchers.IO) {
-                categoryClassifier.suggestAll(organizationId, features)
-            }
-        val rowsWithSuggestions =
-            previewRows.zip(suggestions).map { (row, catId) ->
-                if (row.status == RowStatus.NEW && !row.unknownAccount) row.copy(suggestedCategoryId = catId) else row
-            }
+        val rowsWithSuggestions = attachCategorySuggestions(previewRows, organizationId)
         val previewToken = UUID.randomUUID()
         withContext(Dispatchers.IO) {
             importPreviewSessionAdapter.save(
@@ -169,6 +153,28 @@ class CamtImportController(
             )
 
         return ResponseEntity.ok(response)
+    }
+
+    private suspend fun attachCategorySuggestions(
+        previewRows: List<RawPreviewRow>,
+        organizationId: Long,
+    ): List<RawPreviewRow> {
+        val features =
+            previewRows.map { row ->
+                CategoryClassifierFeatures(
+                    purpose = row.purpose.ifBlank { null },
+                    counterpartyName = row.counterparty.ifBlank { null },
+                    counterpartyIban = row.counterpartyIban,
+                    amount = row.amount,
+                )
+            }
+        val suggestions =
+            withContext(Dispatchers.IO) {
+                categoryClassifier.suggestAll(organizationId, features)
+            }
+        return previewRows.zip(suggestions).map { (row, catId) ->
+            if (row.status == RowStatus.NEW && !row.unknownAccount) row.copy(suggestedCategoryId = catId) else row
+        }
     }
 
     @PostMapping("/camt/import")

@@ -231,10 +231,8 @@ class TransactionQueryService(
         categoryId: Long?,
     ): Transaction? {
         val updated = transactionRepository.updateCategory(id, organizationId, categoryId)
-        if (categoryId != null &&
-            updated != null &&
-            (updated.purpose != null || updated.counterpartyName != null || updated.counterpartyIban != null)
-        ) {
+        val hasClassifiableFeatures = updated?.run { purpose != null || counterpartyName != null || counterpartyIban != null } ?: false
+        if (categoryId != null && hasClassifiableFeatures) {
             categoryClassifier.train(
                 organizationId,
                 categoryId,
