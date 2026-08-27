@@ -2,47 +2,64 @@
   "title": "Backend Logs",
   "uid": "moneylytics-logs",
   "schemaVersion": 38,
-  "version": 1,
+  "version": 2,
   "refresh": "30s",
   "time": { "from": "now-1h", "to": "now" },
   "templating": {
     "list": [
       {
         "name": "namespace",
-        "type": "custom",
-        "label": "Environment",
-        "current": { "text": "moneylytics", "value": "moneylytics" },
-        "options": [
-          { "text": "prod", "value": "moneylytics" },
-          { "text": "stage", "value": "moneylytics-stage" }
-        ],
-        "hide": 0
-      },
-      {
-        "name": "level",
-        "type": "custom",
-        "label": "Log Level",
-        "current": { "text": "All", "value": "" },
-        "options": [
-          { "text": "All", "value": "" },
-          { "text": "ERROR", "value": "ERROR" },
-          { "text": "WARN", "value": "WARN" },
-          { "text": "INFO", "value": "INFO" }
-        ],
+        "type": "query",
+        "label": "Namespace",
+        "datasource": { "type": "loki" },
+        "definition": "label_values({service_name=\"api\", container=\"moneylytics\"}, namespace)",
+        "query": "label_values({service_name=\"api\", container=\"moneylytics\"}, namespace)",
+        "multi": true,
+        "includeAll": true,
+        "allValue": ".+",
+        "refresh": 2,
+        "sort": 1,
         "hide": 0
       }
     ]
   },
   "panels": [
     {
-      "id": 1,
-      "title": "Error Count",
-      "type": "stat",
-      "gridPos": { "x": 0, "y": 0, "w": 6, "h": 4 },
+      "id": 4,
+      "title": "Log Levels",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 0, "w": 24, "h": 8 },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 100,
+            "stacking": { "mode": "normal", "group": "A" },
+            "lineWidth": 0
+          }
+        }
+      },
+      "options": {
+        "tooltip": { "mode": "multi", "sort": "desc" },
+        "legend": { "displayMode": "list", "placement": "bottom" }
+      },
       "targets": [
         {
           "datasource": { "type": "loki" },
-          "expr": "sum(count_over_time({namespace=\"$namespace\"} | json | log_level=\"ERROR\" [1h]))",
+          "expr": "sum by (log_level) (count_over_time({namespace=~\"$namespace\", service_name=\"api\", container=\"moneylytics\"} [$__auto]))",
+          "legendFormat": "{{log_level}}"
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "title": "Error Count",
+      "type": "stat",
+      "gridPos": { "x": 0, "y": 8, "w": 6, "h": 4 },
+      "targets": [
+        {
+          "datasource": { "type": "loki" },
+          "expr": "sum(count_over_time({namespace=~\"$namespace\", service_name=\"api\", container=\"moneylytics\"} | json | log_level=\"ERROR\" [1h]))",
           "legendFormat": "Errors (1h)"
         }
       ],
@@ -63,11 +80,11 @@
       "id": 2,
       "title": "Log Volume",
       "type": "timeseries",
-      "gridPos": { "x": 6, "y": 0, "w": 18, "h": 4 },
+      "gridPos": { "x": 6, "y": 8, "w": 18, "h": 4 },
       "targets": [
         {
           "datasource": { "type": "loki" },
-          "expr": "sum by (log_level) (count_over_time({namespace=\"$namespace\"} | json [$__interval]))",
+          "expr": "sum by (log_level) (count_over_time({namespace=~\"$namespace\", service_name=\"api\", container=\"moneylytics\"} [$__interval]))",
           "legendFormat": "{{log_level}}"
         }
       ]
@@ -76,7 +93,7 @@
       "id": 3,
       "title": "Log Stream",
       "type": "logs",
-      "gridPos": { "x": 0, "y": 4, "w": 24, "h": 20 },
+      "gridPos": { "x": 0, "y": 12, "w": 24, "h": 20 },
       "options": {
         "showTime": true,
         "showLabels": false,
@@ -88,7 +105,7 @@
       "targets": [
         {
           "datasource": { "type": "loki" },
-          "expr": "{namespace=\"$namespace\"}${level:raw:| json | log_level=\"$level\":} | json",
+          "expr": "{namespace=~\"$namespace\", service_name=\"api\", container=\"moneylytics\"} | json",
           "legendFormat": ""
         }
       ]
