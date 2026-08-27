@@ -15,8 +15,40 @@ grafana:
       labelValue: "1"
       searchNamespace: monitoring
 
+  alerting:
+    rules.yaml:
+      apiVersion: 1
+      groups:
+        - orgId: 1
+          name: moneylytics-backend
+          folder: Moneylytics
+          interval: 5m
+          rules:
+            - uid: moneylytics-error-log-alert
+              title: Backend Error Log
+              condition: A
+              data:
+                - refId: A
+                  relativeTimeRange:
+                    from: 300
+                    to: 0
+                  datasourceUid: loki
+                  model:
+                    expr: 'sum(count_over_time({service_name="api", container="moneylytics", log_level="ERROR"} [5m]))'
+                    queryType: range
+                    refId: A
+              noDataState: OK
+              execErrState: Error
+              for: 0s
+              annotations:
+                summary: "Error log in moneylytics backend"
+                description: "At least one ERROR log was detected in the last 5 minutes."
+              labels:
+                severity: warning
+
   additionalDataSources:
     - name: Loki
+      uid: loki
       type: loki
       url: http://loki-gateway.monitoring.svc.cluster.local
       jsonData:
