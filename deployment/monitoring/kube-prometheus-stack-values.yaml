@@ -89,3 +89,18 @@ prometheus:
 
 alertmanager:
   enabled: true
+
+# Disable monitoring of Kubernetes internal components in kube-system.
+# These require access to kube-system and are typically not scrapeable on managed clusters.
+kubeControllerManager:
+  enabled: false
+kubeScheduler:
+  enabled: false
+kubeEtcd:
+  enabled: false
+kubeProxy:
+  enabled: false
+coreDns:
+  enabled: false
+kubeDns:
+  enabled: false
