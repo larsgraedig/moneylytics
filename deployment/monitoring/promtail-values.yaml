@@ -3,44 +3,17 @@ config:
     - url: http://loki-gateway.monitoring.svc.cluster.local/loki/api/v1/push
 
   snippets:
-    pipelineStages:
-      - cri: {}
-      - json:
-          expressions:
-            log_level: '["log.level"]'
-            message: message
-            service_name: '["service.name"]'
-            logger: '["log.logger"]'
-      - labels:
-          log_level:
-          service_name:
-      - output:
-          source: message
-
     scrapeConfigs: |
-      - job_name: moneylytics-pods
+      - job_name: moneylytics
         kubernetes_sd_configs:
           - role: pod
             namespaces:
               names:
                 - moneylytics
                 - moneylytics-stage
-        pipeline_stages:
-          - cri: {}
-          - json:
-              expressions:
-                log_level: '["log.level"]'
-                message: message
-                service_name: '["service.name"]'
-                logger: '["log.logger"]'
-          - labels:
-              log_level:
-              service_name:
-          - output:
-              source: message
         relabel_configs:
-          - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_name]
-            action: keep
+          - action: keep
+            source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_name]
             regex: moneylytics-api
           - source_labels: [__meta_kubernetes_namespace]
             target_label: namespace
@@ -48,3 +21,18 @@ config:
             target_label: pod
           - source_labels: [__meta_kubernetes_pod_container_name]
             target_label: container
+          - separator: /
+            source_labels:
+              - __meta_kubernetes_pod_uid
+              - __meta_kubernetes_pod_container_name
+            target_label: __path__
+            replacement: /var/log/pods/*$1*/*/*.log
+        pipeline_stages:
+          - cri: {}
+          - json:
+              expressions:
+                log_level: log.level
+                service_name: service.name
+          - labels:
+              log_level:
+              service_name:
