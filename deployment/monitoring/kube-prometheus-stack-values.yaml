@@ -34,6 +34,9 @@ grafana:
                     to: 0
                   datasourceUid: loki
                   model:
+                    datasource:
+                      type: loki
+                      uid: loki
                     expr: 'sum(count_over_time({service_name="api", container="moneylytics", log_level="ERROR"} [5m]))'
                     queryType: range
                     refId: A
