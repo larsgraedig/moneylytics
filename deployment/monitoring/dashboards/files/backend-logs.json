@@ -110,6 +110,16 @@
       "title": "Info Count",
       "type": "stat",
       "gridPos": { "x": 16, "y": 8, "w": 8, "h": 4 },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "fixed", "fixedColor": "blue" },
+          "noValue": "-",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [{ "color": "blue", "value": null }]
+          }
+        }
+      },
       "targets": [
         {
           "datasource": { "type": "loki" },
@@ -119,13 +129,7 @@
       ],
       "options": {
         "reduceOptions": { "calcs": ["lastNotNull"] },
-        "colorMode": "background",
-        "thresholds": {
-          "mode": "absolute",
-          "steps": [
-            { "color": "blue", "value": null }
-          ]
-        }
+        "colorMode": "background"
       }
     },
     {
