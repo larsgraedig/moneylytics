@@ -1,3 +1,8 @@
+logging:
+  structured:
+    format:
+      console: ""
+
 app:
   oauth2-success-redirect: http://localhost:5173
 
