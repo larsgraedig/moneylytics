@@ -150,7 +150,7 @@
       "targets": [
         {
           "datasource": { "type": "loki" },
-          "expr": "{namespace=~\"$namespace\", service_name=\"api\", container=\"moneylytics\"} | json",
+          "expr": "{namespace=~\"$namespace\", service_name=\"api\", container=\"moneylytics\"} | json | line_format \"{{.message}}\"",
           "legendFormat": ""
         }
       ]
