@@ -7,12 +7,15 @@ grafana:
   persistence:
     enabled: false
 
+  defaultDashboardsEnabled: false
+
   sidecar:
     dashboards:
       enabled: true
       label: grafana_dashboard
       labelValue: "1"
       searchNamespace: monitoring
+      folderAnnotation: grafana_folder
 
   alerting:
     rules.yaml:

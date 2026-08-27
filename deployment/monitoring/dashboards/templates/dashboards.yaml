@@ -1,4 +1,6 @@
-{{- range $path, $bytes := .Files.Glob "files/*.json" }}
+{{- $folders := list "Moneylytics" "Kubernetes" "Misc" }}
+{{- range $folder := $folders }}
+{{- range $path, $bytes := $.Files.Glob (printf "files/%s/*.json" $folder) }}
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -7,7 +9,10 @@ metadata:
   namespace: monitoring
   labels:
     grafana_dashboard: "1"
+  annotations:
+    grafana_folder: {{ $folder }}
 data:
   {{ base $path }}: |
 {{ $bytes | toString | indent 4 }}
+{{- end }}
 {{- end }}
