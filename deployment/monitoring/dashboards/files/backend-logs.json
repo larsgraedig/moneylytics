@@ -56,6 +56,15 @@
       "title": "Error Count",
       "type": "stat",
       "gridPos": { "x": 0, "y": 8, "w": 8, "h": 4 },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "fixed", "fixedColor": "red" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [{ "color": "red", "value": null }]
+          }
+        }
+      },
       "targets": [
         {
           "datasource": { "type": "loki" },
@@ -65,13 +74,7 @@
       ],
       "options": {
         "reduceOptions": { "calcs": ["lastNotNull"] },
-        "colorMode": "background",
-        "thresholds": {
-          "mode": "absolute",
-          "steps": [
-            { "color": "red", "value": null }
-          ]
-        }
+        "colorMode": "background"
       }
     },
     {
@@ -79,6 +82,15 @@
       "title": "Warning Count",
       "type": "stat",
       "gridPos": { "x": 8, "y": 8, "w": 8, "h": 4 },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "fixed", "fixedColor": "yellow" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [{ "color": "yellow", "value": null }]
+          }
+        }
+      },
       "targets": [
         {
           "datasource": { "type": "loki" },
@@ -88,13 +100,7 @@
       ],
       "options": {
         "reduceOptions": { "calcs": ["lastNotNull"] },
-        "colorMode": "background",
-        "thresholds": {
-          "mode": "absolute",
-          "steps": [
-            { "color": "yellow", "value": null }
-          ]
-        }
+        "colorMode": "background"
       }
     },
     {
@@ -123,15 +129,11 @@
     {
       "id": 3,
       "title": "Log Stream",
-      "type": "logs",
+      "type": "table",
       "gridPos": { "x": 0, "y": 12, "w": 24, "h": 20 },
       "options": {
-        "showTime": true,
-        "showLabels": false,
-        "wrapLogMessage": true,
-        "prettifyLogMessage": false,
-        "enableLogDetails": true,
-        "sortOrder": "Descending"
+        "showHeader": true,
+        "sortBy": [{ "displayName": "Time", "desc": true }]
       },
       "targets": [
         {
