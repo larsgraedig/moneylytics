@@ -21,6 +21,7 @@ import com.moneylytics.api.domain.OrgRole
 import com.moneylytics.api.domain.RecurrenceCadence
 import com.moneylytics.api.domain.RecurrenceDirection
 import com.moneylytics.api.domain.RecurringType
+import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.springframework.http.HttpStatus
@@ -40,6 +41,8 @@ import org.springframework.web.server.ResponseStatusException
 import org.springframework.web.server.ServerWebExchange
 import java.math.BigDecimal
 import java.time.LocalDate
+
+private val logger = KotlinLogging.logger {}
 
 @RestController
 @RequestMapping("/transactions")
@@ -169,6 +172,7 @@ class RecurringSeriesController(
             try {
                 requireOrgRoleUseCase.requireOrgRole(organizationId, userId, OrgRole.ADMIN)
             } catch (e: IllegalStateException) {
+                logger.warn { "Forbidden recurring series sync: ${e.message}" }
                 throw ResponseStatusException(HttpStatus.FORBIDDEN, e.message, e)
             }
             syncRecurringSeriesUseCase.syncForOrganization(organizationId)

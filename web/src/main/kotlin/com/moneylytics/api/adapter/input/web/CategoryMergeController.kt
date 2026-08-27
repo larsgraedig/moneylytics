@@ -8,6 +8,7 @@ import com.moneylytics.api.application.port.input.ResolveOrganizationUseCase
 import com.moneylytics.api.application.port.input.RevertMergeCommand
 import com.moneylytics.api.application.port.input.RevertMergeUseCase
 import com.moneylytics.api.domain.CategoryMerge
+import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.springframework.dao.DataIntegrityViolationException
@@ -24,6 +25,8 @@ import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.server.ServerWebExchange
 import java.time.Instant
+
+private val logger = KotlinLogging.logger {}
 
 data class MergeCategoriesRequest(
     val sourceId: Long,
@@ -80,7 +83,8 @@ class CategoryMergeController(
             ResponseEntity.notFound().build()
         } catch (e: IllegalArgumentException) {
             ResponseEntity.status(HttpStatus.CONFLICT).body(MergeErrorResponse(reason = e.message ?: "UNKNOWN"))
-        } catch (_: DataIntegrityViolationException) {
+        } catch (e: DataIntegrityViolationException) {
+            logger.warn(e) { "DataIntegrityViolation in category merge operation" }
             ResponseEntity.status(HttpStatus.CONFLICT).body(MergeErrorResponse(reason = "CONSTRAINT_VIOLATION"))
         }
     }
@@ -113,7 +117,8 @@ class CategoryMergeController(
             ResponseEntity.notFound().build()
         } catch (e: IllegalStateException) {
             ResponseEntity.status(HttpStatus.CONFLICT).body(MergeErrorResponse(reason = e.message ?: "UNKNOWN"))
-        } catch (_: DataIntegrityViolationException) {
+        } catch (e: DataIntegrityViolationException) {
+            logger.warn(e) { "DataIntegrityViolation in category merge operation" }
             ResponseEntity.status(HttpStatus.CONFLICT).body(MergeErrorResponse(reason = "CONSTRAINT_VIOLATION"))
         }
     }

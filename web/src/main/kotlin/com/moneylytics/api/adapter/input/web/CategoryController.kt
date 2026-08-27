@@ -11,6 +11,7 @@ import com.moneylytics.api.application.port.input.RenameCategoryCommand
 import com.moneylytics.api.application.port.input.RenameCategoryUseCase
 import com.moneylytics.api.application.port.input.ResolveOrganizationUseCase
 import com.moneylytics.api.domain.Category
+import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.springframework.dao.DataIntegrityViolationException
@@ -29,6 +30,8 @@ import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.server.ServerWebExchange
 import java.time.LocalDate
+
+private val logger = KotlinLogging.logger {}
 
 data class CreateCategoryRequest(
     val path: List<String>,
@@ -132,7 +135,8 @@ class CategoryController(
             ResponseEntity.notFound().build()
         } catch (e: IllegalArgumentException) {
             ResponseEntity.status(HttpStatus.CONFLICT).body(DeleteCategoryErrorResponse(reason = e.message ?: "UNKNOWN"))
-        } catch (_: DataIntegrityViolationException) {
+        } catch (e: DataIntegrityViolationException) {
+            logger.warn(e) { "DataIntegrityViolation in category operation" }
             ResponseEntity.status(HttpStatus.CONFLICT).body(DeleteCategoryErrorResponse(reason = "CONSTRAINT_VIOLATION"))
         }
     }
@@ -160,7 +164,8 @@ class CategoryController(
             ResponseEntity.notFound().build()
         } catch (e: IllegalArgumentException) {
             ResponseEntity.status(HttpStatus.CONFLICT).body(DeleteCategoryErrorResponse(reason = e.message ?: "UNKNOWN"))
-        } catch (_: DataIntegrityViolationException) {
+        } catch (e: DataIntegrityViolationException) {
+            logger.warn(e) { "DataIntegrityViolation in category operation" }
             ResponseEntity.status(HttpStatus.CONFLICT).body(DeleteCategoryErrorResponse(reason = "CONSTRAINT_VIOLATION"))
         }
     }
@@ -179,7 +184,8 @@ class CategoryController(
             ResponseEntity.notFound().build()
         } catch (e: IllegalStateException) {
             ResponseEntity.status(HttpStatus.CONFLICT).body(DeleteCategoryErrorResponse(reason = e.message ?: "UNKNOWN"))
-        } catch (_: DataIntegrityViolationException) {
+        } catch (e: DataIntegrityViolationException) {
+            logger.warn(e) { "DataIntegrityViolation in category operation" }
             ResponseEntity.status(HttpStatus.CONFLICT).body(DeleteCategoryErrorResponse(reason = "CONSTRAINT_VIOLATION"))
         }
     }

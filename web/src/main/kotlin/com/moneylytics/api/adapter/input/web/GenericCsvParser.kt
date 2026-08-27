@@ -1,10 +1,13 @@
 package com.moneylytics.api.adapter.input.web
 
 import com.moneylytics.api.domain.Transaction
+import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.stereotype.Component
 import java.math.BigDecimal
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
+
+private val logger = KotlinLogging.logger {}
 
 @Component
 class GenericCsvParser {
@@ -45,10 +48,15 @@ class GenericCsvParser {
             val date =
                 try {
                     LocalDate.parse(get(dateIdx).take(DATE_PARSE_PREFIX_LENGTH), dateFormatter)
-                } catch (_: Exception) {
+                } catch (e: Exception) {
+                    logger.warn(e) { "Skipping CSV row ${index + 2}: cannot parse date '${get(dateIdx).take(DATE_PARSE_PREFIX_LENGTH)}'" }
                     return@mapIndexedNotNull null
                 }
-            val amountDecimal = parseAmount(get(amountIdx), mapping.amountFormat) ?: return@mapIndexedNotNull null
+            val amountDecimal = parseAmount(get(amountIdx), mapping.amountFormat)
+            if (amountDecimal == null) {
+                logger.warn { "Skipping CSV row ${index + 2}: cannot parse amount '${get(amountIdx)}'" }
+                return@mapIndexedNotNull null
+            }
             val iban = ibanIdx?.let { get(it).ifBlank { null } } ?: mapping.fixedAccountIban?.ifBlank { null } ?: "IMPORTED"
             val currency = currencyIdx?.let { get(it).ifBlank { null } } ?: mapping.fixedCurrency.ifBlank { "EUR" }
 
@@ -118,7 +126,10 @@ class GenericCsvParser {
                 }
             val amount = parseAmount(amountStr, mapping.amountFormat)
 
-            if (date == null || amount == null) continue
+            if (date == null || amount == null) {
+                logger.warn { "Skipping CSV row: date='$dateStr', amount='$amountStr'" }
+                continue
+            }
 
             val iban =
                 ibanIdx?.let { get(it).ifBlank { null } }

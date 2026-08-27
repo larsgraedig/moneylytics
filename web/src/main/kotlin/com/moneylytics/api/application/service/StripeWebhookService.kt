@@ -76,6 +76,7 @@ class StripeWebhookService(
         val pdfData =
             runCatching { stripeGateway.downloadInvoicePdfById(stripeInvoice.id) }
                 .recoverCatching { pdfUrl?.let { stripeGateway.downloadInvoicePdf(it) } ?: throw it }
+                .onFailure { e -> logger.warn(e) { "PDF download failed for invoice ${stripeInvoice.id} — stored without PDF" } }
                 .getOrNull()
 
         val lineItem = stripeInvoice.lines?.data?.firstOrNull()
@@ -120,6 +121,7 @@ class StripeWebhookService(
             val pdfData =
                 runCatching { stripeGateway.downloadInvoicePdfById(stripeInvoice.id) }
                     .recoverCatching { pdfUrl?.let { stripeGateway.downloadInvoicePdf(it) } ?: throw it }
+                    .onFailure { e -> logger.warn(e) { "PDF download failed for invoice ${stripeInvoice.id} — stored without PDF" } }
                     .getOrNull()
 
             val periodStart =

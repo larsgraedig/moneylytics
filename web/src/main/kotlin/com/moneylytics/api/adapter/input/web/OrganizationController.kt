@@ -10,6 +10,7 @@ import com.moneylytics.api.application.port.input.OrganizationLogoUseCase
 import com.moneylytics.api.application.port.input.RequireOrgRoleUseCase
 import com.moneylytics.api.application.port.input.ResolveUserUseCase
 import com.moneylytics.api.domain.OrgRole
+import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.reactive.awaitSingle
 import kotlinx.coroutines.withContext
@@ -32,6 +33,8 @@ import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.server.ResponseStatusException
 import org.springframework.web.server.ServerWebExchange
 import java.time.Instant
+
+private val logger = KotlinLogging.logger {}
 
 private val ALLOWED_LOGO_CONTENT_TYPES = setOf("image/jpeg", "image/png", "image/webp", "image/gif")
 private const val MAX_LOGO_SIZE_BYTES = 2 * 1024 * 1024
@@ -212,6 +215,7 @@ class OrganizationController(
                 )
             }
         } catch (e: IllegalStateException) {
+            logger.warn { "Forbidden organization action: ${e.message}" }
             throw ResponseStatusException(HttpStatus.FORBIDDEN, e.message, e)
         }
     }
@@ -235,6 +239,7 @@ class OrganizationController(
                 )
             }
         } catch (e: IllegalStateException) {
+            logger.warn { "Forbidden organization action: ${e.message}" }
             throw ResponseStatusException(HttpStatus.FORBIDDEN, e.message, e)
         }
     }
