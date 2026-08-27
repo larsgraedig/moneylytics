@@ -16,6 +16,8 @@ grafana:
       labelValue: "1"
       searchNamespace: monitoring
       folderAnnotation: grafana_folder
+      provider:
+        foldersFromFilesStructure: true
 
   alerting:
     rules.yaml:
