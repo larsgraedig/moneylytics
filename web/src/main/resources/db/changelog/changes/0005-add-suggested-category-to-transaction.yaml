@@ -11,3 +11,5 @@ databaseChangeLog:
                   type: bigint
                   constraints:
                     nullable: true
+                    foreignKeyName: fk_transaction_suggested_category
+                    references: category(id)
