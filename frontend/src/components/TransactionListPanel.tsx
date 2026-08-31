@@ -3,7 +3,6 @@ import { useTranslation } from 'react-i18next'
 import { fetchTransactionList, type SankeyNode, type TransactionItem } from '../api/transactions'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { ScrollArea } from '@/components/ui/scroll-area'
 import { cn } from '@/lib/utils'
 
 const LINK_COLORS = ['#f59e0b', '#10b981', '#60a5fa', '#f472b6', '#a78bfa', '#fb923c']
@@ -144,14 +143,14 @@ export default function TransactionListPanel({ from, to, accountId, onClose, ...
 
   return (
     <Dialog open onOpenChange={open => { if (!open) onClose() }}>
-      <DialogContent className="flex flex-col max-w-4xl max-h-[85vh] p-0 gap-0">
+      <DialogContent className="flex flex-col w-[75vw] max-w-[75vw] sm:max-w-[75vw] max-h-[85vh] overflow-hidden p-0 gap-0">
         <DialogHeader className="border-b px-5 py-4 shrink-0">
           <DialogTitle>
             <PanelTitle node={node} nodeKey={nodeKey} />
           </DialogTitle>
         </DialogHeader>
 
-        <ScrollArea className="flex-1">
+        <div className="flex-1 min-h-0 overflow-y-auto">
           {state.phase === 'loading' && (
             <p className="px-5 py-8 text-sm text-muted-foreground">{t('common.loading')}</p>
           )}
@@ -161,7 +160,7 @@ export default function TransactionListPanel({ from, to, accountId, onClose, ...
           )}
 
           {state.phase === 'ready' && (
-            <div className="flex flex-col">
+            <>
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -229,18 +228,18 @@ export default function TransactionListPanel({ from, to, accountId, onClose, ...
               {state.transactions.length === 0 && (
                 <p className="px-5 py-8 text-sm text-muted-foreground">{t('transactions.panel.noTransactions')}</p>
               )}
-
-              {state.transactions.length > 0 && (
-                <div className="flex items-center justify-between border-t px-5 py-3 mt-auto">
-                  <span className="text-sm text-muted-foreground">{t('transactions.panel.total')}</span>
-                  <span className={cn('font-medium tabular-nums', state.total < 0 ? 'text-destructive' : 'text-foreground')}>
-                    {EUR.format(state.total)}
-                  </span>
-                </div>
-              )}
-            </div>
+            </>
           )}
-        </ScrollArea>
+        </div>
+
+        {state.phase === 'ready' && state.transactions.length > 0 && (
+          <div className="flex items-center justify-between border-t px-5 py-3 shrink-0">
+            <span className="text-sm text-muted-foreground">{t('transactions.panel.total')}</span>
+            <span className={cn('font-medium tabular-nums', state.total < 0 ? 'text-destructive' : 'text-foreground')}>
+              {EUR.format(state.total)}
+            </span>
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   )
