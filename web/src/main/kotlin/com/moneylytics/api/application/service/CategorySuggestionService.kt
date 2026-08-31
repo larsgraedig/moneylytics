@@ -20,7 +20,7 @@ class CategorySuggestionService(
                 .findByIdsAndOrganizationId(
                     ids = event.importedIds.toSet(),
                     organizationId = event.organizationId,
-                ).filter { it.categoryId == null }
+                ).filter { it.categoryId == null && !it.excludeFromSuggestions }
 
         if (transactions.isEmpty()) return
 

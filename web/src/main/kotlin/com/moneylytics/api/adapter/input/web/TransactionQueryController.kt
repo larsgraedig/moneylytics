@@ -17,6 +17,7 @@ import com.moneylytics.api.application.port.input.GetTransactionsUseCase
 import com.moneylytics.api.application.port.input.Granularity
 import com.moneylytics.api.application.port.input.ResolveOrganizationUseCase
 import com.moneylytics.api.application.port.input.TransactionType
+import com.moneylytics.api.application.port.input.UpdateExcludeFromSuggestionsUseCase
 import com.moneylytics.api.application.port.input.UpdateTransactionAccountingDateUseCase
 import com.moneylytics.api.application.port.input.UpdateTransactionCategoryUseCase
 import com.moneylytics.api.application.port.input.UpdateTransactionCommentUseCase
@@ -63,6 +64,10 @@ data class UpdateAccountingDateRequest(
     val accountingDate: LocalDate,
 )
 
+data class UpdateExcludeFromSuggestionsRequest(
+    val excludeFromSuggestions: Boolean,
+)
+
 @RestController
 @RequestMapping("/transactions")
 class TransactionQueryController(
@@ -75,6 +80,7 @@ class TransactionQueryController(
     private val updateTransactionCategoryUseCase: UpdateTransactionCategoryUseCase,
     private val updateTransactionCommentUseCase: UpdateTransactionCommentUseCase,
     private val updateTransactionAccountingDateUseCase: UpdateTransactionAccountingDateUseCase,
+    private val updateExcludeFromSuggestionsUseCase: UpdateExcludeFromSuggestionsUseCase,
     private val bulkUpdateTransactionCategoryUseCase: BulkUpdateTransactionCategoryUseCase,
 ) {
     companion object {
@@ -186,6 +192,25 @@ class TransactionQueryController(
         val organizationId = resolveOrganizationUseCase.resolveOrganization(principal, exchange)
         return withContext(Dispatchers.IO) {
             val updated = updateTransactionCommentUseCase.updateComment(id, organizationId, request.comment)
+            if (updated != null) ResponseEntity.ok(updated.toItem()) else ResponseEntity.notFound().build()
+        }
+    }
+
+    @PatchMapping("/{id}/exclude-from-suggestions")
+    suspend fun updateExcludeFromSuggestions(
+        @PathVariable id: Long,
+        @RequestBody request: UpdateExcludeFromSuggestionsRequest,
+        @AuthenticationPrincipal principal: UserDetails,
+        exchange: ServerWebExchange,
+    ): ResponseEntity<TransactionItem> {
+        val organizationId = resolveOrganizationUseCase.resolveOrganization(principal, exchange)
+        return withContext(Dispatchers.IO) {
+            val updated =
+                updateExcludeFromSuggestionsUseCase.updateExcludeFromSuggestions(
+                    id,
+                    organizationId,
+                    request.excludeFromSuggestions,
+                )
             if (updated != null) ResponseEntity.ok(updated.toItem()) else ResponseEntity.notFound().build()
         }
     }

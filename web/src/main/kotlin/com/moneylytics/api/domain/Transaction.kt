@@ -27,6 +27,7 @@ data class Transaction(
     val parentId: Long? = null,
     val isVirtual: Boolean = false,
     val excluded: Boolean = false,
+    val excludeFromSuggestions: Boolean = false,
     val children: List<Transaction> = emptyList(),
 ) {
     fun effectiveAmount(): BigDecimal {

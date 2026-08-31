@@ -461,6 +461,7 @@ class TransactionPersistenceAdapter(
         parentId = parentId,
         isVirtual = isVirtual,
         excluded = excluded,
+        excludeFromSuggestions = excludeFromSuggestions,
         children = children,
     )
 
@@ -542,6 +543,17 @@ class TransactionPersistenceAdapter(
         updates.forEach { (id, categoryId) ->
             jpaRepository.updateSuggestedCategoryId(id, categoryId)
         }
+    }
+
+    @Transactional
+    override fun updateExcludeFromSuggestions(
+        id: Long,
+        organizationId: Long,
+        excludeFromSuggestions: Boolean,
+    ): Transaction? {
+        val entity = jpaRepository.findByIdAndOrganizationId(id, organizationId) ?: return null
+        entity.excludeFromSuggestions = excludeFromSuggestions
+        return enrichWithOffsetLinks(listOf(jpaRepository.save(entity))).first()
     }
 
     private fun Transaction.fingerprintRaw() =

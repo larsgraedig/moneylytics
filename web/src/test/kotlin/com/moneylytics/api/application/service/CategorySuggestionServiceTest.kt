@@ -88,4 +88,16 @@ class CategorySuggestionServiceTest {
         verify(categoryClassifier, never()).suggestAll(any(), any())
         verify(transactionRepository, never()).updateSuggestedCategoryIds(any())
     }
+
+    @Test
+    fun `should skip transactions with excludeFromSuggestions set to true`() {
+        val excluded = tx(id = 1L, purpose = "Gehalt").copy(excludeFromSuggestions = true)
+        whenever(transactionRepository.findByIdsAndOrganizationId(setOf(1L), organizationId))
+            .thenReturn(listOf(excluded))
+
+        service.onTransactionsImported(TransactionsImportedEvent(organizationId, importId, listOf(1L)))
+
+        verify(categoryClassifier, never()).suggestAll(any(), any())
+        verify(transactionRepository, never()).updateSuggestedCategoryIds(any())
+    }
 }

@@ -43,6 +43,7 @@ data class TransactionItem(
     @get:JsonProperty("isVirtual")
     val isVirtual: Boolean,
     val excluded: Boolean,
+    val excludeFromSuggestions: Boolean,
 )
 
 data class GroupSummaryDto(
@@ -103,4 +104,5 @@ fun Transaction.toItem() =
         parentId = parentId,
         isVirtual = isVirtual,
         excluded = excluded,
+        excludeFromSuggestions = excludeFromSuggestions,
     )

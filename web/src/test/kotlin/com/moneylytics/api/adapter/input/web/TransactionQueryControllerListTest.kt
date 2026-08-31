@@ -9,6 +9,7 @@ import com.moneylytics.api.application.port.input.GetCategoryTotalsUseCase
 import com.moneylytics.api.application.port.input.GetTransactionsQuery
 import com.moneylytics.api.application.port.input.GetTransactionsUseCase
 import com.moneylytics.api.application.port.input.ResolveOrganizationUseCase
+import com.moneylytics.api.application.port.input.UpdateExcludeFromSuggestionsUseCase
 import com.moneylytics.api.application.port.input.UpdateTransactionAccountingDateUseCase
 import com.moneylytics.api.application.port.input.UpdateTransactionCategoryUseCase
 import com.moneylytics.api.application.port.input.UpdateTransactionCommentUseCase
@@ -41,6 +42,7 @@ class TransactionQueryControllerListTest {
     private val updateTransactionCommentUseCase: UpdateTransactionCommentUseCase = mock()
     private val getCategoriesUseCase: GetCategoriesUseCase = mock()
     private val updateTransactionAccountingDateUseCase: UpdateTransactionAccountingDateUseCase = mock()
+    private val updateExcludeFromSuggestionsUseCase: UpdateExcludeFromSuggestionsUseCase = mock()
     private val bulkUpdateTransactionCategoryUseCase: BulkUpdateTransactionCategoryUseCase = mock()
     private val controller =
         TransactionQueryController(
@@ -53,6 +55,7 @@ class TransactionQueryControllerListTest {
             updateTransactionCategoryUseCase,
             updateTransactionCommentUseCase,
             updateTransactionAccountingDateUseCase,
+            updateExcludeFromSuggestionsUseCase,
             bulkUpdateTransactionCategoryUseCase,
         )
     private val principal =

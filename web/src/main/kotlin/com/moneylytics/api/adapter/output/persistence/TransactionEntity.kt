@@ -50,6 +50,8 @@ class TransactionEntity(
     val isVirtual: Boolean = false,
     @Column(nullable = false)
     var excluded: Boolean = false,
+    @Column(nullable = false, name = "exclude_from_suggestions")
+    var excludeFromSuggestions: Boolean = false,
     @Column(nullable = true, name = "import_id")
     var importId: Long? = null,
     @Column(nullable = true, name = "import_file_id")

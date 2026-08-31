@@ -9,6 +9,7 @@ import com.moneylytics.api.application.port.input.GetTransactionsQuery
 import com.moneylytics.api.application.port.input.GetTransactionsUseCase
 import com.moneylytics.api.application.port.input.ResolveOrganizationUseCase
 import com.moneylytics.api.application.port.input.TransactionType
+import com.moneylytics.api.application.port.input.UpdateExcludeFromSuggestionsUseCase
 import com.moneylytics.api.application.port.input.UpdateTransactionAccountingDateUseCase
 import com.moneylytics.api.application.port.input.UpdateTransactionCategoryUseCase
 import com.moneylytics.api.application.port.input.UpdateTransactionCommentUseCase
@@ -41,6 +42,7 @@ class TransactionQueryControllerTest {
     private val updateTransactionCategoryUseCase: UpdateTransactionCategoryUseCase = mock()
     private val updateTransactionCommentUseCase: UpdateTransactionCommentUseCase = mock()
     private val updateTransactionAccountingDateUseCase: UpdateTransactionAccountingDateUseCase = mock()
+    private val updateExcludeFromSuggestionsUseCase: UpdateExcludeFromSuggestionsUseCase = mock()
     private val bulkUpdateTransactionCategoryUseCase: BulkUpdateTransactionCategoryUseCase = mock()
     private val controller =
         TransactionQueryController(
@@ -53,6 +55,7 @@ class TransactionQueryControllerTest {
             updateTransactionCategoryUseCase,
             updateTransactionCommentUseCase,
             updateTransactionAccountingDateUseCase,
+            updateExcludeFromSuggestionsUseCase,
             bulkUpdateTransactionCategoryUseCase,
         )
 
@@ -350,6 +353,41 @@ class TransactionQueryControllerTest {
     private fun givenCategories(categories: List<Category>) {
         whenever(getCategoriesUseCase.getCategories(ORG_ID)).thenReturn(categories)
     }
+
+    @Test
+    fun `should return updated transaction when exclude from suggestions flag is set`() =
+        runTest {
+            val txId = 10L
+            val updatedTx =
+                Transaction(
+                    id = txId,
+                    bookingDate = from,
+                    valueDate = from,
+                    accountingDate = from,
+                    amount = BigDecimal("-50.00"),
+                    currency = "EUR",
+                    accountIban = "DE00000000000000000000",
+                    excludeFromSuggestions = true,
+                )
+            whenever(updateExcludeFromSuggestionsUseCase.updateExcludeFromSuggestions(txId, ORG_ID, true))
+                .thenReturn(updatedTx)
+
+            val response = controller.updateExcludeFromSuggestions(txId, UpdateExcludeFromSuggestionsRequest(true), principal, exchange)
+
+            assertThat(response.statusCode.value()).isEqualTo(200)
+            assertThat(response.body?.excludeFromSuggestions).isTrue()
+        }
+
+    @Test
+    fun `should return 404 when transaction not found for exclude from suggestions`() =
+        runTest {
+            val txId = 99L
+            whenever(updateExcludeFromSuggestionsUseCase.updateExcludeFromSuggestions(txId, ORG_ID, true)).thenReturn(null)
+
+            val response = controller.updateExcludeFromSuggestions(txId, UpdateExcludeFromSuggestionsRequest(true), principal, exchange)
+
+            assertThat(response.statusCode.value()).isEqualTo(404)
+        }
 
     private fun tx(
         categoryId: Long,
