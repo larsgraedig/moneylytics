@@ -8,6 +8,7 @@ import { fetchCollection, type CollectionDto } from '../api/collections'
 import { GroupCard } from './GroupCard'
 import { CollectionCard } from './CollectionCard'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { TransactionModal } from './TransactionModal'
 
 type Granularity = 'monthly' | 'yearly'
 type IncomeMode = 'all' | 'unnetted'
@@ -518,81 +519,79 @@ function DrilldownModal({
     }
   }, 0)
 
+  const modalTitle = (
+    <>
+      <span style={{ color: state.type === 'income' ? '#4ade80' : '#f87171' }}>{title}</span>
+      <span className="text-sm font-normal text-muted-foreground ml-2">{state.period} · {state.from} → {state.to}</span>
+    </>
+  )
+
+  const footer = !state.loading && transactions.length > 0
+    ? (
+      <>
+        <span className="text-sm text-muted-foreground">{t('common.total')}</span>
+        <span className="font-medium tabular-nums">{EUR2.format(total)}</span>
+      </>
+    )
+    : undefined
+
   return (
-    <Dialog open onOpenChange={open => { if (!open) onClose() }}>
-      <DialogContent className="max-w-4xl max-h-[85vh] flex flex-col p-0 gap-0">
-        <DialogHeader className="px-5 py-4 border-b shrink-0">
-          <DialogTitle>
-            <span style={{ color: state.type === 'income' ? '#4ade80' : '#f87171' }}>{title}</span>
-            <span className="text-sm font-normal text-muted-foreground ml-2">{state.period} · {state.from} → {state.to}</span>
-          </DialogTitle>
-        </DialogHeader>
-
-        {state.loading && <p className="px-5 py-6 text-sm text-muted-foreground">{t('common.loading')}</p>}
-        {!state.loading && state.transactions != null && state.transactions.length === 0 && (
-          <p className="px-5 py-6 text-sm text-muted-foreground">{t('cashflow.noTransactions')}</p>
-        )}
-
-        {!state.loading && state.transactions != null && state.transactions.length > 0 && (
-          <>
-            <div className="flex-1 overflow-auto">
-              <table className="w-full text-sm">
-                <thead className="border-b">
-                  <tr>
-                    <th className="px-3 py-2 text-left font-medium whitespace-nowrap">{t('common.date')}</th>
-                    <th className="px-3 py-2 text-left font-medium">{t('common.category')}</th>
-                    <th className="px-3 py-2 text-left font-medium">{t('common.purpose')}</th>
-                    <th className="px-3 py-2 text-right font-medium whitespace-nowrap">{t('common.amount')}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {transactions.map(tx => {
-                    const isIncome = state.type === 'income'
-                    const showNetted = isIncome ? state.incomeMode === 'unnetted' : state.expenseMode === 'unnetted'
-                    let displayAmount: number, nettedAmount: number, fullyNetted: boolean
-                    if (isIncome) {
-                      fullyNetted = showNetted && tx.effectiveAmount <= 0
-                      displayAmount = showNetted ? Math.max(0, tx.effectiveAmount) : tx.amount
-                      nettedAmount = showNetted ? Math.max(0, tx.amount - tx.effectiveAmount) : 0
-                    } else {
-                      fullyNetted = showNetted && tx.effectiveAmount >= 0
-                      displayAmount = showNetted ? Math.abs(Math.min(0, tx.effectiveAmount)) : Math.abs(tx.amount)
-                      nettedAmount = showNetted ? Math.abs(tx.amount) - Math.abs(Math.min(0, tx.effectiveAmount)) : 0
-                    }
-                    return (
-                      <tr key={tx.id} className="border-b hover:bg-muted/30" style={fullyNetted ? { color: '#6b6b78' } : undefined}>
-                        <td className="px-3 py-2 text-xs tabular-nums whitespace-nowrap text-muted-foreground">{tx.accountingDate}</td>
-                        <td className="px-3 py-2 text-xs">{tx.category}{tx.subcategory ? ` / ${tx.subcategory}` : ''}</td>
-                        <td className="px-3 py-2 text-xs max-w-48 truncate text-muted-foreground" title={tx.purpose ?? undefined}>{tx.purpose ?? '—'}</td>
-                        <td className="px-3 py-2 text-right tabular-nums">
-                          <div className="flex flex-col items-end gap-0.5">
-                            {!fullyNetted && displayAmount > 0 && <span>{EUR2.format(displayAmount)}</span>}
-                            {nettedAmount > 0 && <span className="text-muted-foreground text-xs">{fullyNetted ? EUR2.format(Math.abs(tx.amount)) : `(${EUR2.format(nettedAmount)} ${t('cashflow.netted')})`}</span>}
-                            {tx.groups.length > 0 && (
-                              <div className="flex flex-wrap gap-1 justify-end">
-                                {tx.groups.map(g => <button key={g.id} className="rounded-full border border-border px-2 py-0.5 text-xs text-muted-foreground hover:text-foreground" onClick={() => onOpenGroup(g.id)}>{g.name ?? `#${g.id}`}</button>)}
-                              </div>
-                            )}
-                            {tx.collections.length > 0 && (
-                              <div className="flex flex-wrap gap-1 justify-end">
-                                {tx.collections.map(c => <button key={c.id} className="rounded-full border border-blue-500/30 bg-blue-500/10 px-2 py-0.5 text-xs text-blue-400 hover:text-blue-300" onClick={() => onOpenCollection(c.id)}>{c.name}</button>)}
-                              </div>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
-            <div className="flex items-center justify-between border-t px-5 py-3 shrink-0">
-              <span className="text-sm text-muted-foreground">{t('common.total')}</span>
-              <span className="font-medium tabular-nums">{EUR2.format(total)}</span>
-            </div>
-          </>
-        )}
-      </DialogContent>
-    </Dialog>
+    <TransactionModal onClose={onClose} title={modalTitle} footer={footer}>
+      {state.loading && <p className="px-5 py-6 text-sm text-muted-foreground">{t('common.loading')}</p>}
+      {!state.loading && state.transactions != null && state.transactions.length === 0 && (
+        <p className="px-5 py-6 text-sm text-muted-foreground">{t('cashflow.noTransactions')}</p>
+      )}
+      {!state.loading && state.transactions != null && state.transactions.length > 0 && (
+        <table className="w-full text-sm">
+          <thead className="border-b">
+            <tr>
+              <th className="px-3 py-2 text-left font-medium whitespace-nowrap">{t('common.date')}</th>
+              <th className="px-3 py-2 text-left font-medium">{t('common.category')}</th>
+              <th className="px-3 py-2 text-left font-medium">{t('common.purpose')}</th>
+              <th className="px-3 py-2 text-right font-medium whitespace-nowrap">{t('common.amount')}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {transactions.map(tx => {
+              const isIncome = state.type === 'income'
+              const showNetted = isIncome ? state.incomeMode === 'unnetted' : state.expenseMode === 'unnetted'
+              let displayAmount: number, nettedAmount: number, fullyNetted: boolean
+              if (isIncome) {
+                fullyNetted = showNetted && tx.effectiveAmount <= 0
+                displayAmount = showNetted ? Math.max(0, tx.effectiveAmount) : tx.amount
+                nettedAmount = showNetted ? Math.max(0, tx.amount - tx.effectiveAmount) : 0
+              } else {
+                fullyNetted = showNetted && tx.effectiveAmount >= 0
+                displayAmount = showNetted ? Math.abs(Math.min(0, tx.effectiveAmount)) : Math.abs(tx.amount)
+                nettedAmount = showNetted ? Math.abs(tx.amount) - Math.abs(Math.min(0, tx.effectiveAmount)) : 0
+              }
+              return (
+                <tr key={tx.id} className="border-b hover:bg-muted/30" style={fullyNetted ? { color: '#6b6b78' } : undefined}>
+                  <td className="px-3 py-2 text-xs tabular-nums whitespace-nowrap text-muted-foreground">{tx.accountingDate}</td>
+                  <td className="px-3 py-2 text-xs">{tx.category}{tx.subcategory ? ` / ${tx.subcategory}` : ''}</td>
+                  <td className="px-3 py-2 text-xs max-w-48 truncate text-muted-foreground" title={tx.purpose ?? undefined}>{tx.purpose ?? '—'}</td>
+                  <td className="px-3 py-2 text-right tabular-nums">
+                    <div className="flex flex-col items-end gap-0.5">
+                      {!fullyNetted && displayAmount > 0 && <span>{EUR2.format(displayAmount)}</span>}
+                      {nettedAmount > 0 && <span className="text-muted-foreground text-xs">{fullyNetted ? EUR2.format(Math.abs(tx.amount)) : `(${EUR2.format(nettedAmount)} ${t('cashflow.netted')})`}</span>}
+                      {tx.groups.length > 0 && (
+                        <div className="flex flex-wrap gap-1 justify-end">
+                          {tx.groups.map(g => <button key={g.id} className="rounded-full border border-border px-2 py-0.5 text-xs text-muted-foreground hover:text-foreground" onClick={() => onOpenGroup(g.id)}>{g.name ?? `#${g.id}`}</button>)}
+                        </div>
+                      )}
+                      {tx.collections.length > 0 && (
+                        <div className="flex flex-wrap gap-1 justify-end">
+                          {tx.collections.map(c => <button key={c.id} className="rounded-full border border-blue-500/30 bg-blue-500/10 px-2 py-0.5 text-xs text-blue-400 hover:text-blue-300" onClick={() => onOpenCollection(c.id)}>{c.name}</button>)}
+                        </div>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      )}
+    </TransactionModal>
   )
 }

@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { fetchTransactionList, type SankeyNode, type TransactionItem } from '../api/transactions'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { cn } from '@/lib/utils'
+import { TransactionModal } from './TransactionModal'
 
 const LINK_COLORS = ['#f59e0b', '#10b981', '#60a5fa', '#f472b6', '#a78bfa', '#fb923c']
 const BUDGET_COLORS = ['#34d399', '#818cf8', '#fb7185', '#fbbf24', '#38bdf8', '#a3e635']
@@ -141,106 +141,98 @@ export default function TransactionListPanel({ from, to, accountId, onClose, ...
   const showGroupCol = info?.type === 'cat'
   const showSubcategoryCol = info?.type === 'grp'
 
+  const footer = state.phase === 'ready' && state.transactions.length > 0
+    ? (
+      <>
+        <span className="text-sm text-muted-foreground">{t('transactions.panel.total')}</span>
+        <span className={cn('font-medium tabular-nums', state.total < 0 ? 'text-destructive' : 'text-foreground')}>
+          {EUR.format(state.total)}
+        </span>
+      </>
+    )
+    : undefined
+
   return (
-    <Dialog open onOpenChange={open => { if (!open) onClose() }}>
-      <DialogContent className="flex flex-col w-[75vw] max-w-[75vw] sm:max-w-[75vw] max-h-[85vh] overflow-hidden p-0 gap-0">
-        <DialogHeader className="border-b px-5 py-4 shrink-0">
-          <DialogTitle>
-            <PanelTitle node={node} nodeKey={nodeKey} />
-          </DialogTitle>
-        </DialogHeader>
+    <TransactionModal onClose={onClose} title={<PanelTitle node={node} nodeKey={nodeKey} />} footer={footer}>
+      {state.phase === 'loading' && (
+        <p className="px-5 py-8 text-sm text-muted-foreground">{t('common.loading')}</p>
+      )}
 
-        <div className="flex-1 min-h-0 overflow-y-auto">
-          {state.phase === 'loading' && (
-            <p className="px-5 py-8 text-sm text-muted-foreground">{t('common.loading')}</p>
+      {state.phase === 'error' && (
+        <p className="px-5 py-8 text-sm text-destructive">{state.message}</p>
+      )}
+
+      {state.phase === 'ready' && (
+        <>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>{t('transactions.panel.date')}</TableHead>
+                {showGroupCol && <TableHead>{t('transactions.columns.group')}</TableHead>}
+                {showSubcategoryCol && <TableHead>{t('transactions.columns.subcategory')}</TableHead>}
+                <TableHead>{t('transactions.panel.details')}</TableHead>
+                <TableHead className="text-right">{t('transactions.panel.amount')}</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {state.transactions.map((tx, i) => (
+                <TableRow key={i}>
+                  <TableCell className="text-muted-foreground tabular-nums text-xs whitespace-nowrap">
+                    <div>{formatDate(tx.accountingDate)}</div>
+                    <div className="text-[10px] opacity-40">#{tx.id}</div>
+                  </TableCell>
+                  {showGroupCol && <TableCell className="text-muted-foreground text-xs">{tx.subcategory}</TableCell>}
+                  {showSubcategoryCol && <TableCell className="text-muted-foreground text-xs">{tx.group}</TableCell>}
+                  <TableCell>
+                    <div className="flex flex-wrap items-center gap-1">
+                      <span className="text-xs text-muted-foreground">
+                        {[tx.category, tx.subcategory, tx.group].filter(Boolean).join(' › ')}
+                      </span>
+                      {tx.groups.map((g, gi) => (
+                        <span
+                          key={g.id}
+                          className="txnv-link-chip"
+                          style={{ borderColor: LINK_COLORS[gi % LINK_COLORS.length] }}
+                        >
+                          {g.name ?? `#${g.id}`}
+                        </span>
+                      ))}
+                      {tx.budgetLinks.map((bl, bi) => (
+                        <span
+                          key={bl.linkId}
+                          className="txnv-budget-chip"
+                          style={{ borderColor: BUDGET_COLORS[bi % BUDGET_COLORS.length] }}
+                        >
+                          <span className="txnv-budget-chip-name">{bl.budgetName}</span>
+                          {bl.amount != null && (
+                            <span className="txnv-budget-chip-amt">{EUR.format(bl.amount)}</span>
+                          )}
+                        </span>
+                      ))}
+                      {tx.collections.map((c, ci) => (
+                        <span
+                          key={c.id}
+                          className="txnv-budget-chip"
+                          style={{ borderColor: BUDGET_COLORS[ci % BUDGET_COLORS.length] }}
+                        >
+                          <span className="txnv-budget-chip-name">{c.name}</span>
+                        </span>
+                      ))}
+                    </div>
+                  </TableCell>
+                  <TableCell className={cn('text-right tabular-nums font-medium text-sm whitespace-nowrap', tx.amount < 0 ? 'text-destructive' : 'text-foreground')}>
+                    {EUR.format(tx.amount)}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+
+          {state.transactions.length === 0 && (
+            <p className="px-5 py-8 text-sm text-muted-foreground">{t('transactions.panel.noTransactions')}</p>
           )}
-
-          {state.phase === 'error' && (
-            <p className="px-5 py-8 text-sm text-destructive">{state.message}</p>
-          )}
-
-          {state.phase === 'ready' && (
-            <>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>{t('transactions.panel.date')}</TableHead>
-                    {showGroupCol && <TableHead>{t('transactions.columns.group')}</TableHead>}
-                    {showSubcategoryCol && <TableHead>{t('transactions.columns.subcategory')}</TableHead>}
-                    <TableHead>{t('transactions.panel.details')}</TableHead>
-                    <TableHead className="text-right">{t('transactions.panel.amount')}</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {state.transactions.map((tx, i) => (
-                    <TableRow key={i}>
-                      <TableCell className="text-muted-foreground tabular-nums text-xs whitespace-nowrap">
-                        <div>{formatDate(tx.accountingDate)}</div>
-                        <div className="text-[10px] opacity-40">#{tx.id}</div>
-                      </TableCell>
-                      {showGroupCol && <TableCell className="text-muted-foreground text-xs">{tx.subcategory}</TableCell>}
-                      {showSubcategoryCol && <TableCell className="text-muted-foreground text-xs">{tx.group}</TableCell>}
-                      <TableCell>
-                        <div className="flex flex-wrap items-center gap-1">
-                          <span className="text-xs text-muted-foreground">
-                            {[tx.category, tx.subcategory, tx.group].filter(Boolean).join(' › ')}
-                          </span>
-                          {tx.groups.map((g, gi) => (
-                            <span
-                              key={g.id}
-                              className="txnv-link-chip"
-                              style={{ borderColor: LINK_COLORS[gi % LINK_COLORS.length] }}
-                            >
-                              {g.name ?? `#${g.id}`}
-                            </span>
-                          ))}
-                          {tx.budgetLinks.map((bl, bi) => (
-                            <span
-                              key={bl.linkId}
-                              className="txnv-budget-chip"
-                              style={{ borderColor: BUDGET_COLORS[bi % BUDGET_COLORS.length] }}
-                            >
-                              <span className="txnv-budget-chip-name">{bl.budgetName}</span>
-                              {bl.amount != null && (
-                                <span className="txnv-budget-chip-amt">{EUR.format(bl.amount)}</span>
-                              )}
-                            </span>
-                          ))}
-                          {tx.collections.map((c, ci) => (
-                            <span
-                              key={c.id}
-                              className="txnv-budget-chip"
-                              style={{ borderColor: BUDGET_COLORS[ci % BUDGET_COLORS.length] }}
-                            >
-                              <span className="txnv-budget-chip-name">{c.name}</span>
-                            </span>
-                          ))}
-                        </div>
-                      </TableCell>
-                      <TableCell className={cn('text-right tabular-nums font-medium text-sm whitespace-nowrap', tx.amount < 0 ? 'text-destructive' : 'text-foreground')}>
-                        {EUR.format(tx.amount)}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-
-              {state.transactions.length === 0 && (
-                <p className="px-5 py-8 text-sm text-muted-foreground">{t('transactions.panel.noTransactions')}</p>
-              )}
-            </>
-          )}
-        </div>
-
-        {state.phase === 'ready' && state.transactions.length > 0 && (
-          <div className="flex items-center justify-between border-t px-5 py-3 shrink-0">
-            <span className="text-sm text-muted-foreground">{t('transactions.panel.total')}</span>
-            <span className={cn('font-medium tabular-nums', state.total < 0 ? 'text-destructive' : 'text-foreground')}>
-              {EUR.format(state.total)}
-            </span>
-          </div>
-        )}
-      </DialogContent>
-    </Dialog>
+        </>
+      )}
+    </TransactionModal>
   )
 }
