@@ -27,6 +27,7 @@ data class ImportTransactionItem(
     val category: String?,
     val subcategory: String?,
     val group: String?,
+    val suggestedCategoryId: Long?,
 )
 
 interface GetImportTransactionsUseCase {

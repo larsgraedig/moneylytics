@@ -144,4 +144,6 @@ interface TransactionRepository {
         targetCategoryId: Long,
         organizationId: Long,
     )
+
+    fun updateSuggestedCategoryIds(updates: List<Pair<Long, Long>>)
 }

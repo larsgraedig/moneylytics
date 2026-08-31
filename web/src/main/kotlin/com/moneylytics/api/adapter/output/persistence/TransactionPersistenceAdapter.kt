@@ -439,6 +439,7 @@ class TransactionPersistenceAdapter(
         children: List<Transaction> = emptyList(),
     ) = Transaction(
         categoryId = category?.id,
+        suggestedCategoryId = suggestedCategoryId,
         category = categoryPath.getOrNull(0),
         subcategory = categoryPath.getOrNull(1),
         group = categoryPath.getOrNull(2),
@@ -534,6 +535,13 @@ class TransactionPersistenceAdapter(
     ) {
         if (transactionIds.isEmpty()) return
         jpaRepository.moveBulkToCategory(transactionIds, targetCategoryId, organizationId)
+    }
+
+    @Transactional
+    override fun updateSuggestedCategoryIds(updates: List<Pair<Long, Long>>) {
+        updates.forEach { (id, categoryId) ->
+            jpaRepository.updateSuggestedCategoryId(id, categoryId)
+        }
     }
 
     private fun Transaction.fingerprintRaw() =

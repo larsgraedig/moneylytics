@@ -14,6 +14,7 @@ data class Transaction(
     val currency: String,
     val accountIban: String,
     val categoryId: Long? = null,
+    val suggestedCategoryId: Long? = null,
     val id: Long? = null,
     val offsetLinks: List<TransactionOffsetLink> = emptyList(),
     val groups: List<TransactionGroupSummary> = emptyList(),

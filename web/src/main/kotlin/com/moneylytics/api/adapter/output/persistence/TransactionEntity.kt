@@ -54,6 +54,8 @@ class TransactionEntity(
     var importId: Long? = null,
     @Column(nullable = true, name = "import_file_id")
     var importFileId: Long? = null,
+    @Column(nullable = true, name = "suggested_category_id")
+    var suggestedCategoryId: Long? = null,
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     var id: Long? = null,

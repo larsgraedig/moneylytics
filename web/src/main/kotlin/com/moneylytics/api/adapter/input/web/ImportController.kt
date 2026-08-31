@@ -74,6 +74,7 @@ data class ImportTransactionResponseDto(
     val parentId: Long?,
     val isVirtual: Boolean,
     val categoryPath: String?,
+    val suggestedCategoryId: Long?,
 )
 
 @RestController
@@ -210,5 +211,6 @@ class ImportController(
             parentId = parentId,
             isVirtual = isVirtual,
             categoryPath = listOfNotNull(category, subcategory, group).joinToString(" / ").ifBlank { null },
+            suggestedCategoryId = suggestedCategoryId,
         )
 }

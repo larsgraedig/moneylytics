@@ -103,6 +103,7 @@ class ServiceLayerTestConfig {
             categoryClassifier,
             transactionImportRepository,
             importFileRepository,
+            mock(),
         )
 
     @Bean

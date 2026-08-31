@@ -15,7 +15,10 @@ import com.moneylytics.api.domain.CategoryClassifierFeatures
 import com.moneylytics.api.domain.Transaction
 import com.moneylytics.api.domain.TransactionImport
 import com.moneylytics.api.domain.TransactionImportFile
+import com.moneylytics.api.domain.TransactionsImportedEvent
+import org.springframework.context.ApplicationEventPublisher
 import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
 
 @Service
 class TransactionImportService(
@@ -25,7 +28,9 @@ class TransactionImportService(
     private val categoryClassifier: CategoryClassifier,
     private val transactionImportRepository: TransactionImportRepository,
     private val importFileRepository: TransactionImportFileRepository,
+    private val eventPublisher: ApplicationEventPublisher,
 ) : ImportTransactionsUseCase {
+    @Transactional
     override fun importTransactions(command: ImportTransactionsCommand): ImportTransactionsResult {
         command.accountNames.forEach { (iban, name) ->
             if (accountRepository.findByIban(iban, command.organizationId) == null) {
@@ -40,6 +45,13 @@ class TransactionImportService(
         val importId = requireNotNull(importRecord.id)
         if (newIds.isNotEmpty()) {
             transactionRepository.linkToImport(importId, newIds)
+            eventPublisher.publishEvent(
+                TransactionsImportedEvent(
+                    organizationId = command.organizationId,
+                    importId = importId,
+                    importedIds = newIds,
+                ),
+            )
         }
         for (spec in command.files) {
             val idsForFile =

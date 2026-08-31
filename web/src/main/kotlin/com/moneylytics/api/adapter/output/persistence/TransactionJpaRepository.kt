@@ -222,6 +222,13 @@ interface TransactionJpaRepository : JpaRepository<TransactionEntity, Long> {
         @Param("organizationId") organizationId: Long,
     )
 
+    @Modifying
+    @Query("UPDATE TransactionEntity t SET t.suggestedCategoryId = :categoryId WHERE t.id = :id")
+    fun updateSuggestedCategoryId(
+        @Param("id") id: Long,
+        @Param("categoryId") categoryId: Long,
+    )
+
     @Query(
         """SELECT t.purpose, t.counterpartyName, t.counterpartyIban, t.category.id, t.amount
         FROM TransactionEntity t
