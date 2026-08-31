@@ -1,7 +1,7 @@
 import { type ReactNode } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 
-export function TransactionModal({
+export function GenericModal({
   onClose,
   title,
   children,

@@ -7,8 +7,7 @@ import { fetchAllTransactions, fetchCashflow, fetchLinkedGroup, type LinkedGroup
 import { fetchCollection, type CollectionDto } from '../api/collections'
 import { GroupCard } from './GroupCard'
 import { CollectionCard } from './CollectionCard'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { TransactionModal } from './TransactionModal'
+import { GenericModal } from './GenericModal'
 
 type Granularity = 'monthly' | 'yearly'
 type IncomeMode = 'all' | 'unnetted'
@@ -325,16 +324,16 @@ export default function CashflowPage({ from, to, accountId }: { from: string; to
         const deepLinkSearch = new URLSearchParams(location.search)
         deepLinkSearch.set('group', String(groupId))
         return (
-          <Dialog open onOpenChange={open => { if (!open) close() }}>
-            <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle>
-                  <Link to={{ pathname: '/verknuepfungen', search: deepLinkSearch.toString() }} onClick={close} className="hover:underline">
-                    {t('linked.group')} #{groupId} ↗
-                  </Link>
-                </DialogTitle>
-              </DialogHeader>
-              {!group ? <p className="text-sm text-muted-foreground">{t('common.loading')}</p> : (
+          <GenericModal
+            onClose={close}
+            title={
+              <Link to={{ pathname: '/verknuepfungen', search: deepLinkSearch.toString() }} onClick={close} className="hover:underline">
+                {t('linked.group')} #{groupId} ↗
+              </Link>
+            }
+          >
+            {!group ? <p className="px-5 py-6 text-sm text-muted-foreground">{t('common.loading')}</p> : (
+              <div className="p-5">
                 <GroupCard
                   group={group}
                   onMetaChange={(_id, name, comment) => setGroupModal(prev => prev?.group ? { ...prev, group: { ...prev.group, name, comment } } : prev)}
@@ -348,9 +347,9 @@ export default function CashflowPage({ from, to, accountId }: { from: string; to
                     else setGroupModal(null)
                   }}
                 />
-              )}
-            </DialogContent>
-          </Dialog>
+              </div>
+            )}
+          </GenericModal>
         )
       })()}
 
@@ -360,16 +359,16 @@ export default function CashflowPage({ from, to, accountId }: { from: string; to
         const deepLinkSearch = new URLSearchParams(location.search)
         deepLinkSearch.set('collection', String(collectionId))
         return (
-          <Dialog open onOpenChange={open => { if (!open) close() }}>
-            <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle>
-                  <Link to={{ pathname: '/sammlungen', search: deepLinkSearch.toString() }} onClick={close} className="hover:underline">
-                    {t('collections.collection')} #{collectionId} ↗
-                  </Link>
-                </DialogTitle>
-              </DialogHeader>
-              {!collection ? <p className="text-sm text-muted-foreground">{t('common.loading')}</p> : (
+          <GenericModal
+            onClose={close}
+            title={
+              <Link to={{ pathname: '/sammlungen', search: deepLinkSearch.toString() }} onClick={close} className="hover:underline">
+                {t('collections.collection')} #{collectionId} ↗
+              </Link>
+            }
+          >
+            {!collection ? <p className="px-5 py-6 text-sm text-muted-foreground">{t('common.loading')}</p> : (
+              <div className="p-5">
                 <CollectionCard
                   collection={collection}
                   onUpdate={(_id, name, note) => setCollectionModal(prev => prev?.collection ? { ...prev, collection: { ...prev.collection, name, note } } : prev)}
@@ -377,9 +376,9 @@ export default function CashflowPage({ from, to, accountId }: { from: string; to
                   onRemoveTransaction={(_, txId) => setCollectionModal(prev => prev?.collection ? { ...prev, collection: { ...prev.collection, transactions: prev.collection.transactions.filter(tx => tx.id !== txId) } } : prev)}
                   onAddTransaction={() => {}}
                 />
-              )}
-            </DialogContent>
-          </Dialog>
+              </div>
+            )}
+          </GenericModal>
         )
       })()}
     </div>
@@ -536,7 +535,7 @@ function DrilldownModal({
     : undefined
 
   return (
-    <TransactionModal onClose={onClose} title={modalTitle} footer={footer}>
+    <GenericModal onClose={onClose} title={modalTitle} footer={footer}>
       {state.loading && <p className="px-5 py-6 text-sm text-muted-foreground">{t('common.loading')}</p>}
       {!state.loading && state.transactions != null && state.transactions.length === 0 && (
         <p className="px-5 py-6 text-sm text-muted-foreground">{t('cashflow.noTransactions')}</p>
@@ -592,6 +591,6 @@ function DrilldownModal({
           </tbody>
         </table>
       )}
-    </TransactionModal>
+    </GenericModal>
   )
 }

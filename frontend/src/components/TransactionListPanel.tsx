@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { fetchTransactionList, type SankeyNode, type TransactionItem } from '../api/transactions'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { cn } from '@/lib/utils'
-import { TransactionModal } from './TransactionModal'
+import { GenericModal } from './GenericModal'
 
 const LINK_COLORS = ['#f59e0b', '#10b981', '#60a5fa', '#f472b6', '#a78bfa', '#fb923c']
 const BUDGET_COLORS = ['#34d399', '#818cf8', '#fb7185', '#fbbf24', '#38bdf8', '#a3e635']
@@ -153,7 +153,7 @@ export default function TransactionListPanel({ from, to, accountId, onClose, ...
     : undefined
 
   return (
-    <TransactionModal onClose={onClose} title={<PanelTitle node={node} nodeKey={nodeKey} />} footer={footer}>
+    <GenericModal onClose={onClose} title={<PanelTitle node={node} nodeKey={nodeKey} />} footer={footer}>
       {state.phase === 'loading' && (
         <p className="px-5 py-8 text-sm text-muted-foreground">{t('common.loading')}</p>
       )}
@@ -233,6 +233,6 @@ export default function TransactionListPanel({ from, to, accountId, onClose, ...
           )}
         </>
       )}
-    </TransactionModal>
+    </GenericModal>
   )
 }

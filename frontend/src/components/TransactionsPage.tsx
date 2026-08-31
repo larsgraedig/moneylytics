@@ -27,6 +27,7 @@ import {
 } from '../api/transactions'
 import { CreateVirtualTransactionModal } from './CreateVirtualTransactionModal'
 import { GroupCard } from './GroupCard'
+import { GenericModal } from './GenericModal'
 import { SplitTransactionModal } from './SplitTransactionModal'
 import { MergeTransactionModal } from './MergeTransactionModal'
 import { TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
@@ -875,16 +876,16 @@ const groupColorMap = useMemo(() => {
     deepLinkSearch.set('group', String(groupModal.groupId))
 
     return (
-      <Dialog open onOpenChange={open => { if (!open) close() }}>
-        <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>
-              <Link to={{ pathname: '/verknuepfungen', search: deepLinkSearch.toString() }} onClick={close} className="hover:underline">
-                {t('linked.group')} #{groupModal.groupId} ↗
-              </Link>
-            </DialogTitle>
-          </DialogHeader>
-          {!group ? <p className="text-sm text-muted-foreground">{t('common.loading')}</p> : (
+      <GenericModal
+        onClose={close}
+        title={
+          <Link to={{ pathname: '/verknuepfungen', search: deepLinkSearch.toString() }} onClick={close} className="hover:underline">
+            {t('linked.group')} #{groupModal.groupId} ↗
+          </Link>
+        }
+      >
+        {!group ? <p className="px-5 py-6 text-sm text-muted-foreground">{t('common.loading')}</p> : (
+          <div className="p-5">
             <GroupCard
               group={group}
               onMetaChange={handleMetaChange}
@@ -895,9 +896,9 @@ const groupColorMap = useMemo(() => {
                 else setGroupModal(null)
               }}
             />
-          )}
-        </DialogContent>
-      </Dialog>
+          </div>
+        )}
+      </GenericModal>
     )
   }
 
