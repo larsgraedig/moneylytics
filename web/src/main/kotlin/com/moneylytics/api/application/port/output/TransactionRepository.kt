@@ -144,4 +144,22 @@ interface TransactionRepository {
         targetCategoryId: Long,
         organizationId: Long,
     )
+
+    fun findUncategorizedForSuggestion(organizationId: Long): List<Transaction>
+
+    fun updateSuggestedCategory(
+        id: Long,
+        organizationId: Long,
+        suggestedCategoryId: Long?,
+    ): Transaction?
+
+    fun acceptSuggestion(
+        id: Long,
+        organizationId: Long,
+    ): Transaction?
+
+    fun rejectSuggestion(
+        id: Long,
+        organizationId: Long,
+    ): Transaction?
 }

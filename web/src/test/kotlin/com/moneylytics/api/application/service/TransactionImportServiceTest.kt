@@ -22,6 +22,7 @@ import org.mockito.kotlin.mock
 import org.mockito.kotlin.never
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
+import org.springframework.context.ApplicationEventPublisher
 import java.math.BigDecimal
 import java.time.LocalDate
 
@@ -32,6 +33,7 @@ class TransactionImportServiceTest {
     private val categoryClassifier: CategoryClassifier = mock()
     private val transactionImportRepository: TransactionImportRepository = mock()
     private val importFileRepository: com.moneylytics.api.application.port.output.TransactionImportFileRepository = mock()
+    private val eventPublisher: ApplicationEventPublisher = mock()
     private val service =
         TransactionImportService(
             transactionRepository,
@@ -40,6 +42,7 @@ class TransactionImportServiceTest {
             categoryClassifier,
             transactionImportRepository,
             importFileRepository,
+            eventPublisher,
         )
 
     private val organizationId = 1L

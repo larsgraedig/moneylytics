@@ -189,6 +189,11 @@
       "title": "Create link"
     },
     "bookingDateTitle": "original booking date",
+    "suggestion": {
+      "label": "Suggestion",
+      "accept": "Accept suggestion",
+      "reject": "Reject suggestion"
+    },
     "split": {
       "button": "Split",
       "title": "Split transaction",

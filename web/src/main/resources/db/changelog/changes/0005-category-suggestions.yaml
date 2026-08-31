@@ -1,0 +1,28 @@
+databaseChangeLog:
+  - changeSet:
+      id: "0005"
+      author: "lgraedig"
+      changes:
+        - addColumn:
+            tableName: transaction
+            columns:
+              - column:
+                  name: suggested_category_id
+                  type: BIGINT
+                  constraints:
+                    nullable: true
+                    foreignKeyName: fk_transaction_suggested_category
+                    references: category(id)
+              - column:
+                  name: exclude_from_suggestions
+                  type: BOOLEAN
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+      rollback:
+        - dropColumn:
+            tableName: transaction
+            columnName: suggested_category_id
+        - dropColumn:
+            tableName: transaction
+            columnName: exclude_from_suggestions

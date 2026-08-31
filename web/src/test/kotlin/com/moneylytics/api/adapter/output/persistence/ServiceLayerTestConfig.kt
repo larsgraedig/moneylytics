@@ -8,12 +8,14 @@ import com.moneylytics.api.application.port.output.TransactionImportIgnoredTrans
 import com.moneylytics.api.application.port.output.TransactionImportRepository
 import com.moneylytics.api.application.port.output.TransactionRepository
 import com.moneylytics.api.application.service.CategoryService
+import com.moneylytics.api.application.service.CategorySuggestionService
 import com.moneylytics.api.application.service.TransactionImportIgnoredTransactionService
 import com.moneylytics.api.application.service.TransactionImportService
 import com.moneylytics.api.domain.CategoryClassifierFeatures
 import org.mockito.kotlin.any
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.whenever
+import org.springframework.context.ApplicationEventPublisher
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Import
@@ -88,6 +90,9 @@ class ServiceLayerTestConfig {
     ): TransactionImportFilePersistenceAdapter = TransactionImportFilePersistenceAdapter(jpaRepository, transactionImportJpaRepository)
 
     @Bean
+    fun applicationEventPublisher(): ApplicationEventPublisher = mock()
+
+    @Bean
     fun transactionImportService(
         transactionRepository: TransactionRepository,
         accountRepository: AccountRepository,
@@ -95,6 +100,7 @@ class ServiceLayerTestConfig {
         categoryClassifier: CategoryClassifier,
         transactionImportRepository: TransactionImportRepository,
         importFileRepository: com.moneylytics.api.application.port.output.TransactionImportFileRepository,
+        eventPublisher: ApplicationEventPublisher,
     ): TransactionImportService =
         TransactionImportService(
             transactionRepository,
@@ -103,7 +109,14 @@ class ServiceLayerTestConfig {
             categoryClassifier,
             transactionImportRepository,
             importFileRepository,
+            eventPublisher,
         )
+
+    @Bean
+    fun categorySuggestionService(
+        transactionRepository: TransactionRepository,
+        categoryClassifier: CategoryClassifier,
+    ): CategorySuggestionService = CategorySuggestionService(transactionRepository, categoryClassifier)
 
     @Bean
     fun transactionImportIgnoredTransactionService(

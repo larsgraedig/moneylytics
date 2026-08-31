@@ -460,6 +460,8 @@ class TransactionPersistenceAdapter(
         parentId = parentId,
         isVirtual = isVirtual,
         excluded = excluded,
+        suggestedCategoryId = suggestedCategory?.id,
+        excludeFromSuggestions = excludeFromSuggestions,
         children = children,
     )
 
@@ -534,6 +536,45 @@ class TransactionPersistenceAdapter(
     ) {
         if (transactionIds.isEmpty()) return
         jpaRepository.moveBulkToCategory(transactionIds, targetCategoryId, organizationId)
+    }
+
+    @Transactional(readOnly = true)
+    override fun findUncategorizedForSuggestion(organizationId: Long): List<Transaction> =
+        enrichWithOffsetLinks(jpaRepository.findUncategorizedForSuggestion(organizationId))
+
+    @Transactional
+    override fun updateSuggestedCategory(
+        id: Long,
+        organizationId: Long,
+        suggestedCategoryId: Long?,
+    ): Transaction? {
+        val entity = jpaRepository.findByIdAndOrganizationId(id, organizationId) ?: return null
+        entity.suggestedCategory =
+            if (suggestedCategoryId != null) categoryJpaRepository.getReferenceById(suggestedCategoryId) else null
+        return enrichWithOffsetLinks(listOf(jpaRepository.save(entity))).firstOrNull()
+    }
+
+    @Transactional
+    override fun acceptSuggestion(
+        id: Long,
+        organizationId: Long,
+    ): Transaction? {
+        val entity = jpaRepository.findByIdAndOrganizationId(id, organizationId) ?: return null
+        val suggestion = entity.suggestedCategory ?: return null
+        entity.category = suggestion
+        entity.suggestedCategory = null
+        return enrichWithOffsetLinks(listOf(jpaRepository.save(entity))).firstOrNull()
+    }
+
+    @Transactional
+    override fun rejectSuggestion(
+        id: Long,
+        organizationId: Long,
+    ): Transaction? {
+        val entity = jpaRepository.findByIdAndOrganizationId(id, organizationId) ?: return null
+        entity.suggestedCategory = null
+        entity.excludeFromSuggestions = true
+        return enrichWithOffsetLinks(listOf(jpaRepository.save(entity))).firstOrNull()
     }
 
     private fun Transaction.fingerprintRaw() =

@@ -93,6 +93,8 @@ export interface TransactionItem {
   parentId: number | null
   isVirtual: boolean
   excluded: boolean
+  suggestedCategoryId: number | null
+  excludeFromSuggestions: boolean
 }
 
 export interface SplitItemRequest {
@@ -485,4 +487,21 @@ export async function fetchSubTransactionGroup(transactionId: number): Promise<S
   if (res.status === 404) return null
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
   return res.json() as Promise<SubTransactionGroupResponse>
+}
+
+export async function triggerCategorySuggestions(): Promise<void> {
+  const res = await fetchWithUser('/transactions/suggestions', { method: 'POST' })
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+}
+
+export async function acceptCategorySuggestion(id: number): Promise<TransactionItem> {
+  const res = await fetchWithUser(`/transactions/${id}/suggestion/accept`, { method: 'POST' })
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  return res.json() as Promise<TransactionItem>
+}
+
+export async function rejectCategorySuggestion(id: number): Promise<TransactionItem> {
+  const res = await fetchWithUser(`/transactions/${id}/suggestion`, { method: 'DELETE' })
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  return res.json() as Promise<TransactionItem>
 }

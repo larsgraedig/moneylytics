@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { Link2, Wallet, Layers, Scissors, Package, MessageSquare, CalendarDays, CalendarClock, Wand2, Pencil, Trash2 } from 'lucide-react'
+import { Link2, Wallet, Layers, Scissors, Package, MessageSquare, CalendarDays, CalendarClock, Wand2, Pencil, Trash2, Check, X } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
@@ -7,6 +7,7 @@ import type { CategoryNode } from '../api/rawImport'
 import { CategoryPathInput } from './CategoryPathInput'
 import {
   AllocationExceededError,
+  acceptCategorySuggestion,
   bulkUpdateTransactionCategory,
   fetchAllTransactions,
   fetchLinkedGroup,
@@ -14,6 +15,7 @@ import {
   linkTransactions,
   removeTransactionFromGroup,
   deleteVirtualTransaction,
+  rejectCategorySuggestion,
   unsplitTransaction,
   unmergeTransactions,
   updateTransactionAccountingDate,
@@ -56,6 +58,15 @@ function parseIso(s: string): Date | null {
   if (!s) return null
   const [y, m, d] = s.split('-').map(Number)
   return new Date(y, m - 1, d)
+}
+
+function findCategoryById(nodes: CategoryNode[], id: number): CategoryNode | null {
+  for (const node of nodes) {
+    if (node.id === id) return node
+    const found = findCategoryById(node.children, id)
+    if (found) return found
+  }
+  return null
 }
 
 function isoDate(d: Date): string {
@@ -405,6 +416,73 @@ export default function TransactionsPage({
           category: updated.category ?? '',
           subcategory: updated.subcategory ?? '',
           group: updated.group ?? '',
+          saving: false,
+          error: null,
+        }
+        return next
+      })
+    } catch (e) {
+      setRows(prev => {
+        const next = [...prev]
+        next[index] = {
+          ...next[index],
+          saving: false,
+          error: e instanceof Error ? e.message : 'save failed',
+        }
+        return next
+      })
+    }
+  }
+
+  async function handleAcceptSuggestion(index: number) {
+    const row = rows[index]
+    setRows(prev => {
+      const next = [...prev]
+      next[index] = { ...next[index], saving: true, error: null }
+      return next
+    })
+    try {
+      const updated = await acceptCategorySuggestion(row.original.id)
+      setRows(prev => {
+        const next = [...prev]
+        next[index] = {
+          ...next[index],
+          original: updated,
+          category: updated.category ?? '',
+          subcategory: updated.subcategory ?? '',
+          group: updated.group ?? '',
+          saving: false,
+          error: null,
+        }
+        return next
+      })
+    } catch (e) {
+      setRows(prev => {
+        const next = [...prev]
+        next[index] = {
+          ...next[index],
+          saving: false,
+          error: e instanceof Error ? e.message : 'save failed',
+        }
+        return next
+      })
+    }
+  }
+
+  async function handleRejectSuggestion(index: number) {
+    const row = rows[index]
+    setRows(prev => {
+      const next = [...prev]
+      next[index] = { ...next[index], saving: true, error: null }
+      return next
+    })
+    try {
+      const updated = await rejectCategorySuggestion(row.original.id)
+      setRows(prev => {
+        const next = [...prev]
+        next[index] = {
+          ...next[index],
+          original: updated,
           saving: false,
           error: null,
         }
@@ -1454,9 +1532,34 @@ const groupColorMap = useMemo(() => {
             {EUR.format(row.original.amount)}
           </TableCell>
         )
-      case 'category':
+      case 'category': {
+        const suggestion = row.original.suggestedCategoryId != null && row.original.categoryId == null
+          ? findCategoryById(categories, row.original.suggestedCategoryId)
+          : null
         return (
           <TableCell key={col} className="px-1 py-1">
+            {suggestion && (
+              <div className="flex items-center gap-1 mb-0.5">
+                <span className="text-xs text-muted-foreground bg-muted rounded px-1.5 py-0.5 flex items-center gap-1">
+                  <Wand2 className="w-3 h-3 shrink-0" />
+                  {suggestion.name}
+                </span>
+                <button
+                  title={t('transactions.suggestion.accept')}
+                  onClick={() => { void handleAcceptSuggestion(i) }}
+                  className="p-0.5 rounded text-green-600 hover:bg-green-100 dark:hover:bg-green-900"
+                >
+                  <Check className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  title={t('transactions.suggestion.reject')}
+                  onClick={() => { void handleRejectSuggestion(i) }}
+                  className="p-0.5 rounded text-destructive hover:bg-destructive/10"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            )}
             <CategoryPathInput
               className="ri-cat-input"
               value={row.original.categoryId ?? null}
@@ -1466,6 +1569,7 @@ const groupColorMap = useMemo(() => {
             />
           </TableCell>
         )
+      }
       case 'offsets':
         return (
           <TableCell key={col} className="txnv-cell-offsets px-3 py-1">

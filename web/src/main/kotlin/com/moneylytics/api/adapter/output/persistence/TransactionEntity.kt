@@ -50,6 +50,11 @@ class TransactionEntity(
     val isVirtual: Boolean = false,
     @Column(nullable = false)
     var excluded: Boolean = false,
+    @ManyToOne(fetch = FetchType.LAZY, optional = true)
+    @JoinColumn(name = "suggested_category_id", nullable = true)
+    var suggestedCategory: CategoryEntity? = null,
+    @Column(nullable = false, name = "exclude_from_suggestions")
+    var excludeFromSuggestions: Boolean = false,
     @Column(nullable = true, name = "import_id")
     var importId: Long? = null,
     @Column(nullable = true, name = "import_file_id")

@@ -10,11 +10,13 @@ import com.moneylytics.api.application.port.output.TransactionImportFileReposito
 import com.moneylytics.api.application.port.output.TransactionImportRepository
 import com.moneylytics.api.application.port.output.TransactionRepository
 import com.moneylytics.api.domain.Account
+import com.moneylytics.api.domain.CategorizationRequestedEvent
 import com.moneylytics.api.domain.Category
 import com.moneylytics.api.domain.CategoryClassifierFeatures
 import com.moneylytics.api.domain.Transaction
 import com.moneylytics.api.domain.TransactionImport
 import com.moneylytics.api.domain.TransactionImportFile
+import org.springframework.context.ApplicationEventPublisher
 import org.springframework.stereotype.Service
 
 @Service
@@ -25,6 +27,7 @@ class TransactionImportService(
     private val categoryClassifier: CategoryClassifier,
     private val transactionImportRepository: TransactionImportRepository,
     private val importFileRepository: TransactionImportFileRepository,
+    private val eventPublisher: ApplicationEventPublisher,
 ) : ImportTransactionsUseCase {
     override fun importTransactions(command: ImportTransactionsCommand): ImportTransactionsResult {
         command.accountNames.forEach { (iban, name) ->
@@ -67,6 +70,7 @@ class TransactionImportService(
             accountRepository.updateBalance(iban, command.organizationId, balance.amount, balance.date)
         }
         trainOnImportedCategories(command)
+        eventPublisher.publishEvent(CategorizationRequestedEvent(command.organizationId))
         return ImportTransactionsResult(importedCount = count, importId = importId)
     }
 

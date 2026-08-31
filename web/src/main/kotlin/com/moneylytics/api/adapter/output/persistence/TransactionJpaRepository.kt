@@ -233,4 +233,16 @@ interface TransactionJpaRepository : JpaRepository<TransactionEntity, Long> {
     fun findCategorizedForBootstrap(
         @Param("organizationId") organizationId: Long,
     ): List<Array<out Any?>>
+
+    @Query(
+        """SELECT t FROM TransactionEntity t
+        WHERE t.organization.id = :organizationId
+        AND t.category IS NULL
+        AND t.excludeFromSuggestions = false
+        AND t.isVirtual = false
+        AND t.parentId IS NULL""",
+    )
+    fun findUncategorizedForSuggestion(
+        @Param("organizationId") organizationId: Long,
+    ): List<TransactionEntity>
 }

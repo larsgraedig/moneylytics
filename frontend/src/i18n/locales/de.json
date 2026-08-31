@@ -189,6 +189,11 @@
       "title": "Verknüpfung erstellen"
     },
     "bookingDateTitle": "reales Buchungsdatum",
+    "suggestion": {
+      "label": "Vorschlag",
+      "accept": "Vorschlag übernehmen",
+      "reject": "Vorschlag ablehnen"
+    },
     "split": {
       "button": "Aufteilen",
       "title": "Transaktion aufteilen",
