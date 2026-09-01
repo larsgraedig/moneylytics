@@ -755,6 +755,27 @@ button.ri-chip {
   box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.2);
 }
 
+.ri-suggestion-actions {
+  display: flex;
+  gap: 4px;
+  margin-top: 3px;
+}
+.ri-suggestion-btn {
+  height: 20px;
+  padding: 0 7px;
+  font-size: 11px;
+  border-radius: 5px;
+  border: 1px solid;
+  cursor: pointer;
+  line-height: 1;
+  background: transparent;
+}
+.ri-suggestion-btn:disabled { opacity: 0.4; cursor: default; }
+.ri-suggestion-btn--accept { color: #4ade80; border-color: rgba(74, 222, 128, 0.4); }
+.ri-suggestion-btn--accept:hover:not(:disabled) { background: rgba(74, 222, 128, 0.1); }
+.ri-suggestion-btn--reject { color: #f87171; border-color: rgba(248, 113, 113, 0.4); }
+.ri-suggestion-btn--reject:hover:not(:disabled) { background: rgba(248, 113, 113, 0.1); }
+
 .ri-cell-category {
   min-width: 200px;
   max-width: 320px;

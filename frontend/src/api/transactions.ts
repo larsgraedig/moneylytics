@@ -180,6 +180,25 @@ export async function updateTransactionCategory(
   return res.json() as Promise<TransactionItem>
 }
 
+export async function updateExcludeFromSuggestions(
+  id: number,
+  excludeFromSuggestions: boolean,
+): Promise<TransactionItem> {
+  const res = await fetchWithUser(`/transactions/${id}/exclude-from-suggestions`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ excludeFromSuggestions }),
+  })
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  return res.json() as Promise<TransactionItem>
+}
+
+export async function acceptSuggestion(id: number): Promise<TransactionItem> {
+  const res = await fetchWithUser(`/transactions/${id}/suggestions/accept`, { method: 'POST' })
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  return res.json() as Promise<TransactionItem>
+}
+
 export interface LinkTransactionResult {
   groupId: number
   sourceTransaction: TransactionItem

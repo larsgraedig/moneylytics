@@ -17,6 +17,8 @@ import {
   unsplitTransaction,
   unmergeTransactions,
   updateTransactionAccountingDate,
+  acceptSuggestion,
+  updateExcludeFromSuggestions,
   updateTransactionCategory,
   updateTransactionComment,
   type Account,
@@ -421,6 +423,32 @@ export default function TransactionsPage({
         }
         return next
       })
+    }
+  }
+
+  async function handleAcceptSuggestion(index: number) {
+    const row = rows[index]
+    setRows(prev => { const next = [...prev]; next[index] = { ...next[index], saving: true, error: null }; return next })
+    try {
+      const updated = await acceptSuggestion(row.original.id)
+      setRows(prev => {
+        const next = [...prev]
+        next[index] = { ...next[index], original: updated, category: updated.category ?? '', subcategory: updated.subcategory ?? '', group: updated.group ?? '', saving: false, error: null }
+        return next
+      })
+    } catch (e) {
+      setRows(prev => { const next = [...prev]; next[index] = { ...next[index], saving: false, error: e instanceof Error ? e.message : 'save failed' }; return next })
+    }
+  }
+
+  async function handleRejectSuggestion(index: number) {
+    const row = rows[index]
+    setRows(prev => { const next = [...prev]; next[index] = { ...next[index], saving: true, error: null }; return next })
+    try {
+      const updated = await updateExcludeFromSuggestions(row.original.id, true)
+      setRows(prev => { const next = [...prev]; next[index] = { ...next[index], original: updated, saving: false, error: null }; return next })
+    } catch (e) {
+      setRows(prev => { const next = [...prev]; next[index] = { ...next[index], saving: false, error: e instanceof Error ? e.message : 'save failed' }; return next })
     }
   }
 
@@ -1468,6 +1496,12 @@ const groupColorMap = useMemo(() => {
               tree={categories}
               onCategoryCreated={onCategoryCreated}
             />
+            {isSuggested && !row.original.excludeFromSuggestions && (
+              <div className="ri-suggestion-actions">
+                <button className="ri-suggestion-btn ri-suggestion-btn--accept" disabled={row.saving} onClick={() => { void handleAcceptSuggestion(i) }}>✓</button>
+                <button className="ri-suggestion-btn ri-suggestion-btn--reject" disabled={row.saving} onClick={() => { void handleRejectSuggestion(i) }}>✕</button>
+              </div>
+            )}
           </TableCell>
         )
       }
@@ -1621,6 +1655,12 @@ const groupColorMap = useMemo(() => {
             tree={categories}
             onCategoryCreated={onCategoryCreated}
           />
+          {row.original.categoryId == null && row.original.suggestedCategoryId != null && !row.original.excludeFromSuggestions && (
+            <div className="ri-suggestion-actions">
+              <button className="ri-suggestion-btn ri-suggestion-btn--accept" disabled={row.saving} onClick={() => { void handleAcceptSuggestion(i) }}>✓</button>
+              <button className="ri-suggestion-btn ri-suggestion-btn--reject" disabled={row.saving} onClick={() => { void handleRejectSuggestion(i) }}>✕</button>
+            </div>
+          )}
           {row.original.purpose && (
             <div className="txn-card-purpose">{row.original.purpose}</div>
           )}

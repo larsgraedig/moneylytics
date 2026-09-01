@@ -556,6 +556,18 @@ class TransactionPersistenceAdapter(
         return enrichWithOffsetLinks(listOf(jpaRepository.save(entity))).first()
     }
 
+    @Transactional
+    override fun acceptSuggestion(
+        id: Long,
+        organizationId: Long,
+    ): Transaction? {
+        val entity = jpaRepository.findByIdAndOrganizationId(id, organizationId) ?: return null
+        val suggestedId = entity.suggestedCategoryId ?: return null
+        entity.category = categoryJpaRepository.getReferenceById(suggestedId)
+        entity.excludeFromSuggestions = true
+        return enrichWithOffsetLinks(listOf(jpaRepository.save(entity))).first()
+    }
+
     private fun Transaction.fingerprintRaw() =
         "$accountIban|$bookingDate|$valueDate|${amount.stripTrailingZeros().toPlainString()}|$currency"
 

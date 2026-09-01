@@ -152,4 +152,9 @@ interface TransactionRepository {
         organizationId: Long,
         excludeFromSuggestions: Boolean,
     ): Transaction?
+
+    fun acceptSuggestion(
+        id: Long,
+        organizationId: Long,
+    ): Transaction?
 }
