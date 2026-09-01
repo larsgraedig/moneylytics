@@ -1,6 +1,7 @@
 package com.moneylytics.api.adapter.input.web
 
 import com.moneylytics.api.application.port.input.AcceptSuggestionUseCase
+import com.moneylytics.api.application.port.input.AcceptSuggestionsBatchUseCase
 import com.moneylytics.api.application.port.input.BulkUpdateTransactionCategoryUseCase
 import com.moneylytics.api.application.port.input.GetBurnRateUseCase
 import com.moneylytics.api.application.port.input.GetCashflowUseCase
@@ -45,6 +46,7 @@ class TransactionQueryControllerTest {
     private val updateTransactionAccountingDateUseCase: UpdateTransactionAccountingDateUseCase = mock()
     private val updateExcludeFromSuggestionsUseCase: UpdateExcludeFromSuggestionsUseCase = mock()
     private val acceptSuggestionUseCase: AcceptSuggestionUseCase = mock()
+    private val acceptSuggestionsBatchUseCase: AcceptSuggestionsBatchUseCase = mock()
     private val bulkUpdateTransactionCategoryUseCase: BulkUpdateTransactionCategoryUseCase = mock()
     private val controller =
         TransactionQueryController(
@@ -59,6 +61,7 @@ class TransactionQueryControllerTest {
             updateTransactionAccountingDateUseCase,
             updateExcludeFromSuggestionsUseCase,
             acceptSuggestionUseCase,
+            acceptSuggestionsBatchUseCase,
             bulkUpdateTransactionCategoryUseCase,
         )
 

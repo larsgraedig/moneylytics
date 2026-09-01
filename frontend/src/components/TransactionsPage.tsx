@@ -18,6 +18,8 @@ import {
   unmergeTransactions,
   updateTransactionAccountingDate,
   acceptSuggestion,
+  acceptSuggestionsBatch,
+  rejectSuggestionsBatch,
   updateExcludeFromSuggestions,
   updateTransactionCategory,
   updateTransactionComment,
@@ -219,6 +221,7 @@ export default function TransactionsPage({
   const [filterType, setFilterType] = useState<'all' | 'income' | 'expenses'>('all')
   const [bulkCategoryId, setBulkCategoryId] = useState<number | null>(null)
   const [bulkApplying, setBulkApplying] = useState(false)
+  const [batchProcessing, setBatchProcessing] = useState(false)
   const [dragCol, setDragCol] = useState<ColumnKey | null>(null)
   const [dragOverCol, setDragOverCol] = useState<ColumnKey | null>(null)
   const [splitModalTx, setSplitModalTx] = useState<TransactionItem | null>(null)
@@ -449,6 +452,45 @@ export default function TransactionsPage({
       setRows(prev => { const next = [...prev]; next[index] = { ...next[index], original: updated, saving: false, error: null }; return next })
     } catch (e) {
       setRows(prev => { const next = [...prev]; next[index] = { ...next[index], saving: false, error: e instanceof Error ? e.message : 'save failed' }; return next })
+    }
+  }
+
+  const pendingSuggestionRows = rows
+    .map((row, i) => ({ row, i }))
+    .filter(({ row }) =>
+      row.original.suggestedCategoryId != null &&
+      row.original.categoryId == null &&
+      !row.original.excludeFromSuggestions,
+    )
+
+  async function handleBatchAccept() {
+    setBatchProcessing(true)
+    try {
+      const ids = pendingSuggestionRows.map(({ row }) => row.original.id)
+      const updated = await acceptSuggestionsBatch(ids)
+      const updatedById = new Map(updated.map(tx => [tx.id, tx]))
+      setRows(prev => prev.map(r => {
+        const u = updatedById.get(r.original.id)
+        return u ? { ...r, original: u, category: u.category ?? '', subcategory: u.subcategory ?? '', group: u.group ?? '' } : r
+      }))
+    } finally {
+      setBatchProcessing(false)
+    }
+  }
+
+  async function handleBatchReject() {
+    setBatchProcessing(true)
+    try {
+      const ids = pendingSuggestionRows.map(({ row }) => row.original.id)
+      await rejectSuggestionsBatch(ids)
+      const idSet = new Set(ids)
+      setRows(prev => prev.map(r =>
+        idSet.has(r.original.id)
+          ? { ...r, original: { ...r.original, excludeFromSuggestions: true } }
+          : r,
+      ))
+    } finally {
+      setBatchProcessing(false)
     }
   }
 
@@ -1476,7 +1518,9 @@ const groupColorMap = useMemo(() => {
       case 'account':
         return (
           <TableCell key={col} className="txnv-cell-account px-3 py-1">
-            {accountMap.get(row.original.accountIban) ?? row.original.accountIban}
+            <span title={row.original.accountIban}>
+              {accountMap.get(row.original.accountIban) ?? row.original.accountIban}
+            </span>
           </TableCell>
         )
       case 'amount':
@@ -1645,6 +1689,14 @@ const groupColorMap = useMemo(() => {
           </span>
         </div>
         <div className="txn-card-body">
+          <div className="txn-card-account">
+            <span title={row.original.accountIban}>
+              {accountMap.get(row.original.accountIban) ?? row.original.accountIban}
+            </span>
+            {accountMap.has(row.original.accountIban) && (
+              <span className="txn-card-account-iban">{row.original.accountIban}</span>
+            )}
+          </div>
           {row.original.counterpartyName && (
             <div className="txn-card-counterparty">{row.original.counterpartyName}</div>
           )}
@@ -1895,6 +1947,21 @@ const groupColorMap = useMemo(() => {
         )}
         {page.phase === 'ready' && filteredRows.length === 0 && (
           <p className="hint">{t('common.noTransactions')}</p>
+        )}
+        {page.phase === 'ready' && pendingSuggestionRows.length > 0 && (
+          <div className="ri-suggestion-batch-banner">
+            <span className="ri-suggestion-batch-banner__text">
+              ✦ {pendingSuggestionRows.length} KI-Vorschlag{pendingSuggestionRows.length !== 1 ? 'e' : ''} ausstehend
+            </span>
+            <div className="ri-suggestion-batch-banner__actions">
+              <button className="ri-suggestion-btn ri-suggestion-btn--accept" disabled={batchProcessing} onClick={() => { void handleBatchAccept() }}>
+                Alle annehmen ✓
+              </button>
+              <button className="ri-suggestion-btn ri-suggestion-btn--reject" disabled={batchProcessing} onClick={() => { void handleBatchReject() }}>
+                Alle ablehnen ✕
+              </button>
+            </div>
+          </div>
         )}
         {page.phase === 'ready' && filteredRows.length > 0 && (
           <>

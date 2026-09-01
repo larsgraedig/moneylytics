@@ -223,6 +223,12 @@ interface TransactionJpaRepository : JpaRepository<TransactionEntity, Long> {
     )
 
     @Modifying
+    @Query("UPDATE TransactionEntity t SET t.excludeFromSuggestions = true WHERE t.id IN :ids")
+    fun setExcludeFromSuggestionsForIds(
+        @Param("ids") ids: Collection<Long>,
+    )
+
+    @Modifying
     @Query("UPDATE TransactionEntity t SET t.suggestedCategoryId = :categoryId WHERE t.id = :id")
     fun updateSuggestedCategoryId(
         @Param("id") id: Long,

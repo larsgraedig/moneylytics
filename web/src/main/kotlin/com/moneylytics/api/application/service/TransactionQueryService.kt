@@ -1,6 +1,7 @@
 package com.moneylytics.api.application.service
 
 import com.moneylytics.api.application.port.input.AcceptSuggestionUseCase
+import com.moneylytics.api.application.port.input.AcceptSuggestionsBatchUseCase
 import com.moneylytics.api.application.port.input.BulkCategoryUpdate
 import com.moneylytics.api.application.port.input.BulkUpdateTransactionCategoryUseCase
 import com.moneylytics.api.application.port.input.BurnRatePoint
@@ -54,6 +55,7 @@ class TransactionQueryService(
     UpdateTransactionAccountingDateUseCase,
     UpdateExcludeFromSuggestionsUseCase,
     AcceptSuggestionUseCase,
+    AcceptSuggestionsBatchUseCase,
     EnrichTransactionUseCase,
     BulkUpdateTransactionCategoryUseCase {
     override fun getTransactions(query: GetTransactionsQuery): List<Transaction> {
@@ -290,6 +292,34 @@ class TransactionQueryService(
         }
         return updated
     }
+
+    override fun acceptSuggestions(
+        ids: List<Long>,
+        organizationId: Long,
+    ): List<Transaction> {
+        val results = transactionRepository.acceptSuggestions(ids, organizationId)
+        results.forEach { tx ->
+            val hasFeatures = tx.purpose != null || tx.counterpartyName != null || tx.counterpartyIban != null
+            if (hasFeatures) {
+                categoryClassifier.train(
+                    organizationId,
+                    requireNotNull(tx.categoryId),
+                    CategoryClassifierFeatures(
+                        purpose = tx.purpose,
+                        counterpartyName = tx.counterpartyName,
+                        counterpartyIban = tx.counterpartyIban,
+                        amount = tx.amount,
+                    ),
+                )
+            }
+        }
+        return results
+    }
+
+    override fun rejectSuggestions(
+        ids: List<Long>,
+        organizationId: Long,
+    ) = transactionRepository.rejectSuggestions(ids, organizationId)
 
     override fun enrichByFingerprint(
         fingerprint: String,

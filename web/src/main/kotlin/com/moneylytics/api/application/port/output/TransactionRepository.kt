@@ -157,4 +157,14 @@ interface TransactionRepository {
         id: Long,
         organizationId: Long,
     ): Transaction?
+
+    fun acceptSuggestions(
+        ids: List<Long>,
+        organizationId: Long,
+    ): List<Transaction>
+
+    fun rejectSuggestions(
+        ids: List<Long>,
+        organizationId: Long,
+    )
 }

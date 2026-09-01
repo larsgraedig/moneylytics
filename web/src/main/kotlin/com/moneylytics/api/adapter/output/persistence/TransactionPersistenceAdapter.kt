@@ -557,6 +557,28 @@ class TransactionPersistenceAdapter(
     }
 
     @Transactional
+    override fun acceptSuggestions(
+        ids: List<Long>,
+        organizationId: Long,
+    ): List<Transaction> =
+        ids.mapNotNull { id ->
+            val entity = jpaRepository.findByIdAndOrganizationId(id, organizationId) ?: return@mapNotNull null
+            val suggestedId = entity.suggestedCategoryId ?: return@mapNotNull null
+            entity.category = categoryJpaRepository.getReferenceById(suggestedId)
+            entity.excludeFromSuggestions = true
+            enrichWithOffsetLinks(listOf(jpaRepository.save(entity))).first()
+        }
+
+    @Transactional
+    override fun rejectSuggestions(
+        ids: List<Long>,
+        organizationId: Long,
+    ) {
+        if (ids.isEmpty()) return
+        jpaRepository.setExcludeFromSuggestionsForIds(ids)
+    }
+
+    @Transactional
     override fun acceptSuggestion(
         id: Long,
         organizationId: Long,

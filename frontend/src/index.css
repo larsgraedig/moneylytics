@@ -755,6 +755,33 @@ button.ri-chip {
   box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.2);
 }
 
+.ri-suggestion-batch-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 14px;
+  background: rgba(245, 158, 11, 0.08);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+  border-radius: 8px;
+  margin-bottom: 8px;
+  flex-shrink: 0;
+}
+.ri-suggestion-batch-banner__text {
+  font-size: 13px;
+  color: #f59e0b;
+  font-weight: 500;
+}
+.ri-suggestion-batch-banner__actions {
+  display: flex;
+  gap: 6px;
+}
+.ri-suggestion-batch-banner .ri-suggestion-btn {
+  height: 26px;
+  padding: 0 10px;
+  font-size: 12px;
+}
+
 .ri-suggestion-actions {
   display: flex;
   gap: 4px;
@@ -1704,6 +1731,20 @@ button.ri-chip {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.txn-card-account {
+  font-size: 11px;
+  color: var(--text-muted);
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.txn-card-account-iban {
+  font-size: 10px;
+  opacity: 0.55;
+  font-family: monospace;
+  letter-spacing: 0.01em;
 }
 
 .txn-card-purpose {

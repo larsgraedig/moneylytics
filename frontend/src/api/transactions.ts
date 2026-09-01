@@ -199,6 +199,25 @@ export async function acceptSuggestion(id: number): Promise<TransactionItem> {
   return res.json() as Promise<TransactionItem>
 }
 
+export async function acceptSuggestionsBatch(ids: number[]): Promise<TransactionItem[]> {
+  const res = await fetchWithUser('/transactions/suggestions/accept-batch', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ids }),
+  })
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  return res.json() as Promise<TransactionItem[]>
+}
+
+export async function rejectSuggestionsBatch(ids: number[]): Promise<void> {
+  const res = await fetchWithUser('/transactions/suggestions/reject-batch', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ids }),
+  })
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+}
+
 export interface LinkTransactionResult {
   groupId: number
   sourceTransaction: TransactionItem

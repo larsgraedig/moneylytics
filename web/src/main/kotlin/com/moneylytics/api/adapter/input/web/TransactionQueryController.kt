@@ -1,6 +1,7 @@
 package com.moneylytics.api.adapter.input.web
 
 import com.moneylytics.api.application.port.input.AcceptSuggestionUseCase
+import com.moneylytics.api.application.port.input.AcceptSuggestionsBatchUseCase
 import com.moneylytics.api.application.port.input.BulkCategoryUpdate
 import com.moneylytics.api.application.port.input.BulkUpdateTransactionCategoryUseCase
 import com.moneylytics.api.application.port.input.BurnRateResponse
@@ -70,6 +71,10 @@ data class UpdateExcludeFromSuggestionsRequest(
     val excludeFromSuggestions: Boolean,
 )
 
+data class SuggestionBatchRequest(
+    val ids: List<Long>,
+)
+
 @RestController
 @RequestMapping("/transactions")
 class TransactionQueryController(
@@ -84,6 +89,7 @@ class TransactionQueryController(
     private val updateTransactionAccountingDateUseCase: UpdateTransactionAccountingDateUseCase,
     private val updateExcludeFromSuggestionsUseCase: UpdateExcludeFromSuggestionsUseCase,
     private val acceptSuggestionUseCase: AcceptSuggestionUseCase,
+    private val acceptSuggestionsBatchUseCase: AcceptSuggestionsBatchUseCase,
     private val bulkUpdateTransactionCategoryUseCase: BulkUpdateTransactionCategoryUseCase,
 ) {
     companion object {
@@ -228,6 +234,31 @@ class TransactionQueryController(
         return withContext(Dispatchers.IO) {
             val updated = acceptSuggestionUseCase.acceptSuggestion(id, organizationId)
             if (updated != null) ResponseEntity.ok(updated.toItem()) else ResponseEntity.notFound().build()
+        }
+    }
+
+    @PostMapping("/suggestions/accept-batch")
+    suspend fun acceptSuggestionsBatch(
+        @RequestBody request: SuggestionBatchRequest,
+        @AuthenticationPrincipal principal: UserDetails,
+        exchange: ServerWebExchange,
+    ): List<TransactionItem> {
+        val organizationId = resolveOrganizationUseCase.resolveOrganization(principal, exchange)
+        return withContext(Dispatchers.IO) {
+            acceptSuggestionsBatchUseCase.acceptSuggestions(request.ids, organizationId).map { it.toItem() }
+        }
+    }
+
+    @PostMapping("/suggestions/reject-batch")
+    suspend fun rejectSuggestionsBatch(
+        @RequestBody request: SuggestionBatchRequest,
+        @AuthenticationPrincipal principal: UserDetails,
+        exchange: ServerWebExchange,
+    ): ResponseEntity<Unit> {
+        val organizationId = resolveOrganizationUseCase.resolveOrganization(principal, exchange)
+        return withContext(Dispatchers.IO) {
+            acceptSuggestionsBatchUseCase.rejectSuggestions(request.ids, organizationId)
+            ResponseEntity.ok().build()
         }
     }
 
