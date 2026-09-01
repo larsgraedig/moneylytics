@@ -2,6 +2,10 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Git
+
+**Never commit.** Do not create git commits under any circumstances, even if asked to "save", "finalize", or "ship" changes. Leave all changes in the working copy.
+
 ## Commands
 
 ```bash
