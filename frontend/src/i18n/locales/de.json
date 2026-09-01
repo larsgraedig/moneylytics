@@ -558,7 +558,10 @@
       "date": "Datum",
       "amount": "Betrag",
       "counterparty": "Gegenpartei",
-      "purpose": "Verwendungszweck"
+      "purpose": "Verwendungszweck",
+      "expectedDate": "Erwartet",
+      "actualDate": "Tatsächlich",
+      "status": "Status"
     },
     "sync": "Sync",
     "syncing": "Wird synchronisiert…",

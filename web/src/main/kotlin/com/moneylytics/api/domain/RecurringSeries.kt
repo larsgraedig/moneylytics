@@ -32,4 +32,5 @@ data class RecurringSeries(
     val isFalsePositive: Boolean = false,
     val occurrences: List<RecurringOccurrence> = emptyList(),
     val deviation: RecurrenceDeviation = RecurrenceDeviation.ON_TRACK,
+    val expectedSlots: List<RecurringExpectedSlot> = emptyList(),
 )

@@ -44,6 +44,7 @@ class RecurringSeriesService(
     private val detector: RecurringSeriesDetector,
     private val classifier: RecurringTypeClassifier,
     private val syncLogRepository: RecurringSyncLogRepository,
+    private val slotAssigner: RecurringSlotAssigner,
 ) : DetectRecurringSeriesUseCase,
     GetRecurringSeriesUseCase,
     CorrectRecurringSeriesTypeUseCase,
@@ -122,8 +123,9 @@ class RecurringSeriesService(
         if (toRemove.isNotEmpty()) falsePositiveRepository.deleteByOrganizationIdAndFingerprints(command.organizationId, toRemove)
 
         val saved = recurringSeriesRepository.findByOrganizationId(command.organizationId).map { computeDeviation(it, today) }
+        saved.forEach { series -> slotAssigner.computeAndPersist(series, today) }
         writeConfirmLog(confirmed, saved, command.organizationId)
-        return saved
+        return recurringSeriesRepository.findByOrganizationId(command.organizationId).map { computeDeviation(it, today) }
     }
 
     private fun writeConfirmLog(

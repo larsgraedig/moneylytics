@@ -558,7 +558,10 @@
       "date": "Date",
       "amount": "Amount",
       "counterparty": "Counterparty",
-      "purpose": "Purpose"
+      "purpose": "Purpose",
+      "expectedDate": "Expected",
+      "actualDate": "Actual",
+      "status": "Status"
     },
     "sync": "Sync",
     "syncing": "Syncing…",
