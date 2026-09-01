@@ -740,6 +740,8 @@ const groupColorMap = useMemo(() => {
       classes.push('txnv-row--selected')
     if (row.original.isVirtual && row.original.parentId != null)
       classes.push('txnv-row--split-child')
+    if (row.original.suggestedCategoryId != null && row.original.categoryId == null)
+      classes.push('txnv-row--has-suggestion')
     return classes.join(' ')
   }
 
@@ -1465,6 +1467,9 @@ const groupColorMap = useMemo(() => {
               tree={categories}
               onCategoryCreated={onCategoryCreated}
             />
+            {row.original.suggestedCategoryId != null && row.original.categoryId == null && (
+              <span className="ri-badge--suggestion mt-0.5">Vorschlag</span>
+            )}
           </TableCell>
         )
       case 'offsets':
@@ -1617,6 +1622,9 @@ const groupColorMap = useMemo(() => {
             tree={categories}
             onCategoryCreated={onCategoryCreated}
           />
+          {row.original.suggestedCategoryId != null && row.original.categoryId == null && (
+            <span className="ri-badge--suggestion mt-0.5">Vorschlag</span>
+          )}
           {row.original.purpose && (
             <div className="txn-card-purpose">{row.original.purpose}</div>
           )}

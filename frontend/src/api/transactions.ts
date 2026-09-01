@@ -76,6 +76,7 @@ export interface TransactionItem {
   accountingDate: string
   accountIban: string
   categoryId: number | null
+  suggestedCategoryId: number | null
   category: string | null
   subcategory: string | null
   group: string | null
@@ -93,6 +94,7 @@ export interface TransactionItem {
   parentId: number | null
   isVirtual: boolean
   excluded: boolean
+  excludeFromSuggestions: boolean
 }
 
 export interface SplitItemRequest {
