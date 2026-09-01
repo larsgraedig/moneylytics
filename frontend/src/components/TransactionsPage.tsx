@@ -768,7 +768,7 @@ const groupColorMap = useMemo(() => {
       classes.push('txnv-row--selected')
     if (row.original.isVirtual && row.original.parentId != null)
       classes.push('txnv-row--split-child')
-    if (row.original.suggestedCategoryId != null && row.original.categoryId == null)
+    if (row.original.suggestedCategoryId != null && row.original.categoryId == null && !row.original.excludeFromSuggestions)
       classes.push('txnv-row--has-suggestion')
     return classes.join(' ')
   }
@@ -1486,7 +1486,7 @@ const groupColorMap = useMemo(() => {
           </TableCell>
         )
       case 'category': {
-        const isSuggested = row.original.categoryId == null && row.original.suggestedCategoryId != null
+        const isSuggested = row.original.categoryId == null && row.original.suggestedCategoryId != null && !row.original.excludeFromSuggestions
         return (
           <TableCell key={col} className="px-1 py-1">
             <CategoryPathInput
@@ -1649,8 +1649,8 @@ const groupColorMap = useMemo(() => {
             <div className="txn-card-counterparty">{row.original.counterpartyName}</div>
           )}
           <CategoryPathInput
-            className={`ri-cat-input${row.original.categoryId == null && row.original.suggestedCategoryId != null ? ' ri-cat-input--suggested' : ''}`}
-            value={row.original.categoryId ?? row.original.suggestedCategoryId ?? null}
+            className={`ri-cat-input${row.original.categoryId == null && row.original.suggestedCategoryId != null && !row.original.excludeFromSuggestions ? ' ri-cat-input--suggested' : ''}`}
+            value={row.original.categoryId ?? (row.original.excludeFromSuggestions ? null : row.original.suggestedCategoryId) ?? null}
             onChange={id => { void handleCategoryChange(i, id) }}
             tree={categories}
             onCategoryCreated={onCategoryCreated}
