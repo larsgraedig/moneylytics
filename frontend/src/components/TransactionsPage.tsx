@@ -1457,21 +1457,20 @@ const groupColorMap = useMemo(() => {
             {EUR.format(row.original.amount)}
           </TableCell>
         )
-      case 'category':
+      case 'category': {
+        const isSuggested = row.original.categoryId == null && row.original.suggestedCategoryId != null
         return (
           <TableCell key={col} className="px-1 py-1">
             <CategoryPathInput
-              className="ri-cat-input"
-              value={row.original.categoryId ?? null}
+              className={`ri-cat-input${isSuggested ? ' ri-cat-input--suggested' : ''}`}
+              value={row.original.categoryId ?? row.original.suggestedCategoryId ?? null}
               onChange={id => { void handleCategoryChange(i, id) }}
               tree={categories}
               onCategoryCreated={onCategoryCreated}
             />
-            {row.original.suggestedCategoryId != null && row.original.categoryId == null && (
-              <span className="ri-badge--suggestion mt-0.5">Vorschlag</span>
-            )}
           </TableCell>
         )
+      }
       case 'offsets':
         return (
           <TableCell key={col} className="txnv-cell-offsets px-3 py-1">
@@ -1616,15 +1615,12 @@ const groupColorMap = useMemo(() => {
             <div className="txn-card-counterparty">{row.original.counterpartyName}</div>
           )}
           <CategoryPathInput
-            className="ri-cat-input"
-            value={row.original.categoryId ?? null}
+            className={`ri-cat-input${row.original.categoryId == null && row.original.suggestedCategoryId != null ? ' ri-cat-input--suggested' : ''}`}
+            value={row.original.categoryId ?? row.original.suggestedCategoryId ?? null}
             onChange={id => { void handleCategoryChange(i, id) }}
             tree={categories}
             onCategoryCreated={onCategoryCreated}
           />
-          {row.original.suggestedCategoryId != null && row.original.categoryId == null && (
-            <span className="ri-badge--suggestion mt-0.5">Vorschlag</span>
-          )}
           {row.original.purpose && (
             <div className="txn-card-purpose">{row.original.purpose}</div>
           )}

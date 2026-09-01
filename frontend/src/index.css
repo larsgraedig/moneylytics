@@ -746,6 +746,15 @@ button.ri-chip {
 
 .ri-cat-input::placeholder { color: var(--text-dim); }
 
+.ri-cat-input--suggested {
+  color: #f59e0b;
+  border-color: rgba(245, 158, 11, 0.5);
+}
+.ri-cat-input--suggested:focus {
+  border-color: #f59e0b;
+  box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.2);
+}
+
 .ri-cell-category {
   min-width: 200px;
   max-width: 320px;
