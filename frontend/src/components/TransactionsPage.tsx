@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { Link2, Wallet, Layers, Scissors, Package, MessageSquare, CalendarDays, CalendarClock, Wand2, Pencil, Trash2 } from 'lucide-react'
+import { Link2, Wallet, Layers, Scissors, Package, MessageSquare, CalendarDays, CalendarClock, Wand2, Pencil, Trash2, Sparkles } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
@@ -1533,6 +1533,7 @@ const groupColorMap = useMemo(() => {
         const isSuggested = row.original.categoryId == null && row.original.suggestedCategoryId != null && !row.original.excludeFromSuggestions
         return (
           <TableCell key={col} className="px-1 py-1">
+            {isSuggested && <Sparkles size={12} className="ri-suggestion-sparkles" />}
             <CategoryPathInput
               className={`ri-cat-input${isSuggested ? ' ri-cat-input--suggested' : ''}`}
               value={row.original.categoryId ?? row.original.suggestedCategoryId ?? null}
@@ -1699,6 +1700,9 @@ const groupColorMap = useMemo(() => {
           </div>
           {row.original.counterpartyName && (
             <div className="txn-card-counterparty">{row.original.counterpartyName}</div>
+          )}
+          {row.original.categoryId == null && row.original.suggestedCategoryId != null && !row.original.excludeFromSuggestions && (
+            <Sparkles size={12} className="ri-suggestion-sparkles" />
           )}
           <CategoryPathInput
             className={`ri-cat-input${row.original.categoryId == null && row.original.suggestedCategoryId != null && !row.original.excludeFromSuggestions ? ' ri-cat-input--suggested' : ''}`}
