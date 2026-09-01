@@ -15,6 +15,16 @@ export type RecurrenceDirection = 'EXPENSE' | 'INCOME'
 export type RecurrenceStatus = 'DETECTED' | 'MANUAL'
 export type RecurrenceDeviation = 'ON_TRACK' | 'AMOUNT_CHANGED' | 'DATE_SHIFTED' | 'OVERDUE'
 
+export interface ExpectedSlotItem {
+  expectedDate: string
+  matched: boolean
+  transactionId: number | null
+  date: string | null
+  amount: number | null
+  counterpartyName: string | null
+  purpose: string | null
+}
+
 export interface RecurringSeriesItem {
   id: number | null
   label: string
@@ -35,6 +45,7 @@ export interface RecurringSeriesItem {
   isFalsePositive: boolean
   deviation: RecurrenceDeviation
   occurrences: RecurringOccurrenceItem[]
+  expectedSlots: ExpectedSlotItem[]
 }
 
 export async function fetchRecurringSeries(

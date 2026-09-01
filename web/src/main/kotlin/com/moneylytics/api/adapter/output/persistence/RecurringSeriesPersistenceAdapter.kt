@@ -1,7 +1,9 @@
 package com.moneylytics.api.adapter.output.persistence
 
+import com.moneylytics.api.application.port.output.RecurringExpectedSlotRepository
 import com.moneylytics.api.application.port.output.RecurringSeriesRepository
 import com.moneylytics.api.domain.RecurrenceStatus
+import com.moneylytics.api.domain.RecurringExpectedSlot
 import com.moneylytics.api.domain.RecurringOccurrence
 import com.moneylytics.api.domain.RecurringSeries
 import com.moneylytics.api.domain.RecurringType
@@ -13,9 +15,11 @@ import java.time.LocalDate
 class RecurringSeriesPersistenceAdapter(
     private val recurringSeriesJpaRepository: RecurringSeriesJpaRepository,
     private val recurringSeriesMemberJpaRepository: RecurringSeriesMemberJpaRepository,
+    private val recurringExpectedSlotJpaRepository: RecurringExpectedSlotJpaRepository,
     private val organizationJpaRepository: OrganizationJpaRepository,
     private val transactionJpaRepository: TransactionJpaRepository,
-) : RecurringSeriesRepository {
+) : RecurringSeriesRepository,
+    RecurringExpectedSlotRepository {
     @Transactional
     override fun replaceAllForOrganization(
         series: List<RecurringSeries>,
@@ -24,6 +28,7 @@ class RecurringSeriesPersistenceAdapter(
         val detected = recurringSeriesJpaRepository.findByOrganizationId(organizationId).filter { it.status == RecurrenceStatus.DETECTED }
         if (detected.isNotEmpty()) {
             val detectedIds = detected.mapNotNull { it.id }
+            recurringExpectedSlotJpaRepository.deleteBySeriesIdIn(detectedIds)
             recurringSeriesMemberJpaRepository.deleteBySeriesIdIn(detectedIds)
             recurringSeriesJpaRepository.deleteByOrganizationIdAndStatus(organizationId, RecurrenceStatus.DETECTED)
         }
@@ -39,7 +44,7 @@ class RecurringSeriesPersistenceAdapter(
     ): RecurringSeries {
         val organization = organizationJpaRepository.getReferenceById(organizationId)
         val entity = persistSeries(series, organization)
-        return entity.toDomain(emptyList(), emptyMap())
+        return entity.toDomain(emptyList(), emptyList(), emptyMap())
     }
 
     @Transactional
@@ -51,6 +56,7 @@ class RecurringSeriesPersistenceAdapter(
             recurringSeriesJpaRepository.findByIdAndOrganizationId(seriesId, organizationId)
                 ?: throw NoSuchElementException("Series $seriesId not found for organization $organizationId")
         val id = requireNotNull(entity.id)
+        recurringExpectedSlotJpaRepository.deleteBySeriesIdIn(listOf(id))
         recurringSeriesMemberJpaRepository.deleteBySeriesIdIn(listOf(id))
         recurringSeriesJpaRepository.delete(entity)
     }
@@ -73,7 +79,10 @@ class RecurringSeriesPersistenceAdapter(
         val members = recurringSeriesMemberJpaRepository.findBySeriesIdIn(entityIds)
         val membersBySeriesId = members.groupBy { it.seriesId }
 
-        val allTransactionIds = members.map { it.transactionId }
+        val slotEntities = recurringExpectedSlotJpaRepository.findBySeriesIdIn(entityIds)
+        val slotsBySeriesId = slotEntities.groupBy { it.seriesId }
+
+        val allTransactionIds = (members.map { it.transactionId } + slotEntities.map { it.transactionId }).distinct()
         val transactionsById =
             if (allTransactionIds.isEmpty()) {
                 emptyMap()
@@ -81,10 +90,63 @@ class RecurringSeriesPersistenceAdapter(
                 transactionJpaRepository.findAllById(allTransactionIds).associateBy { requireNotNull(it.id) }
             }
 
-        return entities.map { entity -> entity.toDomain(membersBySeriesId[entity.id] ?: emptyList(), transactionsById) }
+        return entities.map { entity ->
+            entity.toDomain(
+                membersBySeriesId[entity.id] ?: emptyList(),
+                slotsBySeriesId[entity.id] ?: emptyList(),
+                transactionsById,
+            )
+        }
     }
 
     override fun findAllOrganizationIds(): Set<Long> = recurringSeriesJpaRepository.findDistinctOrganizationIds().toHashSet()
+
+    @Transactional
+    override fun replaceSlots(
+        seriesId: Long,
+        slots: List<RecurringExpectedSlot>,
+    ) {
+        recurringExpectedSlotJpaRepository.deleteBySeriesId(seriesId)
+        if (slots.isNotEmpty()) {
+            recurringExpectedSlotJpaRepository.saveAll(
+                slots.map { slot ->
+                    RecurringExpectedSlotEntity(
+                        seriesId = seriesId,
+                        expectedDate = slot.expectedDate,
+                        transactionId = slot.transactionId,
+                    )
+                },
+            )
+        }
+    }
+
+    override fun findBySeriesIds(seriesIds: List<Long>): Map<Long, List<RecurringExpectedSlot>> {
+        if (seriesIds.isEmpty()) return emptyMap()
+        val slotEntities = recurringExpectedSlotJpaRepository.findBySeriesIdIn(seriesIds)
+        if (slotEntities.isEmpty()) return emptyMap()
+        val txIds = slotEntities.map { it.transactionId }.distinct()
+        val txById = transactionJpaRepository.findAllById(txIds).associateBy { requireNotNull(it.id) }
+        return slotEntities
+            .groupBy { it.seriesId }
+            .mapValues { (_, entities) ->
+                entities.mapNotNull { e ->
+                    val tx = txById[e.transactionId] ?: return@mapNotNull null
+                    RecurringExpectedSlot(
+                        expectedDate = e.expectedDate,
+                        transactionId = e.transactionId,
+                        date = tx.bookingDate,
+                        amount = tx.amount,
+                        counterpartyName = tx.counterpartyName,
+                        purpose = tx.purpose,
+                    )
+                }
+            }
+    }
+
+    @Transactional
+    override fun deleteBySeriesIds(seriesIds: List<Long>) {
+        if (seriesIds.isNotEmpty()) recurringExpectedSlotJpaRepository.deleteBySeriesIdIn(seriesIds)
+    }
 
     override fun findMemberTransactionIds(seriesId: Long): Set<Long> =
         recurringSeriesMemberJpaRepository
@@ -157,6 +219,7 @@ class RecurringSeriesPersistenceAdapter(
 
     private fun RecurringSeriesEntity.toDomain(
         members: List<RecurringSeriesMemberEntity>,
+        slotEntities: List<RecurringExpectedSlotEntity>,
         transactionsById: Map<Long, TransactionEntity>,
     ): RecurringSeries =
         RecurringSeries(
@@ -189,5 +252,17 @@ class RecurringSeriesPersistenceAdapter(
                             counterpartyIban = tx.counterpartyIban,
                         )
                     }.sortedByDescending { it.date },
+            expectedSlots =
+                slotEntities.mapNotNull { e ->
+                    val tx = transactionsById[e.transactionId] ?: return@mapNotNull null
+                    RecurringExpectedSlot(
+                        expectedDate = e.expectedDate,
+                        transactionId = e.transactionId,
+                        date = tx.bookingDate,
+                        amount = tx.amount,
+                        counterpartyName = tx.counterpartyName,
+                        purpose = tx.purpose,
+                    )
+                },
         )
 }

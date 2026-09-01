@@ -7,6 +7,7 @@ import com.moneylytics.api.domain.RecurrenceStatus
 import com.moneylytics.api.domain.RecurringSeries
 import com.moneylytics.api.domain.RecurringType
 import java.math.BigDecimal
+import java.time.LocalDate
 
 data class RecurringOccurrenceItem(
     val transactionId: Long,
@@ -15,6 +16,16 @@ data class RecurringOccurrenceItem(
     val purpose: String?,
     val counterpartyName: String?,
     val counterpartyIban: String?,
+)
+
+data class ExpectedSlotItem(
+    val expectedDate: String,
+    val matched: Boolean,
+    val transactionId: Long?,
+    val date: String?,
+    val amount: BigDecimal?,
+    val counterpartyName: String?,
+    val purpose: String?,
 )
 
 data class RecurringSeriesItem(
@@ -37,10 +48,12 @@ data class RecurringSeriesItem(
     val isFalsePositive: Boolean,
     val deviation: RecurrenceDeviation,
     val occurrences: List<RecurringOccurrenceItem>,
+    val expectedSlots: List<ExpectedSlotItem>,
 )
 
-fun RecurringSeries.toItem() =
-    RecurringSeriesItem(
+fun RecurringSeries.toItem(): RecurringSeriesItem {
+    val today = LocalDate.now()
+    return RecurringSeriesItem(
         id = id,
         label = label,
         type = type,
@@ -70,4 +83,48 @@ fun RecurringSeries.toItem() =
                     counterpartyIban = it.counterpartyIban,
                 )
             },
+        expectedSlots = buildExpectedSlots(today),
     )
+}
+
+// Rolling anchor mirrors the same logic used by RecurringSlotAssigner so expected dates stay in sync.
+private fun RecurringSeries.buildExpectedSlots(today: LocalDate): List<ExpectedSlotItem> {
+    val slotsByExpectedDate = expectedSlots.associateBy { it.expectedDate }
+    val result = mutableListOf<ExpectedSlotItem>()
+    var anchor = firstSeen
+
+    while (!anchor.isAfter(today)) {
+        val matched = slotsByExpectedDate[anchor]
+        result.add(
+            if (matched != null) {
+                ExpectedSlotItem(
+                    expectedDate = anchor.toString(),
+                    matched = true,
+                    transactionId = matched.transactionId,
+                    date = matched.date.toString(),
+                    amount = matched.amount,
+                    counterpartyName = matched.counterpartyName,
+                    purpose = matched.purpose,
+                )
+            } else {
+                ExpectedSlotItem(
+                    expectedDate = anchor.toString(),
+                    matched = false,
+                    transactionId = null,
+                    date = null,
+                    amount = null,
+                    counterpartyName = null,
+                    purpose = null,
+                )
+            },
+        )
+        anchor =
+            if (matched != null) {
+                matched.date.plusDays(intervalDays.toLong())
+            } else {
+                anchor.plusDays(intervalDays.toLong())
+            }
+    }
+
+    return result.sortedByDescending { it.expectedDate }
+}

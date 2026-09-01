@@ -48,7 +48,7 @@ class GenericCsvParser {
             val date =
                 try {
                     LocalDate.parse(get(dateIdx).take(DATE_PARSE_PREFIX_LENGTH), dateFormatter)
-                } catch (e: Exception) {
+                } catch (e: java.time.format.DateTimeParseException) {
                     logger.warn(e) { "Skipping CSV row ${index + 2}: cannot parse date '${get(dateIdx).take(DATE_PARSE_PREFIX_LENGTH)}'" }
                     return@mapIndexedNotNull null
                 }

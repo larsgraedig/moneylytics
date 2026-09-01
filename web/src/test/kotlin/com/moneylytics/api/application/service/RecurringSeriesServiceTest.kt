@@ -41,6 +41,7 @@ class RecurringSeriesServiceTest {
     private val detector: RecurringSeriesDetector = mock()
     private val classifier: RecurringTypeClassifier = mock()
     private val syncLogRepository: RecurringSyncLogRepository = mock()
+    private val slotAssigner: RecurringSlotAssigner = mock()
     private val service =
         RecurringSeriesService(
             transactionRepository,
@@ -49,6 +50,7 @@ class RecurringSeriesServiceTest {
             detector,
             classifier,
             syncLogRepository,
+            slotAssigner,
         )
 
     private val organizationId = 1L

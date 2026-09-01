@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { RefreshCw, X, RotateCcw, Plus, Trash2, ClipboardList, Play } from 'lucide-react'
+import { RefreshCw, X, RotateCcw, Plus, Trash2, ClipboardList, Play, CheckCircle, XCircle } from 'lucide-react'
 import RecurringTimeline from './RecurringTimeline'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
@@ -465,28 +465,39 @@ export default function RecurringPage() {
                         <table className="rcr-history-table">
                           <thead>
                             <tr>
-                              <th>{t('recurring.history.date')}</th>
+                              <th>{t('recurring.history.status')}</th>
+                              <th>{t('recurring.history.expectedDate')}</th>
+                              <th>{t('recurring.history.actualDate')}</th>
                               <th>{t('recurring.history.amount')}</th>
                               <th>{t('recurring.history.counterparty')}</th>
                               <th>{t('recurring.history.purpose')}</th>
                             </tr>
                           </thead>
                           <tbody>
-                            {s.occurrences.length === 0 ? (
+                            {s.expectedSlots.length === 0 ? (
                               <tr>
-                                <td colSpan={4} className="rcr-history-detail">—</td>
+                                <td colSpan={6} className="rcr-history-detail">—</td>
                               </tr>
-                            ) : s.occurrences.map(o => (
-                              <tr key={o.transactionId}>
-                                <td>{o.date}</td>
-                                <td className={o.amount < 0 ? 'rcr-amount--expense' : 'rcr-amount--income'}>
-                                  {formatAmount(o.amount, s.currency)}
+                            ) : s.expectedSlots.map(slot => (
+                              <tr
+                                key={slot.expectedDate}
+                                className={slot.matched ? 'rcr-slot-row--matched' : 'rcr-slot-row--missed'}
+                              >
+                                <td>
+                                  {slot.matched
+                                    ? <CheckCircle size={14} className="rcr-slot--matched" />
+                                    : <XCircle size={14} className="rcr-slot--missed" />}
+                                </td>
+                                <td>{slot.expectedDate}</td>
+                                <td>{slot.date ?? '—'}</td>
+                                <td className={slot.amount !== null ? (slot.amount < 0 ? 'rcr-amount--expense' : 'rcr-amount--income') : ''}>
+                                  {slot.amount !== null ? formatAmount(slot.amount, s.currency) : '—'}
                                 </td>
                                 <td className="rcr-history-detail">
-                                  {o.counterpartyName ?? o.counterpartyIban ?? '—'}
+                                  {slot.counterpartyName ?? '—'}
                                 </td>
                                 <td className="rcr-history-detail rcr-history-purpose">
-                                  {o.purpose ?? '—'}
+                                  {slot.purpose ?? '—'}
                                 </td>
                               </tr>
                             ))}

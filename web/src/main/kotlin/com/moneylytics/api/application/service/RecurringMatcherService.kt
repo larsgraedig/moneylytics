@@ -6,6 +6,7 @@ import com.moneylytics.api.application.port.output.AccountRepository
 import com.moneylytics.api.application.port.output.RecurringSeriesRepository
 import com.moneylytics.api.application.port.output.RecurringSyncLogRepository
 import com.moneylytics.api.application.port.output.TransactionRepository
+import com.moneylytics.api.domain.RecurringOccurrence
 import com.moneylytics.api.domain.RecurringSyncLog
 import com.moneylytics.api.domain.RecurringSyncLogEntry
 import com.moneylytics.api.domain.RecurringSyncTrigger
@@ -20,6 +21,7 @@ class RecurringMatcherService(
     private val transactionRepository: TransactionRepository,
     private val syncLogRepository: RecurringSyncLogRepository,
     private val accountRepository: AccountRepository,
+    private val slotAssigner: RecurringSlotAssigner,
 ) : SyncRecurringSeriesUseCase,
     GetRecurringSyncLogUseCase {
     companion object {
@@ -106,8 +108,22 @@ class RecurringMatcherService(
                             groupKey(tx) == series.fingerprint
                     }
 
+                val newOccurrences =
+                    newMatches.mapNotNull { tx ->
+                        tx.id?.let { id ->
+                            RecurringOccurrence(
+                                transactionId = id,
+                                date = tx.bookingDate,
+                                amount = tx.amount,
+                                counterpartyName = tx.counterpartyName,
+                                counterpartyIban = tx.counterpartyIban,
+                                purpose = tx.purpose,
+                            )
+                        }
+                    }
+
                 if (newMatches.isNotEmpty()) {
-                    val newIds = newMatches.mapNotNull { it.id }
+                    val newIds = newOccurrences.map { it.transactionId }
                     recurringSeriesRepository.addMembers(seriesId, newIds)
                     val newLastSeen = newMatches.maxOf { it.bookingDate }
                     recurringSeriesRepository.updateSeriesMetadata(
@@ -118,6 +134,9 @@ class RecurringMatcherService(
                     )
                     results.add(SeriesMatchResult(seriesId, series.label, newMatches))
                 }
+
+                val seriesForSlots = series.copy(occurrences = series.occurrences + newOccurrences)
+                slotAssigner.computeAndPersist(seriesForSlots, today)
             }
 
         return results
