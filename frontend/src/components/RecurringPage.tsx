@@ -490,8 +490,21 @@ export default function RecurringPage() {
                                 </td>
                                 <td>{slot.expectedDate}</td>
                                 <td>{slot.date ?? '—'}</td>
-                                <td className={slot.amount !== null ? (slot.amount < 0 ? 'rcr-amount--expense' : 'rcr-amount--income') : ''}>
-                                  {slot.amount !== null ? formatAmount(slot.amount, s.currency) : '—'}
+                                <td className={slot.amount !== null ? (slot.amount < 0 ? 'rcr-amount--expense' : 'rcr-amount--income') : (slot.predictedAmount !== null ? (slot.predictedAmount < 0 ? 'rcr-amount--expense' : 'rcr-amount--income') : '')}>
+                                  {slot.amount !== null
+                                    ? formatAmount(slot.amount, s.currency)
+                                    : slot.predictedAmount !== null
+                                      ? (
+                                        <span className="rcr-slot-predicted">
+                                          ~{formatAmount(slot.predictedAmount, s.currency)}
+                                          {slot.predictedAmountMin !== slot.predictedAmountMax && (
+                                            <span className="rcr-slot-predicted-range">
+                                              ({formatAmount(slot.predictedAmountMin!, s.currency)} – {formatAmount(slot.predictedAmountMax!, s.currency)})
+                                            </span>
+                                          )}
+                                        </span>
+                                      )
+                                      : '—'}
                                 </td>
                                 <td className="rcr-history-detail">
                                   {slot.counterpartyName ?? '—'}

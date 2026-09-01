@@ -23,6 +23,9 @@ export interface ExpectedSlotItem {
   amount: number | null
   counterpartyName: string | null
   purpose: string | null
+  predictedAmount: number | null
+  predictedAmountMin: number | null
+  predictedAmountMax: number | null
 }
 
 export interface RecurringSeriesItem {

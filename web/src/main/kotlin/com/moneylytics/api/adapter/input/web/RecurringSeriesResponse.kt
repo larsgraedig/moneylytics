@@ -7,6 +7,7 @@ import com.moneylytics.api.domain.RecurrenceStatus
 import com.moneylytics.api.domain.RecurringSeries
 import com.moneylytics.api.domain.RecurringType
 import java.math.BigDecimal
+import java.math.RoundingMode
 import java.time.LocalDate
 
 data class RecurringOccurrenceItem(
@@ -26,7 +27,29 @@ data class ExpectedSlotItem(
     val amount: BigDecimal?,
     val counterpartyName: String?,
     val purpose: String?,
+    val predictedAmount: BigDecimal?,
+    val predictedAmountMin: BigDecimal?,
+    val predictedAmountMax: BigDecimal?,
 )
+
+private data class AmountPrediction(
+    val median: BigDecimal,
+    val min: BigDecimal,
+    val max: BigDecimal,
+)
+
+private fun computeAmountPrediction(amounts: List<BigDecimal>): AmountPrediction? {
+    if (amounts.isEmpty()) return null
+    val sorted = amounts.sorted()
+    val n = sorted.size
+    val median =
+        if (n % 2 == 1) {
+            sorted[n / 2]
+        } else {
+            (sorted[n / 2 - 1] + sorted[n / 2]).divide(BigDecimal.TWO, sorted[0].scale(), RoundingMode.HALF_UP)
+        }
+    return AmountPrediction(median = median, min = sorted.first(), max = sorted.last())
+}
 
 data class RecurringSeriesItem(
     val id: Long?,
@@ -90,6 +113,7 @@ fun RecurringSeries.toItem(): RecurringSeriesItem {
 // Rolling anchor mirrors the same logic used by RecurringSlotAssigner so expected dates stay in sync.
 private fun RecurringSeries.buildExpectedSlots(today: LocalDate): List<ExpectedSlotItem> {
     val slotsByExpectedDate = expectedSlots.associateBy { it.expectedDate }
+    val prediction = computeAmountPrediction(expectedSlots.map { it.amount })
     val result = mutableListOf<ExpectedSlotItem>()
     var anchor = firstSeen
 
@@ -105,6 +129,9 @@ private fun RecurringSeries.buildExpectedSlots(today: LocalDate): List<ExpectedS
                     amount = matched.amount,
                     counterpartyName = matched.counterpartyName,
                     purpose = matched.purpose,
+                    predictedAmount = null,
+                    predictedAmountMin = null,
+                    predictedAmountMax = null,
                 )
             } else {
                 ExpectedSlotItem(
@@ -115,6 +142,9 @@ private fun RecurringSeries.buildExpectedSlots(today: LocalDate): List<ExpectedS
                     amount = null,
                     counterpartyName = null,
                     purpose = null,
+                    predictedAmount = prediction?.median,
+                    predictedAmountMin = prediction?.min,
+                    predictedAmountMax = prediction?.max,
                 )
             },
         )
