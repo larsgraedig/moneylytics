@@ -1,0 +1,14 @@
+databaseChangeLog:
+  - changeSet:
+      id: 0006
+      author: lars
+      changes:
+        - addColumn:
+            tableName: transaction
+            columns:
+              - column:
+                  name: exclude_from_suggestions
+                  type: boolean
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false

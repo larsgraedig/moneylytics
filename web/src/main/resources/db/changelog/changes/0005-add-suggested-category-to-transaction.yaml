@@ -1,0 +1,15 @@
+databaseChangeLog:
+  - changeSet:
+      id: 0005
+      author: lars
+      changes:
+        - addColumn:
+            tableName: transaction
+            columns:
+              - column:
+                  name: suggested_category_id
+                  type: bigint
+                  constraints:
+                    nullable: true
+                    foreignKeyName: fk_transaction_suggested_category
+                    references: category(id)

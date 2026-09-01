@@ -15,7 +15,7 @@ import javax.sql.DataSource
 
 @Configuration
 @EnableJpaRepositories(basePackages = ["com.moneylytics.api.adapter.output.persistence"])
-@EnableTransactionManagement
+@EnableTransactionManagement(proxyTargetClass = true)
 class JpaRepositoryTestConfig {
     @Bean
     fun dataSource(): DataSource =

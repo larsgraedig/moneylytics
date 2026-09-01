@@ -149,6 +149,7 @@ class ImportManagementService(
             category = category,
             subcategory = subcategory,
             group = group,
+            suggestedCategoryId = suggestedCategoryId,
         )
 
     private fun collectBlocked(txIds: List<Long>): List<BlockedTransaction> =

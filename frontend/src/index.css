@@ -674,6 +674,7 @@ button.ri-chip {
 
 .ri-badge--new          { color: #4ade80; border-color: rgba(74,222,128,0.3); }
 .ri-badge--duplicate    { color: #f59e0b; border-color: rgba(245,158,11,0.3); }
+.ri-badge--suggestion   { color: #f59e0b; border-color: rgba(245,158,11,0.35); display: inline-flex; align-items: center; gap: 3px; font-size: 11px; border-radius: 4px; padding: 1px 5px; white-space: nowrap; }
 .ri-badge--invalid      { color: var(--error); border-color: rgba(248,113,113,0.3); }
 .ri-badge--prev-ignored { color: #a78bfa; border-color: rgba(167,139,250,0.3); }
 .ri-badge--will-ignore  { color: var(--text-muted); border-color: var(--border-hi); }
@@ -744,6 +745,36 @@ button.ri-chip {
 }
 
 .ri-cat-input::placeholder { color: var(--text-dim); }
+
+.ri-cat-input--suggested {
+  color: #f59e0b;
+  border-color: rgba(245, 158, 11, 0.5);
+}
+.ri-cat-input--suggested:focus {
+  border-color: #f59e0b;
+  box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.2);
+}
+
+.ri-suggestion-actions {
+  display: flex;
+  gap: 4px;
+  margin-top: 3px;
+}
+.ri-suggestion-btn {
+  height: 20px;
+  padding: 0 7px;
+  font-size: 11px;
+  border-radius: 5px;
+  border: 1px solid;
+  cursor: pointer;
+  line-height: 1;
+  background: transparent;
+}
+.ri-suggestion-btn:disabled { opacity: 0.4; cursor: default; }
+.ri-suggestion-btn--accept { color: #4ade80; border-color: rgba(74, 222, 128, 0.4); }
+.ri-suggestion-btn--accept:hover:not(:disabled) { background: rgba(74, 222, 128, 0.1); }
+.ri-suggestion-btn--reject { color: #f87171; border-color: rgba(248, 113, 113, 0.4); }
+.ri-suggestion-btn--reject:hover:not(:disabled) { background: rgba(248, 113, 113, 0.1); }
 
 .ri-cell-category {
   min-width: 200px;
@@ -1102,6 +1133,8 @@ button.ri-chip {
 .txnv-th-drag-over { border-left: 2px solid var(--accent); }
 
 .txnv-row--dirty { background: color-mix(in srgb, var(--accent-glow) 40%, transparent) !important; }
+.txnv-row--has-suggestion { background: rgba(245, 158, 11, 0.05); }
+.txnv-row--has-suggestion:hover { background: rgba(245, 158, 11, 0.10); }
 
 .txnv-cell-account {
   font-size: 12px;
@@ -1612,6 +1645,13 @@ button.ri-chip {
 
 .txn-card.txnv-row--dirty {
   background: color-mix(in srgb, var(--accent-glow) 40%, transparent);
+}
+
+.txn-card.txnv-row--has-suggestion {
+  background: rgba(245, 158, 11, 0.05);
+}
+.txn-card.txnv-row--has-suggestion:hover {
+  background: rgba(245, 158, 11, 0.10);
 }
 
 .txn-card.txnv-row--selected {

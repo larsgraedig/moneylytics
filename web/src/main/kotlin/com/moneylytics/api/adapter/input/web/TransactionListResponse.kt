@@ -24,6 +24,7 @@ data class TransactionItem(
     val accountingDate: String,
     val accountIban: String,
     val categoryId: Long?,
+    val suggestedCategoryId: Long?,
     val category: String?,
     val subcategory: String?,
     val group: String?,
@@ -42,6 +43,7 @@ data class TransactionItem(
     @get:JsonProperty("isVirtual")
     val isVirtual: Boolean,
     val excluded: Boolean,
+    val excludeFromSuggestions: Boolean,
 )
 
 data class GroupSummaryDto(
@@ -72,6 +74,7 @@ fun Transaction.toItem() =
         accountingDate = accountingDate.toString(),
         accountIban = accountIban,
         categoryId = categoryId,
+        suggestedCategoryId = suggestedCategoryId,
         category = category,
         subcategory = subcategory,
         group = group,
@@ -101,4 +104,5 @@ fun Transaction.toItem() =
         parentId = parentId,
         isVirtual = isVirtual,
         excluded = excluded,
+        excludeFromSuggestions = excludeFromSuggestions,
     )

@@ -11,3 +11,9 @@ databaseChangeLog:
   - include:
       file: changes/0004-rename-customer-tables.yaml
       relativeToChangelogFile: true
+  - include:
+      file: changes/0005-add-suggested-category-to-transaction.yaml
+      relativeToChangelogFile: true
+  - include:
+      file: changes/0006-add-exclude-from-suggestions-to-transaction.yaml
+      relativeToChangelogFile: true

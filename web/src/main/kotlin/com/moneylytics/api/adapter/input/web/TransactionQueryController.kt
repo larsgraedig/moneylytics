@@ -1,5 +1,6 @@
 package com.moneylytics.api.adapter.input.web
 
+import com.moneylytics.api.application.port.input.AcceptSuggestionUseCase
 import com.moneylytics.api.application.port.input.BulkCategoryUpdate
 import com.moneylytics.api.application.port.input.BulkUpdateTransactionCategoryUseCase
 import com.moneylytics.api.application.port.input.BurnRateResponse
@@ -17,6 +18,7 @@ import com.moneylytics.api.application.port.input.GetTransactionsUseCase
 import com.moneylytics.api.application.port.input.Granularity
 import com.moneylytics.api.application.port.input.ResolveOrganizationUseCase
 import com.moneylytics.api.application.port.input.TransactionType
+import com.moneylytics.api.application.port.input.UpdateExcludeFromSuggestionsUseCase
 import com.moneylytics.api.application.port.input.UpdateTransactionAccountingDateUseCase
 import com.moneylytics.api.application.port.input.UpdateTransactionCategoryUseCase
 import com.moneylytics.api.application.port.input.UpdateTransactionCommentUseCase
@@ -33,6 +35,7 @@ import org.springframework.security.core.userdetails.UserDetails
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PatchMapping
 import org.springframework.web.bind.annotation.PathVariable
+import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
@@ -63,6 +66,10 @@ data class UpdateAccountingDateRequest(
     val accountingDate: LocalDate,
 )
 
+data class UpdateExcludeFromSuggestionsRequest(
+    val excludeFromSuggestions: Boolean,
+)
+
 @RestController
 @RequestMapping("/transactions")
 class TransactionQueryController(
@@ -75,6 +82,8 @@ class TransactionQueryController(
     private val updateTransactionCategoryUseCase: UpdateTransactionCategoryUseCase,
     private val updateTransactionCommentUseCase: UpdateTransactionCommentUseCase,
     private val updateTransactionAccountingDateUseCase: UpdateTransactionAccountingDateUseCase,
+    private val updateExcludeFromSuggestionsUseCase: UpdateExcludeFromSuggestionsUseCase,
+    private val acceptSuggestionUseCase: AcceptSuggestionUseCase,
     private val bulkUpdateTransactionCategoryUseCase: BulkUpdateTransactionCategoryUseCase,
 ) {
     companion object {
@@ -186,6 +195,38 @@ class TransactionQueryController(
         val organizationId = resolveOrganizationUseCase.resolveOrganization(principal, exchange)
         return withContext(Dispatchers.IO) {
             val updated = updateTransactionCommentUseCase.updateComment(id, organizationId, request.comment)
+            if (updated != null) ResponseEntity.ok(updated.toItem()) else ResponseEntity.notFound().build()
+        }
+    }
+
+    @PatchMapping("/{id}/exclude-from-suggestions")
+    suspend fun updateExcludeFromSuggestions(
+        @PathVariable id: Long,
+        @RequestBody request: UpdateExcludeFromSuggestionsRequest,
+        @AuthenticationPrincipal principal: UserDetails,
+        exchange: ServerWebExchange,
+    ): ResponseEntity<TransactionItem> {
+        val organizationId = resolveOrganizationUseCase.resolveOrganization(principal, exchange)
+        return withContext(Dispatchers.IO) {
+            val updated =
+                updateExcludeFromSuggestionsUseCase.updateExcludeFromSuggestions(
+                    id,
+                    organizationId,
+                    request.excludeFromSuggestions,
+                )
+            if (updated != null) ResponseEntity.ok(updated.toItem()) else ResponseEntity.notFound().build()
+        }
+    }
+
+    @PostMapping("/{id}/suggestions/accept")
+    suspend fun acceptSuggestion(
+        @PathVariable id: Long,
+        @AuthenticationPrincipal principal: UserDetails,
+        exchange: ServerWebExchange,
+    ): ResponseEntity<TransactionItem> {
+        val organizationId = resolveOrganizationUseCase.resolveOrganization(principal, exchange)
+        return withContext(Dispatchers.IO) {
+            val updated = acceptSuggestionUseCase.acceptSuggestion(id, organizationId)
             if (updated != null) ResponseEntity.ok(updated.toItem()) else ResponseEntity.notFound().build()
         }
     }

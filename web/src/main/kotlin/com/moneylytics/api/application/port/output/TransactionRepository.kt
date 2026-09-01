@@ -144,4 +144,17 @@ interface TransactionRepository {
         targetCategoryId: Long,
         organizationId: Long,
     )
+
+    fun updateSuggestedCategoryIds(updates: List<Pair<Long, Long>>)
+
+    fun updateExcludeFromSuggestions(
+        id: Long,
+        organizationId: Long,
+        excludeFromSuggestions: Boolean,
+    ): Transaction?
+
+    fun acceptSuggestion(
+        id: Long,
+        organizationId: Long,
+    ): Transaction?
 }

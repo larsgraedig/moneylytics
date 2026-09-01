@@ -21,6 +21,7 @@ import com.moneylytics.api.application.port.input.SaveThresholdUseCase
 import com.moneylytics.api.application.port.output.CategoryRepository
 import com.moneylytics.api.application.port.output.InvoiceRepository
 import com.moneylytics.api.application.port.output.StripeCustomerRepository
+import com.moneylytics.api.application.port.output.TransactionRepository
 import com.moneylytics.api.application.port.output.UserRepository
 import com.moneylytics.api.domain.Budget
 import com.moneylytics.api.domain.Collection
@@ -62,6 +63,7 @@ class LocalDataInitializer(
     private val createTierUseCase: CreateTierUseCase,
     private val stripeCustomerRepository: StripeCustomerRepository,
     private val invoiceRepository: InvoiceRepository,
+    private val transactionRepository: TransactionRepository,
 ) : ApplicationRunner {
     companion object {
         private const val MAIN_RNG_SEED = 42L
@@ -80,6 +82,14 @@ class LocalDataInitializer(
         private val GESUNDHEIT_APR_DATE = LocalDate.of(2025, 4, 18)
         private val EINNAHMEN_JUN_10_DATE = LocalDate.of(2025, 6, 10)
         private val EINNAHMEN_AUG_DATE = LocalDate.of(2025, 8, 15)
+
+        private val SUGGESTION_REWE_DATE = LocalDate.of(2025, 12, 3)
+        private val SUGGESTION_TANKSTELLE_DATE = LocalDate.of(2025, 12, 8)
+        private val SUGGESTION_NETFLIX_DATE = LocalDate.of(2025, 12, 11)
+        private val SUGGESTION_ZALANDO_DATE = LocalDate.of(2025, 12, 15)
+        private val SUGGESTION_ALLIANZ_DATE = LocalDate.of(2025, 12, 22)
+        private val SUGGESTION_FROM = LocalDate.of(2025, 12, 1)
+        private val SUGGESTION_TO = LocalDate.of(2025, 12, 31)
 
         private val SOMMER_FROM = LocalDate.of(2025, 6, 1)
         private val SOMMER_TO = LocalDate.of(2025, 8, 31)
@@ -191,6 +201,7 @@ class LocalDataInitializer(
                     ),
             ),
         )
+        setupSuggestedCategories(orgId)
         setupOffsetLinks(orgId)
         setupThresholds(orgId)
         setupBudgets(orgId)
@@ -503,6 +514,11 @@ class LocalDataInitializer(
             tx("Gesundheit", "Behandlung", GESUNDHEIT_APR_DATE, BigDecimal("-2300.00")),
             tx("Einnahmen", "Sonstiges", EINNAHMEN_JUN_10_DATE, BigDecimal("700.00")),
             tx("Einnahmen", "Sonstiges", EINNAHMEN_AUG_DATE, BigDecimal("900.00")),
+            txUncategorized(SUGGESTION_REWE_DATE, BigDecimal("-67.30"), "REWE Sagt Danke", "Einkauf REWE 03.12.25"),
+            txUncategorized(SUGGESTION_TANKSTELLE_DATE, BigDecimal("-58.40"), "TOTAL Tankstelle", "Tanken TOTAL Hamburg"),
+            txUncategorized(SUGGESTION_NETFLIX_DATE, BigDecimal("-17.99"), "NETFLIX.COM", "Netflix Monatsabo"),
+            txUncategorized(SUGGESTION_ZALANDO_DATE, BigDecimal("-129.00"), "ZALANDO SE", "Online-Bestellung Zalando"),
+            txUncategorized(SUGGESTION_ALLIANZ_DATE, BigDecimal("-189.50"), "Allianz Krankenversich.", "KV-Beitrag Dezember"),
         )
 
     private fun tx(
@@ -521,6 +537,59 @@ class LocalDataInitializer(
         currency = "EUR",
         accountIban = mainIban,
     )
+
+    private fun txUncategorized(
+        date: LocalDate,
+        amount: BigDecimal,
+        counterpartyName: String,
+        purpose: String,
+    ) = Transaction(
+        bookingDate = date,
+        valueDate = date,
+        accountingDate = date,
+        amount = amount,
+        currency = "EUR",
+        accountIban = mainIban,
+        counterpartyName = counterpartyName,
+        purpose = purpose,
+    )
+
+    private fun setupSuggestedCategories(orgId: Long) {
+        val lebensmittelId = requireNotNull(categoryRepository.findOrCreate(listOf("Lebensmittel", "Supermarkt"), orgId).id)
+        val transportId = requireNotNull(categoryRepository.findOrCreate(listOf("Transport", "Tankstelle"), orgId).id)
+        val streamingId = requireNotNull(categoryRepository.findOrCreate(listOf("Freizeit", "Streaming"), orgId).id)
+        val shoppingId = requireNotNull(categoryRepository.findOrCreate(listOf("Shopping", "Kleidung"), orgId).id)
+        val versicherungId = requireNotNull(categoryRepository.findOrCreate(listOf("Versicherung", "Krankenversicherung"), orgId).id)
+
+        val suggestions =
+            mapOf(
+                "REWE Sagt Danke" to lebensmittelId,
+                "TOTAL Tankstelle" to transportId,
+                "NETFLIX.COM" to streamingId,
+                "ZALANDO SE" to shoppingId,
+                "Allianz Krankenversich." to versicherungId,
+            )
+
+        val uncategorized =
+            getTransactionsUseCase.getTransactions(
+                GetTransactionsQuery(
+                    from = SUGGESTION_FROM,
+                    to = SUGGESTION_TO,
+                    organizationId = orgId,
+                    uncategorized = true,
+                ),
+            )
+
+        val updates =
+            uncategorized.mapNotNull { tx ->
+                val categoryId = suggestions[tx.counterpartyName] ?: return@mapNotNull null
+                requireNotNull(tx.id) to categoryId
+            }
+
+        if (updates.isNotEmpty()) {
+            transactionRepository.updateSuggestedCategoryIds(updates)
+        }
+    }
 
     private fun generateMainTransactions(): List<Transaction> {
         val rng = Random(MAIN_RNG_SEED)

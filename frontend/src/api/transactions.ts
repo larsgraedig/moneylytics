@@ -76,6 +76,7 @@ export interface TransactionItem {
   accountingDate: string
   accountIban: string
   categoryId: number | null
+  suggestedCategoryId: number | null
   category: string | null
   subcategory: string | null
   group: string | null
@@ -93,6 +94,7 @@ export interface TransactionItem {
   parentId: number | null
   isVirtual: boolean
   excluded: boolean
+  excludeFromSuggestions: boolean
 }
 
 export interface SplitItemRequest {
@@ -174,6 +176,25 @@ export async function updateTransactionCategory(
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ categoryId }),
   })
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  return res.json() as Promise<TransactionItem>
+}
+
+export async function updateExcludeFromSuggestions(
+  id: number,
+  excludeFromSuggestions: boolean,
+): Promise<TransactionItem> {
+  const res = await fetchWithUser(`/transactions/${id}/exclude-from-suggestions`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ excludeFromSuggestions }),
+  })
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  return res.json() as Promise<TransactionItem>
+}
+
+export async function acceptSuggestion(id: number): Promise<TransactionItem> {
+  const res = await fetchWithUser(`/transactions/${id}/suggestions/accept`, { method: 'POST' })
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
   return res.json() as Promise<TransactionItem>
 }

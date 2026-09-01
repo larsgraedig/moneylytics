@@ -439,6 +439,7 @@ class TransactionPersistenceAdapter(
         children: List<Transaction> = emptyList(),
     ) = Transaction(
         categoryId = category?.id,
+        suggestedCategoryId = suggestedCategoryId,
         category = categoryPath.getOrNull(0),
         subcategory = categoryPath.getOrNull(1),
         group = categoryPath.getOrNull(2),
@@ -460,6 +461,7 @@ class TransactionPersistenceAdapter(
         parentId = parentId,
         isVirtual = isVirtual,
         excluded = excluded,
+        excludeFromSuggestions = excludeFromSuggestions,
         children = children,
     )
 
@@ -534,6 +536,36 @@ class TransactionPersistenceAdapter(
     ) {
         if (transactionIds.isEmpty()) return
         jpaRepository.moveBulkToCategory(transactionIds, targetCategoryId, organizationId)
+    }
+
+    @Transactional
+    override fun updateSuggestedCategoryIds(updates: List<Pair<Long, Long>>) {
+        updates.forEach { (id, categoryId) ->
+            jpaRepository.updateSuggestedCategoryId(id, categoryId)
+        }
+    }
+
+    @Transactional
+    override fun updateExcludeFromSuggestions(
+        id: Long,
+        organizationId: Long,
+        excludeFromSuggestions: Boolean,
+    ): Transaction? {
+        val entity = jpaRepository.findByIdAndOrganizationId(id, organizationId) ?: return null
+        entity.excludeFromSuggestions = excludeFromSuggestions
+        return enrichWithOffsetLinks(listOf(jpaRepository.save(entity))).first()
+    }
+
+    @Transactional
+    override fun acceptSuggestion(
+        id: Long,
+        organizationId: Long,
+    ): Transaction? {
+        val entity = jpaRepository.findByIdAndOrganizationId(id, organizationId) ?: return null
+        val suggestedId = entity.suggestedCategoryId ?: return null
+        entity.category = categoryJpaRepository.getReferenceById(suggestedId)
+        entity.excludeFromSuggestions = true
+        return enrichWithOffsetLinks(listOf(jpaRepository.save(entity))).first()
     }
 
     private fun Transaction.fingerprintRaw() =

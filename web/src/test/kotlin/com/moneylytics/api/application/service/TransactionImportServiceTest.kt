@@ -14,6 +14,7 @@ import com.moneylytics.api.domain.ImportStatus
 import com.moneylytics.api.domain.Transaction
 import com.moneylytics.api.domain.TransactionImport
 import com.moneylytics.api.domain.TransactionImportFile
+import com.moneylytics.api.domain.TransactionsImportedEvent
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -22,6 +23,7 @@ import org.mockito.kotlin.mock
 import org.mockito.kotlin.never
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
+import org.springframework.context.ApplicationEventPublisher
 import java.math.BigDecimal
 import java.time.LocalDate
 
@@ -32,6 +34,7 @@ class TransactionImportServiceTest {
     private val categoryClassifier: CategoryClassifier = mock()
     private val transactionImportRepository: TransactionImportRepository = mock()
     private val importFileRepository: com.moneylytics.api.application.port.output.TransactionImportFileRepository = mock()
+    private val eventPublisher: ApplicationEventPublisher = mock()
     private val service =
         TransactionImportService(
             transactionRepository,
@@ -40,6 +43,7 @@ class TransactionImportServiceTest {
             categoryClassifier,
             transactionImportRepository,
             importFileRepository,
+            eventPublisher,
         )
 
     private val organizationId = 1L
@@ -140,6 +144,38 @@ class TransactionImportServiceTest {
         service.importTransactions(command)
 
         verify(accountRepository, never()).updateBalance(any(), any(), any(), any())
+    }
+
+    @Test
+    fun `should publish TransactionsImportedEvent when new transactions are saved`() {
+        val tx = tx("DE01")
+        val command = baseCommand(listOf(tx))
+        whenever(accountRepository.findByIban("DE01", organizationId)).thenReturn(Account(iban = "DE01", name = "Giro"))
+        whenever(transactionRepository.saveAll(listOf(tx), organizationId)).thenReturn(1 to listOf(10L))
+        whenever(transactionImportRepository.save(any())).thenReturn(savedImport)
+
+        service.importTransactions(command)
+
+        verify(eventPublisher).publishEvent(
+            TransactionsImportedEvent(
+                organizationId = organizationId,
+                importId = savedImport.id!!,
+                importedIds = listOf(10L),
+            ),
+        )
+    }
+
+    @Test
+    fun `should not publish event when no new transactions were imported`() {
+        val tx = tx("DE01")
+        val command = baseCommand(listOf(tx))
+        whenever(accountRepository.findByIban("DE01", organizationId)).thenReturn(Account(iban = "DE01", name = "Giro"))
+        whenever(transactionRepository.saveAll(listOf(tx), organizationId)).thenReturn(0 to emptyList())
+        whenever(transactionImportRepository.save(any())).thenReturn(savedImport)
+
+        service.importTransactions(command)
+
+        verify(eventPublisher, never()).publishEvent(any<TransactionsImportedEvent>())
     }
 
     private fun tx(iban: String) =

@@ -1,5 +1,6 @@
 package com.moneylytics.api.application.service
 
+import com.moneylytics.api.application.port.input.AcceptSuggestionUseCase
 import com.moneylytics.api.application.port.input.BulkCategoryUpdate
 import com.moneylytics.api.application.port.input.BulkUpdateTransactionCategoryUseCase
 import com.moneylytics.api.application.port.input.BurnRatePoint
@@ -18,6 +19,7 @@ import com.moneylytics.api.application.port.input.GetCategoryTotalsUseCase
 import com.moneylytics.api.application.port.input.GetTransactionsQuery
 import com.moneylytics.api.application.port.input.GetTransactionsUseCase
 import com.moneylytics.api.application.port.input.TransactionType
+import com.moneylytics.api.application.port.input.UpdateExcludeFromSuggestionsUseCase
 import com.moneylytics.api.application.port.input.UpdateTransactionAccountingDateUseCase
 import com.moneylytics.api.application.port.input.UpdateTransactionCategoryUseCase
 import com.moneylytics.api.application.port.input.UpdateTransactionCommentUseCase
@@ -50,6 +52,8 @@ class TransactionQueryService(
     UpdateTransactionCategoryUseCase,
     UpdateTransactionCommentUseCase,
     UpdateTransactionAccountingDateUseCase,
+    UpdateExcludeFromSuggestionsUseCase,
+    AcceptSuggestionUseCase,
     EnrichTransactionUseCase,
     BulkUpdateTransactionCategoryUseCase {
     override fun getTransactions(query: GetTransactionsQuery): List<Transaction> {
@@ -258,6 +262,34 @@ class TransactionQueryService(
         organizationId: Long,
         accountingDate: LocalDate,
     ): Transaction? = transactionRepository.updateAccountingDate(id, organizationId, accountingDate)
+
+    override fun updateExcludeFromSuggestions(
+        id: Long,
+        organizationId: Long,
+        excludeFromSuggestions: Boolean,
+    ): Transaction? = transactionRepository.updateExcludeFromSuggestions(id, organizationId, excludeFromSuggestions)
+
+    override fun acceptSuggestion(
+        id: Long,
+        organizationId: Long,
+    ): Transaction? {
+        val updated = transactionRepository.acceptSuggestion(id, organizationId) ?: return null
+        val hasClassifiableFeatures = updated.purpose != null || updated.counterpartyName != null || updated.counterpartyIban != null
+        if (hasClassifiableFeatures) {
+            val categoryId = requireNotNull(updated.categoryId)
+            categoryClassifier.train(
+                organizationId,
+                categoryId,
+                CategoryClassifierFeatures(
+                    purpose = updated.purpose,
+                    counterpartyName = updated.counterpartyName,
+                    counterpartyIban = updated.counterpartyIban,
+                    amount = updated.amount,
+                ),
+            )
+        }
+        return updated
+    }
 
     override fun enrichByFingerprint(
         fingerprint: String,
