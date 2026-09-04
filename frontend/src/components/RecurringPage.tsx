@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { RefreshCw, X, RotateCcw, Plus, Trash2, ClipboardList, Play } from 'lucide-react'
+import { RefreshCw, X, RotateCcw, Plus, Trash2, ClipboardList, Play, ChevronLeft, ChevronRight } from 'lucide-react'
 import RecurringTimeline from './RecurringTimeline'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
@@ -92,6 +92,7 @@ export default function RecurringPage() {
   const [state, setState] = useState<PageState>({ phase: 'idle' })
   const [view, setView] = useState<'table' | 'timeline'>('table')
   const [timelineDays, setTimelineDays] = useState<30 | 60 | 90 | 180>(90)
+  const [timelineOffset, setTimelineOffset] = useState(0)
   const [filterDirection, setFilterDirection] = useState<RecurrenceDirection | undefined>()
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const [refreshing, setRefreshing] = useState(false)
@@ -325,20 +326,36 @@ export default function RecurringPage() {
 
       {view === 'timeline' && (state.phase === 'ready' || state.phase === 'pending') && (
         <div className="flex gap-1 border-b px-4 py-2 shrink-0">
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            onClick={() => setTimelineOffset(o => Math.max(-180, o - timelineDays))}
+            disabled={timelineOffset <= -180}
+          >
+            <ChevronLeft size={14} />
+          </Button>
           {([30, 60, 90, 180] as const).map(d => (
             <button
               key={d}
               className={filterBtn(timelineDays === d)}
-              onClick={() => setTimelineDays(d)}
+              onClick={() => { setTimelineDays(d); setTimelineOffset(0) }}
             >
               {t(`recurring.days${d}` as Parameters<typeof t>[0])}
             </button>
           ))}
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            onClick={() => setTimelineOffset(o => Math.min(0, o + timelineDays))}
+            disabled={timelineOffset >= 0}
+          >
+            <ChevronRight size={14} />
+          </Button>
         </div>
       )}
 
       {view === 'timeline' && (state.phase === 'ready' || state.phase === 'pending') && (
-        <RecurringTimeline series={displaySeries} days={timelineDays} typeColors={TYPE_COLORS} />
+        <RecurringTimeline series={displaySeries} days={timelineDays} typeColors={TYPE_COLORS} startOffset={timelineOffset} />
       )}
 
       {view === 'table' && (state.phase === 'ready' || state.phase === 'pending') && displaySeries.length > 0 && (

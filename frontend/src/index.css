@@ -2727,6 +2727,9 @@ button.ri-chip {
   color: var(--text-muted);
   font-size: 11px;
 }
+.rcr-tl-card--past {
+  opacity: 0.6;
+}
 
 /* ── categories page ─────────────────────────────────────────────────────── */
 
