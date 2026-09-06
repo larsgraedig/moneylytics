@@ -562,6 +562,15 @@
       "DATE_SHIFTED": "Date shifted",
       "OVERDUE": "Overdue / missed"
     },
+    "occurrenceDeviation": {
+      "ON_TIME": "On time",
+      "DATE_SHIFTED": "Date shifted",
+      "AMOUNT_CHANGED": "Amount changed",
+      "daysLate_one": "{{count}} day late",
+      "daysLate_other": "{{count}} days late",
+      "daysEarly_one": "{{count}} day early",
+      "daysEarly_other": "{{count}} days early"
+    },
     "history": {
       "date": "Date",
       "amount": "Amount",

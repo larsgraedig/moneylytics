@@ -21,6 +21,8 @@ import com.moneylytics.api.domain.RecurrenceCadence
 import com.moneylytics.api.domain.RecurrenceDeviation
 import com.moneylytics.api.domain.RecurrenceStatus
 import com.moneylytics.api.domain.RecurringFalsePositive
+import com.moneylytics.api.domain.RecurringOccurrence
+import com.moneylytics.api.domain.RecurringOccurrenceDeviation
 import com.moneylytics.api.domain.RecurringSeries
 import com.moneylytics.api.domain.RecurringSyncLog
 import com.moneylytics.api.domain.RecurringSyncLogEntry
@@ -241,6 +243,34 @@ class RecurringSeriesService(
                 else -> RecurrenceDeviation.ON_TRACK
             }
 
-        return series.copy(deviation = deviation)
+        return series.copy(
+            deviation = deviation,
+            occurrences = series.occurrences.map { occ -> occ.copy(deviation = classifyOccurrence(occ, series)) },
+        )
+    }
+
+    private fun classifyOccurrence(
+        occ: RecurringOccurrence,
+        series: RecurringSeries,
+    ): RecurringOccurrenceDeviation? {
+        val expectedDate = occ.expectedDate ?: return null
+        val expectedAmount = occ.expectedAmount ?: return null
+
+        val dateShifted =
+            run {
+                val dateDiff = ChronoUnit.DAYS.between(expectedDate, occ.date)
+                abs(dateDiff).toDouble() > maxOf(DATE_SHIFT_MIN_DAYS, series.intervalDays * DATE_SHIFT_FACTOR)
+            }
+        val amountChanged =
+            expectedAmount.abs() > BigDecimal.ZERO &&
+                (occ.amount.abs() - expectedAmount.abs())
+                    .abs()
+                    .divide(expectedAmount.abs(), AMOUNT_CHANGE_SCALE, RoundingMode.HALF_UP) > AMOUNT_CHANGE_THRESHOLD
+
+        return when {
+            amountChanged -> RecurringOccurrenceDeviation.AMOUNT_CHANGED
+            dateShifted -> RecurringOccurrenceDeviation.DATE_SHIFTED
+            else -> RecurringOccurrenceDeviation.ON_TIME
+        }
     }
 }

@@ -562,6 +562,15 @@
       "DATE_SHIFTED": "Zeitpunkt verschoben",
       "OVERDUE": "Überfällig / ausgeblieben"
     },
+    "occurrenceDeviation": {
+      "ON_TIME": "Pünktlich",
+      "DATE_SHIFTED": "Zeitpunkt abweichend",
+      "AMOUNT_CHANGED": "Betrag abweichend",
+      "daysLate_one": "{{count}} Tag später",
+      "daysLate_other": "{{count}} Tage später",
+      "daysEarly_one": "{{count}} Tag früher",
+      "daysEarly_other": "{{count}} Tage früher"
+    },
     "history": {
       "date": "Datum",
       "amount": "Betrag",

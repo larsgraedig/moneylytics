@@ -17,6 +17,7 @@ import com.moneylytics.api.domain.RecurrenceDirection
 import com.moneylytics.api.domain.RecurrenceStatus
 import com.moneylytics.api.domain.RecurringFalsePositive
 import com.moneylytics.api.domain.RecurringOccurrence
+import com.moneylytics.api.domain.RecurringOccurrenceDeviation
 import com.moneylytics.api.domain.RecurringSeries
 import com.moneylytics.api.domain.RecurringType
 import com.moneylytics.api.domain.Transaction
@@ -286,6 +287,74 @@ class RecurringSeriesServiceTest {
 
         assertThat(result).hasSize(1)
         assertThat(result[0].deviation).isEqualTo(RecurrenceDeviation.AMOUNT_CHANGED)
+    }
+
+    @Test
+    fun `should leave occurrence deviation null when no expectation was tracked`() {
+        val futureSeries = series(nextExpectedDate = today.plusDays(5))
+        whenever(recurringSeriesRepository.findByOrganizationId(organizationId)).thenReturn(listOf(futureSeries))
+
+        val result = service.getRecurringSeries(GetRecurringSeriesQuery(organizationId = organizationId))
+
+        assertThat(result[0].occurrences).allSatisfy { assertThat(it.deviation).isNull() }
+    }
+
+    @Test
+    fun `should classify occurrence as ON_TIME when date and amount match the expectation`() {
+        val occurrenceDate = today.minusDays(30)
+        val trackedOccurrence =
+            RecurringOccurrence(
+                transactionId = 2L,
+                date = occurrenceDate,
+                amount = BigDecimal("-50.00"),
+                expectedDate = occurrenceDate,
+                expectedAmount = BigDecimal("-50.00"),
+            )
+        val trackedSeries = series(nextExpectedDate = today.plusDays(5)).copy(occurrences = listOf(trackedOccurrence))
+        whenever(recurringSeriesRepository.findByOrganizationId(organizationId)).thenReturn(listOf(trackedSeries))
+
+        val result = service.getRecurringSeries(GetRecurringSeriesQuery(organizationId = organizationId))
+
+        assertThat(result[0].occurrences).hasSize(1)
+        assertThat(result[0].occurrences[0].deviation).isEqualTo(RecurringOccurrenceDeviation.ON_TIME)
+    }
+
+    @Test
+    fun `should classify occurrence as AMOUNT_CHANGED when amount deviates more than 15 percent from expectation`() {
+        val occurrenceDate = today.minusDays(30)
+        val trackedOccurrence =
+            RecurringOccurrence(
+                transactionId = 2L,
+                date = occurrenceDate,
+                amount = BigDecimal("-70.00"),
+                expectedDate = occurrenceDate,
+                expectedAmount = BigDecimal("-50.00"),
+            )
+        val trackedSeries = series(nextExpectedDate = today.plusDays(5)).copy(occurrences = listOf(trackedOccurrence))
+        whenever(recurringSeriesRepository.findByOrganizationId(organizationId)).thenReturn(listOf(trackedSeries))
+
+        val result = service.getRecurringSeries(GetRecurringSeriesQuery(organizationId = organizationId))
+
+        assertThat(result[0].occurrences[0].deviation).isEqualTo(RecurringOccurrenceDeviation.AMOUNT_CHANGED)
+    }
+
+    @Test
+    fun `should classify occurrence as DATE_SHIFTED when it lands well outside the expected date`() {
+        val expectedDate = today.minusDays(30)
+        val trackedOccurrence =
+            RecurringOccurrence(
+                transactionId = 2L,
+                date = expectedDate.plusDays(10),
+                amount = BigDecimal("-50.00"),
+                expectedDate = expectedDate,
+                expectedAmount = BigDecimal("-50.00"),
+            )
+        val trackedSeries = series(nextExpectedDate = today.plusDays(5)).copy(occurrences = listOf(trackedOccurrence))
+        whenever(recurringSeriesRepository.findByOrganizationId(organizationId)).thenReturn(listOf(trackedSeries))
+
+        val result = service.getRecurringSeries(GetRecurringSeriesQuery(organizationId = organizationId))
+
+        assertThat(result[0].occurrences[0].deviation).isEqualTo(RecurringOccurrenceDeviation.DATE_SHIFTED)
     }
 
     @Test

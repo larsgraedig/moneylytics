@@ -2,17 +2,20 @@ package com.moneylytics.api.adapter.output.persistence
 
 import com.moneylytics.api.application.port.output.RecurringSeriesRepository
 import com.moneylytics.api.domain.RecurrenceStatus
+import com.moneylytics.api.domain.RecurringExpectedOccurrence
 import com.moneylytics.api.domain.RecurringOccurrence
 import com.moneylytics.api.domain.RecurringSeries
 import com.moneylytics.api.domain.RecurringType
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
+import java.math.BigDecimal
 import java.time.LocalDate
 
 @Component
 class RecurringSeriesPersistenceAdapter(
     private val recurringSeriesJpaRepository: RecurringSeriesJpaRepository,
     private val recurringSeriesMemberJpaRepository: RecurringSeriesMemberJpaRepository,
+    private val recurringExpectedOccurrenceJpaRepository: RecurringExpectedOccurrenceJpaRepository,
     private val organizationJpaRepository: OrganizationJpaRepository,
     private val transactionJpaRepository: TransactionJpaRepository,
 ) : RecurringSeriesRepository {
@@ -22,14 +25,36 @@ class RecurringSeriesPersistenceAdapter(
         organizationId: Long,
     ) {
         val detected = recurringSeriesJpaRepository.findByOrganizationId(organizationId).filter { it.status == RecurrenceStatus.DETECTED }
+
+        // Snapshot matched expected-occurrence history by fingerprint so it survives the wipe-and-reinsert below.
+        val snapshotByFingerprint =
+            if (detected.isEmpty()) {
+                emptyMap()
+            } else {
+                val fingerprintBySeriesId = detected.associate { it.id to it.fingerprint }
+                recurringExpectedOccurrenceJpaRepository
+                    .findBySeriesIdIn(detected.mapNotNull { it.id })
+                    .groupBy { fingerprintBySeriesId[it.seriesId] }
+                    .filterKeys { it != null }
+                    .mapKeys { (fingerprint, _) -> requireNotNull(fingerprint) }
+            }
+
         if (detected.isNotEmpty()) {
             val detectedIds = detected.mapNotNull { it.id }
             recurringSeriesMemberJpaRepository.deleteBySeriesIdIn(detectedIds)
+            recurringExpectedOccurrenceJpaRepository.deleteBySeriesIdIn(detectedIds)
             recurringSeriesJpaRepository.deleteByOrganizationIdAndStatus(organizationId, RecurrenceStatus.DETECTED)
         }
 
         val organization = organizationJpaRepository.getReferenceById(organizationId)
-        series.forEach { s -> persistSeries(s, organization) }
+        series.forEach { s ->
+            persistSeries(
+                s,
+                organization,
+                expectedOccurrenceSnapshot = snapshotByFingerprint[s.fingerprint] ?: emptyList(),
+                seedExpectedOccurrence = true,
+            )
+        }
     }
 
     @Transactional
@@ -39,7 +64,7 @@ class RecurringSeriesPersistenceAdapter(
     ): RecurringSeries {
         val organization = organizationJpaRepository.getReferenceById(organizationId)
         val entity = persistSeries(series, organization)
-        return entity.toDomain(emptyList(), emptyMap())
+        return entity.toDomain(emptyList(), emptyMap(), emptyMap())
     }
 
     @Transactional
@@ -52,6 +77,7 @@ class RecurringSeriesPersistenceAdapter(
                 ?: throw NoSuchElementException("Series $seriesId not found for organization $organizationId")
         val id = requireNotNull(entity.id)
         recurringSeriesMemberJpaRepository.deleteBySeriesIdIn(listOf(id))
+        recurringExpectedOccurrenceJpaRepository.deleteBySeriesIdIn(listOf(id))
         recurringSeriesJpaRepository.delete(entity)
     }
 
@@ -81,7 +107,15 @@ class RecurringSeriesPersistenceAdapter(
                 transactionJpaRepository.findAllById(allTransactionIds).associateBy { requireNotNull(it.id) }
             }
 
-        return entities.map { entity -> entity.toDomain(membersBySeriesId[entity.id] ?: emptyList(), transactionsById) }
+        val expectedByTransactionId =
+            recurringExpectedOccurrenceJpaRepository
+                .findBySeriesIdIn(entityIds)
+                .filter { it.matchedTransactionId != null }
+                .associateBy { requireNotNull(it.matchedTransactionId) }
+
+        return entities.map { entity ->
+            entity.toDomain(membersBySeriesId[entity.id] ?: emptyList(), transactionsById, expectedByTransactionId)
+        }
     }
 
     override fun findAllOrganizationIds(): Set<Long> = recurringSeriesJpaRepository.findDistinctOrganizationIds().toHashSet()
@@ -116,9 +150,38 @@ class RecurringSeriesPersistenceAdapter(
         recurringSeriesJpaRepository.save(entity)
     }
 
+    override fun findPendingExpectedOccurrence(seriesId: Long): RecurringExpectedOccurrence? =
+        recurringExpectedOccurrenceJpaRepository.findBySeriesIdAndMatchedTransactionIdIsNull(seriesId)?.toDomain()
+
+    @Transactional
+    override fun createExpectedOccurrence(
+        seriesId: Long,
+        expectedDate: LocalDate,
+        expectedAmount: BigDecimal,
+    ): RecurringExpectedOccurrence =
+        recurringExpectedOccurrenceJpaRepository
+            .save(RecurringExpectedOccurrenceEntity(seriesId = seriesId, expectedDate = expectedDate, expectedAmount = expectedAmount))
+            .toDomain()
+
+    @Transactional
+    override fun markExpectedOccurrenceMatched(
+        expectedOccurrenceId: Long,
+        matchedTransactionId: Long,
+        matchedDate: LocalDate,
+        matchedAmount: BigDecimal,
+    ) {
+        val entity = recurringExpectedOccurrenceJpaRepository.findById(expectedOccurrenceId).orElseThrow()
+        entity.matchedTransactionId = matchedTransactionId
+        entity.matchedDate = matchedDate
+        entity.matchedAmount = matchedAmount
+        recurringExpectedOccurrenceJpaRepository.save(entity)
+    }
+
     private fun persistSeries(
         s: RecurringSeries,
         organization: OrganizationEntity,
+        expectedOccurrenceSnapshot: List<RecurringExpectedOccurrenceEntity> = emptyList(),
+        seedExpectedOccurrence: Boolean = false,
     ): RecurringSeriesEntity {
         val entity =
             recurringSeriesJpaRepository.save(
@@ -152,12 +215,49 @@ class RecurringSeriesPersistenceAdapter(
                 },
             )
         }
+
+        if (seedExpectedOccurrence) {
+            val matchedHistory = expectedOccurrenceSnapshot.filter { it.matchedTransactionId != null }
+            if (matchedHistory.isNotEmpty()) {
+                recurringExpectedOccurrenceJpaRepository.saveAll(
+                    matchedHistory.map { old ->
+                        RecurringExpectedOccurrenceEntity(
+                            seriesId = seriesId,
+                            expectedDate = old.expectedDate,
+                            expectedAmount = old.expectedAmount,
+                            matchedTransactionId = old.matchedTransactionId,
+                            matchedDate = old.matchedDate,
+                            matchedAmount = old.matchedAmount,
+                        )
+                    },
+                )
+            }
+            recurringExpectedOccurrenceJpaRepository.save(
+                RecurringExpectedOccurrenceEntity(
+                    seriesId = seriesId,
+                    expectedDate = s.nextExpectedDate,
+                    expectedAmount = s.expectedAmount,
+                ),
+            )
+        }
         return entity
     }
+
+    private fun RecurringExpectedOccurrenceEntity.toDomain(): RecurringExpectedOccurrence =
+        RecurringExpectedOccurrence(
+            id = id,
+            seriesId = seriesId,
+            expectedDate = expectedDate,
+            expectedAmount = expectedAmount,
+            matchedTransactionId = matchedTransactionId,
+            matchedDate = matchedDate,
+            matchedAmount = matchedAmount,
+        )
 
     private fun RecurringSeriesEntity.toDomain(
         members: List<RecurringSeriesMemberEntity>,
         transactionsById: Map<Long, TransactionEntity>,
+        expectedByTransactionId: Map<Long, RecurringExpectedOccurrenceEntity>,
     ): RecurringSeries =
         RecurringSeries(
             id = id,
@@ -180,6 +280,7 @@ class RecurringSeriesPersistenceAdapter(
                 members
                     .mapNotNull { m ->
                         val tx = transactionsById[m.transactionId] ?: return@mapNotNull null
+                        val expected = expectedByTransactionId[m.transactionId]
                         RecurringOccurrence(
                             transactionId = m.transactionId,
                             date = tx.bookingDate,
@@ -187,6 +288,8 @@ class RecurringSeriesPersistenceAdapter(
                             purpose = tx.purpose,
                             counterpartyName = tx.counterpartyName,
                             counterpartyIban = tx.counterpartyIban,
+                            expectedDate = expected?.expectedDate,
+                            expectedAmount = expected?.expectedAmount,
                         )
                     }.sortedByDescending { it.date },
         )
