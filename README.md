@@ -39,6 +39,17 @@ Data is stored in a Docker-managed named volume. To find its location on the phy
 docker volume inspect moneylytics_postgres_data
 ```
 
+To debug with a real database dump instead of local test data, drop a `*.sql.gz` dump (e.g.
+`moneylyticsdb_20260818_020001.sql.gz`) into `db-dumps/` and run:
+
+```bash
+make import-dump
+```
+
+This picks the most recent dump in `db-dumps/`, renames the current `public` schema to
+`public_archived_<timestamp>` (so your existing local data is preserved and still queryable), and
+restores the dump into a fresh `public` schema. This only ever targets the local Docker Postgres.
+
 #### `local` profile — ephemeral H2 with dummy data
 
 No Docker needed. Uses an in-memory H2 database that is pre-seeded with ~300 dummy

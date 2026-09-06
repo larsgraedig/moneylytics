@@ -6,6 +6,7 @@ import './i18n'
 import App from './App'
 import { AuthProvider } from './context/AuthContext'
 import { TooltipProvider } from '@/components/ui/tooltip'
+import DebugEnvButton from './components/DebugEnvButton'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
@@ -13,6 +14,7 @@ createRoot(document.getElementById('root')!).render(
       <AuthProvider>
         <TooltipProvider>
           <App />
+          <DebugEnvButton />
         </TooltipProvider>
       </AuthProvider>
     </BrowserRouter>

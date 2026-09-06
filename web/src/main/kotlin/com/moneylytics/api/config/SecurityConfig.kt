@@ -40,8 +40,19 @@ class SecurityConfig(
                     .permitAll()
                     .pathMatchers("/webhooks/stripe")
                     .permitAll()
-                    .pathMatchers("/auth/login", "/auth/register", "/auth/local-info", "/oauth2/authorization/**", "/login/oauth2/code/**")
-                    .permitAll()
+                    .pathMatchers(
+                        "/",
+                        "/auth/login",
+                        "/auth/register",
+                        "/auth/local-info",
+                        "/local/environment",
+                        "/swagger-ui.html",
+                        "/swagger-ui/**",
+                        "/v3/api-docs",
+                        "/v3/api-docs/**",
+                        "/oauth2/authorization/**",
+                        "/login/oauth2/code/**",
+                    ).permitAll()
                     .pathMatchers("/admin/**")
                     .hasRole("SYSTEM_ADMIN")
                     .anyExchange()

@@ -3,6 +3,10 @@ logging:
     format:
       console: ""
 
+springdoc:
+  api-docs:
+    enabled: true
+
 management:
   tracing:
     enabled: false
@@ -23,8 +27,8 @@ spring:
       client:
         registration:
           google:
-            client-id: local-dummy
-            client-secret: local-dummy
+            client-id: ${GOOGLE_CLIENT_ID:local-dummy}
+            client-secret: ${GOOGLE_CLIENT_SECRET:local-dummy}
   liquibase:
     enabled: false
   datasource:

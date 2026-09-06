@@ -27,6 +27,14 @@
     "collapse": "Menü einklappen",
     "expand": "Menü ausklappen"
   },
+  "envVars": {
+    "backend": "Backend",
+    "frontend": "Frontend"
+  },
+  "debug": {
+    "tooltip": "Debug",
+    "title": "Umgebungsvariablen"
+  },
   "common": {
     "allAccounts": "Alle Konten",
     "from": "von",

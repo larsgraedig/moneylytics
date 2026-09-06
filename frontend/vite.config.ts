@@ -30,6 +30,7 @@ export default defineConfig({
       '/imports': backendUrl,
       '/invoices': backendUrl,
       '/webhooks': backendUrl,
+      '/local': backendUrl,
     },
   },
 })

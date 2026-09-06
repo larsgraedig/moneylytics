@@ -4,6 +4,7 @@ import io.swagger.v3.oas.models.OpenAPI
 import io.swagger.v3.oas.models.info.Info
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import org.springframework.context.annotation.Profile
 import org.springframework.web.reactive.config.ResourceHandlerRegistry
 import org.springframework.web.reactive.config.WebFluxConfigurer
 import org.springframework.web.reactive.function.server.RouterFunction
@@ -11,6 +12,7 @@ import org.springframework.web.reactive.function.server.ServerResponse
 import org.springframework.web.reactive.function.server.router
 import java.net.URI
 
+@Profile("local")
 @Configuration
 class SwaggerUiConfiguration : WebFluxConfigurer {
     override fun addResourceHandlers(registry: ResourceHandlerRegistry) {
@@ -27,6 +29,9 @@ class SwaggerUiConfiguration : WebFluxConfigurer {
         router {
             GET("/swagger-ui.html") {
                 ServerResponse.temporaryRedirect(URI.create("/swagger-ui/index.html")).build()
+            }
+            GET("/") {
+                ServerResponse.temporaryRedirect(URI.create("/swagger-ui.html")).build()
             }
         }
 
