@@ -32,6 +32,7 @@ import com.moneylytics.api.domain.SubscriptionStatus
 import com.moneylytics.api.domain.Threshold
 import com.moneylytics.api.domain.ThresholdPeriod
 import com.moneylytics.api.domain.Transaction
+import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.boot.ApplicationArguments
 import org.springframework.boot.ApplicationRunner
 import org.springframework.context.annotation.Profile
@@ -41,6 +42,8 @@ import java.math.RoundingMode
 import java.time.LocalDate
 import java.time.ZoneOffset
 import java.util.Random
+
+private val logger = KotlinLogging.logger {}
 
 @Suppress("MagicNumber")
 @Profile("local")
@@ -159,6 +162,11 @@ class LocalDataInitializer(
     private val savingsName = "Sparkonto"
 
     override fun run(args: ApplicationArguments) {
+        if (userRepository.findAll().isNotEmpty()) {
+            logger.info { "Database already contains data — skipping local seed data." }
+            return
+        }
+
         createTierUseCase.createTier("Standard", "Standard Tier", isDefault = true)
         val proTier = createTierUseCase.createTier("Pro", "Pro Tier", isDefault = false)
 

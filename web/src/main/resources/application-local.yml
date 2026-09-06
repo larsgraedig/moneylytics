@@ -29,8 +29,6 @@ spring:
           google:
             client-id: ${GOOGLE_CLIENT_ID:local-dummy}
             client-secret: ${GOOGLE_CLIENT_SECRET:local-dummy}
-  liquibase:
-    enabled: false
   datasource:
     url: jdbc:postgresql://localhost:5433/moneylyticsdb
     username: moneylytics
@@ -38,7 +36,7 @@ spring:
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
-      ddl-auto: create-drop
+      ddl-auto: validate
   session:
     jdbc:
       initialize-schema: always

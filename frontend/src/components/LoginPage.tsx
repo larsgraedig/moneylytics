@@ -89,7 +89,7 @@ export default function LoginPage() {
   return (
     <div className="flex min-h-svh items-center justify-center bg-background p-4">
       <Card className="relative w-full max-w-sm">
-        {localUsers && (
+        {localUsers && localUsers.length > 0 && (
           <div className="absolute right-3 top-3">
             <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
               <PopoverTrigger className="flex h-6 w-6 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-accent-foreground">
