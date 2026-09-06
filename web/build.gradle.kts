@@ -35,7 +35,6 @@ dependencies {
     implementation(libs.jackson.module.kotlin)
     implementation(libs.commons.csv)
     implementation(libs.kotlin.logging)
-    testRuntimeOnly(libs.h2)
     runtimeOnly(libs.postgresql)
     implementation(libs.spring.session.jdbc)
     implementation(libs.springdoc.openapi.webflux.ui)
@@ -48,6 +47,8 @@ dependencies {
     testImplementation(libs.kotlin.test.junit5)
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.mockito.kotlin)
+    testImplementation(libs.testcontainers.postgresql)
+    testImplementation(libs.testcontainers.junit.jupiter)
     testRuntimeOnly(libs.junit.platform.launcher)
 }
 

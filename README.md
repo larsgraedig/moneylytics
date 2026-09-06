@@ -50,10 +50,11 @@ This picks the most recent dump in `db-dumps/`, renames the current `public` sch
 `public_archived_<timestamp>` (so your existing local data is preserved and still queryable), and
 restores the dump into a fresh `public` schema. This only ever targets the local Docker Postgres.
 
-#### `local` profile — ephemeral H2 with dummy data
+#### `local` profile — dummy data on the same Docker Postgres
 
-No Docker needed. Uses an in-memory H2 database that is pre-seeded with ~300 dummy
-transactions on every startup. All data is lost when the application stops.
+Requires Docker (same Postgres instance as the default profile, `docker compose up -d`). On an
+empty database it seeds ~300 dummy transactions on startup; if the database already has data
+(e.g. after `make import-dump`), seeding is skipped and the existing data is left untouched.
 
 ```bash
 ./gradlew :web:bootRun --args='--spring.profiles.active=local'
@@ -120,7 +121,6 @@ Runs at **http://localhost:5173** and proxies `/transactions` to the backend on 
 | http://localhost:8080/swagger-ui.html | Redirects → Swagger UI |
 | http://localhost:8080/swagger-ui/index.html | Full interactive Swagger UI |
 | http://localhost:8080/v3/api-docs | Raw OpenAPI JSON spec |
-| http://localhost:8082 | H2 database console (`local` profile only) |
 
 ## Deployment
 
@@ -132,11 +132,3 @@ make release ENV=prod   # deploy to moneylytics-prod
 ```
 
 Requires `DOCKERHUB_USERNAME` and `DOCKERHUB_PASSWORD` environment variables to be set.
-
-#### H2 console connection (`local` profile only)
-
-| Field | Value |
-|-------|-------|
-| JDBC URL | `jdbc:h2:mem:moneylyticsdb` |
-| Username | `sa` |
-| Password | *(leave empty)* |

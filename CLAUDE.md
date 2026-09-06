@@ -5,7 +5,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Commands
 
 ```bash
-# Build / test
+# Build / test (requires Docker — integration tests run against a Testcontainers Postgres instance)
 ./gradlew build
 ./gradlew :web:test
 ./gradlew :web:test --tests "com.moneylytics.api.SomeTest"        # single test class
@@ -20,7 +20,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 docker compose up -d
 ./gradlew :web:bootRun
 
-# Run locally with H2 in-memory + dummy data (no Docker needed)
+# Run locally with dummy data on the same Docker Postgres (seeds only if the DB is empty)
 ./gradlew :web:bootRun --args='--spring.profiles.active=local'
 
 # Frontend dev server (proxies API calls to localhost:8080)

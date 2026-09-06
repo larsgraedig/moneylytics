@@ -1,7 +1,6 @@
 [versions]
 kotlin = "2.2.20"
 commons-csv = "1.12.0"
-h2 = "2.3.232"
 spring-boot = "4.0.6"
 spring-dependency-management = "1.1.7"
 detekt = "2.0.0-alpha.1"
@@ -10,6 +9,7 @@ mockito-kotlin = "5.4.0"
 kotlin-logging = "8.0.4"
 springdoc-openapi = "2.8.6"
 stripe = "33.3.0"
+testcontainers = "1.21.4"
 
 [libraries]
 spring-boot-starter-webflux = { group = "org.springframework.boot", name = "spring-boot-starter-webflux" }
@@ -22,7 +22,6 @@ kotlinx-coroutines-reactor = { group = "org.jetbrains.kotlinx", name = "kotlinx-
 jackson-module-kotlin = { group = "com.fasterxml.jackson.module", name = "jackson-module-kotlin" }
 
 commons-csv = { group = "org.apache.commons", name = "commons-csv", version.ref = "commons-csv" }
-h2 = { group = "com.h2database", name = "h2", version.ref = "h2" }
 postgresql = { group = "org.postgresql", name = "postgresql" }
 spring-session-jdbc = { group = "org.springframework.session", name = "spring-session-jdbc" }
 
@@ -36,6 +35,8 @@ kotlin-logging = { group = "io.github.oshai", name = "kotlin-logging-jvm", versi
 springdoc-openapi-webflux-ui = { group = "org.springdoc", name = "springdoc-openapi-starter-webflux-ui", version.ref = "springdoc-openapi" }
 stripe-java = { group = "com.stripe", name = "stripe-java", version.ref = "stripe" }
 liquibase-core = { group = "org.liquibase", name = "liquibase-core" }
+testcontainers-postgresql = { group = "org.testcontainers", name = "postgresql", version.ref = "testcontainers" }
+testcontainers-junit-jupiter = { group = "org.testcontainers", name = "junit-jupiter", version.ref = "testcontainers" }
 spring-boot-starter-actuator = { group = "org.springframework.boot", name = "spring-boot-starter-actuator" }
 micrometer-tracing-bridge-otel = { group = "io.micrometer", name = "micrometer-tracing-bridge-otel" }
 opentelemetry-exporter-otlp = { group = "io.opentelemetry", name = "opentelemetry-exporter-otlp" }
