@@ -18,5 +18,11 @@ databaseChangeLog:
       file: changes/0006-add-exclude-from-suggestions-to-transaction.yaml
       relativeToChangelogFile: true
   - include:
-      file: changes/0007-add-recurring-expected-occurrence.yaml
+      file: changes/0007-recurring-expected-slot.yaml
+      relativeToChangelogFile: true
+  - include:
+      file: changes/0008-drop-recurring-expected-slot.yaml
+      relativeToChangelogFile: true
+  - include:
+      file: changes/0009-add-recurring-expected-occurrence.yaml
       relativeToChangelogFile: true
