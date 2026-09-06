@@ -39,10 +39,48 @@ Data is stored in a Docker-managed named volume. To find its location on the phy
 docker volume inspect moneylytics_postgres_data
 ```
 
-#### `local` profile — ephemeral H2 with dummy data
+To debug with a real database dump instead of local test data, run:
 
-No Docker needed. Uses an in-memory H2 database that is pre-seeded with ~300 dummy
-transactions on every startup. All data is lost when the application stops.
+```bash
+make import-dump
+```
+
+This first fetches the most recent `moneylyticsdb_*.sql.gz` backup from the server via SSH/SCP into
+`db-dumps/`, then renames the current `public` schema to `public_archived_<timestamp>` (so your
+existing local data is preserved and still queryable) and restores the dump into a fresh `public`
+schema. This only ever targets the local Docker Postgres.
+
+The fetch step requires these environment variables (see `.envrc`):
+
+| Variable | Description |
+|----------|--------------|
+| `DUMP_SSH_HOST` | Hostname/IP of the backup server |
+| `DUMP_SSH_PORT` | SSH port (default `22`) |
+| `DUMP_SSH_USER` | SSH username |
+| `DUMP_SSH_REMOTE_DIR` | Remote directory containing the `moneylyticsdb_*.sql.gz` backups (e.g. `/var/backups/moneylytics`) |
+| `DUMP_SSH_KEY_PATH` | Path to the PEM private key file used for authentication (e.g. `~/.ssh/moneylytics-dump-key.pem`, `chmod 600`) |
+
+To only refresh the local dump without importing it:
+
+```bash
+make fetch-dump
+```
+
+Both commands only print readable status lines by default; on failure the underlying error output is
+shown. For the full raw output of every command (`ssh`, `scp`, `docker compose`, `psql`, ...), pass
+`-v`:
+
+```bash
+make import-dump V=1
+# or directly:
+./scripts/import-dump.sh -v
+```
+
+#### `local` profile — dummy data on the same Docker Postgres
+
+Requires Docker (same Postgres instance as the default profile, `docker compose up -d`). On an
+empty database it seeds ~300 dummy transactions on startup; if the database already has data
+(e.g. after `make import-dump`), seeding is skipped and the existing data is left untouched.
 
 ```bash
 ./gradlew :web:bootRun --args='--spring.profiles.active=local'
@@ -109,7 +147,6 @@ Runs at **http://localhost:5173** and proxies `/transactions` to the backend on 
 | http://localhost:8080/swagger-ui.html | Redirects → Swagger UI |
 | http://localhost:8080/swagger-ui/index.html | Full interactive Swagger UI |
 | http://localhost:8080/v3/api-docs | Raw OpenAPI JSON spec |
-| http://localhost:8082 | H2 database console (`local` profile only) |
 
 ## Deployment
 
@@ -121,11 +158,3 @@ make release ENV=prod   # deploy to moneylytics-prod
 ```
 
 Requires `DOCKERHUB_USERNAME` and `DOCKERHUB_PASSWORD` environment variables to be set.
-
-#### H2 console connection (`local` profile only)
-
-| Field | Value |
-|-------|-------|
-| JDBC URL | `jdbc:h2:mem:moneylyticsdb` |
-| Username | `sa` |
-| Password | *(leave empty)* |

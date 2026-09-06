@@ -5,11 +5,13 @@ interface Props {
   series: RecurringSeriesItem[]
   days: number
   typeColors: Record<string, string>
+  startOffset?: number
 }
 
 interface ProjectedOccurrence {
   date: Date
   item: RecurringSeriesItem
+  isPast: boolean
 }
 
 function parseLocalDate(s: string): Date {
@@ -29,23 +31,40 @@ function isSameDay(a: Date, b: Date): boolean {
     a.getDate() === b.getDate()
 }
 
-function projectOccurrences(
+function gatherOccurrences(
   series: RecurringSeriesItem[],
-  today: Date,
+  startDate: Date,
   endDate: Date,
+  today: Date,
 ): ProjectedOccurrence[] {
   const todayMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate())
   const result: ProjectedOccurrence[] = []
+
   for (const s of series) {
     if (s.isFalsePositive) continue
+
+    const actualDates = new Set<string>()
+
+    for (const occ of s.occurrences) {
+      const d = parseLocalDate(occ.date)
+      if (d >= startDate && d <= endDate && d < todayMidnight) {
+        const key = d.toDateString()
+        if (!actualDates.has(key)) {
+          actualDates.add(key)
+          result.push({ date: new Date(d), item: s, isPast: true })
+        }
+      }
+    }
+
     let d = parseLocalDate(s.nextExpectedDate)
     while (d <= endDate) {
-      if (d >= todayMidnight) {
-        result.push({ date: new Date(d), item: s })
+      if (d >= startDate && d >= todayMidnight) {
+        result.push({ date: new Date(d), item: s, isPast: false })
       }
       d = addDays(d, s.intervalDays)
     }
   }
+
   return result.sort((a, b) => a.date.getTime() - b.date.getTime())
 }
 
@@ -74,11 +93,12 @@ function formatMonth(d: Date): string {
   return new Intl.DateTimeFormat('de-DE', { month: 'long', year: 'numeric' }).format(d)
 }
 
-export default function RecurringTimeline({ series, days, typeColors }: Props) {
+export default function RecurringTimeline({ series, days, typeColors, startOffset = 0 }: Props) {
   const { t } = useTranslation()
   const today = new Date()
-  const endDate = addDays(today, days)
-  const occurrences = projectOccurrences(series, today, endDate)
+  const startDate = addDays(today, startOffset)
+  const endDate = addDays(startDate, days)
+  const occurrences = gatherOccurrences(series, startDate, endDate, today)
   const groups = groupByDay(occurrences)
 
   if (groups.length === 0) {
@@ -112,7 +132,7 @@ export default function RecurringTimeline({ series, days, typeColors }: Props) {
                 {group.items.map((occ, oi) => (
                   <div
                     key={`${occ.item.fingerprint}-${oi}`}
-                    className={`rcr-tl-card rcr-tl-card--${occ.item.direction.toLowerCase()}`}
+                    className={`rcr-tl-card rcr-tl-card--${occ.item.direction.toLowerCase()}${occ.isPast ? ' rcr-tl-card--past' : ''}`}
                   >
                     <span
                       className="rcr-tl-card-type"

@@ -39,6 +39,8 @@ app:
 springdoc:
   swagger-ui:
     enabled: false  # springdoc's UI router uses a Spring Framework 6 API removed in 7; we serve the UI manually
+  api-docs:
+    enabled: false  # only enabled in the local profile, see application-local.yml
 
 management:
   endpoints:
