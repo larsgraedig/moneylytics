@@ -9,3 +9,5 @@ enum class RecurrenceDirection { EXPENSE, INCOME }
 enum class RecurrenceStatus { DETECTED, MANUAL }
 
 enum class RecurrenceDeviation { ON_TRACK, AMOUNT_CHANGED, DATE_SHIFTED, OVERDUE }
+
+enum class RecurringOccurrenceDeviation { ON_TIME, DATE_SHIFTED, AMOUNT_CHANGED }

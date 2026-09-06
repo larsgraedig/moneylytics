@@ -1,5 +1,7 @@
 import { fetchWithUser } from './client'
 
+export type RecurringOccurrenceDeviation = 'ON_TIME' | 'DATE_SHIFTED' | 'AMOUNT_CHANGED'
+
 export interface RecurringOccurrenceItem {
   transactionId: number
   date: string
@@ -7,6 +9,9 @@ export interface RecurringOccurrenceItem {
   purpose: string | null
   counterpartyName: string | null
   counterpartyIban: string | null
+  expectedDate: string | null
+  expectedAmount: number | null
+  deviation: RecurringOccurrenceDeviation | null
 }
 
 export type RecurrenceCadence = 'WEEKLY' | 'MONTHLY' | 'QUARTERLY' | 'SEMIANNUAL' | 'YEARLY'

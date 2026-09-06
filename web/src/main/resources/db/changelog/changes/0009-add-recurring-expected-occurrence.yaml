@@ -1,0 +1,50 @@
+databaseChangeLog:
+  - changeSet:
+      id: 0009
+      author: lars
+      changes:
+        - createTable:
+            tableName: recurring_expected_occurrence
+            columns:
+              - column:
+                  name: id
+                  type: bigserial
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: series_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_reo_series
+                    references: recurring_series(id)
+              - column:
+                  name: expected_date
+                  type: date
+                  constraints:
+                    nullable: false
+              - column:
+                  name: expected_amount
+                  type: numeric(19, 4)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: matched_transaction_id
+                  type: bigint
+                  constraints:
+                    nullable: true
+                    foreignKeyName: fk_reo_transaction
+                    references: transaction(id)
+              - column:
+                  name: matched_date
+                  type: date
+              - column:
+                  name: matched_amount
+                  type: numeric(19, 4)
+        - createIndex:
+            tableName: recurring_expected_occurrence
+            indexName: idx_reo_series_id
+            columns:
+              - column:
+                  name: series_id

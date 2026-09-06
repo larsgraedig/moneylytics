@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next'
-import { type RecurringSeriesItem } from '../api/recurring'
+import type { TFunction } from 'i18next'
+import { type RecurringOccurrenceItem, type RecurringSeriesItem } from '../api/recurring'
 
 interface Props {
   series: RecurringSeriesItem[]
@@ -12,6 +13,23 @@ interface ProjectedOccurrence {
   date: Date
   item: RecurringSeriesItem
   isPast: boolean
+  occurrence?: RecurringOccurrenceItem
+}
+
+const OCCURRENCE_DEVIATION_COLORS: Record<string, string> = {
+  ON_TIME: '#4ade80',
+  DATE_SHIFTED: '#60a5fa',
+  AMOUNT_CHANGED: '#f59e0b',
+}
+
+function occurrenceDeviationDetail(occ: RecurringOccurrenceItem, t: TFunction): string | undefined {
+  if (occ.deviation !== 'DATE_SHIFTED' || !occ.expectedDate) return undefined
+  const diffDays = Math.round(
+    (parseLocalDate(occ.date).getTime() - parseLocalDate(occ.expectedDate).getTime()) / (1000 * 60 * 60 * 24),
+  )
+  return diffDays > 0
+    ? (t('recurring.occurrenceDeviation.daysLate', { count: diffDays }) as string)
+    : (t('recurring.occurrenceDeviation.daysEarly', { count: -diffDays }) as string)
 }
 
 function parseLocalDate(s: string): Date {
@@ -51,7 +69,7 @@ function gatherOccurrences(
         const key = d.toDateString()
         if (!actualDates.has(key)) {
           actualDates.add(key)
-          result.push({ date: new Date(d), item: s, isPast: true })
+          result.push({ date: new Date(d), item: s, isPast: true, occurrence: occ })
         }
       }
     }
@@ -143,10 +161,25 @@ export default function RecurringTimeline({ series, days, typeColors, startOffse
                     <span className="rcr-tl-card-label">{occ.item.label}</span>
                     <span className={`rcr-tl-card-amount rcr-tl-card-amount--${occ.item.direction.toLowerCase()}`}>
                       {occ.item.direction === 'EXPENSE' ? '−' : '+'}
-                      {formatAmount(occ.item.expectedAmount, occ.item.currency)}
+                      {formatAmount(
+                        occ.isPast && occ.occurrence ? occ.occurrence.amount : occ.item.expectedAmount,
+                        occ.item.currency,
+                      )}
                     </span>
                     {occ.item.amountVariable && (
                       <span className="rcr-tl-card-variable" title={t('recurring.amountVariable') as string}>~</span>
+                    )}
+                    {occ.isPast && occ.occurrence?.deviation && (
+                      <span
+                        className="rcr-badge rcr-tl-card-deviation"
+                        style={{
+                          color: OCCURRENCE_DEVIATION_COLORS[occ.occurrence.deviation] ?? '#6b7280',
+                          borderColor: OCCURRENCE_DEVIATION_COLORS[occ.occurrence.deviation] ?? '#6b7280',
+                        }}
+                        title={occurrenceDeviationDetail(occ.occurrence, t)}
+                      >
+                        {t(`recurring.occurrenceDeviation.${occ.occurrence.deviation}` as Parameters<typeof t>[0])}
+                      </span>
                     )}
                   </div>
                 ))}

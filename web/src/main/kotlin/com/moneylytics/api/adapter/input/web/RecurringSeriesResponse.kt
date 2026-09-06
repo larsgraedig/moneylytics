@@ -4,6 +4,7 @@ import com.moneylytics.api.domain.RecurrenceCadence
 import com.moneylytics.api.domain.RecurrenceDeviation
 import com.moneylytics.api.domain.RecurrenceDirection
 import com.moneylytics.api.domain.RecurrenceStatus
+import com.moneylytics.api.domain.RecurringOccurrenceDeviation
 import com.moneylytics.api.domain.RecurringSeries
 import com.moneylytics.api.domain.RecurringType
 import java.math.BigDecimal
@@ -15,6 +16,9 @@ data class RecurringOccurrenceItem(
     val purpose: String?,
     val counterpartyName: String?,
     val counterpartyIban: String?,
+    val expectedDate: String?,
+    val expectedAmount: BigDecimal?,
+    val deviation: RecurringOccurrenceDeviation?,
 )
 
 data class RecurringSeriesItem(
@@ -68,6 +72,9 @@ fun RecurringSeries.toItem() =
                     purpose = it.purpose,
                     counterpartyName = it.counterpartyName,
                     counterpartyIban = it.counterpartyIban,
+                    expectedDate = it.expectedDate?.toString(),
+                    expectedAmount = it.expectedAmount,
+                    deviation = it.deviation,
                 )
             },
     )

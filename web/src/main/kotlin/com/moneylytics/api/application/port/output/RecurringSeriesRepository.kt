@@ -1,7 +1,9 @@
 package com.moneylytics.api.application.port.output
 
+import com.moneylytics.api.domain.RecurringExpectedOccurrence
 import com.moneylytics.api.domain.RecurringSeries
 import com.moneylytics.api.domain.RecurringType
+import java.math.BigDecimal
 import java.time.LocalDate
 
 interface RecurringSeriesRepository {
@@ -41,5 +43,20 @@ interface RecurringSeriesRepository {
         lastSeen: LocalDate,
         nextExpectedDate: LocalDate,
         occurrenceCount: Int,
+    )
+
+    fun findPendingExpectedOccurrence(seriesId: Long): RecurringExpectedOccurrence?
+
+    fun createExpectedOccurrence(
+        seriesId: Long,
+        expectedDate: LocalDate,
+        expectedAmount: BigDecimal,
+    ): RecurringExpectedOccurrence
+
+    fun markExpectedOccurrenceMatched(
+        expectedOccurrenceId: Long,
+        matchedTransactionId: Long,
+        matchedDate: LocalDate,
+        matchedAmount: BigDecimal,
     )
 }

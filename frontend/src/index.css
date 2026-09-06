@@ -2731,6 +2731,10 @@ button.ri-chip {
   opacity: 0.6;
 }
 
+.rcr-tl-card-deviation {
+  margin-left: auto;
+}
+
 /* ── categories page ─────────────────────────────────────────────────────── */
 
 .cat-page {

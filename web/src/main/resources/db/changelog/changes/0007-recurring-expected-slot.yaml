@@ -1,0 +1,40 @@
+databaseChangeLog:
+  - changeSet:
+      id: "0007"
+      author: "lgraedig"
+      changes:
+        - createTable:
+            tableName: recurring_expected_slot
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: series_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_recurring_expected_slot_series
+                    references: recurring_series(id)
+                    deleteCascade: true
+              - column:
+                  name: expected_date
+                  type: date
+                  constraints:
+                    nullable: false
+              - column:
+                  name: transaction_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_recurring_expected_slot_transaction
+                    references: transaction(id)
+                    deleteCascade: true
+        - addUniqueConstraint:
+            tableName: recurring_expected_slot
+            columnNames: series_id, expected_date
+            constraintName: uq_recurring_expected_slot_series_date

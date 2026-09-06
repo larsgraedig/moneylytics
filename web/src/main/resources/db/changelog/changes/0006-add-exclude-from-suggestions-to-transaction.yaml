@@ -1,7 +1,7 @@
 databaseChangeLog:
   - changeSet:
-      id: 0006
-      author: lars
+      id: "0006"
+      author: "lgraedig"
       changes:
         - addColumn:
             tableName: transaction

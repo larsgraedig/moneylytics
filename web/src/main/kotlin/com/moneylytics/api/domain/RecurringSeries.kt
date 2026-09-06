@@ -10,6 +10,9 @@ data class RecurringOccurrence(
     val purpose: String? = null,
     val counterpartyName: String? = null,
     val counterpartyIban: String? = null,
+    val expectedDate: LocalDate? = null,
+    val expectedAmount: BigDecimal? = null,
+    val deviation: RecurringOccurrenceDeviation? = null,
 )
 
 data class RecurringSeries(

@@ -6,6 +6,7 @@ import com.moneylytics.api.application.port.output.TransactionRepository
 import com.moneylytics.api.domain.RecurrenceCadence
 import com.moneylytics.api.domain.RecurrenceDirection
 import com.moneylytics.api.domain.RecurrenceStatus
+import com.moneylytics.api.domain.RecurringExpectedOccurrence
 import com.moneylytics.api.domain.RecurringSeries
 import com.moneylytics.api.domain.RecurringType
 import com.moneylytics.api.domain.Transaction
@@ -15,6 +16,7 @@ import org.mockito.kotlin.any
 import org.mockito.kotlin.anyOrNull
 import org.mockito.kotlin.argumentCaptor
 import org.mockito.kotlin.eq
+import org.mockito.kotlin.inOrder
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.never
 import org.mockito.kotlin.verify
@@ -77,6 +79,25 @@ class RecurringMatcherServiceTest {
         counterpartyName = counterpartyName,
     )
 
+    private fun expectedOccurrence(
+        id: Long,
+        seriesId: Long,
+        expectedDate: LocalDate,
+        expectedAmount: BigDecimal = BigDecimal("-15.99"),
+    ) = RecurringExpectedOccurrence(id = id, seriesId = seriesId, expectedDate = expectedDate, expectedAmount = expectedAmount)
+
+    private fun stubExpectedOccurrenceCreation(nextId: Long = 1L) {
+        var counter = nextId
+        whenever(recurringSeriesRepository.createExpectedOccurrence(any(), any(), any())).thenAnswer { invocation ->
+            expectedOccurrence(
+                id = counter++,
+                seriesId = invocation.getArgument(0),
+                expectedDate = invocation.getArgument(1),
+                expectedAmount = invocation.getArgument(2),
+            )
+        }
+    }
+
     @Test
     fun `should do nothing when no users have series`() {
         whenever(recurringSeriesRepository.findAllOrganizationIds()).thenReturn(emptySet())
@@ -109,6 +130,7 @@ class RecurringMatcherServiceTest {
         whenever(
             transactionRepository.findByAccountingDateBetween(any(), any(), eq(organizationId), anyOrNull()),
         ).thenReturn(listOf(newTx))
+        stubExpectedOccurrenceCreation()
 
         service.syncForAllOrganizations()
 
@@ -180,6 +202,7 @@ class RecurringMatcherServiceTest {
         whenever(
             transactionRepository.findByAccountingDateBetween(any(), any(), any(), anyOrNull()),
         ).thenReturn(listOf(newTx))
+        stubExpectedOccurrenceCreation()
 
         service.syncForAllOrganizations()
 
@@ -189,6 +212,127 @@ class RecurringMatcherServiceTest {
             nextExpectedDate = newDate.plusDays(30),
             occurrenceCount = 4,
         )
+    }
+
+    @Test
+    fun `should mark pending expected occurrence as matched and create the next one`() {
+        val newDate = baseDate.plusDays(62)
+        val newTx = tx(id = 99L, bookingDate = newDate)
+        val s = series(lastSeen = baseDate.plusDays(31), intervalDays = 30)
+        val pending = expectedOccurrence(id = 5L, seriesId = requireNotNull(s.id), expectedDate = newDate)
+
+        whenever(recurringSeriesRepository.findAllOrganizationIds()).thenReturn(setOf(organizationId))
+        whenever(recurringSeriesRepository.findByOrganizationId(organizationId)).thenReturn(listOf(s))
+        whenever(recurringSeriesRepository.findMemberTransactionIds(requireNotNull(s.id))).thenReturn(emptySet())
+        whenever(
+            transactionRepository.findByAccountingDateBetween(any(), any(), any(), anyOrNull()),
+        ).thenReturn(listOf(newTx))
+        whenever(recurringSeriesRepository.findPendingExpectedOccurrence(requireNotNull(s.id))).thenReturn(pending)
+        stubExpectedOccurrenceCreation(nextId = 6L)
+
+        service.syncForAllOrganizations()
+
+        verify(recurringSeriesRepository).markExpectedOccurrenceMatched(
+            expectedOccurrenceId = 5L,
+            matchedTransactionId = 99L,
+            matchedDate = newDate,
+            matchedAmount = newTx.amount,
+        )
+        verify(recurringSeriesRepository).createExpectedOccurrence(
+            seriesId = requireNotNull(s.id),
+            expectedDate = newDate.plusDays(30),
+            expectedAmount = s.expectedAmount,
+        )
+    }
+
+    @Test
+    fun `should pair multiple new transactions to sequential expected occurrences in chronological order`() {
+        val firstDate = baseDate.plusDays(62)
+        val secondDate = baseDate.plusDays(93)
+        val firstTx = tx(id = 99L, bookingDate = firstDate)
+        val secondTx = tx(id = 100L, bookingDate = secondDate)
+        val s = series(lastSeen = baseDate.plusDays(31), intervalDays = 30)
+
+        whenever(recurringSeriesRepository.findAllOrganizationIds()).thenReturn(setOf(organizationId))
+        whenever(recurringSeriesRepository.findByOrganizationId(organizationId)).thenReturn(listOf(s))
+        whenever(recurringSeriesRepository.findMemberTransactionIds(requireNotNull(s.id))).thenReturn(emptySet())
+        // Returned out of order to prove the matcher sorts by bookingDate before pairing.
+        whenever(
+            transactionRepository.findByAccountingDateBetween(any(), any(), any(), anyOrNull()),
+        ).thenReturn(listOf(secondTx, firstTx))
+        whenever(recurringSeriesRepository.findPendingExpectedOccurrence(requireNotNull(s.id))).thenReturn(null)
+        stubExpectedOccurrenceCreation()
+
+        service.syncForAllOrganizations()
+
+        val idCaptor = argumentCaptor<Long>()
+        val dateCaptor = argumentCaptor<LocalDate>()
+        verify(recurringSeriesRepository, org.mockito.kotlin.times(2)).markExpectedOccurrenceMatched(
+            expectedOccurrenceId = idCaptor.capture(),
+            matchedTransactionId = any(),
+            matchedDate = dateCaptor.capture(),
+            matchedAmount = any(),
+        )
+        assertThat(dateCaptor.allValues).containsExactly(firstDate, secondDate)
+
+        val txIdCaptor = argumentCaptor<Long>()
+        inOrder(recurringSeriesRepository).let { order ->
+            order.verify(recurringSeriesRepository).markExpectedOccurrenceMatched(
+                eq(idCaptor.firstValue),
+                txIdCaptor.capture(),
+                eq(firstDate),
+                any(),
+            )
+            order.verify(recurringSeriesRepository).markExpectedOccurrenceMatched(
+                eq(idCaptor.secondValue),
+                txIdCaptor.capture(),
+                eq(secondDate),
+                any(),
+            )
+        }
+        assertThat(txIdCaptor.allValues).containsExactly(99L, 100L)
+    }
+
+    @Test
+    fun `should create a pending occurrence on the fly when none exists`() {
+        val newDate = baseDate.plusDays(62)
+        val newTx = tx(id = 99L, bookingDate = newDate)
+        val s = series(lastSeen = baseDate.plusDays(31), intervalDays = 30)
+
+        whenever(recurringSeriesRepository.findAllOrganizationIds()).thenReturn(setOf(organizationId))
+        whenever(recurringSeriesRepository.findByOrganizationId(organizationId)).thenReturn(listOf(s))
+        whenever(recurringSeriesRepository.findMemberTransactionIds(requireNotNull(s.id))).thenReturn(emptySet())
+        whenever(
+            transactionRepository.findByAccountingDateBetween(any(), any(), any(), anyOrNull()),
+        ).thenReturn(listOf(newTx))
+        whenever(recurringSeriesRepository.findPendingExpectedOccurrence(requireNotNull(s.id))).thenReturn(null)
+        stubExpectedOccurrenceCreation()
+
+        service.syncForAllOrganizations()
+
+        verify(recurringSeriesRepository).createExpectedOccurrence(
+            seriesId = requireNotNull(s.id),
+            expectedDate = s.lastSeen.plusDays(30),
+            expectedAmount = s.expectedAmount,
+        )
+    }
+
+    @Test
+    fun `should not touch expected occurrences when no new matches are found`() {
+        val s = series(lastSeen = baseDate.plusDays(31))
+
+        whenever(recurringSeriesRepository.findAllOrganizationIds()).thenReturn(setOf(organizationId))
+        whenever(recurringSeriesRepository.findByOrganizationId(organizationId)).thenReturn(listOf(s))
+        whenever(recurringSeriesRepository.findMemberTransactionIds(requireNotNull(s.id))).thenReturn(emptySet())
+        whenever(
+            transactionRepository.findByAccountingDateBetween(any(), any(), any(), anyOrNull()),
+        ).thenReturn(emptyList())
+
+        service.syncForAllOrganizations()
+
+        verify(recurringSeriesRepository, never()).findPendingExpectedOccurrence(any())
+        verify(recurringSeriesRepository, never()).createExpectedOccurrence(any(), any(), any())
+        verify(recurringSeriesRepository, never()).markExpectedOccurrenceMatched(any(), any(), any(), any())
     }
 
     @Test

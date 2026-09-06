@@ -11,6 +11,7 @@ import com.moneylytics.api.domain.RecurringSyncLogEntry
 import com.moneylytics.api.domain.RecurringSyncTrigger
 import com.moneylytics.api.domain.Transaction
 import org.springframework.stereotype.Service
+import java.math.BigDecimal
 import java.time.Instant
 import java.time.LocalDate
 
@@ -99,17 +100,20 @@ class RecurringMatcherService(
                     )
 
                 val newMatches =
-                    candidates.filter { tx ->
-                        tx.id != null &&
-                            tx.id !in existingTransactionIds &&
-                            tx.bookingDate > series.lastSeen &&
-                            groupKey(tx) == series.fingerprint
-                    }
+                    candidates
+                        .filter { tx ->
+                            tx.id != null &&
+                                tx.id !in existingTransactionIds &&
+                                tx.bookingDate > series.lastSeen &&
+                                groupKey(tx) == series.fingerprint
+                        }.sortedBy { it.bookingDate }
 
                 if (newMatches.isNotEmpty()) {
                     val newIds = newMatches.mapNotNull { it.id }
                     recurringSeriesRepository.addMembers(seriesId, newIds)
-                    val newLastSeen = newMatches.maxOf { it.bookingDate }
+                    linkMatchesToExpectedOccurrences(seriesId, series.lastSeen, series.intervalDays, series.expectedAmount, newMatches)
+
+                    val newLastSeen = newMatches.last().bookingDate
                     recurringSeriesRepository.updateSeriesMetadata(
                         seriesId = seriesId,
                         lastSeen = newLastSeen,
@@ -121,5 +125,39 @@ class RecurringMatcherService(
             }
 
         return results
+    }
+
+    private fun linkMatchesToExpectedOccurrences(
+        seriesId: Long,
+        lastSeen: LocalDate,
+        intervalDays: Int,
+        expectedAmount: BigDecimal,
+        sortedMatches: List<Transaction>,
+    ) {
+        var pending = recurringSeriesRepository.findPendingExpectedOccurrence(seriesId)
+        var cursor = lastSeen
+
+        sortedMatches.forEach { tx ->
+            val txId = tx.id ?: return@forEach
+            val current =
+                pending ?: recurringSeriesRepository.createExpectedOccurrence(
+                    seriesId = seriesId,
+                    expectedDate = cursor.plusDays(intervalDays.toLong()),
+                    expectedAmount = expectedAmount,
+                )
+            recurringSeriesRepository.markExpectedOccurrenceMatched(
+                expectedOccurrenceId = requireNotNull(current.id),
+                matchedTransactionId = txId,
+                matchedDate = tx.bookingDate,
+                matchedAmount = tx.amount,
+            )
+            cursor = tx.bookingDate
+            pending =
+                recurringSeriesRepository.createExpectedOccurrence(
+                    seriesId = seriesId,
+                    expectedDate = cursor.plusDays(intervalDays.toLong()),
+                    expectedAmount = expectedAmount,
+                )
+        }
     }
 }

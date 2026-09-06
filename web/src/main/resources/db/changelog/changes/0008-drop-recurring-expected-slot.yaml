@@ -1,0 +1,7 @@
+databaseChangeLog:
+  - changeSet:
+      id: "0008"
+      author: "lgraedig"
+      changes:
+        - dropTable:
+            tableName: recurring_expected_slot
