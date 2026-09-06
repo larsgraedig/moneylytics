@@ -1,4 +1,4 @@
-.PHONY: publish release deploy reset-db run compose docker-build demo dev import-dump
+.PHONY: publish release deploy reset-db run compose docker-build demo dev import-dump fetch-dump
 
 publish:
 	./gradlew :web:jib
@@ -51,4 +51,7 @@ dev:
 	./scripts/dev.sh
 
 import-dump:
-	./scripts/import-dump.sh
+	./scripts/import-dump.sh $(if $(V),-v)
+
+fetch-dump:
+	./scripts/fetch-dump.sh $(if $(V),-v)
