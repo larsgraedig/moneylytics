@@ -1,7 +1,7 @@
 databaseChangeLog:
   - changeSet:
-      id: 0009
-      author: lars
+      id: "0009"
+      author: lgraedig
       changes:
         - createTable:
             tableName: recurring_expected_occurrence

@@ -129,6 +129,65 @@ Alle anderen Zeilen (`Address`, `AllowedIPs`, `PersistentKeepalive`) 1:1 wie obe
 
 Sicherheitshinweis: `ci.key` (privater Key) nach dem Einfügen in das GitHub-Secret **lokal löschen** — er wird nur einmalig gebraucht und sollte nicht dauerhaft auf der Festplatte liegen.
 
+### Admin-Kubeconfig vom Server holen (k3s)
+
+`generate-kubeconfig.sh`/`generate-kubeconfig-stage.sh` setzen voraus, dass lokal bereits ein funktionierender Admin-`kubectl`-Context namens `moneylytics` existiert. Der Cluster läuft (Traefik als Ingress, Single-Node auf Hetzner) mutmaßlich als **k3s** — dort liegt die Admin-Kubeconfig standardmäßig unter `/etc/rancher/k3s/k3s.yaml`. So holt man sie einmalig (oder erneut, z. B. auf einer neuen Maschine):
+
+1. Per SSH auf dem Server die Datei auslesen (Server muss über WireGuard oder SSH direkt erreichbar sein):
+   ```bash
+   ssh <user>@<server> sudo cat /etc/rancher/k3s/k3s.yaml > moneylytics.yaml
+   ```
+2. In `moneylytics.yaml` das `server:`-Feld anpassen — k3s trägt dort standardmäßig `https://127.0.0.1:6443` ein, das muss auf die über WireGuard erreichbare interne Adresse geändert werden:
+   ```bash
+   sed -i '' 's#server: https://127.0.0.1:6443#server: https://10.10.0.1:6443#' moneylytics.yaml
+   ```
+3. Cluster/Context/User in der Datei umbenennen (sonst kollidiert der Default-Name `default` beim Mergen mit anderen Kubeconfigs), z. B. alle drei Vorkommen auf `moneylytics` setzen.
+4. In die eigene `~/.kube/config` mergen, ohne bestehende Contexts zu überschreiben:
+   ```bash
+   KUBECONFIG=~/.kube/config:moneylytics.yaml kubectl config view --flatten > /tmp/merged.yaml
+   mv /tmp/merged.yaml ~/.kube/config
+   kubectl config use-context moneylytics
+   ```
+5. Prüfen, dass die Adresse stimmt:
+   ```bash
+   kubectl config view --minify --context moneylytics -o jsonpath='{.clusters[0].cluster.server}'
+   # sollte https://10.10.0.1:6443 (oder die aktuelle interne Adresse) ausgeben
+   ```
+
+Danach kann `generate-kubeconfig.sh`/`generate-kubeconfig-stage.sh` gegen den Context `moneylytics` laufen und bäckt automatisch die richtige (interne) Adresse in die GitHub-Secrets ein.
+
+### Prüfen, ob `KUBE_CONFIG_PROD`/`KUBE_CONFIG_STAGE` schon die interne Adresse enthalten
+
+Wichtig, **bevor** der CI-Peer produktiv genutzt wird: Die in diesen Secrets hinterlegte Kubeconfig hat ein festes `server:`-Feld (siehe oben, Punkt 4 der Chain). Zeigt es noch auf die alte öffentliche IP, kommt `helm`/`kubectl` trotz aufgebautem WireGuard-Tunnel nicht durch, weil die Firewall den API-Server-Port nach außen blockiert.
+
+GitHub-Secrets sind **write-only** — sie lassen sich nicht über die UI oder API zurücklesen. Um den aktuell hinterlegten Wert trotzdem zu prüfen, temporär einen Debug-Step **direkt nach** dem `"Write kubeconfig"`-Step in `deploy-stage.yml` (bzw. `deploy-production.yml`) einfügen:
+
+```yaml
+- name: Debug - show API server address
+  run: grep 'server:' ~/.kube/config
+```
+
+Dann den Workflow per `workflow_dispatch` auslösen und im Job-Log die ausgegebene `server:`-Zeile ansehen:
+
+- Steht dort eine Adresse aus `10.10.0.0/24` (z. B. `https://10.10.0.1:6443`) → Secret ist bereits korrekt, nichts weiter zu tun.
+- Steht dort die öffentliche Hetzner-IP/Domain (z. B. `ml1.moneylytics.io:6443`) → Secret ist veraltet. Typischer Fehler in der Pipeline dazu:
+  ```
+  Error: kubernetes cluster unreachable: Get "https://ml1.moneylytics.io:6443/version": dial tcp <ip>:6443: i/o timeout
+  ```
+  Behebung:
+  1. WireGuard-Tunnel auf dem eigenen Laptop aktivieren (`sudo wg-quick up wg0` bzw. übers WireGuard-Client-Tool) und prüfen: `kubectl get ns --context moneylytics` muss ohne Timeout antworten.
+  2. Secret neu erzeugen, jetzt mit aktivem Tunnel: `./deployment/kubernetes/generate-kubeconfig-stage.sh` (für Prod: `generate-kubeconfig.sh`) — die Skripte lesen das `server:`-Feld live über den lokalen `kubectl`-Context aus, der jetzt auf die interne Adresse zeigt.
+  3. Den base64-Output in GitHub unter **Settings → Secrets and variables → Actions → `KUBE_CONFIG_STAGE`** (bzw. `KUBE_CONFIG_PROD`) als neuen Wert eintragen.
+  4. Workflow erneut auslösen.
+
+Den Debug-Step danach wieder entfernen — er soll nicht dauerhaft im Workflow bleiben.
+
+Alternative ohne CI-Aufruf: Falls die ursprüngliche `base64`-Ausgabe von `generate-kubeconfig.sh` noch irgendwo aufbewahrt ist (z. B. in einem Passwort-Manager), lässt sie sich auch lokal decodieren:
+
+```bash
+echo "<base64-Wert>" | base64 --decode | grep 'server:'
+```
+
 ### 3. Dienste nur lokal binden
 
 ```yaml
