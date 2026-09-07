@@ -54,6 +54,13 @@ jobs:
           tags: larsu/moneylytics-frontend:${{ env.COMMIT_HASH }}
 
       # Deploy
+      - name: Set up WireGuard
+        run: |
+          sudo apt-get update && sudo apt-get install -y wireguard
+          sudo install -m 600 /dev/null /etc/wireguard/wg0.conf
+          printf '%s' "${{ secrets.WG_CONFIG }}" | sudo tee /etc/wireguard/wg0.conf > /dev/null
+          sudo wg-quick up wg0
+
       - name: Write kubeconfig
         run: |
           mkdir -p ~/.kube
@@ -71,3 +78,7 @@ jobs:
             --kube-context moneylytics-stage \
             --set image.tag=$COMMIT_HASH \
             --set frontend.image.tag=$COMMIT_HASH
+
+      - name: Tear down WireGuard
+        if: always()
+        run: sudo wg-quick down wg0 || true
